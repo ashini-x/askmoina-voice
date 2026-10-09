@@ -17,7 +17,7 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 
 Vault encryption uses AES-GCM-256, a random 256-bit recovery code, PBKDF2-SHA-256 (600,000 iterations), a random salt and IV, and authenticated additional data bound to the vault ID. The recovery code is generated on the device and is not uploaded. Cloud backup authorisation is derived by hashing the recovery code; the API never accepts the code in a URL. Store the recovery kit safely: AskMoina cannot recover a lost code.
 
-Memory notes are entered and managed by the user in this release. Automatic extraction of memories from speech is not enabled. On-device encryption does not protect unlocked data from a compromised browser/device or malicious same-origin JavaScript. The optional browser-unlock key is stored only in that browser's IndexedDB and should only be enabled on a trusted device.
+Memory notes are entered and managed by the user in this release. Automatic extraction of memories from speech is not enabled. While 'Use these memories' is enabled, selected note text also exists as plaintext in local browser storage so separate tabs can use it; disabling the control or locking the vault clears this context. The cache is not sent to AskMoina storage, but it is sent to Gemini for each new voice session while enabled. On-device encryption does not protect unlocked data from a compromised browser/device or malicious same-origin JavaScript. The optional browser-unlock key is stored only in that browser's IndexedDB and should only be enabled on a trusted device.
 
 ## Architecture and security controls
 

@@ -524,7 +524,7 @@
         const setupPayload = { setup: {} };
         let selectedMemoryContext = "";
         try {
-          selectedMemoryContext = String(sessionStorage.getItem("askmoina.memory.context") || "").trim().slice(0, 3_000);
+          selectedMemoryContext = String(localStorage.getItem("askmoina.memory.context") || sessionStorage.getItem("askmoina.memory.context") || "").trim().slice(0, 3_000);
         } catch (_) {
           // Memory context is optional; voice must work if browser storage is unavailable.
         }

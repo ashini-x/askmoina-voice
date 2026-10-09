@@ -15,7 +15,7 @@
 - A cryptographically random 256-bit recovery code is generated locally. PBKDF2-SHA-256 with 600,000 iterations and a random salt derives a non-extractable AES-GCM key. The recovery code and key are never submitted to the Worker.
 - Cloud backup authentication uses SHA-256 of the high-entropy recovery code. Writes require same-origin checks and optimistic revision matching. GET/DELETE/PUT require the recovery capability. The server stores ciphertext only.
 - The optional local browser-unlock option stores a non-extractable CryptoKey in IndexedDB. It is convenience, not protection against a compromised browser profile or malicious same-origin JavaScript.
-- The user's memory is not silently sent to Gemini. The user must explicitly enable the per-tab voice-context toggle. This allows selected note text to be read by same-origin JavaScript and included in the next Gemini Live setup request.
+- The user's memory is not silently sent to Gemini. The user must explicitly enable the cross-tab voice-context toggle. Selected text is staged in plaintext local browser storage while enabled so other AskMoina tabs can read it; it is sent in the next and subsequent Gemini Live setup requests until disabled or the vault is locked. The UI discloses this, and toggle-off/lock removes the cache.
 - Live voice is not end-to-end encrypted: audio is streamed to Vertex AI, and selected memory context is sent there by choice. The product UI states this.
 - The first release supports manual memory notes and encrypted backup import/export; it does not automatically extract memory from speech or perform background multi-device merging.
 
