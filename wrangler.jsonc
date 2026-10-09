@@ -11,7 +11,7 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.3.0",
+    "APP_VERSION": "0.3.1",
     "ENVIRONMENT": "production",
     "GEMINI_MODEL": "gemini-3.8-live",
     "GEMINI_LOCATION": "us-central1",
