@@ -1,0 +1,56 @@
+# Assamese Voice Beta: Acceptance Plan
+
+This plan is the release gate for the first small-user beta of AskMoina Voice in Upper Assam. It is not evidence that these tests have passed.
+
+## Release order
+
+1. Confirm production health and configuration.
+2. Run voice, limit, privacy, and recovery checks on real devices.
+3. Run a small Assamese-language evaluation with consenting local speakers.
+4. Fix the highest-frequency failures and repeat the checks.
+5. Invite a small pilot group only after the release gate below is met.
+
+## Manual production checks
+
+- Open the production site on Android Chrome and desktop Chrome; confirm the microphone permission flow is understandable.
+- Complete a short voice session, end it normally, then start a second session.
+- Refresh during a session and confirm the old connection releases its reservation.
+- Open two tabs on the same network and confirm the configured concurrent-session limit is enforced.
+- Check `/api/voice/status` before and after a session; it should return a sensible availability result and never expose credentials.
+- Verify a session ends at its configured duration limit.
+- With memory personalization disabled, confirm saved memory text is not included in the session setup.
+- With personalization enabled, select a harmless test note and confirm only that selected context is used; disable it and confirm it is no longer sent on the next session.
+- Lock the vault and verify the local memory context is cleared.
+- Verify that an invalid cross-origin WebSocket request is rejected.
+- Confirm the operations dashboard requires authentication and does not display audio, transcripts, or memory plaintext.
+
+## Assamese language evaluation
+
+Recruit consenting Assamese speakers from more than one Upper Assam locality. Do not collect names or recordings unless separately consented to and genuinely needed. A reviewer can score each test live without retaining audio.
+
+For each scenario, record: understood correctly (yes/no), response language appropriate (yes/no), factual/helpfulness score (1–5), and failure notes.
+
+- Everyday Assamese greeting and open-ended conversation.
+- Assamese with English words mixed naturally in the same sentence.
+- Local place names and common regional expressions.
+- A request to repeat or explain something more simply.
+- A noisy-room or slower-network session.
+- User switches from Assamese to English and back.
+- An ambiguous question: assistant asks a clarifying question rather than inventing details.
+- A local scheme, job, or education question: assistant distinguishes verified information from uncertainty and directs the user to an official source when appropriate.
+
+Do not claim the system understands every dialect until testing supports that claim.
+
+## Pilot release gate
+
+Proceed to a small pilot only when:
+
+- TypeScript checks and automated tests pass on the exact release commit.
+- The deployed Worker version and source commit are recorded and match the intended release.
+- No known critical security or quota-bypass issue remains open.
+- Voice session creation, normal close, timeout, reconnect, and quota enforcement have been manually verified.
+- Memory opt-in, opt-out, lock, and deletion have been verified.
+- Testers can complete core tasks on the target mobile devices without a blocking issue.
+- A process exists to report failures, disable access if needed, and monitor provider spending.
+
+A successful deployment or health endpoint alone does not satisfy this gate.
