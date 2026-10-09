@@ -73,18 +73,6 @@
 
       if (result.available) {
         const sessionMinutes = Math.max(1, Math.ceil((Number(result.maxSessionSeconds) || 540) / 60));
-        if (result.testingMode) {
-          const expires = result.testingModeExpiresAt ? new Date(result.testingModeExpiresAt) : null;
-          const expiresLabel = expires && Number.isFinite(expires.getTime())
-            ? expires.toLocaleString()
-            : "the end of the test window";
-          setAvailability(
-            "TEST MODE · Unlimited daily voice time until " + expiresLabel +
-              " · up to " + sessionMinutes + " min per conversation; reconnect to continue.",
-            "normal",
-          );
-          return result;
-        }
         const remainingSeconds = Number(result.dailyRemainingSeconds);
         let allowance = "";
         if (Number.isFinite(remainingSeconds)) {
