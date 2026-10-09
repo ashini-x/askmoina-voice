@@ -8,4 +8,4 @@
 - D1 is reserved for structured preferences, consent, usage, audit events, and user-controlled memory metadata.
 - Queues handle asynchronous tasks only; live audio frames never go through a Queue.
 - Raw audio is not stored by default.
-- Current implementation includes the OAuth token helper and live WebSocket proxy. Browser microphone capture, audio playback, interruption handling, reliable reconnection/session resumption, stronger user identity, and full abuse/cost controls remain future implementation and must not be described as shipped.
+- Current implementation includes the OAuth token helper and live WebSocket proxy. The browser now has initial microphone capture, PCM audio streaming/playback, transcription display, and interruption queue clearing. This remains a prototype until verified on real devices. Reliable reconnection/session resumption, stronger user identity, human verification, and full abuse/cost controls remain outstanding.
