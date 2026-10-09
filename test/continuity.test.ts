@@ -65,6 +65,15 @@ describe("Encrypted vault API boundary", () => {
     expect(await response?.json()).toMatchObject({ error: "unauthorized" });
   });
 
+  it("serves parseable first-party client scripts", async () => {
+    for (const path of ["/vault.js", "/continuity.js", "/admin.js", "/admin-login.js"]) {
+      const response = await handleContinuityRequest(new Request("https://askmoina.test" + path), mockEnv(), ctx);
+      expect(response?.status).toBe(200);
+      const source = await response?.text();
+      expect(() => new Function(source || "")).not.toThrow();
+    }
+  });
+
   it("serves the vault with no-store and anti-framing headers", async () => {
     const response = await handleContinuityRequest(
       new Request("https://askmoina.test/vault"),
