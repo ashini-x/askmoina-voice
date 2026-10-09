@@ -176,6 +176,7 @@ async function handleVoiceSocket(
   workerSocket.accept();
   upstreamSocket.accept();
 
+  const upstreamStartedAt = Date.now();
   let setupForwarded = false;
   let setupCompleteReceived = false;
   let closed = false;
@@ -229,10 +230,9 @@ async function handleVoiceSocket(
 
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generation_config: { response_modalities: ["AUDIO"] },
+          // Keep the first raw WebSocket setup minimal: transcription requires TEXT output too.
+          generation_config: { response_modalities: ["audio"] },
           system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-          input_audio_transcription: {},
-          output_audio_transcription: {},
         };
         upstreamSocket.send(JSON.stringify({ setup: securedSetup }));
         setupForwarded = true;
@@ -330,6 +330,9 @@ async function handleVoiceSocket(
         };
         if (providerMessage.setup_complete || providerMessage.setupComplete) {
           setupCompleteReceived = true;
+          console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
+            frameKeys: Object.keys(providerMessage),
+          }));
         }
         if (providerMessage.error) {
           const providerError = providerMessage.error;
@@ -354,11 +357,13 @@ async function handleVoiceSocket(
   workerSocket.addEventListener("close", (event: CloseEvent) => closeBoth(event.code || 1000, "Client disconnected"));
   workerSocket.addEventListener("error", () => closeBoth(1011, "Client socket error"));
   upstreamSocket.addEventListener("close", (event: CloseEvent) => {
-    if (!setupCompleteReceived && !closed) {
-      console.error("[AskMoina] Vertex Live socket closed before setup completed", JSON.stringify({
+    if (!closed) {
+      console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
         code: event.code,
         reason: event.reason.slice(0, 300),
         setupForwarded,
+        setupCompleteReceived,
+        lifetimeMs: Date.now() - upstreamStartedAt,
       }));
     }
     closeBoth(event.code || 1000, "Voice provider disconnected");
