@@ -239,12 +239,26 @@
     }
   }
 
-  function handleServerMessage(raw) {
+  async function handleServerMessage(raw) {
     let message;
     try {
-      message = typeof raw === "string" ? JSON.parse(raw) : JSON.parse(new TextDecoder().decode(raw));
+      let payload;
+      if (typeof raw === "string") {
+        payload = raw;
+      } else if (typeof Blob !== "undefined" && raw instanceof Blob) {
+        payload = await raw.text();
+      } else if (raw instanceof ArrayBuffer || ArrayBuffer.isView(raw)) {
+        payload = new TextDecoder().decode(raw);
+      } else {
+        throw new TypeError("Unsupported WebSocket message type");
+      }
+      message = JSON.parse(payload);
+      if (!message || typeof message !== "object" || Array.isArray(message)) {
+        throw new TypeError("Unexpected WebSocket message shape");
+      }
     } catch (_) {
-      setStatus("Received an unreadable response. Please end this session and try again.", "error");
+      setStatus("The voice service sent a response this browser could not read. Please start a new conversation.", "error");
+      stopConversation(true);
       return;
     }
 
@@ -383,30 +397,38 @@
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       setStatus("Connecting securely to the voice service…");
-      socket = new WebSocket(wsUrl.toString());
-      socket.binaryType = "arraybuffer";
+      const sessionSocket = new WebSocket(wsUrl.toString());
+      socket = sessionSocket;
+      sessionSocket.binaryType = "arraybuffer";
 
-      socket.addEventListener("open", () => {
-        if (stopping || !socket || socket.readyState !== WebSocket.OPEN) return;
+      sessionSocket.addEventListener("open", () => {
+        if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         // The Worker replaces this placeholder with server-controlled model/system settings.
-        socket.send(JSON.stringify({ setup: {} }));
+        sessionSocket.send(JSON.stringify({ setup: {} }));
         setStatus("Connected to the relay. Setting up your conversation…");
         setupTimer = window.setTimeout(() => {
-          if (!setupReady && socket) {
+          if (!setupReady && socket === sessionSocket) {
             setStatus("Voice setup timed out. Please try starting a new conversation.", "error");
             stopConversation(true);
           }
         }, 15000);
       });
 
-      socket.addEventListener("message", (event) => handleServerMessage(event.data));
-
-      socket.addEventListener("error", () => {
-        setStatus("Could not connect to the voice service. Please try again.", "error");
+      sessionSocket.addEventListener("message", (event) => {
+        void handleServerMessage(event.data);
       });
 
-      socket.addEventListener("close", (event) => {
-        if (socket && socket.readyState === WebSocket.CLOSED) socket = null;
+      sessionSocket.addEventListener("error", () => {
+        if (socket === sessionSocket) {
+          setStatus("Could not connect to the voice service. Please try again.", "error");
+        }
+      });
+
+      sessionSocket.addEventListener("close", (event) => {
+        const isCurrentSocket = socket === sessionSocket;
+        if (isCurrentSocket) socket = null;
+        // stopConversation() already restored the UI; ignore its late close event.
+        if (!isCurrentSocket && !stopping) return;
         const wasStopping = stopping;
         finishStoppedState(
           wasStopping
