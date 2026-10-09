@@ -257,8 +257,8 @@
         throw new TypeError("Unexpected WebSocket message shape");
       }
     } catch (_) {
-      setStatus("The voice service sent a response this browser could not read. Please start a new conversation.", "error");
       stopConversation(true);
+      setStatus("The voice service sent a response this browser could not read. Please start a new conversation.", "error");
       return;
     }
 
@@ -302,13 +302,22 @@
     }
 
     if (message.go_away || message.goAway) {
-      setStatus("This voice session is ending. Please start a new conversation.");
       stopConversation(true);
+      setStatus("This voice session is ending. Please start a new conversation.", "error");
+      return;
     }
 
     if (message.error) {
-      setStatus("The voice service returned an error. Please end the session and try again.", "error");
+      const errorMessage = message.error && typeof message.error.message === "string"
+        ? message.error.message.trim().slice(0, 180)
+        : "";
       stopConversation(true);
+      setStatus(
+        errorMessage
+          ? "Voice service error: " + errorMessage
+          : "The voice service returned an error. Please start a new conversation.",
+        "error"
+      );
     }
   }
 
@@ -408,8 +417,8 @@
         setStatus("Connected to the relay. Setting up your conversation…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
-            setStatus("Voice setup timed out. Please try starting a new conversation.", "error");
             stopConversation(true);
+            setStatus("Voice setup timed out. Please try starting a new conversation.", "error");
           }
         }, 15000);
       });
