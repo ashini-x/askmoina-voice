@@ -141,7 +141,7 @@ function vaultPage(): string {
   ].join("");
 }
 
-const VAULT_JS = `(() => {
+const VAULT_JS = String.raw`(() => {
 "use strict";
 const $ = (s) => document.querySelector(s);
 const encoder = new TextEncoder();
