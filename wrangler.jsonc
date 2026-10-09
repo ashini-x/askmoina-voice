@@ -6,6 +6,6 @@
  "vars":{"APP_VERSION":"0.1.0","ENVIRONMENT":"production","GEMINI_MODEL":"gemini-3.8-live","MAX_LIVE_SESSION_SECONDS":"900","MAX_DAILY_SESSION_SECONDS":"1800","MAX_CONCURRENT_SESSIONS_PER_USER":"1","ANALYTICS_RAW_RETENTION_DAYS":"30"},
  "durable_objects":{"bindings":[{"name":"USER_STATE","class_name":"UserState"}]},
  "exports":{"UserState":{"type":"durable-object","storage":"sqlite"}},
- "d1_databases":[{"binding":"DB","database_name":"askmoina-prod","database_id":"REPLACE_WITH_ASKMOINA_DATABASE_ID"}],
+ "d1_databases":[{"binding":"DB","database_name":"askmoina-prod","database_id":"21b82a94-ce17-4a57-8741-3b9d46aef33f"}],
  "queues":{"producers":[{"binding":"BACKGROUND_QUEUE","queue":"askmoina-background-prod"}],"consumers":[{"queue":"askmoina-background-prod","max_batch_size":10,"max_batch_timeout":5,"max_retries":5,"dead_letter_queue":"askmoina-background-dlq","retry_delay":15,"max_concurrency":10}]}
 }
