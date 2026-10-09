@@ -34,6 +34,16 @@ async function acquire(userState, input) {
   );
 }
 
+async function status(userState, input) {
+  return userState.fetch(
+    new Request("https://user-state/session/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
 async function release(userState, sessionId, now) {
   return userState.fetch(
     new Request("https://user-state/session/release", {
@@ -87,6 +97,65 @@ describe("AskMoina voice session guard", () => {
     expect((await secondAfterRelease.json()).allowed).toBe(true);
   });
 
+  it("reports active sessions and daily time without reserving usage", async () => {
+    const { userState, storage } = makeState();
+    const limits = {
+      now: TODAY,
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+    };
+
+    const before = await status(userState, limits);
+    expect(before.status).toBe(200);
+    expect(await before.json()).toMatchObject({
+      ok: true,
+      dailySecondsRemaining: 1800,
+      activeSessions: 0,
+      requestsRemaining: 5,
+      rateLimited: false,
+      concurrencyLimited: false,
+      dailyLimitReached: false,
+    });
+    expect(storage.values.size).toBe(0);
+
+    await acquire(userState, {
+      sessionId: "active",
+      now: TODAY,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+    });
+    const during = await status(userState, limits);
+    expect(await during.json()).toMatchObject({ activeSessions: 1, concurrencyLimited: true });
+  });
+
+  it("explains how long until the connection-attempt limit resets", async () => {
+    const { userState } = makeState();
+    for (let index = 0; index < 6; index += 1) {
+      await acquire(userState, {
+        sessionId: "limited-" + index,
+        now: TODAY + index * 1000,
+        maxSessionSeconds: 30,
+        maxDailySeconds: 3600,
+        maxConcurrentSessions: 10,
+        enforceRateLimit: true,
+      });
+    }
+    const response = await status(userState, {
+      now: TODAY + 6000,
+      maxDailySeconds: 3600,
+      maxConcurrentSessions: 10,
+      enforceRateLimit: true,
+    });
+    expect(await response.json()).toMatchObject({
+      rateLimited: true,
+      retryAfterSeconds: 54,
+      requestsRemaining: 0,
+    });
+  });
+
   it("rejects the sixth handshake request in one minute", async () => {
     const { userState } = makeState();
     const responses = [];
@@ -131,6 +200,17 @@ describe("AskMoina voice session guard", () => {
     });
     expect(second.status).toBe(200);
     await release(userState, "b", TODAY + 501_000);
+
+    const exhausted = await status(userState, {
+      now: TODAY + 502_000,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 5,
+      enforceRateLimit: false,
+    });
+    expect(await exhausted.json()).toMatchObject({
+      dailySecondsRemaining: 0,
+      dailyLimitReached: true,
+    });
 
     const third = await acquire(userState, {
       sessionId: "c",

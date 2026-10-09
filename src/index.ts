@@ -30,7 +30,7 @@ async function callGuard(
   objectName: string,
   path: "/session/acquire" | "/session/release",
   body: Record<string, unknown>,
-): Promise<{ ok: boolean; allowed?: boolean }> {
+): Promise<{ ok: boolean; allowed?: boolean; reservedSeconds?: number }> {
   try {
     const id = env.USER_STATE.idFromName(objectName);
     const stub = env.USER_STATE.get(id);
@@ -40,8 +40,12 @@ async function callGuard(
       body: JSON.stringify(body),
     });
     if (path === "/session/release") return { ok: response.ok };
-    const result = (await response.json()) as { allowed?: boolean };
-    return { ok: response.ok, allowed: result.allowed === true };
+    const result = (await response.json()) as { allowed?: boolean; reservedSeconds?: number };
+    return {
+      ok: response.ok,
+      allowed: result.allowed === true,
+      reservedSeconds: result.reservedSeconds,
+    };
   } catch {
     return { ok: false, allowed: false };
   }
@@ -51,6 +55,7 @@ interface VoiceReservation {
   sessionId: string;
   ipObjectName: string;
   globalObjectName: string;
+  maxDurationSeconds: number;
 }
 
 async function reserveVoiceSession(request: Request, env: Env): Promise<VoiceReservation | null> {
@@ -89,7 +94,15 @@ async function reserveVoiceSession(request: Request, env: Env): Promise<VoiceRes
     return null;
   }
 
-  return { sessionId, ipObjectName, globalObjectName };
+  const maxDurationSeconds = Math.max(
+    1,
+    Math.min(
+      maxSessionSeconds,
+      ipResult.reservedSeconds ?? maxSessionSeconds,
+      globalResult.reservedSeconds ?? maxSessionSeconds,
+    ),
+  );
+  return { sessionId, ipObjectName, globalObjectName, maxDurationSeconds };
 }
 
 async function releaseVoiceSession(
@@ -108,6 +121,148 @@ async function releaseVoiceSession(
   ]);
 }
 
+
+interface VoiceGuardStatus {
+  dailySecondsRemaining: number;
+  activeSessions: number;
+  requestsRemaining: number | null;
+  retryAfterSeconds: number;
+  rateLimited: boolean;
+  concurrencyLimited: boolean;
+  dailyLimitReached: boolean;
+}
+
+async function readGuardStatus(
+  env: Env,
+  objectName: string,
+  options: {
+    now: number;
+    maxDailySeconds: number;
+    maxConcurrentSessions: number;
+    enforceRateLimit: boolean;
+  },
+): Promise<VoiceGuardStatus | null> {
+  try {
+    const id = env.USER_STATE.idFromName(objectName);
+    const stub = env.USER_STATE.get(id);
+    const response = await stub.fetch("https://user-state/session/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+    });
+    if (!response.ok) return null;
+    const result = await response.json() as Partial<VoiceGuardStatus> & { ok?: boolean };
+    if (
+      result.ok !== true ||
+      !Number.isFinite(result.dailySecondsRemaining) ||
+      !Number.isFinite(result.activeSessions) ||
+      typeof result.rateLimited !== "boolean" ||
+      typeof result.concurrencyLimited !== "boolean" ||
+      typeof result.dailyLimitReached !== "boolean"
+    ) return null;
+    return {
+      dailySecondsRemaining: Math.max(0, Number(result.dailySecondsRemaining)),
+      activeSessions: Math.max(0, Number(result.activeSessions)),
+      requestsRemaining: result.requestsRemaining == null ? null : Math.max(0, Number(result.requestsRemaining)),
+      retryAfterSeconds: Math.max(0, Number(result.retryAfterSeconds) || 0),
+      rateLimited: result.rateLimited,
+      concurrencyLimited: result.concurrencyLimited,
+      dailyLimitReached: result.dailyLimitReached,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function handleVoiceStatus(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+
+  if (!hasVertexCredentials(env)) {
+    return json({
+      available: false,
+      reason: "not_configured",
+      message: "Voice is temporarily unavailable. Please try again later.",
+      maxSessionSeconds: 0,
+      dailyRemainingSeconds: null,
+    });
+  }
+
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip) {
+    return json({
+      available: false,
+      reason: "status_unavailable",
+      message: "Could not check voice availability right now. Please try again shortly.",
+      maxSessionSeconds: 0,
+      dailyRemainingSeconds: null,
+    });
+  }
+
+  const now = Date.now();
+  const ipObjectName = "voice-ip:" + await sha256(ip);
+  const globalObjectName = "voice-global-budget";
+  const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
+  const maxDailySeconds = positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800);
+  const maxGlobalDailySeconds = positiveInt(env.MAX_GLOBAL_DAILY_SESSION_SECONDS, 3_600, 3_600);
+  const ipStatus = await readGuardStatus(env, ipObjectName, {
+    now,
+    maxDailySeconds,
+    maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
+    enforceRateLimit: true,
+  });
+  const globalStatus = await readGuardStatus(env, globalObjectName, {
+    now,
+    maxDailySeconds: maxGlobalDailySeconds,
+    maxConcurrentSessions: positiveInt(env.MAX_GLOBAL_CONCURRENT_SESSIONS, 5, 5),
+    enforceRateLimit: false,
+  });
+
+  if (!ipStatus || !globalStatus) {
+    return json({
+      available: false,
+      reason: "status_unavailable",
+      message: "Could not check voice availability right now. Please try again shortly.",
+      maxSessionSeconds,
+      dailyRemainingSeconds: null,
+    }, 503);
+  }
+
+  let reason = "available";
+  let message = "Current limits allow a new voice conversation.";
+  if (ipStatus.rateLimited) {
+    reason = "rate_limited";
+    message = "Too many connection attempts just now. Please wait about " +
+      Math.max(1, ipStatus.retryAfterSeconds) + " seconds before trying again.";
+  } else if (ipStatus.concurrencyLimited) {
+    reason = "already_active";
+    message = "A voice conversation is already active for this network in another tab. End it there before starting a new one.";
+  } else if (ipStatus.dailyLimitReached) {
+    reason = "daily_limit";
+    message = "Today's voice allowance for this network has been used. It resets at midnight India time.";
+  } else if (globalStatus.concurrencyLimited) {
+    reason = "app_busy";
+    message = "AskMoina is busy right now. Please wait a little and try again.";
+  } else if (globalStatus.dailyLimitReached) {
+    reason = "app_daily_limit";
+    message = "AskMoina has reached its overall voice allowance for today. Please try again after midnight India time.";
+  }
+
+  const dailyRemainingSeconds = Math.min(
+    ipStatus.dailySecondsRemaining,
+    globalStatus.dailySecondsRemaining,
+  );
+  const allowedDurationSeconds = Math.max(
+    0,
+    Math.min(maxSessionSeconds, ipStatus.dailySecondsRemaining, globalStatus.dailySecondsRemaining),
+  );
+  return json({
+    available: reason === "available",
+    reason,
+    message,
+    maxSessionSeconds: allowedDurationSeconds,
+    dailyRemainingSeconds: ipStatus.activeSessions > 0 ? null : dailyRemainingSeconds,
+  });
+}
 
 async function handleVoiceSocket(
   request: Request,
@@ -432,7 +587,7 @@ async function handleVoiceSocket(
 
   setTimeout(
     () => closeBoth(1000, "Session time limit reached"),
-    positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540) * 1_000,
+    reservation.maxDurationSeconds * 1_000,
   );
 
   return new Response(null, { status: 101, webSocket: clientSocket });
@@ -456,6 +611,7 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/voice/status") return handleVoiceStatus(request, env);
     if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 

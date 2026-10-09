@@ -2,6 +2,7 @@
   "use strict";
 
   const statusNode = document.querySelector("#status");
+  const availabilityNode = document.querySelector("#availability");
   const toggleButton = document.querySelector("#toggleVoice");
   const buttonLabel = document.querySelector("#buttonLabel");
   const transcriptNode = document.querySelector("#transcript");
@@ -28,6 +29,54 @@
     if (!statusNode) return;
     statusNode.textContent = message;
     statusNode.dataset.kind = kind || "normal";
+  }
+
+  function setAvailability(message, kind) {
+    if (!availabilityNode) return;
+    availabilityNode.textContent = message;
+    availabilityNode.dataset.kind = kind || "normal";
+  }
+
+  let voiceAvailability = null;
+  let availabilityCheckSequence = 0;
+
+  async function refreshVoiceAvailability() {
+    const requestId = ++availabilityCheckSequence;
+    try {
+      const response = await fetch("/api/voice/status", { cache: "no-store", headers: { Accept: "application/json" } });
+      const result = await response.json();
+      if (!response.ok || !result || typeof result.available !== "boolean") {
+        throw new Error("Voice availability could not be checked.");
+      }
+      voiceAvailability = result;
+      if (requestId !== availabilityCheckSequence) return result;
+
+      if (result.available) {
+        const sessionMinutes = Math.max(1, Math.ceil((Number(result.maxSessionSeconds) || 540) / 60));
+        const remainingSeconds = Number(result.dailyRemainingSeconds);
+        let allowance = "";
+        if (Number.isFinite(remainingSeconds)) {
+          const remainingMinutes = Math.floor((remainingSeconds + 30) / 60);
+          allowance = remainingMinutes > 0
+            ? " · about " + remainingMinutes + " min of voice time may remain today on this network"
+            : " · less than a minute of daily voice time may remain";
+        }
+        setAvailability(
+          "Limits allow voice · up to " + sessionMinutes + " min per conversation" + allowance + " · no fixed question-count cap.",
+          "normal",
+        );
+      } else {
+        setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
+        if (result.message) setStatus(result.message, "error");
+      }
+      return result;
+    } catch (_) {
+      voiceAvailability = null;
+      if (requestId === availabilityCheckSequence) {
+        setAvailability("Could not check voice availability. We’ll check again when you start.", "warning");
+      }
+      return null;
+    }
   }
 
   function setButton(label, disabled) {
@@ -272,6 +321,10 @@
       active = true;
       setButton("End conversation", false);
       setStatus("Connected. You can speak naturally; you may interrupt Moina at any time.");
+      if (voiceAvailability && voiceAvailability.available) {
+        const sessionMinutes = Math.max(1, Math.ceil((Number(voiceAvailability.maxSessionSeconds) || 540) / 60));
+        setAvailability("Conversation active · up to " + sessionMinutes + " min for this session.", "normal");
+      }
       startMicrophoneCapture();
       return;
     }
@@ -360,6 +413,9 @@
     stopping = false;
     setButton("Start talking", false);
     if (message) setStatus(message);
+    window.setTimeout(() => {
+      if (!starting && !active) void refreshVoiceAvailability();
+    }, 700);
   }
 
   function stopConversation(fromServer) {
@@ -384,6 +440,15 @@
     if (starting || active) return;
     starting = true;
     stopping = false;
+    setButton("Checking availability…", true);
+    setStatus("Checking voice availability…");
+    const preflight = await refreshVoiceAvailability();
+    if (preflight && !preflight.available) {
+      starting = false;
+      setButton("Start talking", false);
+      setStatus(preflight.message || "Voice is not available right now. Please try again later.", "error");
+      return;
+    }
     setButton("Connecting…", true);
     setStatus("Requesting microphone permission…");
 
@@ -429,7 +494,14 @@
 
       sessionSocket.addEventListener("error", () => {
         if (socket === sessionSocket) {
-          setStatus("Could not connect to the voice service. Please try again.", "error");
+          void refreshVoiceAvailability().then((result) => {
+            if (socket && socket !== sessionSocket) return;
+            if (result && !result.available) {
+              setStatus(result.message || "Voice is not available right now.", "error");
+            } else {
+              setStatus("Could not connect to the voice service. Please check your connection and try again.", "error");
+            }
+          });
         }
       });
 
@@ -490,16 +562,20 @@
         health.status === "vertex-live-proxy-configured"
       ) {
         setButton("Start talking", false);
-        setStatus("Voice service configured. Your microphone starts only after you tap Start talking.");
+        setStatus("Ready when you are. Your microphone starts only after you tap Start talking.");
+        await refreshVoiceAvailability();
         return;
       }
       setButton("Voice not ready", true);
       setStatus("The voice backend is not configured yet. Refresh this page after the Worker deployment finishes.", "error");
+      setAvailability("Voice will become available after service setup is complete.", "error");
     } catch (_) {
       setButton("Try voice service", false);
       setStatus("Could not confirm service status. You can still try connecting, or reload the page.", "error");
+      await refreshVoiceAvailability();
     }
   }
 
+  setAvailability("Checking voice availability…");
   checkBackend();
 })();

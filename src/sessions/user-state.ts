@@ -57,6 +57,61 @@ export class UserState {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
+    if (request.method === "POST" && url.pathname === "/session/status") {
+      let input: {
+        now?: number;
+        maxDailySeconds?: number;
+        maxConcurrentSessions?: number;
+        enforceRateLimit?: boolean;
+      };
+      try {
+        input = (await request.json()) as typeof input;
+      } catch {
+        return Response.json({ ok: false, reason: "invalid_request" }, { status: 400 });
+      }
+
+      const now = Number.isFinite(input.now) ? Number(input.now) : Date.now();
+      const maxDailySeconds = positiveInt(input.maxDailySeconds, 1_800, MAX_SUPPORTED_DAILY_SECONDS);
+      const maxConcurrentSessions = positiveInt(
+        input.maxConcurrentSessions,
+        1,
+        MAX_SUPPORTED_CONCURRENT_SESSIONS,
+      );
+      const record = await this.state.storage.get<GuardRecord>(STORAGE_KEY) ?? newRecord(now);
+      const currentDate = indiaDate(now);
+      const sameDay = record.usageDate === currentDate;
+      const rateWindowActive = now >= record.windowStart && now - record.windowStart < RATE_WINDOW_MS;
+      const currentRequestCount = rateWindowActive ? record.requestCount : 0;
+      const activeSessions = Object.values(record.sessions).filter((session) => {
+        const staleAt = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
+        return now <= staleAt;
+      }).length;
+      const dailySecondsRemaining = Math.max(
+        0,
+        maxDailySeconds - (sameDay ? record.dailySeconds : 0),
+      );
+      const requestsRemaining = input.enforceRateLimit
+        ? Math.max(0, IP_REQUESTS_PER_MINUTE - currentRequestCount)
+        : null;
+      const rateLimited = Boolean(
+        input.enforceRateLimit && rateWindowActive && currentRequestCount >= IP_REQUESTS_PER_MINUTE,
+      );
+      const retryAfterSeconds = rateLimited
+        ? Math.max(1, Math.ceil((record.windowStart + RATE_WINDOW_MS - now) / 1_000))
+        : 0;
+
+      return Response.json({
+        ok: true,
+        dailySecondsRemaining,
+        activeSessions,
+        requestsRemaining,
+        retryAfterSeconds,
+        rateLimited,
+        concurrencyLimited: activeSessions >= maxConcurrentSessions,
+        dailyLimitReached: dailySecondsRemaining <= 0,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
     if (request.method === "POST" && url.pathname === "/session/acquire") {
       let input: {
         sessionId?: string;
@@ -131,7 +186,7 @@ export class UserState {
         record.sessions[sessionId] = { startedAt: now, reservedSeconds, usageDate: currentDate };
         record.dailySeconds += reservedSeconds;
         await transaction.put(STORAGE_KEY, record);
-        return { allowed: true, reason: "reserved" as const };
+        return { allowed: true, reason: "reserved" as const, reservedSeconds };
       });
 
       return Response.json(result, {
