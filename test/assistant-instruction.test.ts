@@ -8,6 +8,18 @@ describe("AskMoina voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("code-switch naturally");
   });
 
+  it("encourages spoken turn-taking rather than verbose scripted replies", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("should avoid turning every answer into a lecture");
+    expect(SYSTEM_INSTRUCTION).toContain("Leave room for the user to speak");
+    expect(SYSTEM_INSTRUCTION).toContain("ask at most one question at a time");
+    expect(SYSTEM_INSTRUCTION).toContain("should not add fake hesitations");
+  });
+
+  it("uses empathy and examples without forcing canned responses", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("acknowledge feelings briefly when appropriate");
+    expect(SYSTEM_INSTRUCTION).toContain("CONVERSATION EXAMPLES (style guidance, not fixed scripts)");
+  });
+
   it("avoids fabricated dialect and local facts", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Do not fake an Upper Assam dialect");
     expect(SYSTEM_INSTRUCTION).toContain("Never invent local facts");
@@ -20,7 +32,7 @@ describe("AskMoina voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Do not claim to remember something");
   });
 
-  it("keeps the voice response concise and asks for clarification when needed", () => {
+  it("keeps spoken responses concise and asks for clarification when needed", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Ask one brief clarifying question");
     expect(SYSTEM_INSTRUCTION).toContain("Keep spoken responses concise and natural");
   });
