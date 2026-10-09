@@ -4,7 +4,7 @@ A voice-first AI companion for Assam, starting with Upper Assam. Built on Cloudf
 
 ## Project status
 
-**Foundation plus Vertex AI Live proxy.** The Worker uses server-side Google service-account OAuth and proxies a WebSocket to Gemini Live on Vertex AI. Browser-side microphone capture, audio playback, interruption handling, session reconnection/resumption, and end-to-end voice acceptance tests still need implementation.
+**Voice prototype.** The Worker uses server-side Google service-account OAuth and proxies a WebSocket to Gemini Live on Vertex AI. The browser now captures microphone audio, streams 16 kHz PCM, plays 24 kHz PCM responses, and displays available text transcripts. Real-device end-to-end verification, improved audio worklet/resampling, reconnection/resumption, and public-beta abuse controls remain before broad launch.
 
 ## Architecture and security controls
 
