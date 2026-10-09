@@ -446,6 +446,29 @@
     window.AudioContext = window.webkitAudioContext;
   }
 
-  setButton("Start talking", false);
-  setStatus("Ready when you are.");
+  async function checkBackend() {
+    setButton("Checking voice service…", true);
+    setStatus("Checking that the voice service is configured…");
+    try {
+      const response = await fetch("/api/health", { cache: "no-store" });
+      const health = await response.json();
+      if (
+        response.ok &&
+        health &&
+        health.ok === true &&
+        health.status === "vertex-live-proxy-configured"
+      ) {
+        setButton("Start talking", false);
+        setStatus("Voice service configured. Your microphone starts only after you tap Start talking.");
+        return;
+      }
+      setButton("Voice not ready", true);
+      setStatus("The voice backend is not configured yet. Refresh this page after the Worker deployment finishes.", "error");
+    } catch (_) {
+      setButton("Try voice service", false);
+      setStatus("Could not confirm service status. You can still try connecting, or reload the page.", "error");
+    }
+  }
+
+  checkBackend();
 })();
