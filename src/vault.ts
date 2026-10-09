@@ -1,4 +1,5 @@
 import type { Env } from "./config/env";
+import { allowIpRequest } from "./rate-limit";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_CIPHERTEXT_CHARS = 220_000;
@@ -110,6 +111,9 @@ export async function handleVaultRequest(request: Request, env: Env): Promise<Re
 
   if (url.pathname === "/api/vault/backup") {
     if (!validPayload(input)) return response({ error: "invalid_vault_envelope" }, 400);
+    const allowed = await allowIpRequest(env, request, "vault", 30);
+    if (allowed === false) return response({ error: "rate_limited" }, 429);
+    if (allowed === null) return response({ error: "rate_limit_unavailable" }, 503);
     const existing = await env.DB.prepare("SELECT token_hash, revision FROM vault_backups WHERE vault_id = ?")
       .bind(input.vaultId).first<{ token_hash: string; revision: number }>();
     const tokenHash = await digest(input.token);
@@ -144,6 +148,9 @@ export async function handleVaultRequest(request: Request, env: Env): Promise<Re
     const vaultId = typeof input.vaultId === "string" ? input.vaultId : "";
     const token = typeof input.token === "string" ? input.token : "";
     if (!VAULT_ID_RE.test(vaultId) || !TOKEN_RE.test(token)) return response({ error: "invalid_request" }, 400);
+    const allowed = await allowIpRequest(env, request, "vault", 30);
+    if (allowed === false) return response({ error: "rate_limited" }, 429);
+    if (allowed === null) return response({ error: "rate_limit_unavailable" }, 503);
     const authorised = await authorise(env, vaultId, token);
     if (!authorised?.row) return response({ error: "not_found" }, 404);
     const row = authorised.row;

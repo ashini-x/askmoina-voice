@@ -1,4 +1,5 @@
 import type { Env } from "./config/env";
+import { allowIpRequest } from "./rate-limit";
 
 const VISITOR_COOKIE = "askmoina_visitor";
 const VISITOR_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -18,6 +19,9 @@ export function readVisitorId(request: Request): string | null {
 /** Issues a random pseudonymous visitor ID. It is analytics identity, not account authentication. */
 export async function ensureVisitorIdentity(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") return Response.json({ error: "method_not_allowed" }, { status: 405 });
+  const rateAllowed = await allowIpRequest(env, request, "identity", 20);
+  if (rateAllowed === false) return Response.json({ error: "rate_limited" }, { status: 429, headers: { "Cache-Control": "no-store" } });
+  if (rateAllowed === null) return Response.json({ error: "identity_temporarily_unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   let visitorId = readVisitorId(request);
   let created = false;
   if (!visitorId) {

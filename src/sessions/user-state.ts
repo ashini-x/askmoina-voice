@@ -58,6 +58,33 @@ export class UserState {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
+    if (request.method === "POST" && url.pathname === "/internal/rate-limit") {
+      let input: { limit?: number; windowMs?: number };
+      try { input = await request.json() as typeof input; }
+      catch { return Response.json({ allowed: false, reason: "invalid_request" }, { status: 400 }); }
+      const limit = positiveInt(input.limit, 20, 60);
+      const windowMs = positiveInt(input.windowMs, 60_000, 60_000);
+      const now = Date.now();
+      const key = "internal-rate-limit";
+      const result = await this.state.storage.transaction(async (transaction) => {
+        const stored = await transaction.get<{ windowStart: number; count: number }>(key);
+        const record = !stored || now < stored.windowStart || now - stored.windowStart >= windowMs
+          ? { windowStart: now, count: 0 }
+          : stored;
+        record.count += 1;
+        await transaction.put(key, record);
+        return {
+          allowed: record.count <= limit,
+          retryAfterSeconds: Math.max(1, Math.ceil((record.windowStart + windowMs - now) / 1000)),
+          remaining: Math.max(0, limit - record.count),
+        };
+      });
+      return Response.json(result, {
+        status: result.allowed ? 200 : 429,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
     if (request.method === "POST" && url.pathname === "/session/status") {
       let input: {
         now?: number;
