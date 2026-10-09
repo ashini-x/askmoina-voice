@@ -229,7 +229,7 @@ async function handleVoiceSocket(
 
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generation_config: { response_modalities: ["audio", "text"] },
+          generation_config: { response_modalities: ["AUDIO", "TEXT"] },
           system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
           input_audio_transcription: {},
           output_audio_transcription: {},
