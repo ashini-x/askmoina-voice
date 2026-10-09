@@ -267,7 +267,23 @@ export default {
 
     if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
-    return env.ASSETS.fetch(request);
+
+    const assetResponse = await env.ASSETS.fetch(request);
+    const headers = new Headers(assetResponse.headers);
+    headers.set(
+      "Content-Security-Policy",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+    );
+    headers.set("X-Content-Type-Options", "nosniff");
+    headers.set("X-Frame-Options", "DENY");
+    headers.set("Referrer-Policy", "no-referrer");
+    headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
+    headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    return new Response(assetResponse.body, {
+      status: assetResponse.status,
+      statusText: assetResponse.statusText,
+      headers,
+    });
   },
 
   async queue(batch: MessageBatch<unknown>): Promise<void> {
