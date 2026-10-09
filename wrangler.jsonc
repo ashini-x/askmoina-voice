@@ -1,0 +1,11 @@
+{
+ "$schema":"./node_modules/wrangler/config-schema.json",
+ "name":"askmoina-voice","main":"src/index.ts","compatibility_date":"2026-10-09","workers_dev":true,
+ "assets":{"directory":"./public/","binding":"ASSETS","run_worker_first":["/api/*"]},
+ "observability":{"enabled":true},
+ "vars":{"APP_VERSION":"0.1.0","ENVIRONMENT":"production","GEMINI_MODEL":"gemini-3.8-live","MAX_LIVE_SESSION_SECONDS":"900","MAX_DAILY_SESSION_SECONDS":"1800","MAX_CONCURRENT_SESSIONS_PER_USER":"1","ANALYTICS_RAW_RETENTION_DAYS":"30"},
+ "durable_objects":{"bindings":[{"name":"USER_STATE","class_name":"UserState"}]},
+ "exports":{"UserState":{"type":"durable-object","storage":"sqlite"}},
+ "d1_databases":[{"binding":"DB","database_name":"askmoina-prod","database_id":"REPLACE_WITH_ASKMOINA_DATABASE_ID"}],
+ "queues":{"producers":[{"binding":"BACKGROUND_QUEUE","queue":"askmoina-background-prod"}],"consumers":[{"queue":"askmoina-background-prod","max_batch_size":10,"max_batch_timeout":5,"max_retries":5,"dead_letter_queue":"askmoina-background-dlq","retry_delay":15,"max_concurrency":10}]}
+}
