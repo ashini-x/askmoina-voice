@@ -9,10 +9,10 @@ describe("AskMoina voice behavior guidance", () => {
   });
 
   it("encourages spoken turn-taking rather than verbose scripted replies", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("avoid turning every answer into a lecture");
+    expect(SYSTEM_INSTRUCTION).toContain("should avoid turning every answer into a lecture");
     expect(SYSTEM_INSTRUCTION).toContain("Leave room for the user to speak");
     expect(SYSTEM_INSTRUCTION).toContain("ask at most one question at a time");
-    expect(SYSTEM_INSTRUCTION).toContain("do not add fake hesitations");
+    expect(SYSTEM_INSTRUCTION).toContain("should not add fake hesitations");
   });
 
   it("uses empathy and examples without forcing canned responses", () => {
