@@ -311,6 +311,16 @@
       return;
     }
 
+    if (message.connection_status && message.connection_status.state === "ended") {
+      const disconnectMessage = typeof message.connection_status.message === "string"
+        ? message.connection_status.message.trim().slice(0, 300)
+        : "The voice connection ended. Tap Start talking to begin another conversation.";
+      stopConversation(true);
+      setStatus(disconnectMessage, "error");
+      setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
+      return;
+    }
+
     if (message.setup_complete || message.setupComplete) {
       setupReady = true;
       if (setupTimer) {
@@ -511,13 +521,31 @@
         // stopConversation() already restored the UI; ignore its late close event.
         if (!isCurrentSocket && !stopping) return;
         const wasStopping = stopping;
-        finishStoppedState(
-          wasStopping
-            ? "Conversation ended."
-            : event.code === 1000
-              ? "The voice session ended. Tap Start talking to reconnect."
-              : "Connection lost. Check your connection and tap Start talking to retry."
-        );
+        let closeMessage = "Conversation ended.";
+        if (!wasStopping) {
+          const reason = String(event.reason || "").trim();
+          if (reason === "Session time limit reached") {
+            const minutes = Math.max(1, Math.ceil((Number(voiceAvailability && voiceAvailability.maxSessionSeconds) || 540) / 60));
+            closeMessage = "This conversation reached its time limit (about " + minutes + " minutes). Tap Start talking to begin another conversation.";
+          } else if (reason === "Voice provider disconnected") {
+            closeMessage = "The voice service closed its connection unexpectedly. This is not a question-count limit. Tap Start talking to reconnect.";
+          } else if (reason === "Voice provider socket error") {
+            closeMessage = "The voice service encountered a connection error. Tap Start talking to start a new conversation.";
+          } else if (reason === "Client socket error") {
+            closeMessage = "The browser connection encountered an error. Check your internet connection and try again.";
+          } else if (event.code === 1006) {
+            closeMessage = "The connection dropped without a clean close (code 1006), usually because the network or voice service interrupted it. Tap Start talking to retry.";
+          } else if (event.code !== 1000) {
+            closeMessage = "The connection closed unexpectedly (code " + event.code + "). Tap Start talking to retry.";
+          } else {
+            closeMessage = "The voice session ended without an explanation from the service (code 1000). Tap Start talking to reconnect.";
+          }
+        }
+        finishStoppedState(closeMessage);
+        if (!wasStopping) {
+          setStatus(closeMessage, "error");
+          setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
+        }
       });
 
       // The model will notify setup_complete before we send any microphone frames.

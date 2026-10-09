@@ -1,5 +1,6 @@
 import type { Env } from "./config/env";
 import { getGoogleAccessToken } from "./auth/google";
+import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 
 export { UserState } from "./sessions/user-state";
 
@@ -347,13 +348,25 @@ async function handleVoiceSocket(
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
     closed = true;
+
+    const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
+    if (notice && workerSocket.readyState === WebSocket.OPEN) {
+      try {
+        // WebSocket preserves message order, so the browser receives this explanation before close.
+        workerSocket.send(JSON.stringify({ connection_status: notice }));
+      } catch {
+        // The socket may already be closing.
+      }
+    }
+
+    const safeCode = safeWebSocketCloseCode(code);
     try {
-      if (workerSocket.readyState === WebSocket.OPEN) workerSocket.close(code, reason);
+      if (workerSocket.readyState === WebSocket.OPEN) workerSocket.close(safeCode, reason.slice(0, 100));
     } catch {
       // Ignore duplicate close races.
     }
     try {
-      if (upstreamSocket.readyState === WebSocket.OPEN) upstreamSocket.close(code, reason);
+      if (upstreamSocket.readyState === WebSocket.OPEN) upstreamSocket.close(safeCode, reason.slice(0, 100));
     } catch {
       // Ignore duplicate close races.
     }
@@ -585,10 +598,14 @@ async function handleVoiceSocket(
     closeBoth(1011, "Voice provider socket error");
   });
 
-  setTimeout(
-    () => closeBoth(1000, "Session time limit reached"),
-    reservation.maxDurationSeconds * 1_000,
-  );
+  setTimeout(() => {
+    console.warn("[AskMoina] Voice session duration limit reached", JSON.stringify({
+      maxDurationSeconds: reservation.maxDurationSeconds,
+      setupCompleteReceived,
+      lifetimeMs: Date.now() - upstreamStartedAt,
+    }));
+    closeBoth(1000, "Session time limit reached");
+  }, reservation.maxDurationSeconds * 1_000);
 
   return new Response(null, { status: 101, webSocket: clientSocket });
 }
