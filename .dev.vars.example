@@ -1,0 +1,5 @@
+# Placeholders only. Never commit real secrets.
+GEMINI_API_KEY=replace-with-local-development-key
+ADMIN_DASHBOARD_USER=admin
+ADMIN_DASHBOARD_PASSWORD=replace-with-local-password
+ADMIN_SESSION_SECRET=replace-with-random-development-secret
