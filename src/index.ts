@@ -1,6 +1,7 @@
 import type { Env } from "./config/env";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
+import { TokenBucket } from "./sessions/audio-rate-limit";
 
 export { UserState } from "./sessions/user-state";
 
@@ -344,6 +345,11 @@ async function handleVoiceSocket(
   const MAX_AUDIO_BASE64_CHARS = 12_000;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
+  // Network and browser audio callbacks can arrive in short bursts. Keep the
+  // sustained-rate guard, but allow up to two seconds of buffered audio data.
+  const INPUT_RATE_BURST_SECONDS = 2;
+  const inputFrameBucket = new TokenBucket(MAX_AUDIO_FRAMES_PER_SECOND, INPUT_RATE_BURST_SECONDS);
+  const inputByteBucket = new TokenBucket(MAX_INPUT_CHARS_PER_SECOND, INPUT_RATE_BURST_SECONDS);
 
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
@@ -478,10 +484,18 @@ async function handleVoiceSocket(
       }
       inputFrameCount += 1;
       inputBytesInWindow += event.data.length;
-      if (
-        inputFrameCount > MAX_AUDIO_FRAMES_PER_SECOND ||
-        inputBytesInWindow > MAX_INPUT_CHARS_PER_SECOND
-      ) {
+      const frameRateAllowed = inputFrameBucket.consume(1, now);
+      const byteRateAllowed = inputByteBucket.consume(event.data.length, now);
+      if (!frameRateAllowed || !byteRateAllowed) {
+        console.warn("[AskMoina] Audio input sustained rate limit exceeded", JSON.stringify({
+          frameRateAllowed,
+          byteRateAllowed,
+          inputFrameCount,
+          inputBytesInWindow,
+          frameBudgetRemaining: Math.round(inputFrameBucket.remaining),
+          byteBudgetRemaining: Math.round(inputByteBucket.remaining),
+          lifetimeMs: now - upstreamStartedAt,
+        }));
         closeBoth(1008, "Audio input rate limit exceeded");
         return;
       }
