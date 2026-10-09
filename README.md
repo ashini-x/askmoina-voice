@@ -43,20 +43,3 @@ Cloudflare Workers Builds should connect to `main`. Recommended commands:
 Never commit service-account JSON/private keys, API keys, Cloudflare tokens, local `.dev.vars`, passwords, production database exports, raw user conversations, or private logs. Use Cloudflare Worker secrets for runtime credentials.
 
 See `docs/ARCHITECTURE.md`, `docs/SECURITY_MODEL.md`, `docs/PRIVACY.md`, and `docs/RELEASE_PROCESS.md`.
-
-
-## Private memory vault and operations dashboard
-
-The memory vault is device-local and encrypted by default. Create a unique passphrase; the app derives an AES-256-GCM key in the browser using PBKDF2-SHA-256 (600,000 iterations), and never sends the passphrase to the Worker. Only facts you choose to mark for sharing, combined with the per-session sharing checkbox, are included in Gemini's setup context. Voice-session analytics store pseudonymous visitor IDs, timestamps, durations, outcomes and model configuration; they do not store raw audio, transcripts or decrypted memories.
-
-Encrypted cloud backup is optional. It stores ciphertext plus a hash of a random access token for vault authentication. Download and securely store the recovery kit, and keep it separate from the vault passphrase. The kit contains the access credential and encrypted data; it does not contain the passphrase. The service cannot restore a lost passphrase.
-
-The private admin dashboard is available at \`/admin\`. It requires \`ADMIN_DASHBOARD_PASSWORD\` and \`ADMIN_SESSION_SECRET\` Worker secrets; username defaults to \`admin\`. Use a strong, unique password and keep the session secret at least 32 characters long. It shows only operational analytics, not private memory contents.
-
-### Database deployment
-
-Apply migrations in order to production:
-1. \`migrations/0001_initial_schema.sql\`
-2. \`migrations/0002_memory_vault_admin.sql\`
-
-The Worker includes a daily retention task for raw operational analytics. The current retention default is 30 days. Session durations are not a substitute for actual Google Cloud billing data. Use Google Cloud Billing for actual spend.

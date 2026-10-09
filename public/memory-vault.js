@@ -184,7 +184,7 @@
   async function clearVault() {
     if(!confirm("Permanently delete this local vault and encrypted cloud backup, if enabled?"))return;
     try{
-      if(sync?.enabled){const {response}=await requestJson("/api/vault/delete",{vaultId:sync.vaultId,token:sync.token});if(!response.ok&&response.status!==404)throw new Error("Cloud backup could not be deleted. Local vault has been kept.");}
+      if(sync?.enabled){const {response}=await requestJson("/api/vault/delete",{vaultId:sync.vaultId,token:sync.token});if(!response.ok)throw new Error("Cloud backup could not be deleted. Local vault has been kept.");}
       await record("vault",null,true);await record("sync",null,true);
       key=null;state=null;envelope=null;sync=null;$("memoryShareSession").checked=false;
       show("setup");saySync("No cloud backup configured.");say("Local vault and cloud backup were deleted.","success");
