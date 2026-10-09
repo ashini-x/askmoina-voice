@@ -12,8 +12,12 @@ export interface Env {
   MAX_LIVE_SESSION_SECONDS: string;
   MAX_DAILY_SESSION_SECONDS: string;
   MAX_CONCURRENT_SESSIONS_PER_USER: string;
+  MAX_GLOBAL_DAILY_SESSION_SECONDS: string;
+  MAX_GLOBAL_CONCURRENT_SESSIONS: string;
   ANALYTICS_RAW_RETENTION_DAYS: string;
 
+  GCP_SERVICE_ACCOUNT_JSON?: string;
+  // Optional split-secret compatibility; never place these in vars.
   GCP_CLIENT_EMAIL?: string;
   GCP_PRIVATE_KEY?: string;
   GCP_PRIVATE_KEY_ID?: string;
