@@ -6,6 +6,13 @@ import { inspectProviderControlFrame } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
+import {
+  getLiveModelResource,
+  getLiveVoiceName,
+  hasVertexCredentials,
+  hasVoiceCredentials,
+  isUsingGeminiDeveloperApi,
+} from "./sessions/live-provider";
 
 export { UserState } from "./sessions/user-state";
 
@@ -17,12 +24,6 @@ const json = (data: unknown, status = 200): Response =>
 function positiveInt(value: string | undefined, fallback: number, maximum: number): number {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
-}
-
-function hasVertexCredentials(env: Env): boolean {
-  const hasJson = Boolean(env.GCP_SERVICE_ACCOUNT_JSON?.trim());
-  const hasSplitSecrets = Boolean(env.GCP_CLIENT_EMAIL?.trim() && env.GCP_PRIVATE_KEY?.trim());
-  return Boolean(env.GCP_PROJECT_ID?.trim() && (hasJson || hasSplitSecrets));
 }
 
 async function sha256(value: string): Promise<string> {
@@ -182,7 +183,7 @@ async function readGuardStatus(
 async function handleVoiceStatus(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
 
-  if (!hasVertexCredentials(env)) {
+  if (!hasVoiceCredentials(env)) {
     return json({
       available: false,
       reason: "not_configured",
@@ -283,7 +284,7 @@ async function handleVoiceSocket(
   if (!origin || origin !== requestUrl.origin) {
     return json({ error: "forbidden_origin" }, 403);
   }
-  if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
+  if (!hasVoiceCredentials(env)) return json({ error: "voice_not_configured" }, 503);
 
   const reservation = await reserveVoiceSession(request, env);
   if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
@@ -299,30 +300,33 @@ async function handleVoiceSocket(
     ctx.waitUntil(analyticsStart.then((visitorId) => recordSessionFinish(env, reservation.sessionId, visitorId, analyticsStartedAt, outcome, analyticsSetupComplete)).catch(() => undefined));
   };
 
-  let accessToken: string;
-  try {
-    accessToken = await getGoogleAccessToken(env);
-  } catch (error) {
-    console.error("[AskMoina] Google token exchange failed", error instanceof Error ? error.message : "unknown error");
-    finishAnalytics("provider_auth_error");
-    await releaseVoiceSession(env, reservation);
-    return json({ error: "voice_authentication_unavailable" }, 503);
+  const useGeminiDeveloperApi = isUsingGeminiDeveloperApi(env);
+  let accessToken = "";
+  if (!useGeminiDeveloperApi) {
+    try {
+      accessToken = await getGoogleAccessToken(env);
+    } catch (error) {
+      console.error("[AskMoina] Google token exchange failed", error instanceof Error ? error.message : "unknown error");
+      finishAnalytics("provider_auth_error");
+      await releaseVoiceSession(env, reservation);
+      return json({ error: "voice_authentication_unavailable" }, 503);
+    }
   }
 
-  const projectId = env.GCP_PROJECT_ID.trim();
   const location = env.GEMINI_LOCATION?.trim() || "us-central1";
   const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
-  const upstreamHost =
-    location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
-  const upstreamUrl =
-    `https://${upstreamHost}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+  // Do not log this URL: the Gemini API key is carried in its query string by
+  // the raw WebSocket protocol. The key stays in this Worker and never reaches the browser.
+  const upstreamUrl = useGeminiDeveloperApi
+    ? `https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(env.GEMINI_API_KEY!.trim())}`
+    : `https://${location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
 
   let upstreamResponse: Response;
   try {
     upstreamResponse = await fetch(upstreamUrl, {
       headers: {
         Upgrade: "websocket",
-        Authorization: `Bearer ${accessToken}`,
+        ...(useGeminiDeveloperApi ? {} : { Authorization: `Bearer ${accessToken}` }),
       },
     });
   } catch (error) {
@@ -432,9 +436,15 @@ async function handleVoiceSocket(
           return;
         }
         const systemInstruction = buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext);
+        const generationConfig: Record<string, unknown> = { responseModalities: ["AUDIO"] };
+        if (useGeminiDeveloperApi) {
+          generationConfig.speechConfig = {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: getLiveVoiceName(env) } },
+          };
+        }
         const securedSetup = {
-          model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: { responseModalities: ["AUDIO"] },
+          model: getLiveModelResource(env, useGeminiDeveloperApi ? "gemini-api" : "vertex-ai"),
+          generationConfig,
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -664,7 +674,7 @@ export default {
         app: "askmoina-voice",
         version: env.APP_VERSION || "0.3.0",
         environment: env.ENVIRONMENT || "unknown",
-        status: hasVertexCredentials(env)
+        status: hasVoiceCredentials(env)
           ? "vertex-live-proxy-configured"
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
