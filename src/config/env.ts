@@ -16,10 +16,6 @@ export interface Env {
   MAX_GLOBAL_CONCURRENT_SESSIONS: string;
   ANALYTICS_RAW_RETENTION_DAYS: string;
 
-  // Optional: switches voice sessions to Gemini API Live, whose documented language list includes Assamese.
-  GEMINI_API_KEY?: string;
-  GEMINI_LIVE_VOICE?: string;
-
   GCP_SERVICE_ACCOUNT_JSON?: string;
   // Optional split-secret compatibility; never place these in vars.
   GCP_CLIENT_EMAIL?: string;
