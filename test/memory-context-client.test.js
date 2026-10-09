@@ -13,4 +13,9 @@ describe("static client memory handoff", () => {
     const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
     expect(html).toContain('href="/vault"');
   });
+
+  it("routes the static homepage through the Worker for identity and memory-context setup", () => {
+    const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+    expect(config).toContain('"run_worker_first": ["/", "/index.html", "/api/*"]');
+  });
 });
