@@ -22,6 +22,7 @@
   let playbackNodes = new Set();
   let currentTranscriptNodes = { user: null, assistant: null };
   let transcriptStarted = false;
+  let setupTimer = null;
 
   function setStatus(message, kind) {
     if (!statusNode) return;
@@ -249,6 +250,10 @@
 
     if (message.setup_complete || message.setupComplete) {
       setupReady = true;
+      if (setupTimer) {
+        clearTimeout(setupTimer);
+        setupTimer = null;
+      }
       starting = false;
       active = true;
       setButton("End conversation", false);
@@ -295,6 +300,10 @@
 
   function cleanupMedia() {
     setupReady = false;
+    if (setupTimer) {
+      clearTimeout(setupTimer);
+      setupTimer = null;
+    }
     stopPlayback();
 
     if (processor) {
@@ -382,6 +391,12 @@
         // The Worker replaces this placeholder with server-controlled model/system settings.
         socket.send(JSON.stringify({ setup: {} }));
         setStatus("Connected to the relay. Setting up your conversation…");
+        setupTimer = window.setTimeout(() => {
+          if (!setupReady && socket) {
+            setStatus("Voice setup timed out. Please try starting a new conversation.", "error");
+            stopConversation(true);
+          }
+        }, 15000);
       });
 
       socket.addEventListener("message", (event) => handleServerMessage(event.data));
