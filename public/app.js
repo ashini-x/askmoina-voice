@@ -637,7 +637,7 @@
         response.ok &&
         health &&
         health.ok === true &&
-        health.status === "vertex-live-proxy-configured"
+        health.status === "live-voice-backend-configured"
       ) {
         setButton("Start talking", false);
         setStatus("Ready when you are. Your microphone starts only after you tap Start talking.");
