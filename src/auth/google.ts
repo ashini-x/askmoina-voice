@@ -5,6 +5,15 @@ const GOOGLE_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platf
 const TOKEN_REFRESH_SAFETY_MS = 90_000;
 const TOKEN_TIMEOUT_MS = 8_000;
 
+interface GoogleServiceAccount {
+  type?: string;
+  project_id?: string;
+  private_key_id?: string;
+  private_key?: string;
+  client_email?: string;
+  token_uri?: string;
+}
+
 interface GoogleTokenResponse {
   access_token?: string;
   expires_in?: number;
@@ -21,9 +30,7 @@ let cachedToken: CachedToken | null = null;
 let refreshInFlight: Promise<string> | null = null;
 
 export async function getGoogleAccessToken(env: Env): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
-    return cachedToken.accessToken;
-  }
+  if (cachedToken && cachedToken.expiresAt > Date.now()) return cachedToken.accessToken;
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = issueAccessToken(env).finally(() => {
@@ -32,16 +39,50 @@ export async function getGoogleAccessToken(env: Env): Promise<string> {
   return refreshInFlight;
 }
 
-async function issueAccessToken(env: Env): Promise<string> {
-  const clientEmail = env.GCP_CLIENT_EMAIL?.trim();
-  const privateKey = env.GCP_PRIVATE_KEY?.trim();
-  const privateKeyId = env.GCP_PRIVATE_KEY_ID?.trim();
+function readServiceAccount(env: Env): {
+  clientEmail: string;
+  privateKey: string;
+  privateKeyId?: string;
+} {
+  if (env.GCP_SERVICE_ACCOUNT_JSON?.trim()) {
+    let serviceAccount: GoogleServiceAccount;
+    try {
+      serviceAccount = JSON.parse(env.GCP_SERVICE_ACCOUNT_JSON) as GoogleServiceAccount;
+    } catch {
+      throw new Error("Google Cloud service-account secret is not valid JSON.");
+    }
 
-  if (!clientEmail || !privateKey) {
-    throw new Error("Google Cloud service-account credentials are not configured.");
+    if (
+      serviceAccount.type !== "service_account" ||
+      !serviceAccount.client_email ||
+      !serviceAccount.private_key ||
+      (serviceAccount.project_id && serviceAccount.project_id !== env.GCP_PROJECT_ID)
+    ) {
+      throw new Error("Google Cloud service-account secret does not match the configured project.");
+    }
+
+    return {
+      clientEmail: serviceAccount.client_email,
+      privateKey: serviceAccount.private_key,
+      privateKeyId: serviceAccount.private_key_id,
+    };
   }
 
-  const assertion = await createServiceAccountAssertion({ clientEmail, privateKey, privateKeyId });
+  // Backwards-compatible split secrets if they were configured previously.
+  if (env.GCP_CLIENT_EMAIL?.trim() && env.GCP_PRIVATE_KEY?.trim()) {
+    return {
+      clientEmail: env.GCP_CLIENT_EMAIL.trim(),
+      privateKey: env.GCP_PRIVATE_KEY,
+      privateKeyId: env.GCP_PRIVATE_KEY_ID?.trim(),
+    };
+  }
+
+  throw new Error("Google Cloud service-account credentials are not configured.");
+}
+
+async function issueAccessToken(env: Env): Promise<string> {
+  const credentials = readServiceAccount(env);
+  const assertion = await createServiceAccountAssertion(credentials);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS);
 
@@ -83,6 +124,7 @@ async function createServiceAccountAssertion(input: {
   const issuedAt = Math.floor(Date.now() / 1_000);
   const header: Record<string, string> = { alg: "RS256", typ: "JWT" };
   if (input.privateKeyId) header.kid = input.privateKeyId;
+
   const payload = {
     iss: input.clientEmail,
     scope: GOOGLE_CLOUD_PLATFORM_SCOPE,
@@ -90,7 +132,6 @@ async function createServiceAccountAssertion(input: {
     iat: issuedAt,
     exp: issuedAt + 3_600,
   };
-
   const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const signingInput = `${encodedHeader}.${encodedPayload}`;
@@ -130,8 +171,6 @@ function base64ToBytes(value: string): Uint8Array {
   const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
   return bytes;
 }
