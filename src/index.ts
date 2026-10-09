@@ -675,8 +675,8 @@ export default {
         version: env.APP_VERSION || "0.3.0",
         environment: env.ENVIRONMENT || "unknown",
         status: hasVoiceCredentials(env)
-          ? "vertex-live-proxy-configured"
-          : "vertex-live-proxy-awaiting-secrets",
+          ? "live-voice-backend-configured"
+          : "live-voice-backend-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
         location: env.GEMINI_LOCATION || "us-central1",
       });
