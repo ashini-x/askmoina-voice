@@ -132,7 +132,8 @@ async function handleVoiceSocket(
   let accessToken: string;
   try {
     accessToken = await getGoogleAccessToken(env);
-  } catch {
+  } catch (error) {
+    console.error("[AskMoina] Google token exchange failed", error instanceof Error ? error.message : "unknown error");
     await releaseVoiceSession(env, reservation);
     return json({ error: "voice_authentication_unavailable" }, 503);
   }
@@ -153,13 +154,19 @@ async function handleVoiceSocket(
         Authorization: `Bearer ${accessToken}`,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[AskMoina] Vertex Live WebSocket request failed", error instanceof Error ? error.message : "unknown error");
     await releaseVoiceSession(env, reservation);
     return json({ error: "voice_provider_unavailable" }, 502);
   }
 
   const upstreamSocket = upstreamResponse.webSocket;
   if (!upstreamSocket || upstreamResponse.status !== 101) {
+    const responseText = await upstreamResponse.clone().text().catch(() => "");
+    console.error("[AskMoina] Vertex Live handshake rejected", JSON.stringify({
+      status: upstreamResponse.status,
+      body: responseText.slice(0, 800),
+    }));
     await releaseVoiceSession(env, reservation);
     return json({ error: "voice_provider_unavailable" }, 502);
   }
@@ -170,6 +177,7 @@ async function handleVoiceSocket(
   upstreamSocket.accept();
 
   let setupForwarded = false;
+  let setupCompleteReceived = false;
   let closed = false;
   let inputWindowStart = Date.now();
   let inputFrameCount = 0;
@@ -311,6 +319,31 @@ async function handleVoiceSocket(
 
   upstreamSocket.addEventListener("message", (event: MessageEvent) => {
     if (workerSocket.readyState !== WebSocket.OPEN) return;
+
+    // Log only structured provider error metadata; never log audio, transcripts, or credentials.
+    if (typeof event.data === "string") {
+      try {
+        const providerMessage = JSON.parse(event.data) as {
+          setup_complete?: unknown;
+          setupComplete?: unknown;
+          error?: { code?: unknown; status?: unknown; message?: unknown };
+        };
+        if (providerMessage.setup_complete || providerMessage.setupComplete) {
+          setupCompleteReceived = true;
+        }
+        if (providerMessage.error) {
+          const providerError = providerMessage.error;
+          console.error("[AskMoina] Vertex Live returned an error", JSON.stringify({
+            code: providerError.code,
+            status: providerError.status,
+            message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
+          }));
+        }
+      } catch {
+        // Forward provider frames unchanged; do not log frame contents.
+      }
+    }
+
     try {
       workerSocket.send(event.data);
     } catch {
@@ -320,8 +353,20 @@ async function handleVoiceSocket(
 
   workerSocket.addEventListener("close", (event: CloseEvent) => closeBoth(event.code || 1000, "Client disconnected"));
   workerSocket.addEventListener("error", () => closeBoth(1011, "Client socket error"));
-  upstreamSocket.addEventListener("close", (event: CloseEvent) => closeBoth(event.code || 1000, "Voice provider disconnected"));
-  upstreamSocket.addEventListener("error", () => closeBoth(1011, "Voice provider socket error"));
+  upstreamSocket.addEventListener("close", (event: CloseEvent) => {
+    if (!setupCompleteReceived && !closed) {
+      console.error("[AskMoina] Vertex Live socket closed before setup completed", JSON.stringify({
+        code: event.code,
+        reason: event.reason.slice(0, 300),
+        setupForwarded,
+      }));
+    }
+    closeBoth(event.code || 1000, "Voice provider disconnected");
+  });
+  upstreamSocket.addEventListener("error", () => {
+    console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded }));
+    closeBoth(1011, "Voice provider socket error");
+  });
 
   setTimeout(
     () => closeBoth(1000, "Session time limit reached"),
