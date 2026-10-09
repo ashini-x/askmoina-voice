@@ -1,7 +1,23 @@
 export interface Env {
- ASSETS: Fetcher; DB: D1Database; USER_STATE: DurableObjectNamespace; BACKGROUND_QUEUE: Queue;
- APP_VERSION: string; ENVIRONMENT: string; GEMINI_MODEL: string;
- MAX_LIVE_SESSION_SECONDS: string; MAX_DAILY_SESSION_SECONDS: string;
- MAX_CONCURRENT_SESSIONS_PER_USER: string; ANALYTICS_RAW_RETENTION_DAYS: string;
- GEMINI_API_KEY?: string; ADMIN_DASHBOARD_USER?: string; ADMIN_DASHBOARD_PASSWORD?: string; ADMIN_SESSION_SECRET?: string;
+  ASSETS: Fetcher;
+  DB: D1Database;
+  USER_STATE: DurableObjectNamespace;
+  BACKGROUND_QUEUE: Queue;
+
+  APP_VERSION: string;
+  ENVIRONMENT: string;
+  GEMINI_MODEL: string;
+  GEMINI_LOCATION: string;
+  GCP_PROJECT_ID: string;
+  MAX_LIVE_SESSION_SECONDS: string;
+  MAX_DAILY_SESSION_SECONDS: string;
+  MAX_CONCURRENT_SESSIONS_PER_USER: string;
+  ANALYTICS_RAW_RETENTION_DAYS: string;
+
+  GCP_CLIENT_EMAIL?: string;
+  GCP_PRIVATE_KEY?: string;
+  GCP_PRIVATE_KEY_ID?: string;
+  ADMIN_DASHBOARD_USER?: string;
+  ADMIN_DASHBOARD_PASSWORD?: string;
+  ADMIN_SESSION_SECRET?: string;
 }
