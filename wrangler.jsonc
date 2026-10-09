@@ -15,6 +15,7 @@
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
+    "GEMINI_LIVE_VOICE": "Aoede",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "MAX_LIVE_SESSION_SECONDS": "540",
