@@ -166,6 +166,9 @@ export async function handleVaultRequest(request: Request, env: Env): Promise<Re
     const vaultId = typeof input.vaultId === "string" ? input.vaultId : "";
     const token = typeof input.token === "string" ? input.token : "";
     if (!VAULT_ID_RE.test(vaultId) || !TOKEN_RE.test(token)) return response({ error: "invalid_request" }, 400);
+    const allowed = await allowIpRequest(env, request, "vault", 30);
+    if (allowed === false) return response({ error: "rate_limited" }, 429);
+    if (allowed === null) return response({ error: "rate_limit_unavailable" }, 503);
     const authorised = await authorise(env, vaultId, token);
     if (!authorised) return response({ error: "not_found" }, 404);
     await env.DB.prepare("DELETE FROM vault_backups WHERE vault_id=? AND token_hash=?")

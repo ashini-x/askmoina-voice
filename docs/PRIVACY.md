@@ -16,3 +16,6 @@ The optional memory vault is encrypted in the browser using AES-256-GCM. The pas
 A user can mark memories as eligible for sharing and must also enable the per-session “Include selected memories” checkbox. Approved context is sent to Google Cloud Vertex AI as part of the live-session setup. Therefore the vault is encrypted at rest and from the backup service, but context deliberately shared with Gemini is not end-to-end encrypted against the AI processing provider. Audio is streamed to the provider during the session. This prototype does not automatically transcribe, infer, or save long-term memories from conversation; users add and manage saved facts explicitly.
 
 The dashboard records pseudonymous visitor identifiers, session timestamps, durations, outcomes, model/location and setup completion. It does not expose the vault table, raw audio, transcripts or decrypted memories. Pseudonymous visitor IDs identify a browser profile, not a verified person, and will not automatically follow a user across devices.
+
+
+Preview deployments use a separate D1 database and Queue. Preview data is isolated from production, and the preview does not receive the production Vertex AI service-account secret. Production memory backups remain client-encrypted and are never included in admin analytics.
