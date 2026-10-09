@@ -11,10 +11,10 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.2.1",
+    "APP_VERSION": "0.3.0",
     "ENVIRONMENT": "production",
     "GEMINI_MODEL": "gemini-3.8-live",
-    "GEMINI_LOCATION": "global",
+    "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "MAX_LIVE_SESSION_SECONDS": "540",
     "MAX_DAILY_SESSION_SECONDS": "1800",

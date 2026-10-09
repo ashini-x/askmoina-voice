@@ -138,7 +138,7 @@ async function handleVoiceSocket(
   }
 
   const projectId = env.GCP_PROJECT_ID.trim();
-  const location = env.GEMINI_LOCATION?.trim() || "global";
+  const location = env.GEMINI_LOCATION?.trim() || "us-central1";
   const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
   const upstreamHost =
     location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
@@ -171,6 +171,13 @@ async function handleVoiceSocket(
 
   let setupForwarded = false;
   let closed = false;
+  let inputWindowStart = Date.now();
+  let inputFrameCount = 0;
+  let inputBytesInWindow = 0;
+  const MAX_CLIENT_FRAME_CHARS = 16_384;
+  const MAX_AUDIO_BASE64_CHARS = 12_000;
+  const MAX_AUDIO_FRAMES_PER_SECOND = 30;
+  const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
 
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
@@ -191,21 +198,30 @@ async function handleVoiceSocket(
   workerSocket.addEventListener("message", (event: MessageEvent) => {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
 
+    // This browser proxy accepts small JSON frames only. Raw/binary frames and arbitrary
+    // client messages are not needed for the current audio-only UI and are rejected.
+    if (typeof event.data !== "string" || event.data.length > MAX_CLIENT_FRAME_CHARS) {
+      closeBoth(1008, "Invalid or oversized client frame");
+      return;
+    }
+
     if (!setupForwarded) {
-      if (typeof event.data !== "string") {
-        closeBoth(1008, "JSON setup required");
-        return;
-      }
       try {
         const message = JSON.parse(event.data) as { setup?: unknown };
-        if (!message || typeof message !== "object" || !message.setup) {
-          closeBoth(1008, "First message must be setup");
+        if (
+          event.data.length > 4_096 ||
+          !message ||
+          typeof message !== "object" ||
+          !message.setup ||
+          Object.keys(message).length !== 1
+        ) {
+          closeBoth(1008, "First message must be a small setup object");
           return;
         }
 
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generation_config: { response_modalities: ["audio"] },
+          generation_config: { response_modalities: ["audio", "text"] },
           system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
           input_audio_transcription: {},
           output_audio_transcription: {},
@@ -219,9 +235,77 @@ async function handleVoiceSocket(
     }
 
     try {
-      upstreamSocket.send(event.data);
+      const message = JSON.parse(event.data) as {
+        realtime_input?: {
+          audio?: { data?: unknown; mime_type?: unknown };
+          audio_stream_end?: unknown;
+          [key: string]: unknown;
+        };
+        [key: string]: unknown;
+      };
+
+      if (
+        !message ||
+        typeof message !== "object" ||
+        Object.keys(message).length !== 1 ||
+        !message.realtime_input ||
+        typeof message.realtime_input !== "object" ||
+        Array.isArray(message.realtime_input) ||
+        Object.keys(message.realtime_input).length !== 1
+      ) {
+        closeBoth(1008, "Only realtime audio input is allowed");
+        return;
+      }
+
+      const realtimeInput = message.realtime_input;
+      if (realtimeInput.audio_stream_end === true) {
+        upstreamSocket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+        return;
+      }
+
+      const audio = realtimeInput.audio;
+      if (
+        !audio ||
+        typeof audio !== "object" ||
+        Array.isArray(audio) ||
+        Object.keys(audio).some((key) => key !== "data" && key !== "mime_type") ||
+        typeof audio.data !== "string" ||
+        audio.data.length < 4 ||
+        audio.data.length > MAX_AUDIO_BASE64_CHARS ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(audio.data) ||
+        audio.mime_type !== "audio/pcm;rate=16000"
+      ) {
+        closeBoth(1008, "Invalid PCM audio frame");
+        return;
+      }
+
+      const now = Date.now();
+      if (now - inputWindowStart >= 1_000 || now < inputWindowStart) {
+        inputWindowStart = now;
+        inputFrameCount = 0;
+        inputBytesInWindow = 0;
+      }
+      inputFrameCount += 1;
+      inputBytesInWindow += event.data.length;
+      if (
+        inputFrameCount > MAX_AUDIO_FRAMES_PER_SECOND ||
+        inputBytesInWindow > MAX_INPUT_CHARS_PER_SECOND
+      ) {
+        closeBoth(1008, "Audio input rate limit exceeded");
+        return;
+      }
+
+      // Re-serialize the validated shape to avoid forwarding unknown client fields.
+      upstreamSocket.send(JSON.stringify({
+        realtime_input: {
+          audio: {
+            data: audio.data,
+            mime_type: "audio/pcm;rate=16000",
+          },
+        },
+      }));
     } catch {
-      closeBoth(1011, "Upstream send failed");
+      closeBoth(1008, "Invalid client message");
     }
   });
 
@@ -255,19 +339,36 @@ export default {
       return json({
         ok: true,
         app: "askmoina-voice",
-        version: env.APP_VERSION || "0.2.1",
+        version: env.APP_VERSION || "0.3.0",
         environment: env.ENVIRONMENT || "unknown",
         status: hasVertexCredentials(env)
           ? "vertex-live-proxy-configured"
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
-        location: env.GEMINI_LOCATION || "global",
+        location: env.GEMINI_LOCATION || "us-central1",
       });
     }
 
     if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
-    return env.ASSETS.fetch(request);
+
+    const assetResponse = await env.ASSETS.fetch(request);
+    const headers = new Headers(assetResponse.headers);
+    headers.set(
+      "Content-Security-Policy",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+    );
+    headers.set("X-Content-Type-Options", "nosniff");
+    headers.set("X-Frame-Options", "DENY");
+    headers.set("Referrer-Policy", "no-referrer");
+    headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
+    headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    headers.set("Cache-Control", "no-store");
+    return new Response(assetResponse.body, {
+      status: assetResponse.status,
+      statusText: assetResponse.statusText,
+      headers,
+    });
   },
 
   async queue(batch: MessageBatch<unknown>): Promise<void> {

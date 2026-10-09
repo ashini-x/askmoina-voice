@@ -16,4 +16,5 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund --legacy-peer-deps
       - run: npm run check
+      - run: node --check public/app.js
       - run: npm test
