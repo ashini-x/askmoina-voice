@@ -17,6 +17,19 @@ jobs:
       - run: npm install --no-audit --no-fund --legacy-peer-deps
       - run: npm run check
       - run: node --check public/app.js
+      - name: Validate required production secrets
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync("wrangler.jsonc", "utf8"));
+          const required = ["GCP_SERVICE_ACCOUNT_JSON", "ADMIN_DASHBOARD_PASSWORD", "ADMIN_SESSION_SECRET"];
+          for (const name of required) {
+            if (!config.secrets?.required?.includes(name)) {
+              console.error(`Missing required production secret declaration: ${name}`);
+              process.exitCode = 1;
+            }
+          }
+          NODE
       - run: npm test
       - run: npx wrangler deploy --dry-run --outdir=dist
       - uses: actions/upload-artifact@v4
@@ -39,6 +52,20 @@ jobs:
           grep -q '"ok":true' /tmp/moina-health.json
           grep -q '"app":"askmoina-voice"' /tmp/moina-health.json
           echo "Health endpoint: OK"
+
+          status="$(fetch_status /api/voice/status /tmp/moina-voice-status.json)"
+          test "$status" = "200"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const status = JSON.parse(readFileSync("/tmp/moina-voice-status.json", "utf8"));
+          if (status.reason === "not_configured") {
+            throw new Error("Production voice credentials are missing from the deployed Worker");
+          }
+          if (typeof status.reason !== "string") {
+            throw new Error("Voice status response is missing its reason field");
+          }
+          console.log("Voice backend configuration: OK (" + status.reason + ")");
+          NODE
 
           status="$(fetch_status /vault /tmp/moina-vault.html)"
           test "$status" = "200"
