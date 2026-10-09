@@ -176,6 +176,47 @@ describe("AskMoina voice session guard", () => {
     expect((await responses[5].json()).reason).toBe("rate_limited");
   });
 
+  it("bypasses daily usage only while the temporary testing flag is set", async () => {
+    const { userState, storage } = makeState();
+    const first = await acquire(userState, {
+      sessionId: "test-a",
+      now: TODAY,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 5,
+      enforceRateLimit: false,
+      bypassDailyLimit: true,
+    });
+    expect(first.status).toBe(200);
+    expect((await first.json()).allowed).toBe(true);
+    await release(userState, "test-a", TODAY + 300_000);
+    expect(storage.values.get("voice-guard").dailySeconds).toBe(0);
+
+    const second = await acquire(userState, {
+      sessionId: "test-b",
+      now: TODAY + 301_000,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 5,
+      enforceRateLimit: false,
+      bypassDailyLimit: true,
+    });
+    expect(second.status).toBe(200);
+    expect((await second.json()).allowed).toBe(true);
+    await release(userState, "test-b", TODAY + 601_000);
+
+    const normal = await acquire(userState, {
+      sessionId: "normal-after-test",
+      now: TODAY + 602_000,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 5,
+      enforceRateLimit: false,
+    });
+    expect(normal.status).toBe(200);
+    expect((await normal.json()).allowed).toBe(true);
+  });
+
   it("does not allow reservations to exceed the daily budget", async () => {
     const { userState } = makeState();
 

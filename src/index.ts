@@ -8,6 +8,14 @@ export { UserState } from "./sessions/user-state";
 const SYSTEM_INSTRUCTION =
   "You are AskMoina, a warm, respectful voice companion for people in Assam, especially Upper Assam. Speak naturally and clearly. When the user speaks Assamese, try to respond in Assamese; otherwise follow their language. Do not claim to be human. Be honest about uncertainty. Do not present yourself as a substitute for emergency, medical, legal, or mental-health professionals. Keep responses conversational and concise.";
 
+// Temporary tester mode: daily voice quotas are bypassed until this fixed expiry.
+// Per-session duration, active-session limits, connection-attempt limits, and audio
+// rate protection remain enforced. Remove this constant after the testing window.
+const TESTING_WINDOW_END_MS = Date.parse("2026-10-10T09:43:22.488Z");
+function isUnlimitedTestingWindow(now = Date.now()): boolean {
+  return now < TESTING_WINDOW_END_MS;
+}
+
 const json = (data: unknown, status = 200): Response =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -69,14 +77,16 @@ async function reserveVoiceSession(request: Request, env: Env): Promise<VoiceRes
   const globalObjectName = "voice-global-budget";
   const sessionId = crypto.randomUUID();
   const now = Date.now();
+  const testingMode = isUnlimitedTestingWindow(now);
   const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
   const ipOptions = {
     sessionId,
     now,
     maxSessionSeconds,
     maxDailySeconds: positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800),
-    maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
+    maxConcurrentSessions: testingMode ? 5 : positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
     enforceRateLimit: true,
+    bypassDailyLimit: testingMode,
   };
 
   const ipResult = await callGuard(env, ipObjectName, "/session/acquire", ipOptions);
@@ -89,6 +99,7 @@ async function reserveVoiceSession(request: Request, env: Env): Promise<VoiceRes
     maxDailySeconds: positiveInt(env.MAX_GLOBAL_DAILY_SESSION_SECONDS, 3_600, 3_600),
     maxConcurrentSessions: positiveInt(env.MAX_GLOBAL_CONCURRENT_SESSIONS, 5, 5),
     enforceRateLimit: false,
+    bypassDailyLimit: testingMode,
   });
 
   if (!globalResult.ok || !globalResult.allowed) {
@@ -142,6 +153,7 @@ async function readGuardStatus(
     maxDailySeconds: number;
     maxConcurrentSessions: number;
     enforceRateLimit: boolean;
+    bypassDailyLimit?: boolean;
   },
 ): Promise<VoiceGuardStatus | null> {
   try {
@@ -201,6 +213,7 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   }
 
   const now = Date.now();
+  const testingMode = isUnlimitedTestingWindow(now);
   const ipObjectName = "voice-ip:" + await sha256(ip);
   const globalObjectName = "voice-global-budget";
   const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
@@ -209,14 +222,16 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   const ipStatus = await readGuardStatus(env, ipObjectName, {
     now,
     maxDailySeconds,
-    maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
+    maxConcurrentSessions: testingMode ? 5 : positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
     enforceRateLimit: true,
+    bypassDailyLimit: testingMode,
   });
   const globalStatus = await readGuardStatus(env, globalObjectName, {
     now,
     maxDailySeconds: maxGlobalDailySeconds,
     maxConcurrentSessions: positiveInt(env.MAX_GLOBAL_CONCURRENT_SESSIONS, 5, 5),
     enforceRateLimit: false,
+    bypassDailyLimit: testingMode,
   });
 
   if (!ipStatus || !globalStatus) {
@@ -238,18 +253,25 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   } else if (ipStatus.concurrencyLimited) {
     reason = "already_active";
     message = "A voice conversation is already active for this network in another tab. End it there before starting a new one.";
-  } else if (ipStatus.dailyLimitReached) {
+  } else if (!testingMode && ipStatus.dailyLimitReached) {
     reason = "daily_limit";
     message = "Today's voice allowance for this network has been used. It resets at midnight India time.";
   } else if (globalStatus.concurrencyLimited) {
     reason = "app_busy";
     message = "AskMoina is busy right now. Please wait a little and try again.";
-  } else if (globalStatus.dailyLimitReached) {
+  } else if (!testingMode && globalStatus.dailyLimitReached) {
     reason = "app_daily_limit";
     message = "AskMoina has reached its overall voice allowance for today. Please try again after midnight India time.";
   }
 
-  const dailyRemainingSeconds = Math.min(
+  if (testingMode && reason === "available") {
+    message = "Testing mode: unlimited daily voice time until " +
+      new Date(TESTING_WINDOW_END_MS).toISOString() +
+      ". Individual conversations still end after about " +
+      Math.ceil(maxSessionSeconds / 60) + " minutes.";
+  }
+
+  const dailyRemainingSeconds = testingMode ? Number.MAX_SAFE_INTEGER : Math.min(
     ipStatus.dailySecondsRemaining,
     globalStatus.dailySecondsRemaining,
   );
@@ -262,7 +284,9 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
     reason,
     message,
     maxSessionSeconds: allowedDurationSeconds,
-    dailyRemainingSeconds: ipStatus.activeSessions > 0 ? null : dailyRemainingSeconds,
+    dailyRemainingSeconds: testingMode || ipStatus.activeSessions > 0 ? null : dailyRemainingSeconds,
+    testingMode,
+    testingModeExpiresAt: new Date(TESTING_WINDOW_END_MS).toISOString(),
   });
 }
 
