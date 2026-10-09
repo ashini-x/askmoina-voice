@@ -26,6 +26,26 @@ describe("AskMoina disconnect explanations", () => {
     expect(notice?.message).toContain("Tap Start talking");
   });
 
+  it("explains an invalid microphone audio frame without calling it a question limit", () => {
+    const notice = getUserFacingDisconnectNotice("Invalid PCM audio frame", 540, 1008);
+    expect(notice?.code).toBe("invalid_audio_frame");
+    expect(notice?.message).toContain("microphone audio packet");
+    expect(notice?.message).toContain("not a question limit");
+  });
+
+  it("identifies incoming audio rate-limit closures", () => {
+    const notice = getUserFacingDisconnectNotice("Audio input rate limit exceeded", 540, 1008);
+    expect(notice?.code).toBe("audio_rate_limit");
+    expect(notice?.message).toContain("Audio packets arrived faster");
+    expect(notice?.message).toContain("not a question-count limit");
+  });
+
+  it("explains upstream policy close codes separately from quota limits", () => {
+    const notice = getUserFacingDisconnectNotice("Voice provider disconnected", 540, 1008);
+    expect(notice?.message).toContain("policy code 1008");
+    expect(notice?.message).toContain("not a question-count cap");
+  });
+
   it("does not send a server error notice for normal user disconnects", () => {
     expect(getUserFacingDisconnectNotice("Client disconnected", 540, 1000)).toBeNull();
   });

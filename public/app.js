@@ -533,6 +533,25 @@
             closeMessage = "The voice service encountered a connection error. Tap Start talking to start a new conversation.";
           } else if (reason === "Client socket error") {
             closeMessage = "The browser connection encountered an error. Check your internet connection and try again.";
+          } else if (reason === "Invalid PCM audio frame") {
+            closeMessage = "AskMoina could not read an incoming microphone audio packet. Check your selected microphone or refresh the page, then try again. This is not a question-count limit.";
+          } else if (reason === "Audio input rate limit exceeded") {
+            closeMessage = "Audio packets arrived faster than AskMoina can accept them. This is not a question-count limit. Refresh and start a new conversation.";
+          } else if (reason === "Invalid or oversized client frame") {
+            closeMessage = "The browser sent an unsupported voice packet. Refresh AskMoina and start a new conversation.";
+          } else if (
+            reason === "First message must be a small setup object" ||
+            reason === "Invalid setup message" ||
+            reason === "Only realtime audio input is allowed" ||
+            reason === "Invalid client message"
+          ) {
+            closeMessage = "The voice connection received a message in an unexpected format. Refresh AskMoina and start a new conversation.";
+          } else if (reason === "Provider frame decode failed" || reason === "Invalid provider frame") {
+            closeMessage = "The voice service sent a response AskMoina could not read. Please start a new conversation.";
+          } else if (reason === "Client send failed") {
+            closeMessage = "AskMoina could not send a response to this browser connection. Check your connection and start a new conversation.";
+          } else if (event.code === 1008) {
+            closeMessage = "The connection closed for a policy or audio-format check (code 1008). This is not a question-count limit. Refresh AskMoina and try again; if it repeats, the connection diagnostics can help identify why.";
           } else if (event.code === 1006) {
             closeMessage = "The connection dropped without a clean close (code 1006), usually because the network or voice service interrupted it. Tap Start talking to retry.";
           } else if (event.code !== 1000) {

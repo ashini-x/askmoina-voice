@@ -342,7 +342,7 @@ async function handleVoiceSocket(
   let inputBytesInWindow = 0;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
   const MAX_AUDIO_BASE64_CHARS = 12_000;
-  const MAX_AUDIO_FRAMES_PER_SECOND = 30;
+  const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
 
   const closeBoth = (code = 1000, reason = "Session closed") => {
@@ -357,6 +357,20 @@ async function handleVoiceSocket(
       } catch {
         // The socket may already be closing.
       }
+    }
+
+    if (code !== 1000 || reason !== "Client disconnected") {
+      // Log only safe close metadata—never microphone audio or conversation text.
+      console.warn("[AskMoina] Voice WebSocket closing", JSON.stringify({
+        closeCode: code,
+        reason,
+        setupForwarded,
+        setupCompleteReceived,
+        upstreamFrameCount,
+        inputFrameCount,
+        inputBytesInWindow,
+        lifetimeMs: Date.now() - upstreamStartedAt,
+      }));
     }
 
     const safeCode = safeWebSocketCloseCode(code);
