@@ -5,6 +5,7 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 ## Current capabilities
 
 - Browser-based live voice with microphone permission, 16 kHz PCM input and streamed audio replies.
+- The default live relay uses Vertex AI. For testing the documented 99-language Gemini Live API route (including Assamese), configure the optional Cloudflare Worker Secret `GEMINI_API_KEY`; the Worker then uses the Gemini API Live endpoint with native audio-to-audio output and the built-in voice selected by `GEMINI_LIVE_VOICE` (defaults to `Aoede`). Keep the key server-side. Assamese voice quality still requires evaluation by Assamese speakers.
 - A local-first Memory Vault at `/vault`: user-entered notes are encrypted in the browser using Web Crypto AES-GCM before they are stored in IndexedDB.
 - Optional encrypted cloud backups. The Worker stores ciphertext, salt, IV and key-derivation metadata; it never receives the vault decryption key or plaintext memories.
 - Optional `Use these memories in AskMoina on this browser tab`. Only selected notes are passed to Gemini at the start of the next voice session after explicit user opt-in.
