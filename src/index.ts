@@ -108,6 +108,194 @@ async function releaseVoiceSession(
   ]);
 }
 
+
+async function runOneShotVoiceProbe(env: Env): Promise<Response> {
+  const attempts: Array<Record<string, unknown>> = [];
+  let accessToken: string;
+  try {
+    accessToken = await getGoogleAccessToken(env);
+  } catch {
+    return json({ ok: false, stage: "oauth", error: "Could not obtain a provider access token." }, 502);
+  }
+
+  const projectId = env.GCP_PROJECT_ID.trim();
+  const location = env.GEMINI_LOCATION?.trim() || "us-central1";
+  const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
+  const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
+
+  for (const apiVersion of ["v1beta1", "v1"]) {
+    const started = Date.now();
+    const upstreamUrl = `https://${host}/ws/google.cloud.aiplatform.${apiVersion}.LlmBidiService/BidiGenerateContent`;
+    let response: Response;
+    try {
+      response = await fetch(upstreamUrl, {
+        headers: { Upgrade: "websocket", Authorization: `Bearer ${accessToken}` },
+      });
+    } catch {
+      attempts.push({ apiVersion, stage: "handshake", error: "Network request failed", elapsedMs: Date.now() - started });
+      continue;
+    }
+
+    const socket = response.webSocket;
+    if (!socket || response.status !== 101) {
+      attempts.push({ apiVersion, stage: "handshake", status: response.status, elapsedMs: Date.now() - started });
+      continue;
+    }
+
+    socket.accept();
+    const inbox: Array<unknown> = [];
+    let pending: ((value: unknown) => void) | null = null;
+    const push = (value: unknown) => {
+      if (pending) {
+        const resolve = pending;
+        pending = null;
+        resolve(value);
+      } else {
+        inbox.push(value);
+      }
+    };
+    const onMessage = (event: MessageEvent) => push({ kind: "message", data: event.data });
+    const onClose = (event: CloseEvent) => push({ kind: "close", code: event.code, reason: event.reason });
+    const onError = () => push({ kind: "socket-error" });
+    socket.addEventListener("message", onMessage);
+    socket.addEventListener("close", onClose);
+    socket.addEventListener("error", onError);
+
+    const nextEvent = (timeoutMs: number): Promise<any> => {
+      if (inbox.length) return Promise.resolve(inbox.shift());
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = (value: unknown) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (pending === finish) pending = null;
+          resolve(value);
+        };
+        const timer = setTimeout(() => finish({ kind: "timeout" }), timeoutMs);
+        pending = finish;
+      });
+    };
+
+    const parseFrame = (data: unknown): Record<string, any> | null => {
+      try {
+        let text: string;
+        if (typeof data === "string") text = data;
+        else if (data instanceof ArrayBuffer) text = new TextDecoder().decode(data);
+        else if (ArrayBuffer.isView(data)) text = new TextDecoder().decode(data);
+        else return null;
+        const parsed = JSON.parse(text);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    };
+
+    try {
+      socket.send(JSON.stringify({
+        setup: {
+          model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
+          generationConfig: { responseModalities: ["AUDIO"] },
+          systemInstruction: { parts: [{ text: "You are an audio session test. Respond with one short, friendly spoken sentence confirming the voice output works." }] },
+        },
+      }));
+
+      let setupComplete = false;
+      let providerError: string | null = null;
+      let closeInfo: Record<string, unknown> | null = null;
+      for (let i = 0; i < 12; i += 1) {
+        const event = await nextEvent(2_500) as Record<string, any>;
+        if (event.kind === "timeout") break;
+        if (event.kind === "close") {
+          closeInfo = { code: event.code, reason: String(event.reason || "").slice(0, 220) };
+          break;
+        }
+        if (event.kind !== "message") break;
+        const message = parseFrame(event.data);
+        if (!message) {
+          providerError = "Provider sent a non-JSON setup frame";
+          break;
+        }
+        if (message.setupComplete || message.setup_complete) {
+          setupComplete = true;
+          break;
+        }
+        if (message.error) {
+          providerError = String(message.error.message || message.error.status || "Provider returned a setup error").slice(0, 220);
+          break;
+        }
+      }
+
+      if (!setupComplete) {
+        attempts.push({
+          apiVersion, stage: "setup", setupComplete: false,
+          ...(providerError ? { error: providerError } : {}),
+          ...(closeInfo ? { close: closeInfo } : {}),
+          elapsedMs: Date.now() - started,
+        });
+        continue;
+      }
+
+      socket.send(JSON.stringify({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text: "Say: AskMoina voice test successful." }] }],
+          turnComplete: true,
+        },
+      }));
+
+      let audioChunks = 0;
+      let audioBase64Chars = 0;
+      let turnComplete = false;
+      let responseError: string | null = null;
+      for (let i = 0; i < 40; i += 1) {
+        const event = await nextEvent(750) as Record<string, any>;
+        if (event.kind === "timeout") continue;
+        if (event.kind === "close" || event.kind === "socket-error") break;
+        if (event.kind !== "message") continue;
+        const message = parseFrame(event.data);
+        if (!message) continue;
+        if (message.error) {
+          responseError = String(message.error.message || message.error.status || "Provider returned a response error").slice(0, 220);
+          break;
+        }
+        const content = message.serverContent || message.server_content;
+        const turn = content?.modelTurn || content?.model_turn;
+        const parts = Array.isArray(turn?.parts) ? turn.parts : [];
+        for (const part of parts) {
+          const inlineData = part.inlineData || part.inline_data;
+          if (inlineData && typeof inlineData.data === "string") {
+            audioChunks += 1;
+            audioBase64Chars += inlineData.data.length;
+          }
+        }
+        if (content?.turnComplete || content?.turn_complete) {
+          turnComplete = true;
+          break;
+        }
+      }
+
+      const result = {
+        apiVersion, stage: "audio-response", setupComplete,
+        audioChunks, audioBase64Chars, turnComplete,
+        elapsedMs: Date.now() - started,
+        ok: setupComplete && audioChunks > 0 && turnComplete,
+        ...(responseError ? { error: responseError } : {}),
+      };
+      try { socket.close(1000, "One-shot diagnostic complete"); } catch { /* already closed */ }
+      return json({ ...result, attempts }, result.ok ? 200 : 502);
+    } catch {
+      attempts.push({ apiVersion, stage: "probe-execution", error: "Probe execution failed", elapsedMs: Date.now() - started });
+      try { socket.close(1000, "One-shot diagnostic failed"); } catch { /* already closed */ }
+    } finally {
+      socket.removeEventListener("message", onMessage);
+      socket.removeEventListener("close", onClose);
+      socket.removeEventListener("error", onError);
+    }
+  }
+
+  return json({ ok: false, stage: "provider-setup", attempts }, 502);
+}
+
 async function handleVoiceSocket(
   request: Request,
   env: Env,
@@ -144,7 +332,7 @@ async function handleVoiceSocket(
   const upstreamHost =
     location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
   const upstreamUrl =
-    `https://${upstreamHost}/ws/google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent`;
+    `https://${upstreamHost}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
 
   let upstreamResponse: Response;
   try {
@@ -230,9 +418,9 @@ async function handleVoiceSocket(
 
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          // Keep the first raw WebSocket setup minimal: transcription requires TEXT output too.
-          generation_config: { response_modalities: ["audio"] },
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          // Gemini 3.8 Live supports AUDIO output; use the canonical JSON enum and field names.
+          generationConfig: { responseModalities: ["AUDIO"] },
+          systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
         };
         upstreamSocket.send(JSON.stringify({ setup: securedSetup }));
         setupForwarded = true;
@@ -267,7 +455,7 @@ async function handleVoiceSocket(
 
       const realtimeInput = message.realtime_input;
       if (realtimeInput.audio_stream_end === true) {
-        upstreamSocket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+        upstreamSocket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
         return;
       }
 
@@ -305,10 +493,10 @@ async function handleVoiceSocket(
 
       // Re-serialize the validated shape to avoid forwarding unknown client fields.
       upstreamSocket.send(JSON.stringify({
-        realtime_input: {
+        realtimeInput: {
           audio: {
             data: audio.data,
-            mime_type: "audio/pcm;rate=16000",
+            mimeType: "audio/pcm;rate=16000",
           },
         },
       }));
@@ -399,6 +587,9 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/_probe_voice_7f29c38a7d214d8e9fe5b6f4" && request.method === "GET") {
+      return runOneShotVoiceProbe(env);
+    }
     if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 
