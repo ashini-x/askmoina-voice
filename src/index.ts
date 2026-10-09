@@ -363,6 +363,7 @@ export default {
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
     headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    headers.set("Cache-Control", "no-store");
     return new Response(assetResponse.body, {
       status: assetResponse.status,
       statusText: assetResponse.statusText,
