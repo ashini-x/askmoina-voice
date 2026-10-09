@@ -24,6 +24,13 @@
     "MAX_GLOBAL_CONCURRENT_SESSIONS": "5",
     "ANALYTICS_RAW_RETENTION_DAYS": "30"
   },
+  "secrets": {
+    "required": [
+      "GCP_SERVICE_ACCOUNT_JSON",
+      "ADMIN_DASHBOARD_PASSWORD",
+      "ADMIN_SESSION_SECRET"
+    ]
+  },
   "durable_objects": {
     "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]
   },
