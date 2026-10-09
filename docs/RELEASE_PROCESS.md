@@ -9,3 +9,11 @@
 7. Roll back to the last known-good deployment if health degrades.
 
 Production migrations must be reviewed and applied deliberately.
+
+
+## Production data and dashboard
+
+- Apply D1 migrations sequentially and verify schema before deploying routes that depend on them.
+- Configure `ADMIN_DASHBOARD_PASSWORD` and `ADMIN_SESSION_SECRET` as Worker secrets; never commit live values.
+- Verify `/api/health`, the identity endpoint, vault backup/restore/delete, admin login throttling, and that an unauthenticated admin API call returns 401.
+- Confirm the dashboard never serves decrypted vault contents. Actual AI billing must be checked in Google Cloud Billing.

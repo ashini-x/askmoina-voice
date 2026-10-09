@@ -136,12 +136,12 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 async function dashboardOverview(env: Env): Promise<Response> {
   const row = await env.DB.prepare(
     "SELECT COUNT(*) AS total_sessions, " +
-    "SUM(CASE WHEN started_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END) AS sessions_24h, " +
-    "COUNT(DISTINCT CASE WHEN started_at >= datetime('now','-24 hours') THEN visitor_id END) AS visitors_24h, " +
+    "SUM(CASE WHEN julianday(started_at) >= julianday('now','-24 hours') THEN 1 ELSE 0 END) AS sessions_24h, " +
+    "COUNT(DISTINCT CASE WHEN julianday(started_at) >= julianday('now','-24 hours') THEN visitor_id END) AS visitors_24h, " +
     "COALESCE(SUM(CASE WHEN ended_at IS NOT NULL THEN duration_seconds ELSE 0 END),0) AS duration_seconds_30d, " +
-    "SUM(CASE WHEN started_at >= datetime('now','-24 hours') AND outcome IN ('provider_error','error','timeout','policy_closed') THEN 1 ELSE 0 END) AS failures_24h, " +
-    "SUM(CASE WHEN ended_at IS NULL AND started_at >= datetime('now','-15 minutes') THEN 1 ELSE 0 END) AS active_observed " +
-    "FROM voice_sessions WHERE started_at >= datetime('now','-30 days')",
+    "SUM(CASE WHEN julianday(started_at) >= julianday('now','-24 hours') AND outcome IN ('provider_error','error','timeout','policy_closed') THEN 1 ELSE 0 END) AS failures_24h, " +
+    "SUM(CASE WHEN ended_at IS NULL AND julianday(started_at) >= julianday('now','-15 minutes') THEN 1 ELSE 0 END) AS active_observed " +
+    "FROM voice_sessions WHERE julianday(started_at) >= julianday('now','-30 days')",
   ).first<Record<string, number | null>>();
   return json({
     ok: true, totalSessions: Number(row?.total_sessions || 0), sessions24h: Number(row?.sessions_24h || 0),
