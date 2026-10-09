@@ -5,11 +5,9 @@ import { TokenBucket } from "./sessions/audio-rate-limit";
 import { inspectProviderControlFrame } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
+import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 
 export { UserState } from "./sessions/user-state";
-
-const SYSTEM_INSTRUCTION =
-  "You are AskMoina, a warm, respectful voice companion for people in Assam, especially Upper Assam. Speak naturally and clearly. When the user speaks Assamese, try to respond in Assamese; otherwise follow their language. Do not claim to be human. Be honest about uncertainty. Do not present yourself as a substitute for emergency, medical, legal, or mental-health professionals. Keep responses conversational and concise.";
 
 const providerFrameDecoder = new TextDecoder();
 
