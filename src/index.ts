@@ -2,6 +2,7 @@ import type { Env } from "./config/env";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
+import { inspectProviderControlFrame } from "./sessions/provider-frame";
 
 export { UserState } from "./sessions/user-state";
 
@@ -15,6 +16,8 @@ const TESTING_WINDOW_END_MS = Date.parse("2026-10-10T10:56:24.325Z");
 function isUnlimitedTestingWindow(now = Date.now()): boolean {
   return now < TESTING_WINDOW_END_MS;
 }
+
+const providerFrameDecoder = new TextDecoder();
 
 const json = (data: unknown, status = 200): Response =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -562,8 +565,8 @@ async function handleVoiceSocket(
     try {
       if (typeof frameData === "string") frameText = frameData;
       else if (typeof Blob !== "undefined" && frameData instanceof Blob) frameText = await frameData.text();
-      else if (frameData instanceof ArrayBuffer) frameText = new TextDecoder().decode(frameData);
-      else if (ArrayBuffer.isView(frameData)) frameText = new TextDecoder().decode(frameData);
+      else if (frameData instanceof ArrayBuffer) frameText = providerFrameDecoder.decode(frameData);
+      else if (ArrayBuffer.isView(frameData)) frameText = providerFrameDecoder.decode(frameData);
       else throw new TypeError("Unsupported provider frame type");
     } catch {
       console.error("[AskMoina] Could not decode Vertex Live frame", JSON.stringify({ frameNumber, frameType, frameSize }));
@@ -578,18 +581,13 @@ async function handleVoiceSocket(
       return;
     }
 
-    let providerMessage: {
-      setup_complete?: unknown;
-      setupComplete?: unknown;
-      error?: { code?: unknown; status?: unknown; message?: unknown };
-    };
+    // Most provider frames are audio payloads. Avoid parsing their large base64-heavy
+    // JSON objects in the Worker; only inspect control frames carrying setup or error keys.
+    let providerMessage: ReturnType<typeof inspectProviderControlFrame>;
     try {
-      providerMessage = JSON.parse(frameText);
-      if (!providerMessage || typeof providerMessage !== "object" || Array.isArray(providerMessage)) {
-        throw new TypeError("Provider frame is not a JSON object");
-      }
+      providerMessage = inspectProviderControlFrame(frameText);
     } catch {
-      console.error("[AskMoina] Vertex Live sent a non-JSON frame", JSON.stringify({ frameNumber, frameType, frameSize }));
+      console.error("[AskMoina] Vertex Live sent an invalid control frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
         workerSocket.send(JSON.stringify({ error: {
           code: "PROVIDER_PROTOCOL_ERROR",
@@ -601,12 +599,12 @@ async function handleVoiceSocket(
       return;
     }
 
-    if (providerMessage.setup_complete || providerMessage.setupComplete) {
+    if (providerMessage?.setupComplete) {
       setupCompleteReceived = true;
       console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({ frameNumber }));
     }
 
-    if (providerMessage.error) {
+    if (providerMessage?.error) {
       const providerError = providerMessage.error;
       console.error("[AskMoina] Vertex Live returned an error", JSON.stringify({
         code: providerError.code,
