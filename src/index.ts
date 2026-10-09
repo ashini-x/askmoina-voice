@@ -109,211 +109,6 @@ async function releaseVoiceSession(
 }
 
 
-async function runOneShotVoiceProbe(env: Env): Promise<Response> {
-  const attempts: Array<Record<string, unknown>> = [];
-  let accessToken: string;
-  try {
-    accessToken = await getGoogleAccessToken(env);
-  } catch {
-    return json({ ok: false, stage: "oauth", error: "Could not obtain a provider access token." }, 502);
-  }
-
-  const projectId = env.GCP_PROJECT_ID.trim();
-  const location = env.GEMINI_LOCATION?.trim() || "us-central1";
-  const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
-  const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
-
-  for (const apiVersion of ["v1beta1", "v1"]) {
-    const started = Date.now();
-    const upstreamUrl = `https://${host}/ws/google.cloud.aiplatform.${apiVersion}.LlmBidiService/BidiGenerateContent`;
-    let response: Response;
-    try {
-      response = await fetch(upstreamUrl, {
-        headers: { Upgrade: "websocket", Authorization: `Bearer ${accessToken}` },
-      });
-    } catch {
-      attempts.push({ apiVersion, stage: "handshake", error: "Network request failed", elapsedMs: Date.now() - started });
-      continue;
-    }
-
-    const socket = response.webSocket;
-    if (!socket || response.status !== 101) {
-      attempts.push({ apiVersion, stage: "handshake", status: response.status, elapsedMs: Date.now() - started });
-      continue;
-    }
-
-    socket.accept();
-    const inbox: Array<unknown> = [];
-    let pending: ((value: unknown) => void) | null = null;
-    const push = (value: unknown) => {
-      if (pending) {
-        const resolve = pending;
-        pending = null;
-        resolve(value);
-      } else {
-        inbox.push(value);
-      }
-    };
-    const onMessage = (event: MessageEvent) => push({ kind: "message", data: event.data });
-    const onClose = (event: CloseEvent) => push({ kind: "close", code: event.code, reason: event.reason });
-    const onError = () => push({ kind: "socket-error" });
-    socket.addEventListener("message", onMessage);
-    socket.addEventListener("close", onClose);
-    socket.addEventListener("error", onError);
-
-    const nextEvent = (timeoutMs: number): Promise<any> => {
-      if (inbox.length) return Promise.resolve(inbox.shift());
-      return new Promise((resolve) => {
-        let settled = false;
-        const finish = (value: unknown) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          if (pending === finish) pending = null;
-          resolve(value);
-        };
-        const timer = setTimeout(() => finish({ kind: "timeout" }), timeoutMs);
-        pending = finish;
-      });
-    };
-
-    const frameType = (data: unknown): string => {
-      if (typeof data === "string") return "string";
-      if (typeof Blob !== "undefined" && data instanceof Blob) return "Blob";
-      if (data instanceof ArrayBuffer) return "ArrayBuffer";
-      if (ArrayBuffer.isView(data)) return "ArrayBufferView";
-      return typeof data === "object" && data !== null
-        ? ((data as { constructor?: { name?: string } }).constructor?.name || "object")
-        : typeof data;
-    };
-    const frameSize = (data: unknown): number | null => {
-      if (typeof data === "string") return data.length;
-      if (typeof Blob !== "undefined" && data instanceof Blob) return data.size;
-      if (data instanceof ArrayBuffer) return data.byteLength;
-      if (ArrayBuffer.isView(data)) return data.byteLength;
-      return null;
-    };
-    const parseFrame = async (data: unknown): Promise<Record<string, any> | null> => {
-      try {
-        let text: string;
-        if (typeof data === "string") text = data;
-        else if (typeof Blob !== "undefined" && data instanceof Blob) text = await data.text();
-        else if (data instanceof ArrayBuffer) text = new TextDecoder().decode(data);
-        else if (ArrayBuffer.isView(data)) text = new TextDecoder().decode(data);
-        else return null;
-        const parsed = JSON.parse(text);
-        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
-      } catch {
-        return null;
-      }
-    };
-
-    try {
-      socket.send(JSON.stringify({
-        setup: {
-          model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: { responseModalities: ["AUDIO"] },
-          systemInstruction: { parts: [{ text: "You are an audio session test. Respond with one short, friendly spoken sentence confirming the voice output works." }] },
-        },
-      }));
-
-      let setupComplete = false;
-      let providerError: string | null = null;
-      let closeInfo: Record<string, unknown> | null = null;
-      for (let i = 0; i < 12; i += 1) {
-        const event = await nextEvent(2_500) as Record<string, any>;
-        if (event.kind === "timeout") break;
-        if (event.kind === "close") {
-          closeInfo = { code: event.code, reason: String(event.reason || "").slice(0, 220) };
-          break;
-        }
-        if (event.kind !== "message") break;
-        const message = await parseFrame(event.data);
-        if (!message) {
-          providerError = `Provider sent a non-JSON setup frame (type=${frameType(event.data)}, size=${frameSize(event.data) ?? "unknown"})`;
-          break;
-        }
-        if (message.setupComplete || message.setup_complete) {
-          setupComplete = true;
-          break;
-        }
-        if (message.error) {
-          providerError = String(message.error.message || message.error.status || "Provider returned a setup error").slice(0, 220);
-          break;
-        }
-      }
-
-      if (!setupComplete) {
-        attempts.push({
-          apiVersion, stage: "setup", setupComplete: false,
-          ...(providerError ? { error: providerError } : {}),
-          ...(closeInfo ? { close: closeInfo } : {}),
-          elapsedMs: Date.now() - started,
-        });
-        try { socket.close(1000, "Setup probe attempt complete"); } catch { /* already closed */ }
-        continue;
-      }
-
-      socket.send(JSON.stringify({
-        clientContent: {
-          turns: [{ role: "user", parts: [{ text: "Say: AskMoina voice test successful." }] }],
-          turnComplete: true,
-        },
-      }));
-
-      let audioChunks = 0;
-      let audioBase64Chars = 0;
-      let turnComplete = false;
-      let responseError: string | null = null;
-      for (let i = 0; i < 40; i += 1) {
-        const event = await nextEvent(750) as Record<string, any>;
-        if (event.kind === "timeout") continue;
-        if (event.kind === "close" || event.kind === "socket-error") break;
-        if (event.kind !== "message") continue;
-        const message = await parseFrame(event.data);
-        if (!message) continue;
-        if (message.error) {
-          responseError = String(message.error.message || message.error.status || "Provider returned a response error").slice(0, 220);
-          break;
-        }
-        const content = message.serverContent || message.server_content;
-        const turn = content?.modelTurn || content?.model_turn;
-        const parts = Array.isArray(turn?.parts) ? turn.parts : [];
-        for (const part of parts) {
-          const inlineData = part.inlineData || part.inline_data;
-          if (inlineData && typeof inlineData.data === "string") {
-            audioChunks += 1;
-            audioBase64Chars += inlineData.data.length;
-          }
-        }
-        if (content?.turnComplete || content?.turn_complete) {
-          turnComplete = true;
-          break;
-        }
-      }
-
-      const result = {
-        apiVersion, stage: "audio-response", setupComplete,
-        audioChunks, audioBase64Chars, turnComplete,
-        elapsedMs: Date.now() - started,
-        ok: setupComplete && audioChunks > 0 && turnComplete,
-        ...(responseError ? { error: responseError } : {}),
-      };
-      try { socket.close(1000, "One-shot diagnostic complete"); } catch { /* already closed */ }
-      return json({ ...result, attempts }, result.ok ? 200 : 502);
-    } catch {
-      attempts.push({ apiVersion, stage: "probe-execution", error: "Probe execution failed", elapsedMs: Date.now() - started });
-      try { socket.close(1000, "One-shot diagnostic failed"); } catch { /* already closed */ }
-    } finally {
-      socket.removeEventListener("message", onMessage);
-      socket.removeEventListener("close", onClose);
-      socket.removeEventListener("error", onError);
-    }
-  }
-
-  return json({ ok: false, stage: "provider-setup", attempts }, 502);
-}
-
 async function handleVoiceSocket(
   request: Request,
   env: Env,
@@ -523,44 +318,100 @@ async function handleVoiceSocket(
     }
   });
 
-  upstreamSocket.addEventListener("message", (event: MessageEvent) => {
-    if (workerSocket.readyState !== WebSocket.OPEN) return;
+  let upstreamFrameCount = 0;
+  upstreamSocket.addEventListener("message", async (event: MessageEvent) => {
+    if (workerSocket.readyState !== WebSocket.OPEN || closed) return;
 
-    // Log only structured provider error metadata; never log audio, transcripts, or credentials.
-    if (typeof event.data === "string") {
+    // Workerd can expose upstream WebSocket frames as strings, ArrayBuffers, or Blobs.
+    // Normalize them to JSON text before forwarding so the browser never receives an
+    // unexpected Blob/binary representation of a JSON protocol frame.
+    const frameNumber = ++upstreamFrameCount;
+    let frameText: string;
+    const frameData: unknown = event.data;
+    const frameType =
+      typeof frameData === "string" ? "string" :
+      typeof Blob !== "undefined" && frameData instanceof Blob ? "Blob" :
+      frameData instanceof ArrayBuffer ? "ArrayBuffer" :
+      ArrayBuffer.isView(frameData) ? "ArrayBufferView" : typeof frameData;
+    const frameSize =
+      typeof frameData === "string" ? frameData.length :
+      typeof Blob !== "undefined" && frameData instanceof Blob ? frameData.size :
+      frameData instanceof ArrayBuffer ? frameData.byteLength :
+      ArrayBuffer.isView(frameData) ? frameData.byteLength : null;
+
+    try {
+      if (typeof frameData === "string") frameText = frameData;
+      else if (typeof Blob !== "undefined" && frameData instanceof Blob) frameText = await frameData.text();
+      else if (frameData instanceof ArrayBuffer) frameText = new TextDecoder().decode(frameData);
+      else if (ArrayBuffer.isView(frameData)) frameText = new TextDecoder().decode(frameData);
+      else throw new TypeError("Unsupported provider frame type");
+    } catch {
+      console.error("[AskMoina] Could not decode Vertex Live frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
-        const providerMessage = JSON.parse(event.data) as {
-          setup_complete?: unknown;
-          setupComplete?: unknown;
-          error?: { code?: unknown; status?: unknown; message?: unknown };
-        };
-        if (providerMessage.setup_complete || providerMessage.setupComplete) {
-          setupCompleteReceived = true;
-          console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
-            frameKeys: Object.keys(providerMessage),
-          }));
-        }
-        if (providerMessage.error) {
-          const providerError = providerMessage.error;
-          console.error("[AskMoina] Vertex Live returned an error", JSON.stringify({
-            code: providerError.code,
-            status: providerError.status,
-            message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
-          }));
-        }
-      } catch {
-        // Forward provider frames unchanged; do not log frame contents.
+        workerSocket.send(JSON.stringify({ error: {
+          code: "PROVIDER_FRAME_DECODE_FAILED",
+          status: "INTERNAL",
+          message: "The voice provider sent a response that could not be decoded.",
+        } }));
+      } catch { /* client may already be closing */ }
+      closeBoth(1011, "Provider frame decode failed");
+      return;
+    }
+
+    let providerMessage: {
+      setup_complete?: unknown;
+      setupComplete?: unknown;
+      error?: { code?: unknown; status?: unknown; message?: unknown };
+    };
+    try {
+      providerMessage = JSON.parse(frameText);
+      if (!providerMessage || typeof providerMessage !== "object" || Array.isArray(providerMessage)) {
+        throw new TypeError("Provider frame is not a JSON object");
       }
+    } catch {
+      console.error("[AskMoina] Vertex Live sent a non-JSON frame", JSON.stringify({ frameNumber, frameType, frameSize }));
+      try {
+        workerSocket.send(JSON.stringify({ error: {
+          code: "PROVIDER_PROTOCOL_ERROR",
+          status: "INTERNAL",
+          message: "The voice provider sent a response in an unsupported format.",
+        } }));
+      } catch { /* client may already be closing */ }
+      closeBoth(1011, "Invalid provider frame");
+      return;
+    }
+
+    if (providerMessage.setup_complete || providerMessage.setupComplete) {
+      setupCompleteReceived = true;
+      console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({ frameNumber }));
+    }
+
+    if (providerMessage.error) {
+      const providerError = providerMessage.error;
+      console.error("[AskMoina] Vertex Live returned an error", JSON.stringify({
+        code: providerError.code,
+        status: providerError.status,
+        message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
+      }));
     }
 
     try {
-      workerSocket.send(event.data);
+      workerSocket.send(frameText);
     } catch {
       closeBoth(1011, "Client send failed");
     }
   });
 
-  workerSocket.addEventListener("close", (event: CloseEvent) => closeBoth(event.code || 1000, "Client disconnected"));
+  workerSocket.addEventListener("close", (event: CloseEvent) => {
+    if (!setupCompleteReceived && !closed) {
+      console.warn("[AskMoina] Browser socket closed before setup completed", JSON.stringify({
+        clientCode: event.code,
+        setupForwarded,
+        upstreamFrameCount,
+      }));
+    }
+    closeBoth(event.code || 1000, "Client disconnected");
+  });
   workerSocket.addEventListener("error", () => closeBoth(1011, "Client socket error"));
   upstreamSocket.addEventListener("close", (event: CloseEvent) => {
     if (!closed) {
@@ -605,9 +456,6 @@ export default {
       });
     }
 
-    if (url.pathname === "/api/_probe_voice_7f29c38a7d214d8e9fe5b6f4" && request.method === "GET") {
-      return runOneShotVoiceProbe(env);
-    }
     if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 
