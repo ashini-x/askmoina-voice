@@ -3,7 +3,7 @@ import { SYSTEM_INSTRUCTION } from "../src/sessions/assistant-instruction";
 
 describe("AskMoina voice behavior guidance", () => {
   it("prioritizes conversational Assamese and natural code-switching", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("respond unmistakably in natural, conversational Assamese");
+    expect(SYSTEM_INSTRUCTION).toContain("respond in natural, conversational Assamese");
     expect(SYSTEM_INSTRUCTION).toContain("do not default to English");
     expect(SYSTEM_INSTRUCTION).toContain("code-switch naturally");
   });
