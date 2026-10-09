@@ -1,5 +1,7 @@
 # Placeholders only. Never commit real secrets.
-GEMINI_API_KEY=replace-with-local-development-key
+GCP_CLIENT_EMAIL=service-account-email-from-key-json
+GCP_PRIVATE_KEY=private-key-from-key-json
+GCP_PRIVATE_KEY_ID=private-key-id-from-key-json
 ADMIN_DASHBOARD_USER=admin
 ADMIN_DASHBOARD_PASSWORD=replace-with-local-password
 ADMIN_SESSION_SECRET=replace-with-random-development-secret
