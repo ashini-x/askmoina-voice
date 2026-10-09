@@ -9,6 +9,26 @@
   const clearButton = document.querySelector("#clearTranscript");
   const emptyTranscript = document.querySelector("#emptyTranscript");
 
+  async function ensureVisitorIdentity() {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 2500);
+    try {
+      await fetch("/api/identity", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+    } catch (_) {
+      // Identity is for continuity and analytics; voice remains usable if it is unavailable.
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  const visitorIdentityReady = ensureVisitorIdentity();
+
   let socket = null;
   let audioContext = null;
   let microphoneStream = null;
@@ -464,6 +484,7 @@
     stopping = false;
     setButton("Checking availability…", true);
     setStatus("Checking voice availability…");
+    await visitorIdentityReady;
     const preflight = await refreshVoiceAvailability();
     if (preflight && !preflight.available) {
       starting = false;
@@ -499,9 +520,19 @@
 
       sessionSocket.addEventListener("open", () => {
         if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
-        // The Worker replaces this placeholder with server-controlled model/system settings.
-        sessionSocket.send(JSON.stringify({ setup: {} }));
-        setStatus("Connected to the relay. Setting up your conversation…");
+        // Model and system rules stay server-controlled. Only explicitly selected memories accompany setup.
+        const setupPayload = { setup: {} };
+        let selectedMemoryContext = "";
+        try {
+          selectedMemoryContext = String(sessionStorage.getItem("askmoina.memory.context") || "").trim().slice(0, 3_000);
+        } catch (_) {
+          // Memory context is optional; voice must work if browser storage is unavailable.
+        }
+        if (selectedMemoryContext) setupPayload.memory_context = selectedMemoryContext;
+        sessionSocket.send(JSON.stringify(setupPayload));
+        setStatus(selectedMemoryContext
+          ? "Connected. Applying your selected memories to this conversation…"
+          : "Connected to the relay. Setting up your conversation…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
             stopConversation(true);
