@@ -17,7 +17,7 @@ describe("Gemini Live provider selection", () => {
   it("uses the Gemini API only when its server-side key is configured", () => {
     expect(isUsingGeminiDeveloperApi({ GEMINI_API_KEY: "  test-key  " })).toBe(true);
     expect(isUsingGeminiDeveloperApi({ GEMINI_API_KEY: " " })).toBe(false);
-    expect(hasVoiceCredentials({ GEMINI_API_KEY: "test-key" })).toBe(true);
+    expect(hasVoiceCredentials({ GCP_PROJECT_ID: "", GEMINI_API_KEY: "test-key" })).toBe(true);
     expect(hasVoiceCredentials(vertexEnv)).toBe(true);
     expect(hasVoiceCredentials({ GCP_PROJECT_ID: "test-project" })).toBe(false);
   });
