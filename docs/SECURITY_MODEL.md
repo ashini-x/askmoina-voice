@@ -1,0 +1,3 @@
+# Security model
+
+Never commit API keys, Cloudflare tokens, passwords, signing keys, local .dev.vars, production exports, or private logs. Store production credentials as Cloudflare Worker secrets. Never expose the permanent Gemini key to browser code. Use short-lived Live API credentials and validate origin, session, expiration, model configuration, and usage limits server-side. Implement authentication before enabling memory or admin endpoints. Apply per-user session and cost limits. Validate external payloads and model outputs. Preview deployments must not use production data or credentials.
