@@ -177,10 +177,27 @@ async function runOneShotVoiceProbe(env: Env): Promise<Response> {
       });
     };
 
-    const parseFrame = (data: unknown): Record<string, any> | null => {
+    const frameType = (data: unknown): string => {
+      if (typeof data === "string") return "string";
+      if (typeof Blob !== "undefined" && data instanceof Blob) return "Blob";
+      if (data instanceof ArrayBuffer) return "ArrayBuffer";
+      if (ArrayBuffer.isView(data)) return "ArrayBufferView";
+      return typeof data === "object" && data !== null
+        ? ((data as { constructor?: { name?: string } }).constructor?.name || "object")
+        : typeof data;
+    };
+    const frameSize = (data: unknown): number | null => {
+      if (typeof data === "string") return data.length;
+      if (typeof Blob !== "undefined" && data instanceof Blob) return data.size;
+      if (data instanceof ArrayBuffer) return data.byteLength;
+      if (ArrayBuffer.isView(data)) return data.byteLength;
+      return null;
+    };
+    const parseFrame = async (data: unknown): Promise<Record<string, any> | null> => {
       try {
         let text: string;
         if (typeof data === "string") text = data;
+        else if (typeof Blob !== "undefined" && data instanceof Blob) text = await data.text();
         else if (data instanceof ArrayBuffer) text = new TextDecoder().decode(data);
         else if (ArrayBuffer.isView(data)) text = new TextDecoder().decode(data);
         else return null;
@@ -211,9 +228,9 @@ async function runOneShotVoiceProbe(env: Env): Promise<Response> {
           break;
         }
         if (event.kind !== "message") break;
-        const message = parseFrame(event.data);
+        const message = await parseFrame(event.data);
         if (!message) {
-          providerError = "Provider sent a non-JSON setup frame";
+          providerError = `Provider sent a non-JSON setup frame (type=${frameType(event.data)}, size=${frameSize(event.data) ?? "unknown"})`;
           break;
         }
         if (message.setupComplete || message.setup_complete) {
@@ -233,6 +250,7 @@ async function runOneShotVoiceProbe(env: Env): Promise<Response> {
           ...(closeInfo ? { close: closeInfo } : {}),
           elapsedMs: Date.now() - started,
         });
+        try { socket.close(1000, "Setup probe attempt complete"); } catch { /* already closed */ }
         continue;
       }
 
@@ -252,7 +270,7 @@ async function runOneShotVoiceProbe(env: Env): Promise<Response> {
         if (event.kind === "timeout") continue;
         if (event.kind === "close" || event.kind === "socket-error") break;
         if (event.kind !== "message") continue;
-        const message = parseFrame(event.data);
+        const message = await parseFrame(event.data);
         if (!message) continue;
         if (message.error) {
           responseError = String(message.error.message || message.error.status || "Provider returned a response error").slice(0, 220);
