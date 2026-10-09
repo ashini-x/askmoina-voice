@@ -138,7 +138,7 @@ async function handleVoiceSocket(
   }
 
   const projectId = env.GCP_PROJECT_ID.trim();
-  const location = env.GEMINI_LOCATION?.trim() || "global";
+  const location = env.GEMINI_LOCATION?.trim() || "us-central1";
   const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
   const upstreamHost =
     location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
@@ -205,7 +205,7 @@ async function handleVoiceSocket(
 
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generation_config: { response_modalities: ["audio"] },
+          generation_config: { response_modalities: ["audio", "text"] },
           system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
           input_audio_transcription: {},
           output_audio_transcription: {},
@@ -255,13 +255,13 @@ export default {
       return json({
         ok: true,
         app: "askmoina-voice",
-        version: env.APP_VERSION || "0.2.1",
+        version: env.APP_VERSION || "0.3.0",
         environment: env.ENVIRONMENT || "unknown",
         status: hasVertexCredentials(env)
           ? "vertex-live-proxy-configured"
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
-        location: env.GEMINI_LOCATION || "global",
+        location: env.GEMINI_LOCATION || "us-central1",
       });
     }
 
