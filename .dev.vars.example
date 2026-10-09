@@ -1,7 +1,6 @@
 # Placeholders only. Never commit real secrets.
-GCP_CLIENT_EMAIL=service-account-email-from-key-json
-GCP_PRIVATE_KEY=private-key-from-key-json
-GCP_PRIVATE_KEY_ID=private-key-id-from-key-json
+# Store the full JSON file as a Cloudflare Worker Secret named GCP_SERVICE_ACCOUNT_JSON.
+GCP_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"replace-with-project-id","private_key_id":"replace-with-key-id","private_key":"-----BEGIN PRIVATE KEY-----\\nREPLACE_WITH_PRIVATE_KEY\\n-----END PRIVATE KEY-----\\n","client_email":"replace-with-service-account-email","token_uri":"https://oauth2.googleapis.com/token"}
 ADMIN_DASHBOARD_USER=admin
 ADMIN_DASHBOARD_PASSWORD=replace-with-local-password
 ADMIN_SESSION_SECRET=replace-with-random-development-secret
