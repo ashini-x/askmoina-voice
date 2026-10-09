@@ -64,3 +64,16 @@ jobs:
           status="$(fetch_status /admin/api/overview /tmp/moina-admin-api.json)"
           test "$status" = "401"
           echo "Unauthenticated admin API denied: OK"
+
+      - name: Synthetic live voice memory smoke test
+        if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'fix: share opted-in memory context across browser tabs') }}"
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng
+          python3 -m venv .venv-live-smoke
+          . .venv-live-smoke/bin/activate
+          python -m pip install --quiet --disable-pip-version-check websocket-client
+          python scripts/live-memory-voice-smoke.py

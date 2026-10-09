@@ -8,9 +8,9 @@ AskMoina does not save raw microphone audio or a persistent transcript archive b
 
 The optional Memory Vault stores user-entered notes encrypted in the browser before persisting them in IndexedDB. The cloud backup option stores only encrypted ciphertext and cryptographic metadata. The recovery code is generated on the device and is never sent to AskMoina; if it is lost and no usable device copy remains, the vault cannot be recovered by the company.
 
-Using saved context in a live conversation is a separate, explicit choice. When enabled, selected memory text is temporarily staged in the current browser tab and sent to Gemini with the next voice session's setup. Microphone audio and selected context are processed by Google Cloud Vertex AI. The encrypted-vault claim must not be represented as end-to-end encryption of the live AI session.
+Using saved context in a live conversation is a separate, explicit choice. When enabled, selected memory text is staged in local browser storage so it can be shared across AskMoina tabs, and is sent to Gemini with each new voice session's setup while the setting remains enabled. Unchecking the control or locking the vault clears the selected context cache. Microphone audio and selected context are processed by Google Cloud Vertex AI. The encrypted-vault claim must not be represented as end-to-end encryption of the live AI session.
 
-The initial release only saves the memories the user enters directly. It does not extract memories automatically from live speech. Local browser storage protects data at rest from the app's server, but does not protect an unlocked device from malware or malicious same-origin JavaScript.
+The initial release only saves the memories the user enters directly. It does not extract memories automatically from live speech. The encrypted vault is stored locally, but the opt-in context cache is plaintext in local browser storage while enabled so separate tabs can use it. This cache is not sent to AskMoina's D1 storage; selected content is sent to Gemini at session start. Local browser storage protects data at rest from the app's server, but does not protect an unlocked device from malware or malicious same-origin JavaScript.
 
 ## Identity and operational telemetry
 

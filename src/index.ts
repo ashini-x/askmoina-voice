@@ -461,6 +461,9 @@ async function handleVoiceSocket(
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: { responseModalities: ["AUDIO"] },
+          // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
           systemInstruction: { parts: [{ text: systemInstruction }] },
         };
         upstreamSocket.send(JSON.stringify({ setup: securedSetup }));

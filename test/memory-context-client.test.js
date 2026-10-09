@@ -7,6 +7,10 @@ describe("static client memory handoff", () => {
     expect(app).toContain('sessionStorage.getItem("askmoina.memory.context")');
     expect(app).toContain("setupPayload.memory_context = selectedMemoryContext");
     expect(app).toContain("sessionSocket.send(JSON.stringify(setupPayload))");
+    const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+    expect(worker).toContain("buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext)");
+    expect(worker).toContain("inputAudioTranscription: {}");
+    expect(worker).toContain("outputAudioTranscription: {}");
   });
 
   it("links to Memory Vault from the static homepage", () => {
