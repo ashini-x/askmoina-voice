@@ -708,10 +708,13 @@ export default {
       ctx.waitUntil(visitor.touch);
       if (visitor.cookie) headers.set("Set-Cookie", visitor.cookie);
       let html = await assetResponse.text();
-      html = html.replace("Made for Assam</span>", "Made for Assam</span><a class=brand-location href=/vault>Memory Vault</a>");
+      if (!html.includes('href="/vault"') && !html.includes("href=/vault")) {
+        html = html.replace("Made for Assam</span>", "Made for Assam</span><a class=brand-location href=/vault>Memory Vault</a>");
+      }
       html = html.replace("</body>", "<script src=/continuity.js defer></script></body>");
       responseBody = html;
       headers.delete("Content-Length");
+      headers.delete("ETag");
     }
     headers.set(
       "Content-Security-Policy",
