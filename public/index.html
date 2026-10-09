@@ -35,8 +35,37 @@
 
       <p class="note" id="privacyNote">
         When you start, your microphone audio is streamed to Google Cloud Vertex AI to generate replies.
-        AskMoina does not save raw audio in this app. Use a quiet, private place for sensitive conversations.
+        AskMoina does not store raw audio or transcripts in its app database. Voice-session metadata is recorded for service health. Use a quiet, private place for sensitive conversations.
       </p>
+
+      <section class="memory-vault" id="memoryVault" aria-labelledby="memoryTitleHeading">
+        <div class="memory-heading"><div><p class="eyebrow">YOUR PRIVATE MEMORY</p><h2 id="memoryTitleHeading">Moina remembers what you choose</h2></div><span class="memory-lock-icon" aria-hidden="true">🔐</span></div>
+        <p class="memory-intro">Your memories are encrypted on this device with a passphrase you choose. The cloud backup is optional and stores encrypted data only. This does not encrypt audio or memories shared with Google Gemini during a voice conversation.</p>
+        <p id="memoryMessage" class="memory-message" role="status" aria-live="polite">Checking local encrypted storage…</p>
+        <div id="memorySetup" class="memory-state" hidden>
+          <h3>Create your private vault</h3>
+          <label>Passphrase <input id="memoryPassphrase" type="password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="At least 12 characters"></label>
+          <label>Confirm passphrase <input id="memoryPassphraseConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="Enter it again"></label>
+          <button type="button" id="createVault">Create encrypted vault</button>
+          <p class="memory-small">AskMoina never receives or stores this passphrase. If you lose it and have no working recovery path, your vault cannot be decrypted.</p>
+          <div class="memory-import"><h3>Restore an encrypted recovery file</h3><label>Recovery file <input id="memoryRecoveryFile" type="file" accept="application/json,.json"></label><label>Vault passphrase <input id="memoryImportPassphrase" type="password" autocomplete="current-password" maxlength="256"></label><button type="button" id="importVault" class="secondary-button">Import recovery file</button></div>
+        </div>
+        <div id="memoryUnlock" class="memory-state" hidden>
+          <h3>Unlock your vault</h3>
+          <label>Passphrase <input id="memoryUnlockPassphrase" type="password" autocomplete="current-password" maxlength="256"></label>
+          <button type="button" id="unlockVault">Unlock memory</button>
+          <div class="memory-import"><h3>Restore or move your vault</h3><label>Encrypted recovery file <input id="memoryRecoveryFileUnlock" type="file" accept="application/json,.json"></label><label>Vault passphrase <input id="memoryImportPassphraseUnlock" type="password" autocomplete="current-password" maxlength="256"></label><button type="button" id="importVaultUnlock" class="secondary-button">Import recovery file</button></div>
+        </div>
+        <div id="memoryWorkspace" hidden>
+          <div class="memory-toolbar"><label class="memory-share-label"><input type="checkbox" id="memoryShareSession"> Include selected memories with Gemini for this voice session</label><button type="button" id="memoryLock" class="secondary-button">Lock vault</button></div>
+          <p class="memory-small">Only facts you individually marked for sharing are sent to Gemini, and only when this session checkbox is on. Do not save sensitive information.</p>
+          <form id="memoryAddForm" class="memory-form"><h3>Add a memory</h3><label>Short title <input id="memoryTitle" maxlength="100" required placeholder="For example, preferred language"></label><label>What should Moina remember? <textarea id="memoryText" maxlength="1200" rows="3" required placeholder="A preference or useful detail you want to carry into future sessions"></textarea></label><label class="memory-share-label"><input type="checkbox" id="memoryShare"> Allow this memory to be included in voice context</label><button type="submit">Save memory</button></form>
+          <div class="memory-list-heading"><h3>Your memories</h3><span>Encrypted at rest</span></div>
+          <div id="memoryList" class="memory-list"></div>
+          <div class="memory-cloud"><h3>Encrypted cloud backup</h3><p id="memorySyncStatus" class="memory-small">Device-only storage. Cloud backup is optional.</p><div class="memory-actions-row"><button type="button" id="memoryEnableSync">Enable / sync backup</button><button type="button" id="memoryRestoreCloud" class="secondary-button">Restore latest</button><button type="button" id="memoryExport" class="secondary-button">Download recovery kit</button></div><p class="memory-small">The recovery kit contains a cloud access token (if enabled). Keep it private and keep your passphrase separate. Without the recovery kit, clearing site data may make your cloud backup inaccessible.</p></div>
+          <div class="memory-danger"><button type="button" id="memoryDeleteEverything" class="danger-button">Delete vault and cloud backup</button></div>
+        </div>
+      </section>
 
       <section class="conversation" aria-label="Conversation transcript">
         <div class="conversation-heading">
@@ -51,6 +80,7 @@
 
     <footer>Built for Assam · Audio is processed live, not recorded by AskMoina</footer>
   </main>
+  <script src="/memory-vault.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

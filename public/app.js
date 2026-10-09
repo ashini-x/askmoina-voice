@@ -458,6 +458,11 @@
     finishStoppedState(fromServer ? "Voice session ended. Tap Start talking to reconnect." : "Conversation ended.");
   }
 
+  async function ensureVisitorIdentity() {
+    const response = await fetch("/api/identity", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("Could not establish your private visitor profile. Please retry.");
+  }
+
   async function startConversation() {
     if (starting || active) return;
     starting = true;
@@ -475,6 +480,7 @@
     setStatus("Requesting microphone permission…");
 
     try {
+      await ensureVisitorIdentity();
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("This browser does not support microphone access.");
       }
@@ -497,11 +503,20 @@
       socket = sessionSocket;
       sessionSocket.binaryType = "arraybuffer";
 
-      sessionSocket.addEventListener("open", () => {
+      sessionSocket.addEventListener("open", async () => {
         if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
-        // The Worker replaces this placeholder with server-controlled model/system settings.
-        sessionSocket.send(JSON.stringify({ setup: {} }));
-        setStatus("Connected to the relay. Setting up your conversation…");
+        let memoryContext = "";
+        try {
+          if (typeof window.askMoinaGetMemoryContext === "function") {
+            memoryContext = await window.askMoinaGetMemoryContext();
+          }
+        } catch (_) {
+          memoryContext = "";
+        }
+        if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
+        // The Worker keeps the model/system instruction fixed and accepts only a short, user-approved memory context.
+        sessionSocket.send(JSON.stringify({ setup: {}, memory_context: String(memoryContext || "").slice(0, 1400) }));
+        setStatus(memoryContext ? "Sending your selected memory context securely to Gemini and setting up your conversation…" : "Connected to the relay. Setting up your conversation…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
             stopConversation(true);

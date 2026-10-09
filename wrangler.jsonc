@@ -7,11 +7,19 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": true
   },
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": [
+      "17 3 * * *"
+    ]
+  },
   "vars": {
-    "APP_VERSION": "0.3.1",
+    "APP_VERSION": "0.4.0",
+    "ADMIN_DASHBOARD_USER": "admin",
     "ENVIRONMENT": "production",
     "GEMINI_MODEL": "gemini-3.8-live",
     "GEMINI_LOCATION": "us-central1",
@@ -24,9 +32,19 @@
     "ANALYTICS_RAW_RETENTION_DAYS": "30"
   },
   "durable_objects": {
-    "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]
+    "bindings": [
+      {
+        "name": "USER_STATE",
+        "class_name": "UserState"
+      }
+    ]
   },
-  "exports": { "UserState": { "type": "durable-object", "storage": "sqlite" } },
+  "exports": {
+    "UserState": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -35,7 +53,12 @@
     }
   ],
   "queues": {
-    "producers": [{ "binding": "BACKGROUND_QUEUE", "queue": "askmoina-background-prod" }],
+    "producers": [
+      {
+        "binding": "BACKGROUND_QUEUE",
+        "queue": "askmoina-background-prod"
+      }
+    ],
     "consumers": [
       {
         "queue": "askmoina-background-prod",
@@ -47,5 +70,44 @@
         "max_concurrency": 10
       }
     ]
+  },
+  "previews": {
+    "vars": {
+      "APP_VERSION": "0.4.0-preview",
+      "ADMIN_DASHBOARD_USER": "admin",
+      "ENVIRONMENT": "preview",
+      "GEMINI_MODEL": "gemini-3.8-live",
+      "GEMINI_LOCATION": "us-central1",
+      "GCP_PROJECT_ID": "preview-not-configured",
+      "MAX_LIVE_SESSION_SECONDS": "540",
+      "MAX_DAILY_SESSION_SECONDS": "1800",
+      "MAX_CONCURRENT_SESSIONS_PER_USER": "1",
+      "MAX_GLOBAL_DAILY_SESSION_SECONDS": "3600",
+      "MAX_GLOBAL_CONCURRENT_SESSIONS": "5",
+      "ANALYTICS_RAW_RETENTION_DAYS": "7"
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "askmoina-preview",
+        "database_id": "43673f49-e099-46a5-b35b-e975a6f4984c"
+      }
+    ],
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "USER_STATE",
+          "class_name": "UserState"
+        }
+      ]
+    },
+    "queues": {
+      "producers": [
+        {
+          "binding": "BACKGROUND_QUEUE",
+          "queue": "askmoina-background-preview"
+        }
+      ]
+    }
   }
 }
