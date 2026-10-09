@@ -1,1 +1,55 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1222"><meta name="description" content="AskMoina — a voice-first AI companion for Assam."><title>AskMoina — Your voice, your language</title><link rel="stylesheet" href="/styles.css"></head><body><main class="shell"><header class="brand"><span class="brand-mark">m</span><span>AskMoina</span></header><section class="hero"><div class="orb-wrap" aria-hidden="true"><div class="orb"></div><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div></div><p class="eyebrow">A new kind of conversation</p><h1>Your voice.<br><span>Your language.</span></h1><p class="intro">A voice-first AI companion for Assam, starting with Upper Assam.</p><p class="status" id="status" role="status">The voice experience is coming soon.</p><button type="button" disabled>Voice conversations coming soon</button><p class="note">This preview does not access your microphone or start an AI conversation.</p></section><footer>Built for Assam · Privacy by design</footer></main><script src="/app.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1222">
+  <meta name="description" content="AskMoina — a voice-first AI companion for Assam.">
+  <title>AskMoina — Your voice, your language</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true">m</span>
+      <span>AskMoina</span>
+      <span class="brand-location">Made for Assam</span>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="orb-wrap" aria-hidden="true">
+        <div class="orb"></div>
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+      </div>
+      <p class="eyebrow">A new kind of conversation</p>
+      <h1 id="hero-title">Your voice.<br><span>Your language.</span></h1>
+      <p class="intro">A voice-first AI companion for Assam, starting with Upper Assam.</p>
+
+      <p class="status" id="status" role="status" aria-live="polite">Ready when you are.</p>
+      <button type="button" id="toggleVoice" class="voice-button">
+        <span class="button-icon" aria-hidden="true">●</span>
+        <span id="buttonLabel">Start talking</span>
+      </button>
+
+      <p class="note" id="privacyNote">
+        When you start, your microphone audio is streamed to Google Cloud Vertex AI to generate replies.
+        AskMoina does not save raw audio in this app. Use a quiet, private place for sensitive conversations.
+      </p>
+
+      <section class="conversation" aria-label="Conversation transcript">
+        <div class="conversation-heading">
+          <span>Conversation</span>
+          <button type="button" id="clearTranscript" class="clear-button">Clear</button>
+        </div>
+        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text">
+          <p class="empty-transcript" id="emptyTranscript">Your conversation will appear here when you speak.</p>
+        </div>
+      </section>
+    </section>
+
+    <footer>Built for Assam · Audio is processed live, not recorded by AskMoina</footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
