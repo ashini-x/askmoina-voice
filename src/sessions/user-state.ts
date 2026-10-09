@@ -4,7 +4,6 @@ interface VoiceSession {
   startedAt: number;
   reservedSeconds: number;
   usageDate: string;
-  bypassDailyLimit?: boolean;
 }
 
 interface GuardRecord {
@@ -64,7 +63,6 @@ export class UserState {
         maxDailySeconds?: number;
         maxConcurrentSessions?: number;
         enforceRateLimit?: boolean;
-        bypassDailyLimit?: boolean;
       };
       try {
         input = (await request.json()) as typeof input;
@@ -88,9 +86,7 @@ export class UserState {
         const staleAt = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
         return now <= staleAt;
       }).length;
-      const dailySecondsRemaining = input.bypassDailyLimit
-        ? Number.MAX_SAFE_INTEGER
-        : Math.max(0, maxDailySeconds - (sameDay ? record.dailySeconds : 0));
+      const dailySecondsRemaining = Math.max(0, maxDailySeconds - (sameDay ? record.dailySeconds : 0));
       const requestsRemaining = input.enforceRateLimit
         ? Math.max(0, IP_REQUESTS_PER_MINUTE - currentRequestCount)
         : null;
@@ -109,7 +105,7 @@ export class UserState {
         retryAfterSeconds,
         rateLimited,
         concurrencyLimited: activeSessions >= maxConcurrentSessions,
-        dailyLimitReached: !input.bypassDailyLimit && dailySecondsRemaining <= 0,
+        dailyLimitReached: dailySecondsRemaining <= 0,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -121,7 +117,6 @@ export class UserState {
         maxDailySeconds?: number;
         maxConcurrentSessions?: number;
         enforceRateLimit?: boolean;
-        bypassDailyLimit?: boolean;
       };
       try {
         input = (await request.json()) as typeof input;
@@ -179,21 +174,18 @@ export class UserState {
           return { allowed: false, reason: "concurrent_session_limit" as const };
         }
 
-        if (!input.bypassDailyLimit && record.dailySeconds >= maxDailySeconds) {
+        if (record.dailySeconds >= maxDailySeconds) {
           await transaction.put(STORAGE_KEY, record);
           return { allowed: false, reason: "daily_session_limit" as const };
         }
 
-        const reservedSeconds = input.bypassDailyLimit
-          ? maxSessionSeconds
-          : Math.min(maxSessionSeconds, maxDailySeconds - record.dailySeconds);
+        const reservedSeconds = Math.min(maxSessionSeconds, maxDailySeconds - record.dailySeconds);
         record.sessions[sessionId] = {
           startedAt: now,
           reservedSeconds,
           usageDate: currentDate,
-          bypassDailyLimit: input.bypassDailyLimit === true,
         };
-        if (!input.bypassDailyLimit) record.dailySeconds += reservedSeconds;
+        record.dailySeconds += reservedSeconds;
         await transaction.put(STORAGE_KEY, record);
         return { allowed: true, reason: "reserved" as const, reservedSeconds };
       });
@@ -220,7 +212,7 @@ export class UserState {
         if (!record || !session) return;
 
         delete record.sessions[input.sessionId!];
-        if (record.usageDate === session.usageDate && !session.bypassDailyLimit) {
+        if (record.usageDate === session.usageDate) {
           const elapsed = Math.min(
             session.reservedSeconds,
             Math.max(0, Math.ceil((now - session.startedAt) / 1_000)),
