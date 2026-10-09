@@ -24,3 +24,43 @@ jobs:
           name: askmoina-worker-bundle
           path: dist/
           if-no-files-found: error
+
+      - name: Production smoke test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+        run: |
+          set -eu
+          fetch_status() {
+            curl --silent --show-error --max-time 25 --output "$2" --write-out "%{http_code}" "$BASE_URL$1"
+          }
+          status="$(fetch_status /api/health /tmp/moina-health.json)"
+          test "$status" = "200"
+          grep -q '"ok":true' /tmp/moina-health.json
+          grep -q '"app":"askmoina-voice"' /tmp/moina-health.json
+          echo "Health endpoint: OK"
+
+          status="$(fetch_status /vault /tmp/moina-vault.html)"
+          test "$status" = "200"
+          grep -q 'Your memories' /tmp/moina-vault.html
+          grep -q 'recovery code' /tmp/moina-vault.html
+          echo "Memory Vault page: OK"
+
+          status="$(fetch_status /vault.js /tmp/moina-vault.js)"
+          test "$status" = "200"
+          grep -q 'PBKDF2-SHA-256' /tmp/moina-vault.js
+          node --check /tmp/moina-vault.js
+          echo "Vault client JavaScript: OK"
+
+          status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
+          test "$status" = "200"
+          grep -q 'AskMoina Admin' /tmp/moina-admin-login.html
+          echo "Admin login page: OK"
+
+          status="$(fetch_status /admin /tmp/moina-admin.html)"
+          test "$status" = "302"
+          echo "Unauthenticated admin redirect: OK"
+
+          status="$(fetch_status /admin/api/overview /tmp/moina-admin-api.json)"
+          test "$status" = "401"
+          echo "Unauthenticated admin API denied: OK"
