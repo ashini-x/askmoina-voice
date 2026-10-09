@@ -1,45 +1,52 @@
 # AskMoina Voice
 
-A voice-first AI companion for Assam, starting with Upper Assam. Built on Cloudflare Workers and Google Cloud Vertex AI Gemini Live.
+AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers and Google Cloud Vertex AI Gemini Live.
 
-## Project status
+## Current capabilities
 
-**Voice prototype.** The Worker uses server-side Google service-account OAuth and proxies a WebSocket to Gemini Live on Vertex AI. The browser now captures microphone audio, streams 16 kHz PCM, plays 24 kHz PCM responses, and displays available text transcripts. Real-device end-to-end verification, improved audio worklet/resampling, reconnection/resumption, and public-beta abuse controls remain before broad launch.
+- Browser-based live voice with microphone permission, 16 kHz PCM input and streamed audio replies.
+- A local-first Memory Vault at `/vault`: user-entered notes are encrypted in the browser using Web Crypto AES-GCM before they are stored in IndexedDB.
+- Optional encrypted cloud backups. The Worker stores ciphertext, salt, IV and key-derivation metadata; it never receives the vault decryption key or plaintext memories.
+- Optional `Use these memories in AskMoina on this browser tab`. Only selected notes are passed to Gemini at the start of the next voice session after explicit user opt-in.
+- A protected operations dashboard at `/admin`, with aggregate visitor/session metrics and recent session outcomes. It does not expose memory contents, transcripts or audio.
+- Pseudonymous per-browser visitor IDs and operational session telemetry without storing raw audio or conversation text in the app database.
+
+## Memory Vault security boundary
+
+**Vault backups are end-to-end encrypted storage; the entire live voice session is not end-to-end encrypted.** Voice audio is processed by Google Cloud Vertex AI. If a user explicitly enables context in AskMoina, selected memory text is sent to Gemini to personalise that session. The service provider therefore sees the audio and selected context needed to provide the service, subject to its processing and retention terms.
+
+Vault encryption uses AES-GCM-256, a random 256-bit recovery code, PBKDF2-SHA-256 (600,000 iterations), a random salt and IV, and authenticated additional data bound to the vault ID. The recovery code is generated on the device and is not uploaded. Cloud backup authorisation is derived by hashing the recovery code; the API never accepts the code in a URL. Store the recovery kit safely: AskMoina cannot recover a lost code.
+
+Memory notes are entered and managed by the user in this release. Automatic extraction of memories from speech is not enabled. On-device encryption does not protect unlocked data from a compromised browser/device or malicious same-origin JavaScript. The optional browser-unlock key is stored only in that browser's IndexedDB and should only be enabled on a trusted device.
 
 ## Architecture and security controls
 
-- Google Cloud Vertex AI Gemini Live is billed to the configured Google Cloud project, subject to that project's billing and credit eligibility.
-- The service-account JSON is a Cloudflare Worker Secret named `GCP_SERVICE_ACCOUNT_JSON`; it never belongs in Git or browser code.
-- The Worker pins the model and system instruction instead of trusting browser-supplied setup.
-- Browser connections must use the exact same origin as the Worker.
-- Durable Objects enforce a five connection attempts/minute limit per IP, one active session per IP, a per-IP daily session budget, and a global daily session budget.
-- Initial beta defaults: at most 540 seconds per session, 1,800 seconds/day per IP, 3,600 seconds/day globally, and 5 concurrent global sessions. These are app-level limits, not Google Cloud billing hard caps.
-- IPs are SHA-256 hashed before they are used as Durable Object identifiers. Raw audio is not stored by default.
-- Cloudflare Queues handle only asynchronous work; live audio frames never go through a Queue.
+- Google service-account credentials are stored only as Cloudflare Worker Secrets. Never place secrets in Git or browser code.
+- The Worker pins the model and base system instruction; browser clients cannot select a model.
+- WebSocket browser connections must use the exact same origin as the Worker.
+- Durable Objects enforce connection-attempt, session-duration, per-IP daily usage and global capacity limits. The IP hash is used for abuse controls, not personal identity.
+- The anonymous continuity cookie uses a random token; only its SHA-256 hash is used as the server-side pseudonymous visitor ID.
+- D1 stores operational metadata and encrypted vault backups, not decrypted memory notes, microphone recordings or transcript archives.
+- The admin dashboard uses HMAC-signed, 12-hour HttpOnly/Secure/SameSite cookies and a login throttle. Configure `ADMIN_DASHBOARD_PASSWORD` as a Worker Secret before using it.
+- Configure Cloudflare Access in front of `/admin*` as an additional protection where practical.
+- App-level usage limits are not Google Cloud billing hard caps. Use Google Cloud budgets and billing reports for actual spend.
+- Raw audio and transcripts are not saved by default.
 
-## Runtime configuration
+## Build, tests and deployment
 
-Non-secret Worker variables in `wrangler.jsonc` include `GCP_PROJECT_ID`, `GEMINI_LOCATION`, `GEMINI_MODEL`, and the session limits.
+Recommended validation:
 
-One Cloudflare Worker Secret is needed to use the existing JSON key:
+- `npm run check`
+- `node --check public/app.js`
+- `npm test`
 
-- `GCP_SERVICE_ACCOUNT_JSON`: the full service-account JSON contents.
+Apply migrations in order (including `migrations/0002_continuity_vault.sql`) to local/preview databases. Production already has the continuity/vault tables provisioned; verify schemas before applying a migration.
 
-The account must already have permission to invoke Vertex AI, and the Vertex AI API must be enabled in the Google Cloud project. No additional Google Cloud resources are required by this application code.
+## Important limitations
 
-## Production caveat
-
-Cloudflare app limits reduce exposure but cannot make a long-lived service-account key risk-free. They are also not a Google Cloud billing hard cap. Do not treat a successful `/api/health` response as proof that audio works. Test browser microphone capture, playback, interruption, errors, and session limits before public launch. Add a human-verification control such as Turnstile before opening anonymous access broadly.
-
-## Deployment
-
-Cloudflare Workers Builds should connect to `main`. Recommended commands:
-
-- Build: `npm run check && npm test`
-- Deploy: `npm run deploy`
-
-## Security
-
-Never commit service-account JSON/private keys, API keys, Cloudflare tokens, local `.dev.vars`, passwords, production database exports, raw user conversations, or private logs. Use Cloudflare Worker secrets for runtime credentials.
+- Browser identity is profile-level, not verified human identity. Clearing cookies/local browser data can break continuity; the recovery kit protects the vault backup, not account identity.
+- Optional encrypted backup sync is manual and revision-checked to avoid silent overwrites; this first release is not an automatic multi-device merge system.
+- Admin costs are not inferred from session duration. Use Google Cloud billing as the source of actual spend.
+- Real device/mobile acceptance, a security review of the cryptographic lifecycle and the AI provider data-flow/retention configuration are required before making high-assurance privacy claims or opening access broadly.
 
 See `docs/ARCHITECTURE.md`, `docs/SECURITY_MODEL.md`, `docs/PRIVACY.md`, and `docs/RELEASE_PROCESS.md`.
