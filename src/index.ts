@@ -11,7 +11,7 @@ const SYSTEM_INSTRUCTION =
 // Temporary tester mode: daily voice quotas are bypassed until this fixed expiry.
 // Per-session duration, active-session limits, connection-attempt limits, and audio
 // rate protection remain enforced. Remove this constant after the testing window.
-const TESTING_WINDOW_END_MS = Date.parse("2026-10-10T09:43:22.488Z");
+const TESTING_WINDOW_END_MS = Date.parse("2026-10-10T10:56:24.325Z");
 function isUnlimitedTestingWindow(now = Date.now()): boolean {
   return now < TESTING_WINDOW_END_MS;
 }
