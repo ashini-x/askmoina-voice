@@ -17,7 +17,8 @@
 ## What is actually implemented in this prototype
 
 - A Cloudflare D1 table called `assamese_pronunciation_rules`, with source title/URL, dialect and position scope, evidence status, priority, and an explicit `native_verified` flag.
-- A small seed of five rules: the Assamese /x/ baseline associated with শ/ষ/স; published examples of word-initial /x/ → [h] and medial/final /x/ → [kʰ] in a particular Eastern Assamese variety; a guard against extending these variants universally; and two controls for English code-switching and inconsistent Romanized Assamese.
+- A small seed of six rules: the Assamese /x/ baseline associated with শ/ষ/স; published examples of word-initial /x/ → [h] and medial/final /x/ → [kʰ] in a particular Eastern Assamese variety; a guard against extending these variants universally; controls for English code-switching and inconsistent Romanized Assamese; and a narrowly scoped listener-reported target for সৰু (“small”) closer to “horu”. The latter is a product preference for this word, not independent evidence of a community-wide dialect norm.
+- [Wiktionary’s Assamese entry for সৰু](https://en.wiktionary.org/wiki/%E0%A6%B8%E0%A7%B0%E0%A7%81) lists /xɔ.ɹu/ and “xoru”; “horu” is retained here only as the listener-reported target for this product’s preferred Upper Assam style, not as a claim about standard Assamese pronunciation.
 - At session setup, AskMoina appends a bounded excerpt of enabled rules to the existing Gemini Live system instruction. The lookup fails open: if the D1 migration is missing or the query fails, the existing voice session can still start.
 - The seeded items intentionally have `native_verified = 0`. This is a research-grounded starting point, not a declaration that the exact variant is correct for every Upper Assam speaker.
 
@@ -32,7 +33,8 @@ The automated synthetic tests cover eight rule behaviours:
 5. The paper's reported medial/final [kʰ] examples stay source-attributed and not universal.
 6. English /s/ in words such as “study”, “system” and “seriously” is a negative control.
 7. Romanized Assamese must be interpreted by word identity and context, not raw letter substitution.
-8. The system must disclose in its instructions that the seeded rules are not yet locally verified.
+8. The listener-reported “horu” target applies only to the exact Assamese word সৰু (“small”) and is not represented as a universal dialect claim.
+9. The system must distinguish unverified seed hypotheses from a directly reported word-specific product preference.
 
 These tests evaluate database retrieval, prompt assembly, guardrails and graceful fallback. **They do not test a waveform, do not call Gemini Live, and cannot demonstrate an audible pronunciation improvement.** A real acoustic result needs target-dialect reference recordings and native-speaker listening/scoring (or a validated phonetic analysis), not just a successful deployment.
 
