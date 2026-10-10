@@ -25,20 +25,21 @@ MODEL_LITE = "gemini-3.8-flash-lite-tts"
 VOICE_DESIGNS = [
     {
         "key": "A",
-        "display_name": "Moina Boy Voice A - Sweet Bright",
+        "display_name": "Moina Acoustic Voice A - Full Prompt",
         "prompt": (
-            "A youthful male voice with a sweet, clear, naturally high pitch. "
-            "Bright, friendly and curious, speaking casually in Assamese with an Upper "
-            "Assam cadence where possible."
+            "Acoustic profile: High-pitched, exceptionally bright, and light vocal "
+            "resonance with a small vocal tract. The tone must be inherently sweet, "
+            "crisp, and soft, carrying a gentle, airy breathiness. Crisp and clear output, "
+            "completely free of vocal fry, deep resonance, or gravelly undertones. "
+            "High-clarity, warm, and comforting acoustic signature."
         ),
     },
     {
         "key": "B",
-        "display_name": "Moina Boy Voice B - Sparkly Warm",
+        "display_name": "Moina Acoustic Voice B - Ultra Short",
         "prompt": (
-            "A youthful male voice with a soft, sweet, sparkling high register and a "
-            "warm rounded tone. Playful and friendly, speaking clearly and naturally in "
-            "conversational Assamese with an Upper Assam cadence if supported."
+            "High-pitched, bright formant resonance, small vocal tract acoustic profile, "
+            "sweet-toned, crisp, soft, airy breathiness, warm and comforting tone."
         ),
     },
 ]
