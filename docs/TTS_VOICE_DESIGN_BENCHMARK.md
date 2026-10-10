@@ -22,11 +22,11 @@ The two voices are created with `store=true` and remain in the Google Cloud proj
 
 ## Run safely
 
-The isolated GitHub Actions workflow runs only on this experiment branch. It requires:
-- A repository Actions secret named `GCP_SERVICE_ACCOUNT_JSON` containing a service-account JSON key with the required Vertex AI / Gemini Enterprise permissions.
-- A repository Actions variable named `GCP_PROJECT_ID` matching the same project.
+The isolated GitHub Actions workflow is configured to run on pushes to `experiment/vertex-tts-voice-design-benchmark`. Its `workflow_dispatch` option is also declared, but GitHub only exposes manual dispatch when the workflow file is present on the repository's default branch. We intentionally keep this experiment off the production branch, so a new commit to the experiment branch is the safe trigger; do not merge it into production just to expose the manual button.
 
-The existing Cloudflare Worker secret cannot be read back into GitHub Actions. If the Actions secret is absent, the workflow stops before making Google API calls. Do not paste a private key into repository files, workflow logs, issues, or chat.
+The workflow requires a repository Actions secret named `GCP_SERVICE_ACCOUNT_JSON` containing a service-account JSON key with the required Vertex AI / Gemini Enterprise permissions. It reads `GCP_PROJECT_ID` from the checked-in `wrangler.jsonc` configuration for this isolated benchmark. The existing Cloudflare Worker secret cannot be read back into GitHub Actions. If the Actions secret is absent, the workflow stops before making Google API calls.
+
+**Credential warning:** the repository is public. Prefer a dedicated least-privilege test service account, rather than the production key, for repeat experiments. Never paste a private key into repository files, workflow logs, issues, or chat. After a one-off test using a production key, remove the GitHub Actions secret and rotate the key if its exposure scope is no longer acceptable.
 
 Alternatively, run `scripts/tts-voice-design-benchmark.py` locally in a Python environment already authenticated to the intended Google Cloud project (Application Default Credentials), with `GCP_PROJECT_ID` set and `google-genai>=2.25.0` installed.
 
