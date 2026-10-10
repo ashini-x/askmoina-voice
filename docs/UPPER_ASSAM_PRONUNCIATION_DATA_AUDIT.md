@@ -8,6 +8,7 @@
 | Source | Public licence / access | Upper Assam coverage | Decision |
 | --- | --- | --- | --- |
 | [AI4Bharat IndicVoices](https://huggingface.co/datasets/ai4bharat/IndicVoices) | CC BY 4.0; Hugging Face requires an account and agreement to share contact information before dataset-file access. | The Assamese configuration exposes district, state and area metadata, so a subset may be filterable after access. The public card does not establish how many records are from Dibrugarh, Sivasagar, Jorhat or other Upper Assam districts. | Best next audio-corpus candidate. Not imported in this change because gated access has not been accepted and the regional sample counts have not been measured. The overall corpus is large, so start with a metadata-only district count and a small permitted sample. |
+| [Mozilla Common Voice Assamese 27.0](https://mozilladatacollective.com/datasets/cmu61bhou00kxnq07tr6u5lta) | CC0-1.0; latest listing is 160.7 MB and prohibits re-hosting/re-sharing the dataset or identifying speakers. | The public datasheet reports 4,739 clips (7.69 hours), 3.01 hours validated, and 53 speakers. The publicly displayed sheet does not provide a usable district-level Upper Assam subset; declared accent metadata is sparse. | Best unrestricted general Assamese speech reference we found for a small local evaluation only, subject to its terms. It is **not** an Upper Assam pronunciation ground truth and was not bundled or re-hosted here. |
 | [AI4Bharat Rasa expressive TTS dataset](https://huggingface.co/datasets/ai4bharat/Rasa) | CC BY 4.0; dataset files are gated behind sharing contact information. | Public card reports about 29 hours each for Assamese female and male speaker groups, but does not show Upper Assam district labels. It is an expressive TTS dataset, not an identified Upper Assam lexicon. | Potential later baseline for Assamese audio/model research; not evidence of a local accent and not used as if it were Upper Assam data. |
 | [Upper Assam Assamese dialect-classifier model card](https://huggingface.co/dipankar53/assamese_dialect_classifier_model) | Model card declares MIT licence. It describes a classifier trained on 300 speech samples and lists Upper Assam among four dialect labels. | Region label is explicitly included in the task, but the model card is not a word-pronunciation dictionary and does not itself establish that the underlying 300 audio samples are downloadable and licensed for redistribution. | Useful research lead for future dialect auditing, not a pronunciation database and not imported into the Worker. |
 | Appen Assamese Pronunciation Dictionary | The catalogue advertises an approximately 40,000-word resource, but a free redistribution licence was not established in this review. | Public catalogue information does not establish that it is Upper Assam-specific. | Excluded from the “free and reusable” seed. Revisit only if the licence and dialect metadata are clear. |
@@ -16,21 +17,22 @@
 ## What is actually implemented in this prototype
 
 - A Cloudflare D1 table called `assamese_pronunciation_rules`, with source title/URL, dialect and position scope, evidence status, priority, and an explicit `native_verified` flag.
-- A small seed of five rules: the Assamese /x/ baseline associated with শ/ষ/স; a documented but conditional word-initial /x/ → [h] regional variant; a guard against extending that variant to every position; and two controls for English code-switching and inconsistent Romanized Assamese.
+- A small seed of five rules: the Assamese /x/ baseline associated with শ/ষ/স; published examples of word-initial /x/ → [h] and medial/final /x/ → [kʰ] in a particular Eastern Assamese variety; a guard against extending these variants universally; and two controls for English code-switching and inconsistent Romanized Assamese.
 - At session setup, AskMoina appends a bounded excerpt of enabled rules to the existing Gemini Live system instruction. The lookup fails open: if the D1 migration is missing or the query fails, the existing voice session can still start.
 - The seeded items intentionally have `native_verified = 0`. This is a research-grounded starting point, not a declaration that the exact variant is correct for every Upper Assam speaker.
 
 ## Synthetic test design and result interpretation
 
-The automated synthetic tests cover seven rule behaviours:
+The automated synthetic tests cover eight rule behaviours:
 
 1. Assamese-native শ/ষ/স should not default to English /s/.
 2. Word-initial [h] is permitted as a conditional regional variant.
 3. The published /xɔdai/ → [hɔdai] example must not be treated as universal.
 4. The initial [h] pattern must not be globalized to every word position.
-5. English /s/ in words such as “study”, “system” and “seriously” is a negative control.
-6. Romanized Assamese must be interpreted by word identity and context, not raw letter substitution.
-7. The system must disclose in its instructions that the seeded rules are not yet locally verified.
+5. The paper's reported medial/final [kʰ] examples stay source-attributed and not universal.
+6. English /s/ in words such as “study”, “system” and “seriously” is a negative control.
+7. Romanized Assamese must be interpreted by word identity and context, not raw letter substitution.
+8. The system must disclose in its instructions that the seeded rules are not yet locally verified.
 
 These tests evaluate database retrieval, prompt assembly, guardrails and graceful fallback. **They do not test a waveform, do not call Gemini Live, and cannot demonstrate an audible pronunciation improvement.** A real acoustic result needs target-dialect reference recordings and native-speaker listening/scoring (or a validated phonetic analysis), not just a successful deployment.
 

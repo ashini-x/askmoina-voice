@@ -56,8 +56,8 @@ VALUES
     'Do not generalize the initial [h] variant to every position',
     'Dialect- and speaker-dependent Assamese varieties',
     'medial, final and lexical exceptions',
-    'Realization of /x/ varies with word position, lexical item, region and speaker. Do not convert every /x/ to [h], and do not infer pronunciation from the Roman letter alone. When the word-specific Upper Assam realization is uncertain, keep the Assamese /x/ baseline rather than inventing a hard substitution.',
-    'A word-initial [h] example does not establish the pronunciation of medial or final /x/ in a different word.',
+    'Realization of /x/ varies with word position, lexical item, region and speaker. One published description of an Eastern Assamese variety reports /xɔdai/ → [hɔdai] (“every day”) word-initially, and /akax/ → [akakʰ] (“sky”) plus /ɔxɔm/ → [ɔkʰɔm] (“Assam”) for medial/final positions in its examples. Treat these as source-reported candidate variants only, not a universal rule and not automatically the verified preference of Upper Assam speakers. Never convert every /x/ to [h] or infer pronunciation from a Roman letter alone.',
+    'Published Eastern-variety examples: /xɔdai/ → [hɔdai], /akax/ → [akakʰ], /ɔxɔm/ → [ɔkʰɔm]. These are not yet Upper Assam native-verified.',
     'Das and Deka, The Allophonic Variation of the Assamese Voiceless Velar Fricative /x/ (ICOSAL 13, 2018)',
     'https://www.academia.edu/35777293/The_Allophonic_Variation_of_the_Assamese_voiceless_velar_fricative_x',
     'published_regional_hypothesis',
@@ -93,3 +93,10 @@ VALUES
     1,
     50
   );
+
+UPDATE assamese_pronunciation_rules
+SET guidance = 'Realization of /x/ varies with word position, lexical item, region and speaker. One published description of an Eastern Assamese variety reports /xɔdai/ → [hɔdai] (“every day”) word-initially, and /akax/ → [akakʰ] (“sky”) plus /ɔxɔm/ → [ɔkʰɔm] (“Assam”) for medial/final positions in its examples. Treat these as source-reported candidate variants only, not a universal rule and not automatically the verified preference of Upper Assam speakers. Never convert every /x/ to [h] or infer pronunciation from a Roman letter alone.',
+    examples = 'Published Eastern-variety examples: /xɔdai/ → [hɔdai], /akax/ → [akakʰ], /ɔxɔm/ → [ɔkʰɔm]. These are not yet Upper Assam native-verified.',
+    updated_at = CURRENT_TIMESTAMP
+WHERE rule_id = 'assamese-x-position-guardrail';
+

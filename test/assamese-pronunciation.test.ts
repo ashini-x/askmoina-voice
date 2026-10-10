@@ -32,8 +32,8 @@ const syntheticRules: AssamesePronunciationRuleRow[] = [
     title: "Do not generalize the initial [h] variant to every position",
     dialect_scope: "Dialect- and speaker-dependent Assamese varieties",
     position_scope: "medial, final and lexical exceptions",
-    guidance: "Realization of /x/ varies with word position, lexical item, region and speaker. Do not convert every /x/ to [h], and do not infer pronunciation from the Roman letter alone.",
-    examples: "A word-initial [h] example does not establish the pronunciation of medial or final /x/ in a different word.",
+    guidance: "Realization of /x/ varies with word position, lexical item, region and speaker. One published Eastern Assamese description reports /akax/ → [akakʰ] and /ɔxɔm/ → [ɔkʰɔm] for particular examples. These are not universal or Upper Assam native-verified. Do not convert every /x/ to [h].",
+    examples: "Published Eastern-variety examples: /xɔdai/ → [hɔdai], /akax/ → [akakʰ], /ɔxɔm/ → [ɔkʰɔm]. These are not yet Upper Assam native-verified.",
     source_title: "Das and Deka, The Allophonic Variation of the Assamese Voiceless Velar Fricative /x/",
     evidence_status: "published_regional_hypothesis",
     native_verified: 0,
@@ -94,6 +94,10 @@ const syntheticCases = [
     expected: "Do not generalize the initial [h] variant to every position",
   },
   {
+    name: "published medial/final variants remain attributed candidate examples, not a universal rule",
+    expected: "/akax/ → [akakʰ]",
+  },
+  {
     name: "English /s/ remains intact inside Assamese-English code-switching",
     expected: "Never change each Roman “s” to “h”",
   },
@@ -114,6 +118,7 @@ describe("AskMoina Upper Assam pronunciation reference", () => {
     expect(prompt.length).toBeLessThanOrEqual(4_000);
     expect(prompt).toContain("source-attributed rule database");
     expect(prompt).toContain("native-speaker-verified");
+    expect(prompt).toContain("not a universal rule");
   });
 
   for (const testCase of syntheticCases) {
