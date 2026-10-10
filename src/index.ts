@@ -14,6 +14,37 @@ export { UserState } from "./sessions/user-state";
 
 const providerFrameDecoder = new TextDecoder();
 
+const COPILOT_SYSTEM_INSTRUCTION = [
+  "You are Moina's live camera co-pilot for Assamese-speaking users.",
+  "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
+  "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
+  "When you have identified a useful visual target or a next step worth highlighting, call display_screen_overlay with a concise label, one safe next-step instruction, a brief target hint, and the approximate screen region.",
+  "Screen regions are rough screen-space hints, not calibrated coordinates. Never claim the marker is physically anchored to the object. If the target is ambiguous, ask the user to point more steadily or move closer rather than guessing.",
+  "For troubleshooting, guide one step at a time and wait for the user to confirm before proceeding. Do not advise users to open live electrical equipment, handle gas leaks, bypass safety systems, or perform other hazardous repairs; recommend a qualified professional when appropriate.",
+  "Do not claim to have changed a device setting, purchased an item, or executed an external action unless a real approved tool confirms it. The overlay tool only displays a label on screen."
+].join("\n");
+
+const COPILOT_TOOL = {
+  functionDeclarations: [{
+    name: "display_screen_overlay",
+    description: "Display a concise on-screen focus label and next-step hint over the live camera preview. Use only when a visible target or step is relevant. The screen region is approximate, not a measured object coordinate.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        text_to_display: { type: "STRING", description: "Short label for the visual target, preferably under 50 characters." },
+        instruction: { type: "STRING", description: "One brief and safe next-step instruction, under 160 characters." },
+        target_hint: { type: "STRING", description: "Short description of the visible object or component." },
+        screen_region: {
+          type: "STRING",
+          description: "Approximate screen region where the target appears in the most recent frame.",
+          enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
+        }
+      },
+      required: ["text_to_display", "instruction", "target_hint", "screen_region"]
+    }
+  }]
+};
+
 const json = (data: unknown, status = 200, extraHeaders?: HeadersInit): Response => {
   const headers = new Headers({ "Cache-Control": "no-store" });
   if (extraHeaders) new Headers(extraHeaders).forEach((value, key) => headers.set(key, value));
@@ -444,12 +475,15 @@ async function handleVoiceSocket(
   let setupForwarded = false;
   let setupInitializing = false;
   let setupCompleteReceived = false;
+  let copilotMode = false;
+  let lastVideoFrameAt = 0;
   let closed = false;
   let inputWindowStart = Date.now();
   let inputFrameCount = 0;
   let inputBytesInWindow = 0;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
   const MAX_AUDIO_BASE64_CHARS = 12_000;
+  const MAX_VIDEO_BASE64_CHARS = 12_000;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
   // Network and browser audio callbacks can arrive in short bursts. Keep the
@@ -521,10 +555,10 @@ async function handleVoiceSocket(
       }
       setupInitializing = true;
       try {
-        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown };
-        const allowedKeys = ["setup", "memory_context"];
+        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
+        const allowedKeys = ["setup", "memory_context", "copilot_mode"];
         const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
-        if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string")) {
+        if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string") || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
@@ -532,12 +566,18 @@ async function handleVoiceSocket(
 const baseInstruction = pronunciationGuidance
   ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
   : SYSTEM_INSTRUCTION;
-const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, memoryContext);
+const copilotMode = message.copilot_mode === true;
+const systemInstruction = buildPersonalizedSystemInstruction(
+  copilotMode ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}` : baseInstruction,
+  memoryContext,
+);
+        copilotMode = message.copilot_mode === true;
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: voicePreviewRequested
             ? buildVoiceGenerationConfig(requestedPreviewVoice)
             : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
+          tools: copilotMode ? [COPILOT_TOOL] : undefined,
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -552,51 +592,100 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
     }
 
     try {
-      const message = JSON.parse(event.data) as {
-        realtime_input?: {
-          audio?: { data?: unknown; mime_type?: unknown };
-          audio_stream_end?: unknown;
-          [key: string]: unknown;
-        };
-        [key: string]: unknown;
-      };
-
-      if (
-        !message ||
-        typeof message !== "object" ||
-        Object.keys(message).length !== 1 ||
-        !message.realtime_input ||
-        typeof message.realtime_input !== "object" ||
-        Array.isArray(message.realtime_input) ||
-        Object.keys(message.realtime_input).length !== 1
-      ) {
-        closeBoth(1008, "Only realtime audio input is allowed");
+      const message = JSON.parse(event.data) as Record<string, unknown>;
+      if (!message || typeof message !== "object" || Array.isArray(message)) {
+        closeBoth(1008, "Invalid client message");
         return;
       }
 
-      const realtimeInput = message.realtime_input;
+      if (Object.keys(message).length === 1 && message.tool_response && typeof message.tool_response === "object") {
+        if (!copilotMode) {
+          closeBoth(1008, "Tool response not enabled");
+          return;
+        }
+        const toolResponse = message.tool_response as { function_responses?: unknown };
+        const rawResponses = toolResponse.function_responses;
+        if (!Array.isArray(rawResponses) || rawResponses.length < 1 || rawResponses.length > 4) {
+          closeBoth(1008, "Invalid tool response");
+          return;
+        }
+        const functionResponses = [];
+        for (const rawResponse of rawResponses) {
+          if (!rawResponse || typeof rawResponse !== "object" || Array.isArray(rawResponse)) {
+            closeBoth(1008, "Invalid tool response");
+            return;
+          }
+          const candidate = rawResponse as { id?: unknown; name?: unknown };
+          if (
+            Object.keys(candidate).some((key) => key !== "id" && key !== "name") ||
+            typeof candidate.id !== "string" ||
+            candidate.id.length < 1 ||
+            candidate.id.length > 128 ||
+            /[\u0000-\u001f\u007f]/.test(candidate.id) ||
+            candidate.name !== "display_screen_overlay"
+          ) {
+            closeBoth(1008, "Invalid tool response");
+            return;
+          }
+          functionResponses.push({
+            id: candidate.id,
+            name: "display_screen_overlay",
+            response: { result: "The approximate overlay label was displayed to the user." },
+          });
+        }
+        upstreamSocket.send(JSON.stringify({ toolResponse: { functionResponses } }));
+        return;
+      }
+
+      if (
+        Object.keys(message).length !== 1 ||
+        !message.realtime_input ||
+        typeof message.realtime_input !== "object" ||
+        Array.isArray(message.realtime_input)
+      ) {
+        closeBoth(1008, "Only realtime audio or enabled copilot video input is allowed");
+        return;
+      }
+
+      const realtimeInput = message.realtime_input as Record<string, unknown>;
+      if (Object.keys(realtimeInput).length !== 1) {
+        closeBoth(1008, "Invalid realtime input");
+        return;
+      }
       if (realtimeInput.audio_stream_end === true) {
         upstreamSocket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
         return;
       }
 
-      const audio = realtimeInput.audio;
+      const isVideo = Object.prototype.hasOwnProperty.call(realtimeInput, "video");
+      const frame = isVideo ? realtimeInput.video : realtimeInput.audio;
+      if (!frame || typeof frame !== "object" || Array.isArray(frame)) {
+        closeBoth(1008, "Invalid realtime media frame");
+        return;
+      }
+
+      const media = frame as { data?: unknown; mime_type?: unknown };
+      const maxBase64Chars = isVideo ? MAX_VIDEO_BASE64_CHARS : MAX_AUDIO_BASE64_CHARS;
+      const expectedMimeType = isVideo ? "image/jpeg" : "audio/pcm;rate=16000";
       if (
-        !audio ||
-        typeof audio !== "object" ||
-        Array.isArray(audio) ||
-        Object.keys(audio).some((key) => key !== "data" && key !== "mime_type") ||
-        typeof audio.data !== "string" ||
-        audio.data.length < 4 ||
-        audio.data.length > MAX_AUDIO_BASE64_CHARS ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(audio.data) ||
-        audio.mime_type !== "audio/pcm;rate=16000"
+        (isVideo && !copilotMode) ||
+        Object.keys(media).some((key) => key !== "data" && key !== "mime_type") ||
+        typeof media.data !== "string" ||
+        media.data.length < 4 ||
+        media.data.length > maxBase64Chars ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(media.data) ||
+        media.mime_type !== expectedMimeType
       ) {
-        closeBoth(1008, "Invalid PCM audio frame");
+        closeBoth(1008, isVideo ? "Invalid copilot video frame" : "Invalid PCM audio frame");
         return;
       }
 
       const now = Date.now();
+      if (isVideo) {
+        // Gemini Live consumes video as individual frames; keep camera input near 1 FPS.
+        if (now - lastVideoFrameAt < 850) return;
+        lastVideoFrameAt = now;
+      }
       if (now - inputWindowStart >= 1_000 || now < inputWindowStart) {
         inputWindowStart = now;
         inputFrameCount = 0;
@@ -607,11 +696,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
       const frameRateAllowed = inputFrameBucket.consume(1, now);
       const byteRateAllowed = inputByteBucket.consume(event.data.length, now);
       if (!frameRateAllowed || !byteRateAllowed) {
-        console.warn("[AskMoina] Audio input sustained rate limit exceeded", JSON.stringify({
+        console.warn("[AskMoina] Live media input sustained rate limit exceeded", JSON.stringify({
           frameRateAllowed,
           byteRateAllowed,
           inputFrameCount,
           inputBytesInWindow,
+          isVideo,
           frameBudgetRemaining: Math.round(inputFrameBucket.remaining),
           byteBudgetRemaining: Math.round(inputByteBucket.remaining),
           lifetimeMs: now - upstreamStartedAt,
@@ -620,15 +710,25 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
         return;
       }
 
-      // Re-serialize the validated shape to avoid forwarding unknown client fields.
-      upstreamSocket.send(JSON.stringify({
-        realtimeInput: {
-          audio: {
-            data: audio.data,
-            mimeType: "audio/pcm;rate=16000",
+      if (isVideo) {
+        upstreamSocket.send(JSON.stringify({
+          realtimeInput: {
+            video: {
+              data: media.data,
+              mimeType: "image/jpeg",
+            },
           },
-        },
-      }));
+        }));
+      } else {
+        upstreamSocket.send(JSON.stringify({
+          realtimeInput: {
+            audio: {
+              data: media.data,
+              mimeType: "audio/pcm;rate=16000",
+            },
+          },
+        }));
+      }
     } catch {
       closeBoth(1008, "Invalid client message");
     }
