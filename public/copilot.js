@@ -1068,6 +1068,360 @@
     if (active || starting || socket) stopCopilot(false);
   });
 
+
+  const spatialArButton = $("#spatialArButton");
+  const spatialHud = $("#spatialHud");
+  const spatialStatus = $("#spatialStatus");
+  const placeSpatialAnchorButton = $("#placeSpatialAnchor");
+  const clearSpatialAnchorButton = $("#clearSpatialAnchor");
+  const exitSpatialArButton = $("#exitSpatialAr");
+
+  let spatialFeatureSupported = false;
+  let spatialSession = null;
+  let spatialGl = null;
+  let spatialRenderer = null;
+  let spatialHitSource = null;
+  let spatialViewerSpace = null;
+  let spatialReferenceSpace = null;
+  let spatialAnchor = null;
+  let spatialLatestHit = null;
+  let spatialPendingPlacement = false;
+  let spatialPlacing = false;
+  let spatialStatusMode = "";
+  let spatialLastStatusAt = 0;
+
+  async function checkSpatialArSupport() {
+    if (!navigator.xr || typeof navigator.xr.isSessionSupported !== "function") {
+      spatialArButton.hidden = true;
+      return;
+    }
+    try {
+      spatialFeatureSupported = await navigator.xr.isSessionSupported("immersive-ar");
+      spatialArButton.hidden = !spatialFeatureSupported;
+      spatialArButton.disabled = !spatialFeatureSupported;
+      if (spatialFeatureSupported) {
+        spatialArButton.title = "Experimental WebXR surface anchors; opening this pauses live voice";
+      }
+    } catch (_) {
+      spatialFeatureSupported = false;
+      spatialArButton.hidden = true;
+    }
+  }
+
+  function compileSpatialShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    if (!shader) throw new Error("Could not create the WebGL shader.");
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      const message = gl.getShaderInfoLog(shader) || "Shader compilation failed.";
+      gl.deleteShader(shader);
+      throw new Error(message);
+    }
+    return shader;
+  }
+
+  function createSpatialRenderer(gl) {
+    const vertexShader = compileSpatialShader(gl, gl.VERTEX_SHADER,
+      "attribute vec3 aPosition; uniform mat4 uModelView; uniform mat4 uProjection; void main(){ gl_Position = uProjection * uModelView * vec4(aPosition,1.0); }");
+    const fragmentShader = compileSpatialShader(gl, gl.FRAGMENT_SHADER,
+      "precision mediump float; uniform vec4 uColor; void main(){ gl_FragColor = uColor; }");
+    const program = gl.createProgram();
+    if (!program) throw new Error("Could not create the WebGL program.");
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      const message = gl.getProgramInfoLog(program) || "WebGL program linking failed.";
+      gl.deleteProgram(program);
+      throw new Error(message);
+    }
+    const position = gl.getAttribLocation(program, "aPosition");
+    const modelView = gl.getUniformLocation(program, "uModelView");
+    const projection = gl.getUniformLocation(program, "uProjection");
+    const color = gl.getUniformLocation(program, "uColor");
+    if (position < 0 || !modelView || !projection || !color) {
+      gl.deleteProgram(program);
+      throw new Error("WebGL spatial marker bindings are unavailable.");
+    }
+
+    function makeRing(radius) {
+      const vertices = [];
+      const segments = 48;
+      const lift = 0.006;
+      for (let i = 0; i < segments; i += 1) {
+        const a = Math.PI * 2 * i / segments;
+        const b = Math.PI * 2 * (i + 1) / segments;
+        vertices.push(Math.cos(a) * radius, lift, Math.sin(a) * radius);
+        vertices.push(Math.cos(b) * radius, lift, Math.sin(b) * radius);
+      }
+      const cross = radius * 0.45;
+      vertices.push(-cross, lift, 0, cross, lift, 0, 0, lift, -cross, 0, lift, cross);
+      const buffer = gl.createBuffer();
+      if (!buffer) throw new Error("Could not create the spatial marker buffer.");
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      return { buffer, count: vertices.length / 3 };
+    }
+    return { program, position, modelView, projection, color, anchorRing: makeRing(0.075), previewRing: makeRing(0.045) };
+  }
+
+  function multiplySpatialMatrices(a, b) {
+    const out = new Float32Array(16);
+    for (let column = 0; column < 4; column += 1) {
+      for (let row = 0; row < 4; row += 1) {
+        out[column * 4 + row] =
+          a[row] * b[column * 4] +
+          a[4 + row] * b[column * 4 + 1] +
+          a[8 + row] * b[column * 4 + 2] +
+          a[12 + row] * b[column * 4 + 3];
+      }
+    }
+    return out;
+  }
+
+  function drawSpatialRing(gl, view, transformMatrix, ring, color) {
+    if (!spatialRenderer || !transformMatrix) return;
+    const modelView = multiplySpatialMatrices(view.transform.inverse.matrix, transformMatrix);
+    gl.useProgram(spatialRenderer.program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ring.buffer);
+    gl.enableVertexAttribArray(spatialRenderer.position);
+    gl.vertexAttribPointer(spatialRenderer.position, 3, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(spatialRenderer.modelView, false, modelView);
+    gl.uniformMatrix4fv(spatialRenderer.projection, false, view.projectionMatrix);
+    gl.uniform4fv(spatialRenderer.color, color);
+    gl.drawArrays(gl.LINES, 0, ring.count);
+  }
+
+  function setSpatialStatus(message, mode) {
+    spatialStatus.textContent = message;
+    spatialStatusMode = mode || "";
+  }
+
+  function syncSpatialButtons() {
+    placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement;
+    clearSpatialAnchorButton.disabled = !spatialAnchor;
+  }
+
+  async function startSpatialAr() {
+    if (!spatialFeatureSupported || !navigator.xr) {
+      setStatus("Spatial AR is not supported in this browser. V2 camera tracking remains available.", "warning");
+      return;
+    }
+    if (spatialSession) return;
+    if (active || starting || microphoneStream || socket) {
+      const proceed = window.confirm("Spatial AR uses the phone's camera and will pause your current live voice session. Continue?");
+      if (!proceed) return;
+      stopCopilot(true);
+    }
+
+    spatialHud.hidden = false;
+    spatialHud.classList.add("is-preparing");
+    setSpatialStatus("Opening the device's spatial tracking session…", "starting");
+    spatialArButton.disabled = true;
+
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl", { alpha: true, antialias: true, depth: true });
+    if (!gl) {
+      spatialHud.hidden = true;
+      spatialHud.classList.remove("is-preparing");
+      spatialArButton.disabled = false;
+      setStatus("This browser could not create a WebGL context for spatial AR.", "error");
+      return;
+    }
+
+    // Call requestSession during the user's click gesture. Unsupported required
+    // features fail closed rather than silently degrading to screen-space markers.
+    let sessionPromise;
+    try {
+      sessionPromise = navigator.xr.requestSession("immersive-ar", {
+        requiredFeatures: ["local", "hit-test", "anchors", "dom-overlay"],
+        domOverlay: { root: spatialHud }
+      });
+    } catch (error) {
+      spatialHud.hidden = true;
+      spatialHud.classList.remove("is-preparing");
+      spatialArButton.disabled = false;
+      setStatus(error && error.message ? error.message : "Could not start spatial AR.", "error");
+      return;
+    }
+
+    try {
+      const session = await sessionPromise;
+      spatialSession = session;
+      spatialGl = gl;
+      await gl.makeXRCompatible();
+      const layer = new XRWebGLLayer(session, gl, { alpha: true, depth: true, antialias: true });
+      session.updateRenderState({ baseLayer: layer });
+      spatialReferenceSpace = await session.requestReferenceSpace("local");
+      spatialViewerSpace = await session.requestReferenceSpace("viewer");
+      spatialHitSource = await session.requestHitTestSource({ space: spatialViewerSpace });
+      spatialRenderer = createSpatialRenderer(gl);
+      spatialAnchor = null;
+      spatialLatestHit = null;
+      spatialPendingPlacement = false;
+      spatialPlacing = false;
+      spatialStatusMode = "";
+      spatialLastStatusAt = 0;
+      spatialHud.classList.remove("is-preparing");
+      setSpatialStatus("Aim at a table, floor, or wall and move slowly. Tap Place marker when a surface is found.", "searching");
+      syncSpatialButtons();
+      session.addEventListener("end", finishSpatialAr, { once: true });
+      session.requestAnimationFrame(drawSpatialFrame);
+    } catch (error) {
+      const failedSession = spatialSession;
+      spatialSession = null;
+      if (failedSession) {
+        try { await failedSession.end(); } catch (_) {}
+      }
+      spatialHitSource = null;
+      spatialViewerSpace = null;
+      spatialReferenceSpace = null;
+      spatialAnchor = null;
+      spatialLatestHit = null;
+      releaseSpatialRenderer();
+      spatialHud.hidden = true;
+      spatialHud.classList.remove("is-preparing");
+      spatialArButton.disabled = false;
+      const explanation = error && error.name === "NotSupportedError"
+        ? "This device/browser does not support every feature required for world-anchored AR (hit-test, anchors, and DOM overlay). Use a supported Android browser; V2 remains available."
+        : (error && error.message ? error.message : "Spatial AR could not be started. Check browser support and camera permissions.");
+      setStatus(explanation, "warning");
+    }
+  }
+
+  function drawSpatialFrame(time, frame) {
+    const session = frame.session;
+    if (!spatialSession || session !== spatialSession || !spatialGl || !spatialReferenceSpace) return;
+    session.requestAnimationFrame(drawSpatialFrame);
+    const gl = spatialGl;
+    const layer = session.renderState.baseLayer;
+    const viewerPose = frame.getViewerPose(spatialReferenceSpace);
+    if (!viewerPose) return;
+
+    spatialLatestHit = null;
+    if (spatialHitSource) {
+      try {
+        const hits = frame.getHitTestResults(spatialHitSource);
+        if (hits.length) spatialLatestHit = hits[0];
+      } catch (_) {}
+    }
+    syncSpatialButtons();
+
+    if (spatialPendingPlacement && spatialLatestHit && !spatialPlacing && !spatialAnchor) {
+      spatialPendingPlacement = false;
+      spatialPlacing = true;
+      syncSpatialButtons();
+      const hitForAnchor = spatialLatestHit;
+      setSpatialStatus("Creating a world anchor on the detected surface…", "placing");
+      hitForAnchor.createAnchor().then((anchor) => {
+        if (spatialSession !== session) {
+          anchor.delete();
+          return;
+        }
+        spatialAnchor = anchor;
+        spatialPlacing = false;
+        setSpatialStatus("Marker anchored to this surface. Move the phone carefully; the marker should stay at that real-world point.", "anchored");
+        syncSpatialButtons();
+      }).catch(() => {
+        spatialPlacing = false;
+        setSpatialStatus("The device could not create a persistent anchor. Scan a well-lit, textured surface and try again.", "warning");
+        syncSpatialButtons();
+      });
+    }
+
+    if (time - spatialLastStatusAt > 650) {
+      spatialLastStatusAt = time;
+      if (!spatialAnchor && !spatialPendingPlacement && !spatialPlacing) {
+        setSpatialStatus(spatialLatestHit
+          ? "Surface detected. Tap Place marker, then move the phone to check whether the marker stays put."
+          : "Searching for a surface. Aim at a table, floor, or wall and move the phone slowly.", spatialLatestHit ? "surface" : "searching");
+      }
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    for (const view of viewerPose.views) {
+      const viewport = layer.getViewport(view);
+      gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.disable(gl.SCISSOR_TEST);
+
+      if (spatialAnchor) {
+        const anchorPose = frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace);
+        if (anchorPose) drawSpatialRing(gl, view, anchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
+      } else if (spatialLatestHit) {
+        const hitPose = spatialLatestHit.getPose(spatialReferenceSpace);
+        if (hitPose) drawSpatialRing(gl, view, hitPose.transform.matrix, spatialRenderer.previewRing, [1.0, 1.0, 1.0, 0.95]);
+      }
+    }
+  }
+
+  function releaseSpatialRenderer() {
+    if (spatialGl && spatialRenderer) {
+      try {
+        spatialGl.deleteBuffer(spatialRenderer.anchorRing.buffer);
+        spatialGl.deleteBuffer(spatialRenderer.previewRing.buffer);
+        spatialGl.deleteProgram(spatialRenderer.program);
+      } catch (_) {}
+    }
+    spatialRenderer = null;
+    spatialGl = null;
+  }
+
+  function finishSpatialAr() {
+    const oldAnchor = spatialAnchor;
+    spatialSession = null;
+    spatialHitSource = null;
+    spatialViewerSpace = null;
+    spatialReferenceSpace = null;
+    spatialAnchor = null;
+    spatialLatestHit = null;
+    spatialPendingPlacement = false;
+    spatialPlacing = false;
+    if (oldAnchor) {
+      try { oldAnchor.delete(); } catch (_) {}
+    }
+    releaseSpatialRenderer();
+    spatialHud.hidden = true;
+    spatialHud.classList.remove("is-preparing");
+    spatialArButton.disabled = !spatialFeatureSupported;
+    setStatus("Spatial AR ended. Start Co-Pilot to resume live voice guidance.");
+  }
+
+  placeSpatialAnchorButton.addEventListener("click", () => {
+    if (!spatialSession || spatialAnchor || spatialPlacing) return;
+    if (!spatialLatestHit) {
+      setSpatialStatus("No surface detected yet. Aim at a textured surface and move slowly.", "searching");
+      return;
+    }
+    spatialPendingPlacement = true;
+    setSpatialStatus("Placing marker on the next confirmed surface hit…", "placing");
+    syncSpatialButtons();
+  });
+
+  clearSpatialAnchorButton.addEventListener("click", () => {
+    if (spatialAnchor) {
+      try { spatialAnchor.delete(); } catch (_) {}
+      spatialAnchor = null;
+      setSpatialStatus("Anchor cleared. Aim at a surface and place a new marker.", "searching");
+      syncSpatialButtons();
+    }
+  });
+
+  exitSpatialArButton.addEventListener("click", () => {
+    if (spatialSession) void spatialSession.end();
+  });
+  spatialArButton.addEventListener("click", () => { void startSpatialAr(); });
+
   if (!window.AudioContext && window.webkitAudioContext) window.AudioContext = window.webkitAudioContext;
 
   async function checkBackend() {
@@ -1092,5 +1446,6 @@
 
   setCameraState("Camera paused", "idle");
   setControls("Checking voice…", true);
+  void checkSpatialArSupport();
   void checkBackend();
 })();
