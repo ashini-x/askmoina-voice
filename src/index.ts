@@ -10,6 +10,7 @@ import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronu
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
+import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 
 export { UserState } from "./sessions/user-state";
 
@@ -804,23 +805,24 @@ export default {
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
 
-    if (url.pathname === "/copilot" || url.pathname === "/copilot.html") {
-      const copilotUrl = new URL(request.url);
-      copilotUrl.pathname = "/copilot";
-      const copilotResponse = await env.ASSETS.fetch(new Request(copilotUrl.toString(), request));
-      const headers = new Headers(copilotResponse.headers);
-      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
-      headers.set("X-Content-Type-Options", "nosniff");
-      headers.set("X-Frame-Options", "DENY");
-      headers.set("Referrer-Policy", "no-referrer");
-      headers.set("Permissions-Policy", "microphone=(self), camera=(self), geolocation=(), payment=()");
-      headers.set("Cross-Origin-Resource-Policy", "same-origin");
-      headers.set("Cache-Control", "no-store");
-      return new Response(copilotResponse.body, {
-        status: copilotResponse.status,
-        statusText: copilotResponse.statusText,
-        headers,
+    if (url.pathname === "/copilot" || url.pathname === "/copilot.html" ||
+        url.pathname === "/copilot.js" || url.pathname === "/copilot.css") {
+      const isScript = url.pathname === "/copilot.js";
+      const isStyle = url.pathname === "/copilot.css";
+      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
+      const contentType = isScript ? "text/javascript; charset=utf-8" :
+        isStyle ? "text/css; charset=utf-8" : "text/html; charset=utf-8";
+      const headers = new Headers({
+        "Content-Type": contentType,
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
+        "Cross-Origin-Resource-Policy": "same-origin",
       });
+      return new Response(body, { status: 200, headers });
     }
 
     if (url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html") {
@@ -878,6 +880,10 @@ export default {
       let html = await assetResponse.text();
       if (!html.includes('href="/vault"') && !html.includes("href=/vault")) {
         html = html.replace("Made for Assam</span>", "Made for Assam</span><a class=brand-location href=/vault>Memory Vault</a>");
+      }
+      if (!html.includes('href="/copilot"') && !html.includes("href=/copilot")) {
+        html = html.replace('href="/vault">Memory Vault</a>', 'href="/vault">Memory Vault</a><a class="brand-location vault-link" href="/copilot">Live Co-Pilot</a>');
+        html = html.replace("href=/vault>Memory Vault</a>", "href=/vault>Memory Vault</a><a class=brand-location href=/copilot>Live Co-Pilot</a>");
       }
       html = html.replace("</body>", "<script src=/continuity.js defer></script></body>");
       responseBody = html;
