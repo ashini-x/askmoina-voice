@@ -30,6 +30,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
   });
 
+  it("supports tap-to-track local image patches without claiming world-locked AR", () => {
+    expect(script).toContain("function startLocalTracking(clientX, clientY)");
+    expect(script).toContain("function updateLocalTracking()");
+    expect(script).toContain("function findTemplate(gray, center)");
+    expect(script).toContain("Tap another point to retarget");
+    expect(script).toContain("Zoom changed. Tap the target again to resume local tracking.");
+    expect(script).toContain("not world-locked AR");
+    expect(script).toContain('stage.addEventListener("click"');
+  });
+
   it("retries a just-ended session reservation before reporting a second active voice session", () => {
     expect(script).toContain("async function refreshAvailabilityAfterRelease()");
     expect(script).toContain("options.quietActiveLock === true");
