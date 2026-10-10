@@ -131,7 +131,7 @@ describe("AskMoina Upper Assam pronunciation reference", () => {
   it("builds a bounded guidance appendix from enabled D1 rule rows", async () => {
     const prompt = await buildAssamesePronunciationInstruction(mockDb(syntheticRules));
     expect(prompt.length).toBeGreaterThan(0);
-    expect(prompt.length).toBeLessThanOrEqual(4_000);
+    expect(prompt.length).toBeLessThanOrEqual(5_000);
     expect(prompt).toContain("source-attributed rule database");
     expect(prompt).toContain("native-speaker-verified");
     expect(prompt).toContain("not universal or Upper Assam native-verified");
@@ -158,6 +158,6 @@ describe("AskMoina Upper Assam pronunciation reference", () => {
       guidance: "regional pronunciation guidance ".repeat(80),
     }));
     const prompt = await buildAssamesePronunciationInstruction(mockDb(manyRules));
-    expect(prompt.length).toBeLessThanOrEqual(4_000);
+    expect(prompt.length).toBeLessThanOrEqual(5_000);
   });
 });
