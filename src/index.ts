@@ -723,7 +723,7 @@ export default {
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
 
-    if (url.pathname === "/voice-lab") {
+    if (url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html") {
       if (!await isAdmin(request, env)) {
         return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
       }
