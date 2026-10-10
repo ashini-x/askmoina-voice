@@ -30,12 +30,15 @@ jobs:
         run: |
           set -euo pipefail
           app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.APP_VERSION")"
+          live_voice="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.LIVE_VOICE_NAME")"
           echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "live_voice=$live_voice" >> "$GITHUB_OUTPUT"
 
       - name: Check production health and Vertex route
         env:
           PRODUCTION_URL: https://askmoina-voice.thenewtongs.workers.dev
           EXPECTED_APP_VERSION: ${{ steps.release.outputs.app_version }}
+          EXPECTED_LIVE_VOICE_NAME: ${{ steps.release.outputs.live_voice }}
         shell: bash
         run: |
           set -euo pipefail
@@ -50,11 +53,12 @@ jobs:
               --output "$response_file" --write-out '%{http_code}' \
               "$PRODUCTION_URL/api/health" || true)"
 
-            if [[ "$status_code" == "200" ]] && node --input-type=module - "$response_file" "$EXPECTED_APP_VERSION" <<'NODE'
+            if [[ "$status_code" == "200" ]] && node --input-type=module - "$response_file" "$EXPECTED_APP_VERSION" "$EXPECTED_LIVE_VOICE_NAME" <<'NODE'
           import fs from "node:fs";
 
           const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
           const expectedVersion = process.argv[3];
+          const expectedLiveVoice = process.argv[4];
           if (body.ok !== true) throw new Error("Production health endpoint did not report ok=true.");
           if (body.app !== "askmoina-voice") throw new Error("Unexpected production app identity.");
           if (body.status !== "vertex-live-proxy-configured") {
@@ -69,13 +73,17 @@ jobs:
           if (body.version !== expectedVersion) {
             throw new Error(`Expected release version ${expectedVersion}, found ${String(body.version)}`);
           }
+          if (body.liveVoice !== expectedLiveVoice) {
+            throw new Error(`Expected Live voice ${expectedLiveVoice}, found ${String(body.liveVoice)}`);
+          }
           console.log(JSON.stringify({
             ok: body.ok,
             app: body.app,
             version: body.version,
             status: body.status,
             model: body.model,
-            location: body.location
+            location: body.location,
+            liveVoice: body.liveVoice
           }));
           NODE
             then

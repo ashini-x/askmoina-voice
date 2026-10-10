@@ -22,7 +22,7 @@ Memory notes are entered and managed by the user in this release. Automatic extr
 ## Architecture and security controls
 
 - Google service-account credentials are stored only as Cloudflare Worker Secrets. Never place secrets in Git or browser code.
-- The Worker pins the model and base system instruction; browser clients cannot select a model.
+- The Worker pins the model, base system instruction, and Live voice; browser clients cannot override them. The current voice is Leda (documented by Google as “Youthful”); its quality for Upper Assamese must still be checked with native speakers.
 - WebSocket browser connections must use the exact same origin as the Worker.
 - Durable Objects enforce connection-attempt, session-duration, per-IP daily usage and global capacity limits. The IP hash is used for abuse controls, not personal identity.
 - The anonymous continuity cookie uses a random token; only its SHA-256 hash is used as the server-side pseudonymous visitor ID.

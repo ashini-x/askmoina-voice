@@ -11,10 +11,11 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.2",
+    "APP_VERSION": "0.4.3",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
+    "LIVE_VOICE_NAME": "Leda",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "MAX_LIVE_SESSION_SECONDS": "540",
