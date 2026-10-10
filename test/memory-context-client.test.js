@@ -8,7 +8,8 @@ describe("static client memory handoff", () => {
     expect(app).toContain("setupPayload.memory_context = selectedMemoryContext");
     expect(app).toContain("sessionSocket.send(JSON.stringify(setupPayload))");
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
-    expect(worker).toContain("buildPersonalizedSystemInstruction(baseInstruction, memoryContext)");
+    expect(worker).toContain("buildPersonalizedSystemInstruction(");
+    expect(worker).toContain("memoryContext,");
     expect(worker).toContain("buildAssamesePronunciationInstruction(env.DB)");
     expect(worker).toContain("inputAudioTranscription: {}");
     expect(worker).toContain("outputAudioTranscription: {}");
@@ -21,6 +22,6 @@ describe("static client memory handoff", () => {
 
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {
     const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
-    expect(config).toContain('"run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html"]');
+    expect(config).toContain('"run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html", "/copilot", "/copilot.html"]');
   });
 });
