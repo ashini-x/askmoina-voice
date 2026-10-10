@@ -27,7 +27,7 @@ VOICE_DESIGNS = [
         "key": "A",
         "display_name": "Moina Boy Voice A - Sweet Bright",
         "prompt": (
-            "A boy around 10 years old with a sweet, clear, naturally high-pitched voice. "
+            "A youthful male voice with a sweet, clear, naturally high pitch. "
             "Bright, friendly and curious, speaking casually in Assamese with an Upper "
             "Assam cadence where possible."
         ),
@@ -36,7 +36,7 @@ VOICE_DESIGNS = [
         "key": "B",
         "display_name": "Moina Boy Voice B - Sparkly Warm",
         "prompt": (
-            "A boy around 10 years old with a soft, sweet, sparkling high voice and a "
+            "A youthful male voice with a soft, sweet, sparkling high register and a "
             "warm rounded tone. Playful and friendly, speaking clearly and naturally in "
             "conversational Assamese with an Upper Assam cadence if supported."
         ),
