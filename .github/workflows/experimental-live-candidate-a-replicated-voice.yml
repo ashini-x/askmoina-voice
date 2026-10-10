@@ -1,0 +1,147 @@
+name: Experimental Gemini Live Candidate A replicated voice test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - experiment/live-candidate-a-replicated-voice
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: askmoina-live-candidate-a-replicated-voice-test
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-live-voice-test]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out isolated test branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download the prior Candidate A sample artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: askmoina-tts-voice-design-benchmark
+          repository: ashini-x/askmoina-voice
+          run-id: "38028441503"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: candidate-a-input
+
+      - name: Validate sample is present without printing audio data
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s candidate-a-input/voice_A_design_sample.wav
+          echo "Candidate A reference sample found."
+          python - <<'PY'
+          import wave
+          p = "candidate-a-input/voice_A_design_sample.wav"
+          with wave.open(p, "rb") as f:
+              duration = f.getnframes() / f.getframerate()
+              print(f"Sample: {duration:.2f}s, {f.getframerate()} Hz, {f.getnchannels()} channel(s), {f.getsampwidth()*8}-bit")
+              assert 10 <= duration <= 20
+              assert (f.getframerate(), f.getnchannels(), f.getsampwidth()) == (24000, 1, 2)
+          PY
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Read project ID from the experimental Worker config
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_id="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.GCP_PROJECT_ID")"
+          test -n "$project_id"
+          echo "project_id=$project_id" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare temporary Google credentials
+        id: credentials
+        env:
+          GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p live-candidate-a-output
+          if [[ -z "${GCP_SERVICE_ACCOUNT_JSON:-}" ]]; then
+            cat > live-candidate-a-output/live-voice-test-report.json <<'JSON'
+          {"status":"blocked","reason":"GCP_SERVICE_ACCOUNT_JSON GitHub Actions secret is unavailable; no Google API request was made."}
+          JSON
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Candidate A test blocked: Google credential secret unavailable."
+            exit 0
+          fi
+          printf '%s' "$GCP_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/gcp-service-account.json"
+          chmod 600 "$RUNNER_TEMP/gcp-service-account.json"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "Google credential presence verified; secret contents were not printed."
+
+      - name: Install Google Gen AI SDK
+        if: steps.credentials.outputs.available == 'true'
+        run: python -m pip install --disable-pip-version-check "google-genai>=2.25.0"
+
+      - name: Open a single Gemini Live session with Candidate A reference audio
+        id: live_test
+        if: steps.credentials.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
+          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          GEMINI_LOCATION: us-central1
+          GEMINI_MODEL: gemini-3.8-live
+        run: python scripts/test-live-replicated-voice.py
+
+      - name: Publish test result summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("live-candidate-a-output/live-voice-test-report.json")
+          if not p.exists():
+              result = {"status": "no_report", "reason": "Test did not produce a report; inspect the preceding workflow step."}
+          else:
+              try:
+                  result = json.loads(p.read_text(encoding="utf-8"))
+              except Exception:
+                  result = {"status": "report_unreadable"}
+          lines = ["## Candidate A Gemini Live custom-voice test", "", f"**Status:** {result.get('status', 'unknown')}"]
+          if result.get("error_type"):
+              lines += ["", f"**Error type:** {result['error_type']}", "", f"**Diagnostic:** {result.get('error', '')}"]
+          if result.get("reason"):
+              lines += ["", result["reason"]]
+          if result.get("timing"):
+              lines += ["", f"- Time to first audio: {result['timing'].get('first_audio_ms')} ms", f"- Total response: {result['timing'].get('total_response_ms')} ms"]
+          if result.get("audio_output"):
+              lines += ["", f"- Generated audio: {result['audio_output'].get('duration_seconds')} seconds"]
+          lines += ["", "No production Worker configuration or deployment was changed."]
+          pathlib.Path("live-candidate-a-output").mkdir(exist_ok=True)
+          pathlib.Path("live-candidate-a-output/live-voice-test-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          with open("live-candidate-a-output/live-voice-test-report.json", "w", encoding="utf-8") as f:
+              json.dump(result, f, ensure_ascii=False, indent=2)
+          print("\n".join(lines))
+          PY
+
+      - name: Upload the test audio and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: askmoina-live-candidate-a-voice-test
+          path: live-candidate-a-output/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Remove temporary Google credential file
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/gcp-service-account.json"
+
