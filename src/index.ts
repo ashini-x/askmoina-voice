@@ -7,6 +7,7 @@ import { handleContinuityRequest, ensureVisitor, recordSessionStart, recordSessi
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { runRetentionMaintenance } from "./maintenance/retention";
+import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "./sessions/voice-config";
 
 export { UserState } from "./sessions/user-state";
 
@@ -436,7 +437,7 @@ async function handleVoiceSocket(
         const systemInstruction = buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: { responseModalities: ["AUDIO"] },
+          generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME),
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -681,13 +682,14 @@ export default {
       return json({
         ok: true,
         app: "askmoina-voice",
-        version: env.APP_VERSION || "0.3.0",
+        version: env.APP_VERSION || "0.4.3",
         environment: env.ENVIRONMENT || "unknown",
         status: hasVertexCredentials(env)
           ? "vertex-live-proxy-configured"
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
         location: env.GEMINI_LOCATION || "us-central1",
+        liveVoice: env.LIVE_VOICE_NAME?.trim() || DEFAULT_LIVE_VOICE_NAME,
       });
     }
 
