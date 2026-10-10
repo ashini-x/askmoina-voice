@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: askmoina-experimental-tts-benchmark
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   benchmark:
@@ -21,6 +21,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Read project ID from the experiment's checked-in Worker config
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_id="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.GCP_PROJECT_ID")"
+          if [[ -z "$project_id" ]]; then
+            echo "::error::GCP_PROJECT_ID is missing from wrangler.jsonc."
+            exit 1
+          fi
+          echo "project_id=$project_id" >> "$GITHUB_OUTPUT"
 
       - name: Check whether a Google credential is available without exposing it
         id: credentials
@@ -34,7 +46,7 @@ jobs:
             {
               echo "## Benchmark status: not executed"
               echo
-              echo "No Google API requests were made. The GitHub Actions secret `GCP_SERVICE_ACCOUNT_JSON` is not available to this workflow."
+              echo "No Google API requests were made. The GitHub Actions secret GCP_SERVICE_ACCOUNT_JSON is not available to this workflow."
               echo "The current production credential is configured as a Cloudflare Worker Secret; this workflow cannot retrieve that secret from Cloudflare."
               echo "To run the API test, configure a least-privilege Google service-account key as a GitHub Actions secret, or execute the script in an environment already authenticated to the same Vertex AI project."
             } >> "$GITHUB_STEP_SUMMARY"
@@ -60,14 +72,10 @@ jobs:
         if: steps.credentials.outputs.available == 'true'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${GCP_PROJECT_ID:-}" ]]; then
-            echo "::error::Configure the repository variable GCP_PROJECT_ID for the same Google Cloud project."
-            exit 1
-          fi
           python scripts/tts-voice-design-benchmark.py
 
       - name: Upload generated audio and benchmark report
