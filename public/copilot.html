@@ -13,5 +13,17 @@
 <div class="approx-tag" id="approxTag" hidden>Approximate focus · not world-locked AR</div>
 <div class="zoom-dock" aria-label="Camera zoom controls"><button type="button" id="zoomOut" aria-label="Zoom out" disabled>−</button><label class="sr-only" for="zoomSlider">Camera zoom</label><input id="zoomSlider" type="range" min="1" max="3" step="0.1" value="1" aria-label="Camera zoom" disabled><output id="zoomLabel" for="zoomSlider">1×</output><button type="button" id="zoomIn" aria-label="Zoom in" disabled>+</button></div>
 <section class="caption-dock" aria-label="Live conversation"><div class="status-line"><span class="assistant-orb" aria-hidden="true">m</span><div class="status-copy"><strong id="connectionPill" data-state="ready">READY</strong><p id="status" role="status" aria-live="polite">Checking the voice service…</p></div><span id="availability" class="availability" role="status" aria-live="polite">Checking capacity…</span></div><div class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text"><div class="empty-state" id="emptyTranscript"><p>Ask about what’s in front of you.</p></div></div><button type="button" id="clearTranscript" class="clear-captions">Clear captions</button></section>
-<nav class="camera-controls" aria-label="Camera and voice controls"><button type="button" id="flipCamera" class="control-pill" disabled><span aria-hidden="true">↻</span> Flip</button><button type="button" id="muteMic" class="control-pill" disabled><span aria-hidden="true">♩</span> Mute</button><button type="button" id="toggleCopilot" class="control-pill stop-button" disabled aria-pressed="false"><span class="button-symbol" aria-hidden="true">●</span><span id="buttonLabel">Checking voice…</span></button></nav>
+<nav class="camera-controls" aria-label="Camera and voice controls"><button type="button" id="flipCamera" class="control-pill" disabled><span aria-hidden="true">↻</span> Flip</button><button type="button" id="muteMic" class="control-pill" disabled><span aria-hidden="true">♩</span> Mute</button><button type="button" id="spatialArButton" class="control-pill spatial-ar-button" hidden disabled title="Try surface-anchored AR on supported devices"><span aria-hidden="true">◎</span> Spatial AR</button><button type="button" id="toggleCopilot" class="control-pill stop-button" disabled aria-pressed="false"><span class="button-symbol" aria-hidden="true">●</span><span id="buttonLabel">Checking voice…</span></button></nav>
+<div class="spatial-hud" id="spatialHud" hidden aria-label="Spatial anchor lab">
+  <section class="spatial-card">
+    <div class="spatial-brand"><span class="brand-mark" aria-hidden="true">m</span><strong>Moina Spatial Lab</strong><span class="spatial-live-dot" aria-hidden="true"></span></div>
+    <p id="spatialStatus" role="status" aria-live="polite">Preparing a spatial session…</p>
+    <div class="spatial-actions">
+      <button type="button" id="placeSpatialAnchor" disabled>Place marker</button>
+      <button type="button" id="clearSpatialAnchor" disabled>Clear marker</button>
+      <button type="button" id="exitSpatialAr">Exit AR</button>
+    </div>
+    <p class="spatial-note">Experimental world-anchored surface marker. It anchors to a detected surface point, not an AI-identified object. Starting this lab pauses live voice guidance.</p>
+  </section>
+</div>
 <p class="privacy-hint">Camera and microphone start only after you tap Start Co-Pilot. They are shared only while your session is active.</p><a class="home-link" href="/">AskMoina</a></section></main></body></html>

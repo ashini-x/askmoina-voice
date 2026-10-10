@@ -5,7 +5,8 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 ## Current capabilities
 
 - Browser-based live voice with microphone permission, 16 kHz PCM input and streamed audio replies.
-- Live Co-Pilot at `/copilot`: streams reduced-size camera frames with live audio, renders model-requested approximate focus labels, and supports opt-in tap-to-track local image-patch tracking between cloud updates. Local tracking is experimental, runs in the browser, requires the target to remain visually distinct and in view, and is not world-locked AR. Native ARCore/ARKit/WebXR spatial anchors are not implemented yet.
+- Live Co-Pilot at `/copilot`: streams reduced-size camera frames with live audio, renders model-requested approximate focus labels, and supports tap-to-track local image-patch tracking between cloud updates.
+- Experimental WebXR surface-anchor lab: on supporting devices/browsers, the optional **Spatial AR** control opens an immersive AR session that can place a real-world surface anchor using hit testing and the WebXR Anchors API. The lab pauses the live voice session to release camera use. It anchors a marker to a detected surface point, not to an AI-recognized object; it is not a finished object-aware AR guide. Unsupported browsers keep the normal V2 camera/voice experience and screen-space tracker.
 - A local-first Memory Vault at `/vault`: user-entered notes are encrypted in the browser using Web Crypto AES-GCM before they are stored in IndexedDB.
 - Optional encrypted cloud backups. The Worker stores ciphertext, salt, IV and key-derivation metadata; it never receives the vault decryption key or plaintext memories.
 - Optional `Use these memories in AskMoina on this browser tab`. Only selected notes are passed to Gemini at the start of the next voice session after explicit user opt-in.
