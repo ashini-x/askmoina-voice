@@ -10,6 +10,9 @@ export interface Env {
   GEMINI_LOCATION: string;
   LIVE_VOICE_NAME?: string;
   LIVE_VOICE_ID?: string;
+  TTS_PROTOTYPE_ENABLED?: string;
+  TTS_PROTOTYPE_ACCESS_TOKEN?: string;
+  TTS_PROTOTYPE_VOICE_ID?: string;
   GCP_PROJECT_ID: string;
   MAX_LIVE_SESSION_SECONDS: string;
   MAX_DAILY_SESSION_SECONDS: string;

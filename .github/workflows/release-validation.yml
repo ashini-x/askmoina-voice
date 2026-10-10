@@ -17,6 +17,23 @@ jobs:
       - run: npm install --no-audit --no-fund --legacy-peer-deps
       - run: npm run check
       - run: node --check public/app.js
+      - run: node --check public/tts-prototype.js
+      - name: Validate isolated TTS prototype configuration
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync("wrangler.tts-prototype.jsonc", "utf8"));
+          if (config.name !== "askmoina-tts-prototype") throw new Error("Prototype must have a separate Worker name");
+          if (config.main !== "src/tts-prototype-worker.ts") throw new Error("Prototype must use its isolated entrypoint");
+          const required = ["GCP_SERVICE_ACCOUNT_JSON", "TTS_PROTOTYPE_ACCESS_TOKEN"];
+          for (const name of required) {
+            if (!config.secrets?.required?.includes(name)) throw new Error("Missing prototype secret declaration: " + name);
+          }
+          if (config.durable_objects || config.d1_databases || config.queues) {
+            throw new Error("Prototype must not bind production databases, Durable Objects, or queues");
+          }
+          NODE
+      - run: npx wrangler deploy --config wrangler.tts-prototype.jsonc --dry-run --outdir=dist-tts-prototype
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
