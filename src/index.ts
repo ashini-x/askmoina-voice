@@ -8,6 +8,7 @@ import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "./sessions/voice-config";
+import { generateTtsPrototypeTurn, normalizeTtsPrototypeInput, TtsPrototypeError } from "./sessions/tts-prototype";
 
 export { UserState } from "./sessions/user-state";
 
@@ -126,6 +127,108 @@ async function releaseVoiceSession(
       now: Date.now(),
     }),
   ]);
+}
+
+async function matchesConfiguredSecret(expected: string, provided: string): Promise<boolean> {
+  if (!expected || !provided || provided.length > 512) return false;
+  const [expectedDigest, providedDigest] = await Promise.all([sha256(expected), sha256(provided)]);
+  let difference = expectedDigest.length ^ providedDigest.length;
+  for (let i = 0; i < expectedDigest.length; i += 1) {
+    difference |= expectedDigest.charCodeAt(i) ^ (providedDigest.charCodeAt(i) || 0);
+  }
+  return difference === 0;
+}
+
+/**
+ * Opt-in, token-protected experiment. It is disabled unless a separate Worker
+ * explicitly sets TTS_PROTOTYPE_ENABLED=true and TTS_PROTOTYPE_ACCESS_TOKEN.
+ * The production Live WebSocket route is intentionally left unchanged.
+ */
+async function handleTtsPrototypeTurn(request: Request, env: Env): Promise<Response> {
+  if (env.TTS_PROTOTYPE_ENABLED?.trim().toLowerCase() !== "true") {
+    return json({ error: "prototype_disabled" }, 404);
+  }
+  if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+
+  const url = new URL(request.url);
+  if (request.headers.get("Origin") !== url.origin) {
+    return json({ error: "forbidden_origin" }, 403);
+  }
+  const expectedToken = env.TTS_PROTOTYPE_ACCESS_TOKEN?.trim() || "";
+  if (!expectedToken) return json({ error: "prototype_unconfigured" }, 503);
+  const authorization = request.headers.get("Authorization") || "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  if (!await matchesConfiguredSecret(expectedToken, bearer)) {
+    return json({ error: "prototype_unauthorized" }, 401);
+  }
+  if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
+  if (!request.headers.get("Content-Type")?.toLowerCase().includes("application/json")) {
+    return json({ error: "json_required" }, 415);
+  }
+
+  const declaredLength = Number(request.headers.get("Content-Length") || 0);
+  if (declaredLength > 1_300_000) return json({ error: "request_too_large" }, 413);
+
+  let raw: string;
+  try {
+    raw = await request.text();
+  } catch {
+    return json({ error: "invalid_request" }, 400);
+  }
+  if (new TextEncoder().encode(raw).byteLength > 1_300_000) {
+    return json({ error: "request_too_large" }, 413);
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return json({ error: "invalid_request" }, 400);
+  }
+
+  let input;
+  try {
+    input = normalizeTtsPrototypeInput(body);
+  } catch (error) {
+    if (error instanceof TtsPrototypeError) return json({ error: error.code }, error.status || 400);
+    return json({ error: "invalid_request" }, 400);
+  }
+
+  const reservation = await reserveVoiceSession(request, env);
+  if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
+
+  const startedAt = Date.now();
+  try {
+    const result = await generateTtsPrototypeTurn(env, input, { signal: request.signal });
+    console.info("[AskMoina TTS prototype] Turn completed", JSON.stringify({
+      totalMs: result.timings.totalMs,
+      conversationMs: result.timings.conversationMs,
+      speechSynthesisMs: result.timings.speechSynthesisMs,
+      audioBytesBase64: result.audioWavBase64.length,
+      elapsedMs: Date.now() - startedAt,
+    }));
+    return json({
+      userTranscript: result.userTranscript,
+      reply: result.reply,
+      audio_wav_base64: result.audioWavBase64,
+      audio_mime_type: result.audioMimeType,
+      voiceId: result.voiceId,
+      timings: result.timings,
+    });
+  } catch (error) {
+    const prototypeError = error instanceof TtsPrototypeError
+      ? error
+      : new TtsPrototypeError("prototype_request_failed", 502);
+    console.warn("[AskMoina TTS prototype] Turn failed", JSON.stringify({
+      error: prototypeError.code,
+      status: prototypeError.status || 502,
+      elapsedMs: Date.now() - startedAt,
+    }));
+    const status = prototypeError.status && prototypeError.status >= 400 ? prototypeError.status : 502;
+    return json({ error: prototypeError.code }, status);
+  } finally {
+    await releaseVoiceSession(env, reservation);
+  }
 }
 
 
@@ -677,6 +780,8 @@ export default {
 
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
+
+    if (url.pathname === "/api/tts-prototype/turn") return handleTtsPrototypeTurn(request, env);
 
     if (url.pathname === "/api/health") {
       return json({
