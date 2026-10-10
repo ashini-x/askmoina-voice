@@ -35,8 +35,9 @@ describe("public Live Co-Pilot routing", () => {
     const mock = setup();
     const response = await worker.fetch(new Request("https://askmoina.test/copilot"), mock.env, ctx);
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("Live Co-Pilot");
-    expect(await response.clone().text()).toContain('id="videoPreview"');
+    const page = await response.text();
+    expect(page).toContain("Live Co-Pilot");
+    expect(page).toContain('id="videoPreview"');
     expect(mock.requestedPath()).toBe("");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Permissions-Policy")).toContain("camera=(self)");
