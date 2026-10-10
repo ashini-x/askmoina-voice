@@ -112,7 +112,7 @@ describe("AskMoina voice session guard", () => {
       ok: true,
       dailySecondsRemaining: 1800,
       activeSessions: 0,
-      requestsRemaining: 5,
+      requestsRemaining: 20,
       rateLimited: false,
       concurrencyLimited: false,
       dailyLimitReached: false,
@@ -133,47 +133,47 @@ describe("AskMoina voice session guard", () => {
 
   it("explains how long until the connection-attempt limit resets", async () => {
     const { userState } = makeState();
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 21; index += 1) {
       await acquire(userState, {
         sessionId: "limited-" + index,
         now: TODAY + index * 1000,
         maxSessionSeconds: 30,
         maxDailySeconds: 3600,
-        maxConcurrentSessions: 10,
+        maxConcurrentSessions: 100,
         enforceRateLimit: true,
       });
     }
     const response = await status(userState, {
-      now: TODAY + 6000,
+      now: TODAY + 21_000,
       maxDailySeconds: 3600,
       maxConcurrentSessions: 10,
       enforceRateLimit: true,
     });
     expect(await response.json()).toMatchObject({
       rateLimited: true,
-      retryAfterSeconds: 54,
+      retryAfterSeconds: 39,
       requestsRemaining: 0,
     });
   });
 
-  it("rejects the sixth handshake request in one minute", async () => {
+  it("rejects the 21st handshake request in one minute", async () => {
     const { userState } = makeState();
     const responses = [];
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 21; index += 1) {
       responses.push(await acquire(userState, {
         sessionId: "session-" + index,
         now: TODAY + index * 1000,
         maxSessionSeconds: 30,
         maxDailySeconds: 3600,
-        maxConcurrentSessions: 10,
+        maxConcurrentSessions: 100,
         enforceRateLimit: true,
       }));
     }
 
-    expect(responses.slice(0, 5).every((response) => response.status === 200)).toBe(true);
-    expect(responses[5].status).toBe(429);
-    expect((await responses[5].json()).reason).toBe("rate_limited");
+    expect(responses.slice(0, 20).every((response) => response.status === 200)).toBe(true);
+    expect(responses[20].status).toBe(429);
+    expect((await responses[20].json()).reason).toBe("rate_limited");
   });
 
   it("never bypasses the daily budget even if a caller sends the old testing flag", async () => {
