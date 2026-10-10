@@ -961,7 +961,13 @@
     const track = microphoneStream && microphoneStream.getVideoTracks()[0];
     const requested = Number(value);
     if (!Number.isFinite(requested)) return;
-    zoomLevel = Math.max(zoomMin, Math.min(zoomMax, requested));
+    const nextZoom = Math.max(zoomMin, Math.min(zoomMax, requested));
+    if (localTrackingActive && Math.abs(nextZoom - zoomLevel) > 0.05) {
+      stopLocalTracking(false);
+      focusMarker.dataset.tracking = "lost";
+      setStatus("Zoom changed. Tap the target again to resume local tracking.", "warning");
+    }
+    zoomLevel = nextZoom;
     zoomSlider.value = String(zoomLevel);
     zoomLabel.textContent = (Math.abs(zoomLevel - Math.round(zoomLevel)) < 0.001 ? String(Math.round(zoomLevel)) : zoomLevel.toFixed(1)) + "×";
     if (nativeZoomSupported && track) {
