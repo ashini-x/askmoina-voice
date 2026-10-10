@@ -39,7 +39,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("requestHitTestSource({ space: spatialViewerSpace })");
     expect(script).toContain("hitForAnchor.createAnchor()");
     expect(script).toContain("frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace)");
-    expect(script).toContain("Starting this lab pauses live voice guidance");
+    expect(html).toContain("Starting this lab pauses live voice guidance");
     expect(css).toContain(".spatial-hud[hidden]{display:none}");
   });
 
