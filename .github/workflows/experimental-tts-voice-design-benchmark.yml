@@ -1,0 +1,85 @@
+name: Experimental Gemini TTS voice-design benchmark
+
+on:
+  push:
+    branches:
+      - experiment/vertex-tts-voice-design-benchmark
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-experimental-tts-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out experiment branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check whether a Google credential is available without exposing it
+        id: credentials
+        env:
+          GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GCP_SERVICE_ACCOUNT_JSON:-}" ]]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Benchmark status: not executed"
+              echo
+              echo "No Google API requests were made. The GitHub Actions secret `GCP_SERVICE_ACCOUNT_JSON` is not available to this workflow."
+              echo "The current production credential is configured as a Cloudflare Worker Secret; this workflow cannot retrieve that secret from Cloudflare."
+              echo "To run the API test, configure a least-privilege Google service-account key as a GitHub Actions secret, or execute the script in an environment already authenticated to the same Vertex AI project."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Benchmark blocked before API use because GCP_SERVICE_ACCOUNT_JSON is not configured in GitHub Actions."
+            exit 0
+          fi
+          printf '%s' "$GCP_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/gcp-service-account.json"
+          chmod 600 "$RUNNER_TEMP/gcp-service-account.json"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "Google credential presence verified; value is not printed or archived."
+
+      - name: Set up Python
+        if: steps.credentials.outputs.available == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Google Gen AI SDK
+        if: steps.credentials.outputs.available == 'true'
+        run: python -m pip install --disable-pip-version-check "google-genai>=2.25.0"
+
+      - name: Generate two voice designs and speech-control samples
+        if: steps.credentials.outputs.available == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GCP_PROJECT_ID:-}" ]]; then
+            echo "::error::Configure the repository variable GCP_PROJECT_ID for the same Google Cloud project."
+            exit 1
+          fi
+          python scripts/tts-voice-design-benchmark.py
+
+      - name: Upload generated audio and benchmark report
+        if: always() && steps.credentials.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: askmoina-tts-voice-design-benchmark
+          path: tts-benchmark-output/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove temporary credential file
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/gcp-service-account.json"
