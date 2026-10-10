@@ -428,7 +428,9 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
         "(SELECT COUNT(*) FROM voice_sessions WHERE started_at >= datetime('now','-1 day') AND outcome NOT IN ('completed','connecting','client_disconnected')) AS failed24h, " +
         "(SELECT COUNT(*) FROM vault_backups) AS encryptedBackups",
       ).first<Record<string,number>>();
-      return json({metrics:metrics||{},system:{worker:"AskMoina Voice",model:env.GEMINI_MODEL||"configured",location:env.GEMINI_LOCATION||"configured",retentionDays:30}});
+      const parsedRetentionDays = Number.parseInt(env.ANALYTICS_RAW_RETENTION_DAYS || "", 10);
+      const retentionDays = Number.isSafeInteger(parsedRetentionDays) && parsedRetentionDays > 0 ? Math.min(parsedRetentionDays, 3_650) : 30;
+      return json({metrics:metrics||{},system:{worker:"AskMoina Voice",model:env.GEMINI_MODEL||"configured",location:env.GEMINI_LOCATION||"configured",retentionDays,auditLogRetentionDays:90,cleanupIntervalHours:1}});
     }
     if (url.pathname === "/admin/api/sessions") {
       const result = await env.DB.prepare(
