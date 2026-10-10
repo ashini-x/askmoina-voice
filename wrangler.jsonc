@@ -31,6 +31,9 @@
       "ADMIN_SESSION_SECRET"
     ]
   },
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
   "durable_objects": {
     "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]
   },
