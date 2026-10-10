@@ -11,7 +11,7 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.7",
+    "APP_VERSION": "0.4.8",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "ADMIN_VOICE_DAILY_QUOTA_BYPASS": "true",
