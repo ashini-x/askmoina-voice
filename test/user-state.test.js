@@ -133,13 +133,13 @@ describe("AskMoina voice session guard", () => {
 
   it("explains how long until the connection-attempt limit resets", async () => {
     const { userState } = makeState();
-    for (let index = 0; index < 21; index += 1);
+    for (let index = 0; index < 21; index += 1) {
       await acquire(userState, {
         sessionId: "limited-" + index,
         now: TODAY + index * 1000,
         maxSessionSeconds: 30,
         maxDailySeconds: 3600,
-        maxConcurrentSessions: 10,
+        maxConcurrentSessions: 100,
         enforceRateLimit: true,
       });
     }
@@ -166,7 +166,7 @@ describe("AskMoina voice session guard", () => {
         now: TODAY + index * 1000,
         maxSessionSeconds: 30,
         maxDailySeconds: 3600,
-        maxConcurrentSessions: 10,
+        maxConcurrentSessions: 100,
         enforceRateLimit: true,
       }));
     }
