@@ -64,9 +64,24 @@ jobs:
             exit 1
           }
           printf '%s\n' "$upload_output"
-          version_id="$(printf '%s\n' "$upload_output" | sed -nE 's/^Worker Version ID: ([0-9a-f-]{36})$/\1/p' | tail -n 1)"
+          version_id="$(printf '%s\n' "$upload_output" | node -e '
+            let input = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              // Wrangler can colour its output, so strip ANSI escapes before parsing.
+              input = input.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
+              const match = input.match(/^Worker Version ID:\s*([0-9a-f-]{36})\s*$/m);
+              if (!match) {
+                process.stderr.write("Could not parse Worker Version ID from Wrangler output.\n");
+                process.exitCode = 1;
+                return;
+              }
+              process.stdout.write(match[1]);
+            });
+          ')"
           if [[ ! "$version_id" =~ ^[0-9a-f-]{36}$ ]]; then
-            echo "::error::Wrangler did not report a valid Worker version ID."
+            echo "::error::Wrangler did not report a valid Worker version ID; refusing to promote."
             exit 1
           fi
           echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
