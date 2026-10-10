@@ -133,7 +133,7 @@ describe("AskMoina Upper Assam pronunciation reference", () => {
     expect(prompt.length).toBeGreaterThan(0);
     expect(prompt.length).toBeLessThanOrEqual(5_000);
     expect(prompt).toContain("source-attributed rule database");
-    expect(prompt).toContain("native-speaker-verified");
+    expect(prompt).toContain("not yet locally verified");
     expect(prompt).toContain("not universal or Upper Assam native-verified");
   });
 
