@@ -5,6 +5,7 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 ## Current capabilities
 
 - Browser-based live voice with microphone permission, 16 kHz PCM input and streamed audio replies.
+- Experimental Live Co-Pilot at `/copilot`: streams reduced-size camera frames with live audio and renders model-requested, approximate screen-space focus labels. It is not yet world-locked AR and does not include native ARCore/ARKit tracking.
 - A local-first Memory Vault at `/vault`: user-entered notes are encrypted in the browser using Web Crypto AES-GCM before they are stored in IndexedDB.
 - Optional encrypted cloud backups. The Worker stores ciphertext, salt, IV and key-derivation metadata; it never receives the vault decryption key or plaintext memories.
 - Optional `Use these memories in AskMoina on this browser tab`. Only selected notes are passed to Gemini at the start of the next voice session after explicit user opt-in.
@@ -25,8 +26,8 @@ Memory notes are entered and managed by the user in this release. Automatic extr
 - The Worker pins the model, base system instruction, and Live voice; browser clients cannot override them. The current voice is Leda (documented by Google as “Youthful”); its quality for Upper Assamese must still be checked with native speakers.
 - The Worker can append a source-attributed Assamese pronunciation-rule reference from D1 at live-session setup. Seed rules are bounded, fail open if the migration/table is unavailable, and remain explicitly unverified by local listeners until evaluated.
 - WebSocket browser connections must use the exact same origin as the Worker.
-- Durable Objects enforce connection-attempt, session-duration, per-IP daily usage and global capacity limits. The IP hash is used for abuse controls, not personal identity.
-- The optional `ADMIN_VOICE_DAILY_QUOTA_BYPASS=true` setting exempts only a browser with a valid signed admin session from the per-network and global daily voice budgets. Admin testing still keeps the 9-minute per-conversation cap, five connection attempts per minute per network, one active admin session per network, and the separate five-session admin concurrency ceiling. Public visitors keep the normal 30-minute per-network and 60-minute app-wide daily allowances. This bypass is not a Google Cloud billing limit; usage is still billable and must be monitored in Google Cloud Billing.
+- Durable Objects enforce IP-level connection-attempt rate limits, per-browser session concurrency and daily usage, session duration, and global pilot capacity. The IP hash is used for burst-abuse controls, not personal identity.
+- The optional `ADMIN_VOICE_DAILY_QUOTA_BYPASS=true` setting exempts only a browser with a valid signed admin session from the public per-browser and global daily voice budgets. Admin sessions still use dedicated concurrency/rate guard records and the 9-minute per-conversation cap. Public pilot visitors are limited to 30 minutes per browser per day and 25 concurrent sessions across the app, with a 10-hour aggregate daily voice allowance. These are app-level usage guards, not Google Cloud billing hard caps; monitor Google Cloud Billing separately.
 - The anonymous continuity cookie uses a random token; only its SHA-256 hash is used as the server-side pseudonymous visitor ID.
 - D1 stores operational metadata and encrypted vault backups, not decrypted memory notes, microphone recordings or transcript archives.
 - The admin dashboard uses HMAC-signed, 12-hour HttpOnly/Secure/SameSite cookies and a login throttle. Configure `ADMIN_DASHBOARD_PASSWORD` as a Worker Secret before using it.
