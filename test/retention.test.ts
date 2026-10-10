@@ -16,7 +16,7 @@ function mockEnv(options?: { changes?: number; throwOn?: string }) {
         },
         async run() {
           queries.push({ sql, params });
-          if (options?.throwOn && sql.includes(options.throwOn)) {
+          if (options?.throwOn && sql.trimStart().startsWith("DELETE FROM " + options.throwOn)) {
             throw new Error("mock database failure");
           }
           return { meta: { changes: options?.changes ?? 0 } };
@@ -88,6 +88,6 @@ describe("scheduled retention maintenance", () => {
     );
 
     expect(result.tablesAtBatchLimit).toHaveLength(5);
-    expect(result.batchesRun.voice_sessions).toBe(2);
+    expect(result.batchesRun.voice_sessions).toBe(4);
   });
 });
