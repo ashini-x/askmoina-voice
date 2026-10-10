@@ -18,7 +18,7 @@ It generates:
 - One same-voice Gemini 3.8 Flash-Lite sample.
 - One scripted, two-speaker Assamese TTS example.
 
-The two voices are created with `store=true` and remain in the Google Cloud project to allow reuse. This uses billable Gemini TTS tokens. Use only the intended Google Cloud project and review its usage and billing settings before running.
+The two voices are created with `store=true` and remain in the Google Cloud project to allow reuse. This uses billable Gemini TTS tokens. Use only the intended Google Cloud project and review its usage and billing settings before running. Each opt-in run creates fresh persisted voice assets, so repeat experiments may leave additional voice designs in the Google project.
 
 ## Run safely
 
