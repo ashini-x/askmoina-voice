@@ -160,7 +160,7 @@
       row.className = "transcript-entry " + (role === "user" ? "from-you" : "from-moina");
       const label = document.createElement("span");
       label.className = "transcript-label";
-      label.textContent = role === "user" ? "YOU" : "MOina";
+      label.textContent = role === "user" ? "YOU" : "MOINA";
       const body = document.createElement("p");
       body.className = "transcript-text";
       row.append(label, body);
