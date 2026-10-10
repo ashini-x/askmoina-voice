@@ -88,8 +88,9 @@ jobs:
           status="$(fetch_status /copilot.js /tmp/moina-copilot.js)"
           test "$status" = "200"
           grep -q 'copilot_mode: true' /tmp/moina-copilot.js
+          grep -q 'refreshAvailabilityAfterRelease' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
-          echo "Live Co-Pilot client: OK"
+          echo "Live Co-Pilot client and session-release retry: OK"
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"
