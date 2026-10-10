@@ -22,7 +22,7 @@ The two voices are created with `store=true` and remain in the Google Cloud proj
 
 ## Run safely
 
-The isolated GitHub Actions workflow is configured for `experiment/vertex-tts-voice-design-benchmark`, but GitHub only exposes manual dispatch when the workflow file is present on the repository's default branch. We intentionally keep this experiment off the production branch. To opt into billable generation, push a commit to this branch whose commit message contains `[run-benchmark]`. Ordinary pushes only run no-cost validation/skip the billable job; do not merge this experiment into production just to expose the manual button.
+The isolated GitHub Actions workflow is configured for `experiment/vertex-tts-voice-design-benchmark`, but GitHub only exposes manual dispatch when the workflow file is present on the repository's default branch. We intentionally keep this experiment off the production branch. To opt into billable generation, push a commit to this branch whose commit message contains `[run-benchmark]`. Ordinary pushes do not execute the billable benchmark job; do not merge this experiment into production just to expose the manual button.
 
 The workflow requires a repository Actions secret named `GCP_SERVICE_ACCOUNT_JSON` containing a service-account JSON key with the required Vertex AI / Gemini Enterprise permissions. It reads `GCP_PROJECT_ID` from the checked-in `wrangler.jsonc` configuration for this isolated benchmark. The existing Cloudflare Worker secret cannot be read back into GitHub Actions. If the Actions secret is absent, the workflow stops before making Google API calls.
 
