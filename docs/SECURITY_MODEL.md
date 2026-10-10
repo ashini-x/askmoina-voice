@@ -25,6 +25,7 @@
 - Admin audit events are retained for 90 days. The operations dashboard reports the configured analytics period and the separate audit retention period.
 - Cleanup uses indexed, bounded batches (up to four batches of 10,000 rows per table per run) to avoid unbounded delete statements. Logs report deleted counts, cleanup failures and tables that reached their batch limit so backlog can be monitored.
 - Visitor profiles are retained while referenced by any remaining voice-session or usage-event record. Cleanup never deletes `vault_backups`; these are user-controlled encrypted backups and require a separate product retention/deletion policy.
+- Voice timing logs record setup and first-audio timing plus frame size, never the audio payload or transcript text. They are available for latency analysis but are not themselves proof of native-language quality or a latency SLA.
 - This app retention policy covers AskMoina's D1 operational records only. It does not make claims about provider-side processing or retention.
 
 ## Admin operations
