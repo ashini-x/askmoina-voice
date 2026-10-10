@@ -26,4 +26,5 @@ export interface Env {
   ADMIN_DASHBOARD_USER?: string;
   ADMIN_DASHBOARD_PASSWORD?: string;
   ADMIN_SESSION_SECRET?: string;
+  ADMIN_VOICE_DAILY_QUOTA_BYPASS?: string;
 }
