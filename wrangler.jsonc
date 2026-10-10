@@ -11,11 +11,12 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.3",
+    "APP_VERSION": "0.4.4",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
     "LIVE_VOICE_NAME": "Leda",
+    "LIVE_VOICE_ID": "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "MAX_LIVE_SESSION_SECONDS": "540",
@@ -38,7 +39,7 @@
   "durable_objects": {
     "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]
   },
-  "exports": { "UserState": { "type": "durable-object", "storage": "sqlite" } },
+  "exports": { "UserState": { "type": "sqlite" } },
   "d1_databases": [
     {
       "binding": "DB",
