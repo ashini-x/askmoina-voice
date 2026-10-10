@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "../src/sessions/voice-config";
+import {
+  buildVoiceGenerationConfig,
+  CANDIDATE_A_LIVE_VOICE_ID,
+  DEFAULT_LIVE_VOICE_NAME,
+} from "../src/sessions/voice-config";
 
 describe("Vertex Live voice configuration", () => {
   it("selects the documented youthful Leda voice by default", () => {
@@ -14,7 +18,7 @@ describe("Vertex Live voice configuration", () => {
     });
   });
 
-  it("trims a configured voice name while preserving audio-only output", () => {
+  it("trims a configured prebuilt voice name while preserving audio-only output", () => {
     expect(buildVoiceGenerationConfig("  Aoede  ")).toEqual({
       responseModalities: ["AUDIO"],
       speechConfig: {
@@ -25,8 +29,48 @@ describe("Vertex Live voice configuration", () => {
     });
   });
 
-  it("falls back to Leda when the voice setting is blank", () => {
-    expect(buildVoiceGenerationConfig("  ").speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName)
-      .toBe("Leda");
+  it("uses Candidate A's tested prompted voice ID directly in Live", () => {
+    expect(CANDIDATE_A_LIVE_VOICE_ID).toBe("voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05");
+    expect(buildVoiceGenerationConfig("Leda", CANDIDATE_A_LIVE_VOICE_ID)).toEqual({
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          voice: "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
+        },
+      },
+    });
+  });
+
+  it("gives a nonblank prompted voice ID precedence over a prebuilt voice name", () => {
+    expect(buildVoiceGenerationConfig("Aoede", " voice_custom_test ")).toEqual({
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          voice: "voice_custom_test",
+        },
+      },
+    });
+  });
+
+  it("falls back to Leda when the prebuilt voice setting is blank", () => {
+    expect(buildVoiceGenerationConfig("  ")).toEqual({
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: "Leda" },
+        },
+      },
+    });
+  });
+
+  it("falls back to the configured prebuilt voice when the custom ID is blank", () => {
+    expect(buildVoiceGenerationConfig(" Aoede ", "  ")).toEqual({
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: "Aoede" },
+        },
+      },
+    });
   });
 });
