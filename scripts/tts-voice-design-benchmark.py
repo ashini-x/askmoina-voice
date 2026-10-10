@@ -38,8 +38,8 @@ VOICE_DESIGNS = [
         "key": "B",
         "display_name": "Moina Acoustic Voice B - Ultra Short",
         "prompt": (
-            "High-pitched, bright formant resonance, small vocal tract acoustic profile, "
-            "sweet-toned, crisp, soft, airy breathiness, warm and comforting tone."
+            "A sweet, high-pitched voice with bright, light resonance and a crisp, soft "
+            "tone. Gentle airy breathiness, clear and warm, with a comforting sound."
         ),
     },
 ]
@@ -186,41 +186,56 @@ def main() -> None:
             "perceived age require human listening, ideally by native Upper Assamese speakers."
         ),
         "voice_designs": [],
+        "voice_design_failures": [],
         "clips": [],
         "multi_speaker": None,
     }
 
     voice_ids: dict[str, str] = {}
     for design in VOICE_DESIGNS:
-        started = time.perf_counter()
-        voice = client.voices.create(
-            store=True,
-            voice={
-                "type": "VOICE_TYPE_PROMPTED",
+        try:
+            started = time.perf_counter()
+            voice = client.voices.create(
+                store=True,
+                voice={
+                    "type": "VOICE_TYPE_PROMPTED",
+                    "display_name": design["display_name"],
+                    "gender": "male",
+                    "prompted": {"input": design["prompt"]},
+                },
+                timeout=60,
+            )
+            elapsed = time.perf_counter() - started
+            if not getattr(voice, "id", None) or getattr(voice, "sample_audio", None) is None:
+                raise RuntimeError("Voice API response did not contain both an ID and sample audio.")
+            voice_ids[design["key"]] = voice.id
+            sample_name = f"voice_{design['key']}_design_sample.wav"
+            save_voice_design_sample(voice.sample_audio, OUT / sample_name)
+            report["voice_designs"].append({
+                "key": design["key"],
                 "display_name": design["display_name"],
-                "gender": "male",
-                "prompted": {"input": design["prompt"]},
-            },
-            timeout=60,
-        )
-        elapsed = time.perf_counter() - started
-        voice_ids[design["key"]] = voice.id
-        sample_name = f"voice_{design['key']}_design_sample.wav"
-        save_voice_design_sample(voice.sample_audio, OUT / sample_name)
-        report["voice_designs"].append({
-            "key": design["key"],
-            "display_name": design["display_name"],
-            "voice_id": voice.id,
-            "prompt": design["prompt"],
-            "create_elapsed_seconds": round(elapsed, 3),
-            "sample_file": sample_name,
-            **wav_metadata(OUT / sample_name),
-            "usage": getattr(voice, "usage", None).model_dump(mode="json")
-                if getattr(voice, "usage", None) is not None
-                and hasattr(getattr(voice, "usage", None), "model_dump")
-                else None,
-        })
+                "voice_id": voice.id,
+                "prompt": design["prompt"],
+                "create_elapsed_seconds": round(elapsed, 3),
+                "sample_file": sample_name,
+                **wav_metadata(OUT / sample_name),
+                "usage": json_safe(getattr(voice, "usage", None)),
+            })
+        except Exception as exc:
+            report["voice_design_failures"].append({
+                "key": design["key"],
+                "display_name": design["display_name"],
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:1200],
+            })
+            print(f"Voice candidate {design['key']} failed ({type(exc).__name__}); continuing with any successful candidates.")
 
+    if not voice_ids:
+        report_path = OUT / "benchmark-report.json"
+        report_path.write_text(json.dumps(json_safe(report), ensure_ascii=False, indent=2), encoding="utf-8")
+        raise RuntimeError("No voice candidates were created successfully; see benchmark-report.json.")
+
+    fallback_voice_id = voice_ids.get("A") or next(iter(voice_ids.values()))
     for key, voice_id in voice_ids.items():
         report["clips"].append(generate_clip(
             client, MODEL_FLASH, voice_id, ASSAMESE_BASELINE,
@@ -245,7 +260,7 @@ def main() -> None:
     # A single Flash-Lite comparison checks the lower-latency model family with
     # the same designed voice and transcript. This is unary latency, not streaming TTFB.
     report["clips"].append(generate_clip(
-        client, MODEL_LITE, voice_ids["A"], ASSAMESE_BASELINE,
+        client, MODEL_LITE, fallback_voice_id, ASSAMESE_BASELINE,
         "voice_A_assamese_baseline_flash_lite.wav",
     ))
 
@@ -270,7 +285,7 @@ def main() -> None:
             "speech_config": {
                 "multi_speaker_voice_config": {
                     "speaker_voice_configs": [
-                        {"speaker": "Moina", "voice_config": {"voice": voice_ids["A"]}},
+                        {"speaker": "Moina", "voice_config": {"voice": fallback_voice_id}},
                         {"speaker": "Friend", "voice_config": {"voice": "Puck"}},
                     ],
                 },
@@ -283,7 +298,7 @@ def main() -> None:
     report["multi_speaker"] = {
         "file": multi_path.name,
         "elapsed_seconds": round(multi_elapsed, 3),
-        "speaker_1": {"name": "Moina", "voice_id": voice_ids["A"]},
+        "speaker_1": {"name": "Moina", "voice_id": fallback_voice_id},
         "speaker_2": {"name": "Friend", "voice_id": "Puck"},
         "note": "Scripted two-speaker TTS control; not live conversational turn-taking.",
         **wav_metadata(multi_path),
@@ -298,6 +313,7 @@ def main() -> None:
         "designed_voice_ids": voice_ids,
         "clips_generated": len(report["clips"]) + 1,
         "voice_design_samples": len(report["voice_designs"]),
+        "voice_design_failures": len(report["voice_design_failures"]),
         "project_id": PROJECT_ID,
     }, ensure_ascii=False))
 
