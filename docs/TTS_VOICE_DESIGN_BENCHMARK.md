@@ -4,11 +4,10 @@ This is a non-production experiment. It does not change `src/index.ts`, Wrangler
 
 ## What it compares
 
-The script creates two prompted voice assets via the Gemini Enterprise Voices API, with the API's male gender setting:
-- **A — Full acoustic prompt:** high-pitched, bright/light resonance, sweet/crisp/soft tone, gentle airy breathiness, no vocal fry or deep/gravelly resonance, warm and comforting.
-- **B — Bright airy alternative:** a male speaking voice with exceptionally high pitch, bright lightweight resonance, sweet/crisp yet soft tone, gentle airy breathiness, warmth, and no deep or gravelly quality.
+The script creates one prompted voice asset via the Gemini Enterprise Voices API, with the API's male gender setting:
+- **C — Soft and Unforced:** a naturally sweet, light male speaking voice with a gently elevated—not pushed—register, smooth warmth, delicate airy quality, rounded resonance, and relaxed, effortless conversational delivery without theatrical or sugary sweetness.
 
-These candidates intentionally focus on acoustic characteristics rather than age or regional-language cues. Their Assamese speech clips test how the generated voice handles Assamese content; Upper Assamese naturalness still needs native-speaker listening. If one voice prompt fails to generate, the script records the error and continues with any successful candidate instead of losing all samples.
+This single-candidate test is designed to reduce extra billable calls. It creates one voice-design sample, one Assamese baseline, and one English control. Upper Assamese naturalness still needs native-speaker listening. If the voice prompt fails, the script writes a diagnostic report.
 
 It generates:
 - Assamese baseline speech with no turn-level style instruction.
@@ -18,7 +17,7 @@ It generates:
 - One same-voice Gemini 3.8 Flash-Lite sample.
 - One scripted, two-speaker Assamese TTS example.
 
-The two voices are created with `store=true` and remain in the Google Cloud project to allow reuse. This uses billable Gemini TTS tokens. Use only the intended Google Cloud project and review its usage and billing settings before running. Each opt-in run creates fresh persisted voice assets, so repeat experiments may leave additional voice designs in the Google project.
+The voice is created with `store=true` and remains in the Google Cloud project to allow reuse. This uses billable Gemini TTS tokens. Use only the intended Google Cloud project and review its usage and billing settings before running. Each opt-in run creates a fresh persisted voice asset, so repeat experiments may leave additional voice designs in the Google project.
 
 ## Run safely
 
