@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { runInNewContext } from "node:vm";
 import { handleContinuityRequest, visitorIdFromRequest } from "../src/continuity";
 import type { Env } from "../src/config/env";
 
@@ -109,7 +108,7 @@ describe("selected browser memory reaches the Vertex session setup frame", () =>
     const localStorage = { getItem: (key: string) => key === "askmoina.memory.context" ? stagedMemory : null };
     const sessionStorage = { getItem: (_key: string) => null };
     const window = { WebSocket: FakeWebSocket };
-    runInNewContext(source, { window, localStorage, sessionStorage });
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
 
     const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
     const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
