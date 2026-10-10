@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          message="Enable admin daily quota bypass (AskMoina Voice v0.4.5)"
+          message="Conversational Assamese-English and expressive Live voice (AskMoina Voice v0.4.6)"
           # Upload a version without syncing queue-consumer triggers; those triggers already exist.
           upload_output="$(npx wrangler versions upload --message "$message" 2>&1)" || {
             printf '%s\n' "$upload_output"

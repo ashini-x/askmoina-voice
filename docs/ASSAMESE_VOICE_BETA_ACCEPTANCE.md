@@ -32,6 +32,11 @@ For each scenario, record: understood correctly (yes/no), response language appr
 
 - Everyday Assamese greeting and open-ended conversation.
 - Assamese with English words mixed naturally in the same sentence.
+- Casual Gen-Z-style Assamese-English chat: for example, a user says "Aji mood tu bhal nai yaar" or "Honestly, exam tu loi tension hoi ase"; check that Moina sounds conversational rather than formal/textbook, mirrors the user's mix, and does not force slang.
+- Switch from an Assamese-English mix to English and back; check that the assistant follows smoothly without translating everything into formal Assamese.
+- Positive social reaction: share a small win and see whether the audio sounds genuinely pleased, with a subtle audible laugh/chuckle only if it fits.
+- Light playful moment: use a harmless joke; check whether a brief audible chuckle can be heard in the audio itself, not the literal word/tag "[laugh]".
+- Empathetic moment: mention ordinary frustration; check for a soft sigh/exhale or warmer, quieter delivery when it fits. Also confirm that sounds are not inserted mechanically and never appear during grief, fear, or serious topics.
 - Local place names and common regional expressions.
 - A request to repeat or explain something more simply.
 - A noisy-room or slower-network session.
@@ -54,3 +59,8 @@ Proceed to a small pilot only when:
 - A process exists to report failures, disable access if needed, and monitor provider spending.
 
 A successful deployment or health endpoint alone does not satisfy this gate.
+
+
+## Live expression limitation
+
+AskMoina currently uses Gemini Live for direct real-time audio-to-audio conversation, not a scripted Gemini TTS transcript. Instructions can encourage laughter, sighs, breaths and expressive prosody, but prompt wording cannot guarantee that every non-speech sound will be generated on every turn. The bracketed/inline vocal tags documented for Gemini TTS are not a control interface that can simply be dropped into this Live audio stream. If reliable, deliberately placed tags are a hard product requirement, evaluate a separate Live-to-TTS cascade as a distinct architecture experiment and measure its added latency and turn-taking trade-offs before replacing the current path.
