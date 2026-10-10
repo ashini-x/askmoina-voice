@@ -1,30 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { SYSTEM_INSTRUCTION } from "../src/sessions/assistant-instruction";
 
-describe("AskMoina voice behavior guidance", () => {
-  it("prioritizes conversational Assamese and natural code-switching", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("respond in natural, conversational Assamese");
-    expect(SYSTEM_INSTRUCTION).toContain("do not default to English");
-    expect(SYSTEM_INSTRUCTION).toContain("code-switch naturally");
+describe("AskMoina live voice behavior guidance", () => {
+  it("prioritizes spoken Assamese and mirrors natural Assamese-English code-switching", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("answer in spoken, everyday Assamese");
+    expect(SYSTEM_INSTRUCTION).toContain("answer in the same kind of Assamese-English mix");
+    expect(SYSTEM_INSTRUCTION).toContain("Keep natural English phrases in English");
+    expect(SYSTEM_INSTRUCTION).toContain("not a schoolteacher, newsreader, audiobook narrator");
+    expect(SYSTEM_INSTRUCTION).toContain("Match the user's level of code-switching");
+  });
+
+  it("includes examples of contemporary casual Assamese-English conversation", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("Aji mood tu bhal nai yaar.");
+    expect(SYSTEM_INSTRUCTION).toContain("Kalir exam loi bohut tension hoi ase.");
+    expect(SYSTEM_INSTRUCTION).toContain("I got the job!");
+    expect(SYSTEM_INSTRUCTION).toContain("These examples show rhythm and code-switching only");
   });
 
   it("encourages spoken turn-taking rather than verbose scripted replies", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("should avoid turning every answer into a lecture");
-    expect(SYSTEM_INSTRUCTION).toContain("Leave room for the user to speak");
+    expect(SYSTEM_INSTRUCTION).toContain("Do not turn every answer into a lecture");
+    expect(SYSTEM_INSTRUCTION).toContain("leave room for the user");
     expect(SYSTEM_INSTRUCTION).toContain("ask at most one question at a time");
-    expect(SYSTEM_INSTRUCTION).toContain("should not add fake hesitations");
+    expect(SYSTEM_INSTRUCTION).toContain("Avoid fake hesitations");
   });
 
-  it("uses empathy and examples without forcing canned responses", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("acknowledge feelings briefly when appropriate");
-    expect(SYSTEM_INSTRUCTION).toContain("CONVERSATION EXAMPLES (style guidance, not fixed scripts)");
+  it("directs the Live audio model to vocalize suitable reactions rather than say stage directions", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("generate audio directly, not a prepared text-to-speech transcript");
+    expect(SYSTEM_INSTRUCTION).toContain("never say or print those labels");
+    expect(SYSTEM_INSTRUCTION).toContain("make the brief vocal reaction itself audible");
+    expect(SYSTEM_INSTRUCTION).toContain("prefer an actual small laugh/chuckle");
+    expect(SYSTEM_INSTRUCTION).toContain("soft sigh/exhale when empathizing with frustration");
+    expect(SYSTEM_INSTRUCTION).toContain("Do not laugh at the user's expense");
+    expect(SYSTEM_INSTRUCTION).toContain("If a non-speech sound cannot be produced reliably");
   });
 
-  it("encourages contextual vocal expressions without forcing or speaking stage directions", () => {
-    expect(SYSTEM_INSTRUCTION).toContain("a small laugh or laughter, chuckle/chuckles, giggle");
-    expect(SYSTEM_INSTRUCTION).toContain("These are options, not a checklist");
-    expect(SYSTEM_INSTRUCTION).toContain("never laugh at grief, distress, fear, or serious topics");
-    expect(SYSTEM_INSTRUCTION).toContain("Do not speak or print literal markers such as [laugh], [sigh], [chuckles], or [whispers]");
+  it("keeps expression contextual rather than using a mechanical checklist", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("Use expression selectively, not as a checklist");
+    expect(SYSTEM_INSTRUCTION).toContain("Do not insert sighs, gasps, whispers, coughs, or other sounds without a reason");
   });
 
   it("avoids fabricated dialect and local facts", () => {
