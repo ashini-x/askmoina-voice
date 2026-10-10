@@ -82,8 +82,8 @@ async function reserveVoiceSession(
   const ipHash = await sha256(ip);
   // Admin usage is tracked in separate Durable Objects so it neither consumes nor
   // gets blocked by the public daily budgets.
-  const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:" : "voice-ip:"}${ipHash}`;
-  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget" : "voice-global-budget";
+  const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:v2:" : "voice-ip:"}${ipHash}`;
+  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
   const enforceDailyLimit = !adminDailyQuotaBypassed;
   const sessionId = crypto.randomUUID();
   const now = Date.now();
@@ -224,8 +224,8 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   const now = Date.now();
   const adminDailyQuotaBypassed = await hasAdminDailyQuotaBypass(request, env);
   const ipHash = await sha256(ip);
-  const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:" : "voice-ip:"}${ipHash}`;
-  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget" : "voice-global-budget";
+  const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:v2:" : "voice-ip:"}${ipHash}`;
+  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
   const enforceDailyLimit = !adminDailyQuotaBypassed;
   const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
   const maxDailySeconds = positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800);
