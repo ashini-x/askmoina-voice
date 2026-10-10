@@ -12,3 +12,7 @@
 .voice-lab-select{width:100%;padding:13px 14px;border:1px solid #3a4a6b;border-radius:12px;background:#0b1428;color:#f3f6ff;font:inherit;outline-offset:3px}
 .voice-lab-copy{font-size:.82rem;line-height:1.55;color:#9eafd0;margin:12px 0 0}
 .voice-lab-copy strong{color:#e5edff}
+
+
+/* Live Co-Pilot entry points. */
+.brand .copilot-link{color:#0d1930;text-decoration:none;background:linear-gradient(135deg,#a9f0e7,#a8b5ff);border:0;border-radius:999px;padding:6px 10px;white-space:nowrap;font-weight:750}.brand .vault-link,.brand .copilot-link{margin-left:0}.home-copilot-cta{display:flex;align-items:center;justify-content:space-between;gap:24px;width:min(100%,360px);margin:20px auto 10px;padding:14px 17px;border:1px solid #52718b;border-radius:14px;background:linear-gradient(115deg,#162c42,#18223c);color:#e8fcff;text-decoration:none;font-weight:750;box-shadow:0 10px 34px #48b7c71a}.home-copilot-cta span:last-child{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#9be7ef;color:#0d1930}.home-copilot-cta:hover{border-color:#9be7ef;background:linear-gradient(115deg,#1c3b4b,#232b4e)}@media(max-width:600px){.brand .copilot-link{margin-left:auto}.brand .vault-link{margin-left:0}.brand .brand-location:not(.vault-link):not(.copilot-link){display:none}}

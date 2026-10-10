@@ -79,6 +79,23 @@ jobs:
           node --check /tmp/moina-vault.js
           echo "Vault client JavaScript: OK"
 
+          status="$(fetch_status /copilot /tmp/moina-copilot.html)"
+          test "$status" = "200"
+          grep -q 'Live Co-Pilot' /tmp/moina-copilot.html
+          grep -q 'not world-locked AR' /tmp/moina-copilot.html
+          echo "Live Co-Pilot page: OK"
+
+          status="$(fetch_status /copilot.js /tmp/moina-copilot.js)"
+          test "$status" = "200"
+          grep -q 'copilot_mode: true' /tmp/moina-copilot.js
+          node --check /tmp/moina-copilot.js
+          echo "Live Co-Pilot client: OK"
+
+          status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
+          test "$status" = "200"
+          grep -q '.focus-marker' /tmp/moina-copilot.css
+          echo "Live Co-Pilot styles: OK"
+
           status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
           test "$status" = "200"
           grep -q 'AskMoina Admin' /tmp/moina-admin-login.html

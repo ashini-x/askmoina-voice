@@ -9,10 +9,42 @@ import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
+import { parseLiveClientInput } from "./sessions/copilot-protocol";
 
 export { UserState } from "./sessions/user-state";
 
 const providerFrameDecoder = new TextDecoder();
+
+const COPILOT_SYSTEM_INSTRUCTION = [
+  "You are Moina's live camera co-pilot for Assamese-speaking users.",
+  "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
+  "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
+  "When you have identified a useful visual target or a next step worth highlighting, call display_screen_overlay with a concise label, one safe next-step instruction, a brief target hint, and the approximate screen region.",
+  "Screen regions are rough screen-space hints, not calibrated coordinates. Never claim the marker is physically anchored to the object. If the target is ambiguous, ask the user to point more steadily or move closer rather than guessing.",
+  "For troubleshooting, guide one step at a time and wait for the user to confirm before proceeding. Do not advise users to open live electrical equipment, handle gas leaks, bypass safety systems, or perform other hazardous repairs; recommend a qualified professional when appropriate.",
+  "Do not claim to have changed a device setting, purchased an item, or executed an external action unless a real approved tool confirms it. The overlay tool only displays a label on screen."
+].join("\n");
+
+const COPILOT_TOOL = {
+  functionDeclarations: [{
+    name: "display_screen_overlay",
+    description: "Display a concise on-screen focus label and next-step hint over the live camera preview. Use only when a visible target or step is relevant. The screen region is approximate, not a measured object coordinate.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        text_to_display: { type: "STRING", description: "Short label for the visual target, preferably under 50 characters." },
+        instruction: { type: "STRING", description: "One brief and safe next-step instruction, under 160 characters." },
+        target_hint: { type: "STRING", description: "Short description of the visible object or component." },
+        screen_region: {
+          type: "STRING",
+          description: "Approximate screen region where the target appears in the most recent frame.",
+          enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
+        }
+      },
+      required: ["text_to_display", "instruction", "target_hint", "screen_region"]
+    }
+  }]
+};
 
 const json = (data: unknown, status = 200, extraHeaders?: HeadersInit): Response => {
   const headers = new Headers({ "Cache-Control": "no-store" });
@@ -444,12 +476,13 @@ async function handleVoiceSocket(
   let setupForwarded = false;
   let setupInitializing = false;
   let setupCompleteReceived = false;
+  let copilotMode = false;
+  let lastVideoFrameAt = 0;
   let closed = false;
   let inputWindowStart = Date.now();
   let inputFrameCount = 0;
   let inputBytesInWindow = 0;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
-  const MAX_AUDIO_BASE64_CHARS = 12_000;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
   // Network and browser audio callbacks can arrive in short bursts. Keep the
@@ -521,10 +554,10 @@ async function handleVoiceSocket(
       }
       setupInitializing = true;
       try {
-        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown };
-        const allowedKeys = ["setup", "memory_context"];
+        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
+        const allowedKeys = ["setup", "memory_context", "copilot_mode"];
         const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
-        if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string")) {
+        if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string") || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
@@ -532,12 +565,18 @@ async function handleVoiceSocket(
 const baseInstruction = pronunciationGuidance
   ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
   : SYSTEM_INSTRUCTION;
-const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, memoryContext);
+const enableCopilotForSetup = message.copilot_mode === true;
+const systemInstruction = buildPersonalizedSystemInstruction(
+  enableCopilotForSetup ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}` : baseInstruction,
+  memoryContext,
+);
+        copilotMode = enableCopilotForSetup;
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: voicePreviewRequested
             ? buildVoiceGenerationConfig(requestedPreviewVoice)
             : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
+          tools: enableCopilotForSetup ? [COPILOT_TOOL] : undefined,
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -552,51 +591,37 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
     }
 
     try {
-      const message = JSON.parse(event.data) as {
-        realtime_input?: {
-          audio?: { data?: unknown; mime_type?: unknown };
-          audio_stream_end?: unknown;
-          [key: string]: unknown;
-        };
-        [key: string]: unknown;
-      };
-
-      if (
-        !message ||
-        typeof message !== "object" ||
-        Object.keys(message).length !== 1 ||
-        !message.realtime_input ||
-        typeof message.realtime_input !== "object" ||
-        Array.isArray(message.realtime_input) ||
-        Object.keys(message.realtime_input).length !== 1
-      ) {
-        closeBoth(1008, "Only realtime audio input is allowed");
+      const message = JSON.parse(event.data) as unknown;
+      const parsed = parseLiveClientInput(message, copilotMode);
+      if (!parsed) {
+        closeBoth(1008, "Invalid or unsupported live input");
         return;
       }
 
-      const realtimeInput = message.realtime_input;
-      if (realtimeInput.audio_stream_end === true) {
+      if (parsed.kind === "tool_response") {
+        upstreamSocket.send(JSON.stringify({
+          toolResponse: {
+            functionResponses: parsed.ids.map((id) => ({
+              id,
+              name: "display_screen_overlay",
+              response: { result: "The approximate overlay label was displayed to the user." },
+            })),
+          },
+        }));
+        return;
+      }
+      if (parsed.kind === "audio_stream_end") {
         upstreamSocket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
         return;
       }
 
-      const audio = realtimeInput.audio;
-      if (
-        !audio ||
-        typeof audio !== "object" ||
-        Array.isArray(audio) ||
-        Object.keys(audio).some((key) => key !== "data" && key !== "mime_type") ||
-        typeof audio.data !== "string" ||
-        audio.data.length < 4 ||
-        audio.data.length > MAX_AUDIO_BASE64_CHARS ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(audio.data) ||
-        audio.mime_type !== "audio/pcm;rate=16000"
-      ) {
-        closeBoth(1008, "Invalid PCM audio frame");
-        return;
-      }
-
+      const isVideo = parsed.kind === "video";
       const now = Date.now();
+      if (isVideo) {
+        // Gemini Live consumes video as individual frames; keep camera input near 1 FPS.
+        if (now - lastVideoFrameAt < 850) return;
+        lastVideoFrameAt = now;
+      }
       if (now - inputWindowStart >= 1_000 || now < inputWindowStart) {
         inputWindowStart = now;
         inputFrameCount = 0;
@@ -607,11 +632,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
       const frameRateAllowed = inputFrameBucket.consume(1, now);
       const byteRateAllowed = inputByteBucket.consume(event.data.length, now);
       if (!frameRateAllowed || !byteRateAllowed) {
-        console.warn("[AskMoina] Audio input sustained rate limit exceeded", JSON.stringify({
+        console.warn("[AskMoina] Live media input sustained rate limit exceeded", JSON.stringify({
           frameRateAllowed,
           byteRateAllowed,
           inputFrameCount,
           inputBytesInWindow,
+          isVideo,
           frameBudgetRemaining: Math.round(inputFrameBucket.remaining),
           byteBudgetRemaining: Math.round(inputByteBucket.remaining),
           lifetimeMs: now - upstreamStartedAt,
@@ -620,15 +646,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, me
         return;
       }
 
-      // Re-serialize the validated shape to avoid forwarding unknown client fields.
-      upstreamSocket.send(JSON.stringify({
-        realtimeInput: {
-          audio: {
-            data: audio.data,
-            mimeType: "audio/pcm;rate=16000",
-          },
-        },
-      }));
+      if (isVideo) {
+        upstreamSocket.send(JSON.stringify({
+          realtimeInput: { video: { data: parsed.data, mimeType: "image/jpeg" } },
+        }));
+      } else {
+        upstreamSocket.send(JSON.stringify({
+          realtimeInput: { audio: { data: parsed.data, mimeType: "audio/pcm;rate=16000" } },
+        }));
+      }
     } catch {
       closeBoth(1008, "Invalid client message");
     }
@@ -777,6 +803,25 @@ export default {
 
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
+
+    if (url.pathname === "/copilot" || url.pathname === "/copilot.html") {
+      const copilotUrl = new URL(request.url);
+      copilotUrl.pathname = "/copilot";
+      const copilotResponse = await env.ASSETS.fetch(new Request(copilotUrl.toString(), request));
+      const headers = new Headers(copilotResponse.headers);
+      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "DENY");
+      headers.set("Referrer-Policy", "no-referrer");
+      headers.set("Permissions-Policy", "microphone=(self), camera=(self), geolocation=(), payment=()");
+      headers.set("Cross-Origin-Resource-Policy", "same-origin");
+      headers.set("Cache-Control", "no-store");
+      return new Response(copilotResponse.body, {
+        status: copilotResponse.status,
+        statusText: copilotResponse.statusText,
+        headers,
+      });
+    }
 
     if (url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html") {
       if (!await isAdmin(request, env)) {
