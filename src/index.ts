@@ -6,6 +6,7 @@ import { inspectProviderControlFrame } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
+import { runRetentionMaintenance } from "./maintenance/retention";
 
 export { UserState } from "./sessions/user-state";
 
@@ -712,5 +713,13 @@ export default {
 
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();
+  },
+
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      runRetentionMaintenance(env).catch((error) => {
+        console.error("[AskMoina] Scheduled retention maintenance failed", error instanceof Error ? error.name : "unknown");
+      }),
+    );
   },
 };
