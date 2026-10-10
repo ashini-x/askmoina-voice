@@ -130,7 +130,7 @@ describe("selected browser memory reaches the Vertex session setup frame", () =>
     const localStorage = { getItem: (_key: string) => "x".repeat(4_000) };
     const sessionStorage = { getItem: (_key: string) => null };
     const window = { WebSocket: FakeWebSocket };
-    runInNewContext(source, { window, localStorage, sessionStorage });
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
 
     const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
     const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
