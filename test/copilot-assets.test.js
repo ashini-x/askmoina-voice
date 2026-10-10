@@ -43,6 +43,17 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".spatial-hud[hidden]{display:none}");
   });
 
+  it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
+    expect(html).toContain('id="spatialGuidance"');
+    expect(html).toContain('id="spatialTargetLabel"');
+    expect(html).toContain("you must align the marker yourself");
+    expect(script).toContain("let latestVisualGuidance = null;");
+    expect(script).toContain("function syncSpatialGuidance()");
+    expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
+    expect(script).toContain("Surface marker placed for");
+    expect(script).toContain("the cue stays in this panel");
+  });
+
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
     expect(script).toContain("function startLocalTracking(clientX, clientY)");
     expect(script).toContain("function updateLocalTracking()");
