@@ -19,6 +19,14 @@
 - Live voice is not end-to-end encrypted: audio is streamed to Vertex AI, and selected memory context is sent there by choice. The product UI states this.
 - The first release supports manual memory notes and encrypted backup import/export; it does not automatically extract memory from speech or perform background multi-device merging.
 
+## Operational data retention
+
+- An hourly Worker Cron Trigger removes old voice-session metadata, usage events, stale pseudonymous visitor profiles and expired admin-login attempt records after the configured analytics retention period (30 days by default).
+- Admin audit events are retained for 90 days. The operations dashboard reports the configured analytics period and the separate audit retention period.
+- Cleanup uses indexed, bounded batches (up to two batches of 10,000 rows per table per run) to avoid unbounded delete statements. Logs report deleted counts, cleanup failures and tables that reached their batch limit so backlog can be monitored.
+- Visitor profiles are retained while referenced by any remaining voice-session or usage-event record. Cleanup never deletes `vault_backups`; these are user-controlled encrypted backups and require a separate product retention/deletion policy.
+- This app retention policy covers AskMoina's D1 operational records only. It does not make claims about provider-side processing or retention.
+
 ## Admin operations
 
 - Admin login requires configured secrets, uses HMAC-SHA256 signed 12-hour cookies (HttpOnly, Secure, SameSite=Strict), a five-failure/ten-minute lockout and hashed IP keys.
