@@ -36,10 +36,11 @@ VOICE_DESIGNS = [
     },
     {
         "key": "B",
-        "display_name": "Moina Acoustic Voice B - Ultra Short",
+        "display_name": "Moina Acoustic Voice B - Bright Airy Alternative",
         "prompt": (
-            "A sweet, high-pitched voice with bright, light resonance and a crisp, soft "
-            "tone. Gentle airy breathiness, clear and warm, with a comforting sound."
+            "A male speaking voice with exceptionally high pitch, bright lightweight "
+            "resonance, and a sweet, crisp yet soft tone. Gentle airy breathiness adds "
+            "warmth; the sound is clear and comforting, without a deep or gravelly quality."
         ),
     },
 ]
