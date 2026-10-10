@@ -186,7 +186,7 @@ async function handleTtsPrototypeTurn(request: Request, env: Env): Promise<Respo
     return json({ error: "invalid_request" }, 400);
   }
 
-  let input;
+  let input: ReturnType<typeof normalizeTtsPrototypeInput>;
   try {
     input = normalizeTtsPrototypeInput(body);
   } catch (error) {
