@@ -27,26 +27,18 @@ VOICE_DESIGNS = [
         "key": "A",
         "display_name": "Moina Boy Voice A - Sweet Bright",
         "prompt": (
-            "A fictional youthful boy's speaking voice, around 10 years old: naturally "
-            "high-pitched, sweet, bright, light and clear, with a soft rounded tone and "
-            "a warm smile. Curious and gently playful in everyday conversation; lively "
-            "but not rushed. Keep the pitch youthful without sounding squeaky, shrill, "
-            "over-acted, or cartoonish. Speak Assamese with natural Upper Assam regional "
-            "rhythm and familiar everyday phrasing where supported; prioritize clear, "
-            "relaxed conversational speech, not formal narration."
+            "A boy around 10 years old with a sweet, clear, naturally high-pitched voice. "
+            "Bright, friendly and curious, speaking casually in Assamese with an Upper "
+            "Assam cadence where possible."
         ),
     },
     {
         "key": "B",
         "display_name": "Moina Boy Voice B - Sparkly Warm",
         "prompt": (
-            "A fictional boy's voice, about 10 years old: a little higher and more "
-            "sparkling than an average speaking voice, soft and sweet with clear "
-            "consonants, a rounded resonance, and cheerful curiosity. Natural youthful "
-            "energy and quick warm reactions, but never babyish, squeaky, exaggerated, "
-            "or synthetic-sounding. Aim for conversational Assamese with Upper Assam "
-            "cadence and pronunciation if supported; sound like a friendly kid talking "
-            "to one person, not reading a script."
+            "A boy around 10 years old with a soft, sweet, sparkling high voice and a "
+            "warm rounded tone. Playful and friendly, speaking clearly and naturally in "
+            "conversational Assamese with an Upper Assam cadence if supported."
         ),
     },
 ]
