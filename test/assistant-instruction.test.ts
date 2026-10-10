@@ -20,6 +20,13 @@ describe("AskMoina voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("CONVERSATION EXAMPLES (style guidance, not fixed scripts)");
   });
 
+  it("encourages contextual vocal expressions without forcing or speaking stage directions", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("a small laugh or laughter, chuckle/chuckles, giggle");
+    expect(SYSTEM_INSTRUCTION).toContain("These are options, not a checklist");
+    expect(SYSTEM_INSTRUCTION).toContain("never laugh at grief, distress, fear, or serious topics");
+    expect(SYSTEM_INSTRUCTION).toContain("Do not speak or print literal markers such as [laugh], [sigh], [chuckles], or [whispers]");
+  });
+
   it("avoids fabricated dialect and local facts", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Do not fake an Upper Assam dialect");
     expect(SYSTEM_INSTRUCTION).toContain("Never invent local facts");
