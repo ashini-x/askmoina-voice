@@ -88,6 +88,27 @@ def wav_metadata(path: Path) -> dict[str, Any]:
     return result
 
 
+def json_safe(value: Any) -> Any:
+    """Convert nested SDK/Pydantic metadata to plain JSON-serializable values."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        try:
+            return json_safe(model_dump(mode="json"))
+        except (TypeError, ValueError):
+            pass
+    enum_value = getattr(value, "value", None)
+    if enum_value is not None and enum_value is not value:
+        return json_safe(enum_value)
+    # Keep a useful diagnostic representation if an SDK type is unfamiliar.
+    return str(value)
+
+
 def token_usage(response: Any) -> dict[str, Any]:
     usage = getattr(response, "usage_metadata", None)
     if usage is None:
@@ -102,10 +123,7 @@ def token_usage(response: Any) -> dict[str, Any]:
     ):
         value = getattr(usage, field, None)
         if value is not None:
-            try:
-                output[field] = value.model_dump(mode="json")
-            except AttributeError:
-                output[field] = value
+            output[field] = json_safe(value)
     return output
 
 
