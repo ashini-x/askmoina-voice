@@ -45,6 +45,7 @@
   let facingMode = "environment";
   let lastVideoSentAt = 0;
   let sendingVideo = false;
+  let lastSessionEndedAt = 0;
 
   function setStatus(message, kind) {
     statusNode.textContent = message;
@@ -102,7 +103,7 @@
     setStatus("Moina highlighted a possible target. The marker is approximate, not world-locked AR.");
   }
 
-  async function refreshAvailability() {
+  async function refreshAvailability(options = {}) {
     const sequence = ++availabilitySequence;
     try {
       const response = await fetch("/api/voice/status", {
@@ -120,8 +121,9 @@
         const minutes = Math.max(1, Math.ceil((Number(result.maxSessionSeconds) || 540) / 60));
         setAvailability("Available · up to " + minutes + " minutes this conversation. Camera frames are reduced and sent about once per second.", "normal");
       } else {
-        setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
-        setStatus(result.message || "Voice is not available right now.", "error");
+        const pendingRelease = options.quietActiveLock === true && result.reason === "already_active";
+        setAvailability("Voice unavailable right now. See the status above for the reason.", pendingRelease ? "warning" : "error");
+        if (!pendingRelease) setStatus(result.message || "Voice is not available right now.", "error");
       }
       return result;
     } catch (_) {
@@ -131,6 +133,22 @@
       }
       return null;
     }
+  }
+
+  async function refreshAvailabilityAfterRelease() {
+    let result = null;
+    // Closing a WebSocket and releasing its Durable Object reservation are asynchronous.
+    // Retry briefly to avoid presenting that tiny handoff window as a second live session.
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      result = await refreshAvailability({ quietActiveLock: true });
+      if (!result || result.available || result.reason !== "already_active") break;
+      if (attempt < 8) await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    if (result && !result.available && result.reason === "already_active") {
+      setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
+      setStatus(result.message || "A voice conversation is still active for this browser.", "error");
+    }
+    return result;
   }
 
   function resetTranscript() {
@@ -378,6 +396,7 @@
   }
 
   function stopCopilot(userInitiated, statusMessage, statusKind) {
+    lastSessionEndedAt = Date.now();
     stopping = true;
     const oldSocket = socket;
     socket = null;
@@ -395,7 +414,7 @@
     clearOverlay();
     if (statusMessage) setStatus(statusMessage, statusKind);
     else if (userInitiated) setStatus("Co-Pilot paused. Start again whenever you're ready.");
-    void refreshAvailability();
+    void refreshAvailabilityAfterRelease();
   }
 
   function getToolCalls(message) {
@@ -512,7 +531,10 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     setStatus("Checking availability and requesting camera + microphone access…");
-    const preflight = await refreshAvailability();
+    const endedRecently = Date.now() - lastSessionEndedAt < 15_000;
+    const preflight = endedRecently
+      ? await refreshAvailabilityAfterRelease()
+      : await refreshAvailability();
     if (preflight && !preflight.available) {
       starting = false;
       setControls("Start Co-Pilot", false);
@@ -580,6 +602,7 @@
       sessionSocket.addEventListener("close", (event) => {
         if (socket !== sessionSocket) return;
         socket = null;
+        lastSessionEndedAt = Date.now();
         if (stopping) return;
         const reason = String(event.reason || "").trim();
         let message = "The live session ended unexpectedly. Start the Co-Pilot again to continue.";
@@ -592,7 +615,8 @@
         setControls("Start Co-Pilot", false);
         setConnectionState("ENDED", "error");
         setStatus(message, "error");
-        setAvailability("The connection ended. Check capacity and retry.", "warning");
+        setAvailability("The connection ended. Checking that the session has been released…", "warning");
+        void refreshAvailabilityAfterRelease();
       });
     } catch (error) {
       if (sessionSocket && sessionSocket.readyState < WebSocket.CLOSING) {
