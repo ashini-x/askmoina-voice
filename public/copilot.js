@@ -27,6 +27,18 @@
   const zoomLabel = $("#zoomLabel");
   const zoomInButton = $("#zoomIn");
   const zoomOutButton = $("#zoomOut");
+  const trackingCanvas = document.createElement("canvas");
+  const trackingContext = trackingCanvas.getContext("2d", { willReadFrequently: true });
+  let trackingPixels = null;
+  let trackingTimer = null;
+  let localTrackingActive = false;
+  let trackedPoint = null;
+  let trackingTemplate = null;
+  let trackingLostFrames = 0;
+  let trackingLastTick = 0;
+  let trackingCanvasWidth = 0;
+  let trackingCanvasHeight = 0;
+  let trackingCrop = null;
   let microphoneMuted = false;
   let zoomLevel = 1;
   let zoomMin = 1;
@@ -99,9 +111,13 @@
   }
 
   function clearOverlay() {
+    stopLocalTracking(false);
     focusMarker.hidden = true;
     approxTag.hidden = true;
     clearMarkerButton.disabled = true;
+    focusMarker.style.left = "";
+    focusMarker.style.top = "";
+    delete focusMarker.dataset.tracking;
   }
 
   function showOverlay(args) {
@@ -112,14 +128,24 @@
     const instruction = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 220) : "";
     if (!label && !instruction) return;
 
-    focusMarker.dataset.region = region;
+    if (!localTrackingActive) {
+      focusMarker.dataset.region = region;
+      focusMarker.style.left = "";
+      focusMarker.style.top = "";
+      focusMarker.dataset.tracking = "approximate";
+    }
     focusLabel.textContent = label || "Moina's focus";
     focusHint.textContent = hint;
     focusInstruction.textContent = instruction;
     focusMarker.hidden = false;
     approxTag.hidden = false;
     clearMarkerButton.disabled = false;
-    setStatus("Moina highlighted a possible target. The marker is approximate, not world-locked AR.");
+    approxTag.textContent = localTrackingActive
+      ? "Local visual tracking · not world-locked AR"
+      : "Approximate focus · not world-locked AR";
+    if (!localTrackingActive) {
+      setStatus("Moina highlighted a possible target. Tap the object in the camera to track it locally.");
+    }
   }
 
   async function refreshAvailability(options = {}) {
@@ -406,6 +432,7 @@
       try { silentGain.disconnect(); } catch (_) {}
       silentGain = null;
     }
+    stopLocalTracking(false);
     if (microphoneStream) {
       microphoneStream.getTracks().forEach((track) => track.stop());
       microphoneStream = null;
@@ -498,7 +525,7 @@
       setupTimer = null;
       setControls("End Co-Pilot", false);
       setConnectionState("LIVE", "live");
-      setStatus("Connected. Point the camera at something and ask Moina naturally in Assamese.");
+      setStatus("Connected. Ask Moina naturally in Assamese; tap a visible object to track it locally.");
       setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
       startAudioCapture();
@@ -665,6 +692,251 @@
         : (error && error.message ? error.message : "Couldn't start the Co-Pilot. Please try again."), "error");
     }
   }
+
+
+  // Local-only template tracking follows a user-selected image patch between cloud frames.
+  // It is screen-space tracking, not world-locked AR or a persistent 3D anchor.
+  function configureTrackingCanvas() {
+    if (!trackingContext || !video.videoWidth || !video.videoHeight) return false;
+    const scale = Math.min(1, 256 / Math.max(video.videoWidth, video.videoHeight));
+    const width = Math.max(64, Math.round(video.videoWidth * scale));
+    const height = Math.max(64, Math.round(video.videoHeight * scale));
+    if (width !== trackingCanvasWidth || height !== trackingCanvasHeight) {
+      trackingCanvas.width = width;
+      trackingCanvas.height = height;
+      trackingCanvasWidth = width;
+      trackingCanvasHeight = height;
+      trackingPixels = null;
+    }
+    if (!nativeZoomSupported && zoomLevel > 1) {
+      const sourceWidth = video.videoWidth / zoomLevel;
+      const sourceHeight = video.videoHeight / zoomLevel;
+      const sourceX = (video.videoWidth - sourceWidth) / 2;
+      const sourceY = (video.videoHeight - sourceHeight) / 2;
+      trackingCrop = { x: sourceX, y: sourceY, width: sourceWidth, height: sourceHeight };
+      trackingContext.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+    } else {
+      trackingCrop = { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight };
+      trackingContext.drawImage(video, 0, 0, width, height);
+    }
+    trackingPixels = trackingContext.getImageData(0, 0, width, height).data;
+    return true;
+  }
+
+  function pixelsToGray(rgba) {
+    const gray = new Uint8Array(trackingCanvasWidth * trackingCanvasHeight);
+    for (let i = 0, p = 0; i < gray.length; i += 1, p += 4) {
+      gray[i] = (rgba[p] * 3 + rgba[p + 1] * 6 + rgba[p + 2]) / 10;
+    }
+    return gray;
+  }
+
+  function framePointFromClient(clientX, clientY) {
+    const rect = stage.getBoundingClientRect();
+    const coverScale = Math.max(rect.width / video.videoWidth, rect.height / video.videoHeight);
+    const coverWidth = video.videoWidth * coverScale;
+    const coverHeight = video.videoHeight * coverScale;
+    const digitalZoom = !nativeZoomSupported ? zoomLevel : 1;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const baseX = centerX + (clientX - centerX) / digitalZoom;
+    const baseY = centerY + (clientY - centerY) / digitalZoom;
+    const sourceX = (baseX - (rect.left + (rect.width - coverWidth) / 2)) / coverScale;
+    const sourceY = (baseY - (rect.top + (rect.height - coverHeight) / 2)) / coverScale;
+    const crop = trackingCrop || { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight };
+    const x = ((sourceX - crop.x) / crop.width) * trackingCanvasWidth;
+    const y = ((sourceY - crop.y) / crop.height) * trackingCanvasHeight;
+    if (x < 0 || y < 0 || x >= trackingCanvasWidth || y >= trackingCanvasHeight) return null;
+    return { x: Math.round(x), y: Math.round(y) };
+  }
+
+  function markerAtTrackingPoint(point) {
+    if (!point || !trackingCanvasWidth || !trackingCanvasHeight || !video.videoWidth || !video.videoHeight) return;
+    const rect = stage.getBoundingClientRect();
+    const coverScale = Math.max(rect.width / video.videoWidth, rect.height / video.videoHeight);
+    const coverWidth = video.videoWidth * coverScale;
+    const coverHeight = video.videoHeight * coverScale;
+    const crop = trackingCrop || { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight };
+    const sourceX = crop.x + (point.x / trackingCanvasWidth) * crop.width;
+    const sourceY = crop.y + (point.y / trackingCanvasHeight) * crop.height;
+    const digitalZoom = !nativeZoomSupported ? zoomLevel : 1;
+    const baseX = rect.left + (rect.width - coverWidth) / 2 + sourceX * coverScale;
+    const baseY = rect.top + (rect.height - coverHeight) / 2 + sourceY * coverScale;
+    const screenX = rect.left + rect.width / 2 + (baseX - (rect.left + rect.width / 2)) * digitalZoom;
+    const screenY = rect.top + rect.height / 2 + (baseY - (rect.top + rect.height / 2)) * digitalZoom;
+    focusMarker.style.left = ((screenX - rect.left) / rect.width * 100) + "%";
+    focusMarker.style.top = ((screenY - rect.top) / rect.height * 100) + "%";
+    trackedPoint = point;
+  }
+
+  function extractTemplate(gray, x, y) {
+    const radius = 6;
+    if (x < radius + 2 || y < radius + 2 || x >= trackingCanvasWidth - radius - 2 || y >= trackingCanvasHeight - radius - 2) return null;
+    const size = radius * 2 + 1;
+    const values = new Float32Array(size * size);
+    let sum = 0;
+    let i = 0;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const value = gray[(y + dy) * trackingCanvasWidth + x + dx];
+        values[i++] = value;
+        sum += value;
+      }
+    }
+    const mean = sum / values.length;
+    let variance = 0;
+    for (const value of values) variance += (value - mean) * (value - mean);
+    return { values, mean, variance, radius, size };
+  }
+
+  function compareTemplate(gray, x, y) {
+    const template = trackingTemplate;
+    const radius = template.radius;
+    const width = trackingCanvasWidth;
+    let sum = 0;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const row = (y + dy) * width;
+      for (let dx = -radius; dx <= radius; dx += 1) sum += gray[row + x + dx];
+    }
+    const mean = sum / template.values.length;
+    let covariance = 0;
+    let candidateVariance = 0;
+    let absoluteDifference = 0;
+    let i = 0;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const row = (y + dy) * width;
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const candidate = gray[row + x + dx];
+        const centered = candidate - mean;
+        covariance += (template.values[i] - template.mean) * centered;
+        candidateVariance += centered * centered;
+        absoluteDifference += Math.abs(candidate - template.values[i]);
+        i += 1;
+      }
+    }
+    if (template.variance < 1800 || candidateVariance < 1800) {
+      return 1 - absoluteDifference / template.values.length / 48;
+    }
+    const denominator = Math.sqrt(template.variance * candidateVariance);
+    return denominator > 0 ? covariance / denominator : -1;
+  }
+
+  function findTemplate(gray, center) {
+    if (!trackingTemplate || !center) return null;
+    const radius = trackingTemplate.radius;
+    const margin = radius + 1;
+    const minX = margin;
+    const maxX = trackingCanvasWidth - margin - 1;
+    const minY = margin;
+    const maxY = trackingCanvasHeight - margin - 1;
+    if (center.x < minX || center.x > maxX || center.y < minY || center.y > maxY) return null;
+    const searchRadius = 18;
+    let best = { x: center.x, y: center.y, score: -2 };
+    const startX = Math.max(minX, center.x - searchRadius);
+    const endX = Math.min(maxX, center.x + searchRadius);
+    const startY = Math.max(minY, center.y - searchRadius);
+    const endY = Math.min(maxY, center.y + searchRadius);
+    for (let y = startY; y <= endY; y += 2) {
+      for (let x = startX; x <= endX; x += 2) {
+        const score = compareTemplate(gray, x, y);
+        if (score > best.score) best = { x, y, score };
+      }
+    }
+    const coarse = { ...best };
+    for (let y = Math.max(minY, coarse.y - 2); y <= Math.min(maxY, coarse.y + 2); y += 1) {
+      for (let x = Math.max(minX, coarse.x - 2); x <= Math.min(maxX, coarse.x + 2); x += 1) {
+        const score = compareTemplate(gray, x, y);
+        if (score > best.score) best = { x, y, score };
+      }
+    }
+    return best;
+  }
+
+  function stopLocalTracking(showStatus = true) {
+    localTrackingActive = false;
+    if (trackingTimer) window.clearInterval(trackingTimer);
+    trackingTimer = null;
+    trackingTemplate = null;
+    trackingLostFrames = 0;
+    trackedPoint = null;
+    trackingCrop = null;
+    if (focusMarker) delete focusMarker.dataset.tracking;
+    if (showStatus && microphoneStream) setStatus("Local tracking stopped. Tap a visible object to track it again.");
+  }
+
+  function startLocalTracking(clientX, clientY) {
+    if (!active || !setupReady || !microphoneStream || !trackingContext) {
+      setStatus("Start the Co-Pilot first, then tap a visible object to track it.", "warning");
+      return;
+    }
+    if (!configureTrackingCanvas()) {
+      setStatus("The camera frame isn't ready yet. Hold the view steady and try again.", "warning");
+      return;
+    }
+    const point = framePointFromClient(clientX, clientY);
+    if (!point) {
+      setStatus("Tap on the visible camera image, not the cropped edge.", "warning");
+      return;
+    }
+    const gray = pixelsToGray(trackingPixels);
+    const template = extractTemplate(gray, point.x, point.y);
+    if (!template) {
+      setStatus("Move a little closer to the target and tap its center again.", "warning");
+      return;
+    }
+    if (trackingTimer) window.clearInterval(trackingTimer);
+    trackingTemplate = template;
+    trackedPoint = point;
+    trackingLostFrames = 0;
+    localTrackingActive = true;
+    focusMarker.hidden = false;
+    focusMarker.dataset.tracking = "true";
+    focusMarker.dataset.region = "center";
+    focusLabel.textContent = "Tracking selected target";
+    focusHint.textContent = "Running locally on this device";
+    focusInstruction.textContent = "Tap another point to retarget";
+    approxTag.hidden = false;
+    approxTag.textContent = "Local visual tracking · not world-locked AR";
+    clearMarkerButton.disabled = false;
+    markerAtTrackingPoint(point);
+    setStatus("Tracking this image area locally. Keep it visible and move the phone slowly; tap another point to retarget.");
+    trackingLastTick = 0;
+    trackingTimer = window.setInterval(updateLocalTracking, 90);
+  }
+
+  function updateLocalTracking() {
+    if (!localTrackingActive || !active || !setupReady || !microphoneStream || !video.videoWidth || !trackingContext) return;
+    const now = Date.now();
+    if (now - trackingLastTick < 75) return;
+    trackingLastTick = now;
+    try {
+      if (!configureTrackingCanvas() || !trackingPixels) return;
+      const gray = pixelsToGray(trackingPixels);
+      const result = findTemplate(gray, trackedPoint);
+      const confidenceThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.62 : 0.42;
+      if (!result || result.score < confidenceThreshold) {
+        trackingLostFrames += 1;
+        if (trackingLostFrames >= 5) {
+          stopLocalTracking(false);
+          focusMarker.dataset.tracking = "lost";
+          setStatus("I lost the local target. Keep it clearly visible and tap it again to resume tracking.", "warning");
+        }
+        return;
+      }
+      trackingLostFrames = 0;
+      markerAtTrackingPoint(result);
+    } catch (_) {
+      stopLocalTracking(false);
+      focusMarker.dataset.tracking = "lost";
+      setStatus("Local tracking paused because the camera frame could not be processed. Tap the target to retry.", "warning");
+    }
+  }
+
+  stage.addEventListener("click", (event) => {
+    if (event.target.closest(".floating-top,.camera-controls,.caption-dock,.zoom-dock,.camera-top-badge,.camera-state,.approx-tag,.focus-card,.clear-marker,.vision-pill,.vault-link")) return;
+    if (!microphoneStream || !active || !setupReady) return;
+    startLocalTracking(event.clientX, event.clientY);
+  });
 
   function initializeZoom() {
     const track = microphoneStream && microphoneStream.getVideoTracks()[0];
