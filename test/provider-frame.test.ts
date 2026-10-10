@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspectProviderControlFrame } from "../src/sessions/provider-frame";
+import { inspectProviderControlFrame, isProviderAudioFrame } from "../src/sessions/provider-frame";
 
 describe("provider control frame inspection", () => {
   it("skips parsing of ordinary audio frames", () => {
@@ -25,5 +25,16 @@ describe("provider control frame inspection", () => {
 
   it("rejects malformed control frames", () => {
     expect(() => inspectProviderControlFrame('{"setupComplete":')).toThrow();
+  });
+});
+
+describe("provider audio-frame detection", () => {
+  it("recognizes camelCase and snake_case inline audio payloads without parsing them", () => {
+    expect(isProviderAudioFrame('{"serverContent":{"modelTurn":{"parts":[{"inlineData":{"mimeType":"audio/pcm;rate=24000","data":"AAAA"}}]}}')).toBe(true);
+    expect(isProviderAudioFrame('{"server_content":{"model_turn":{"parts":[{"inline_data":{"mime_type":"audio/pcm;rate=24000","data":"AAAA"}}]}}')).toBe(true);
+  });
+
+  it("does not classify text-only frames as audio", () => {
+    expect(isProviderAudioFrame('{"serverContent":{"outputTranscription":{"text":"Hello"}}}')).toBe(false);
   });
 });

@@ -86,3 +86,55 @@ describe("Encrypted vault API boundary", () => {
     expect(response?.headers.get("Set-Cookie")).toContain("moina_visitor=");
   });
 });
+
+describe("selected browser memory reaches the Vertex session setup frame", () => {
+  it("adds explicitly staged memory to the first setup frame", async () => {
+    const response = await handleContinuityRequest(
+      new Request("https://askmoina.test/continuity.js"),
+      mockEnv(), ctx,
+    );
+    expect(response?.status).toBe(200);
+    const source = await response!.text();
+
+    function FakeWebSocket(this: { url: string; sent: string[] }, url: string) {
+      this.url = url;
+      this.sent = [];
+    }
+    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) {
+      this.sent.push(data);
+    };
+
+    const stagedMemory = "my name is Raaz, so call me Raaz when you interact with me";
+    const localStorage = { getItem: (key: string) => key === "askmoina.memory.context" ? stagedMemory : null };
+    const sessionStorage = { getItem: (_key: string) => null };
+    const window = { WebSocket: FakeWebSocket };
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
+
+    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
+    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
+    socket.send(JSON.stringify({ setup: { generationConfig: { responseModalities: ["AUDIO"] } } }));
+
+    expect(socket.sent).toHaveLength(1);
+    expect(JSON.parse(socket.sent[0]).memory_context).toBe(stagedMemory);
+  });
+
+  it("bounds browser-staged memory before sending it over the socket", async () => {
+    const response = await handleContinuityRequest(
+      new Request("https://askmoina.test/continuity.js"),
+      mockEnv(), ctx,
+    );
+    const source = await response!.text();
+
+    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
+    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
+    const localStorage = { getItem: (_key: string) => "x".repeat(4_000) };
+    const sessionStorage = { getItem: (_key: string) => null };
+    const window = { WebSocket: FakeWebSocket };
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
+
+    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
+    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
+    socket.send(JSON.stringify({ setup: {} }));
+    expect(JSON.parse(socket.sent[0]).memory_context).toHaveLength(3_000);
+  });
+});

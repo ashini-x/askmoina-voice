@@ -11,7 +11,7 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.1",
+    "APP_VERSION": "0.4.2",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -30,6 +30,9 @@
       "ADMIN_DASHBOARD_PASSWORD",
       "ADMIN_SESSION_SECRET"
     ]
+  },
+  "triggers": {
+    "crons": ["17 * * * *"]
   },
   "durable_objects": {
     "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]

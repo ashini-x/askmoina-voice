@@ -2,10 +2,11 @@ import type { Env } from "./config/env";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
-import { inspectProviderControlFrame } from "./sessions/provider-frame";
+import { inspectProviderControlFrame, isProviderAudioFrame } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
+import { runRetentionMaintenance } from "./maintenance/retention";
 
 export { UserState } from "./sessions/user-state";
 
@@ -350,6 +351,7 @@ async function handleVoiceSocket(
   upstreamSocket.accept();
 
   const upstreamStartedAt = Date.now();
+  let firstAudioFrameLogged = false;
   let setupForwarded = false;
   let setupCompleteReceived = false;
   let closed = false;
@@ -571,6 +573,19 @@ async function handleVoiceSocket(
       return;
     }
 
+    // Capture first-audio latency without logging audio, transcript text, or parsing base64.
+    if (!firstAudioFrameLogged && isProviderAudioFrame(frameText)) {
+      firstAudioFrameLogged = true;
+      const firstAudioAt = Date.now();
+      console.info("[AskMoina] First assistant audio frame", JSON.stringify({
+        frameNumber,
+        requestToFirstAudioMs: firstAudioAt - analyticsStartedAt,
+        upstreamConnectedToFirstAudioMs: firstAudioAt - upstreamStartedAt,
+        setupComplete: setupCompleteReceived,
+        frameBytes: frameSize,
+      }));
+    }
+
     // Most provider frames are audio payloads. Avoid parsing their large base64-heavy
     // JSON objects in the Worker; only inspect control frames carrying setup or error keys.
     let providerMessage: ReturnType<typeof inspectProviderControlFrame>;
@@ -592,7 +607,11 @@ async function handleVoiceSocket(
     if (providerMessage?.setupComplete) {
       setupCompleteReceived = true;
       analyticsSetupComplete = true;
-      console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({ frameNumber }));
+      console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
+        frameNumber,
+        requestToSetupMs: Date.now() - analyticsStartedAt,
+        upstreamConnectedToSetupMs: Date.now() - upstreamStartedAt,
+      }));
     }
 
     if (providerMessage?.error) {
@@ -712,5 +731,13 @@ export default {
 
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();
+  },
+
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      runRetentionMaintenance(env).catch((error) => {
+        console.error("[AskMoina] Scheduled retention maintenance failed", error instanceof Error ? error.name : "unknown");
+      }),
+    );
   },
 };

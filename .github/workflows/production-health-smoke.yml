@@ -1,0 +1,94 @@
+name: Production health smoke
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-production-health-smoke
+  cancel-in-progress: true
+
+jobs:
+  production-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out the expected release configuration
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Read expected app version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.APP_VERSION")"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+
+      - name: Check production health and Vertex route
+        env:
+          PRODUCTION_URL: https://askmoina-voice.thenewtongs.workers.dev
+          EXPECTED_APP_VERSION: ${{ steps.release.outputs.app_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          passed=false
+
+          # A main-branch push can race the independent Cloudflare deployment.
+          # Poll for up to five minutes and require the version from wrangler.jsonc.
+          for attempt in $(seq 1 30); do
+            status_code="$(curl --silent --show-error --max-time 12 \
+              --output "$response_file" --write-out '%{http_code}' \
+              "$PRODUCTION_URL/api/health" || true)"
+
+            if [[ "$status_code" == "200" ]] && node --input-type=module - "$response_file" "$EXPECTED_APP_VERSION" <<'NODE'
+          import fs from "node:fs";
+
+          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const expectedVersion = process.argv[3];
+          if (body.ok !== true) throw new Error("Production health endpoint did not report ok=true.");
+          if (body.app !== "askmoina-voice") throw new Error("Unexpected production app identity.");
+          if (body.status !== "vertex-live-proxy-configured") {
+            throw new Error(`Unexpected voice route status: ${String(body.status)}`);
+          }
+          if (typeof body.model !== "string" || !body.model.trim()) {
+            throw new Error("Production model configuration is missing.");
+          }
+          if (typeof body.location !== "string" || !body.location.trim()) {
+            throw new Error("Production Vertex location is missing.");
+          }
+          if (body.version !== expectedVersion) {
+            throw new Error(`Expected release version ${expectedVersion}, found ${String(body.version)}`);
+          }
+          console.log(JSON.stringify({
+            ok: body.ok,
+            app: body.app,
+            version: body.version,
+            status: body.status,
+            model: body.model,
+            location: body.location
+          }));
+          NODE
+            then
+              passed=true
+              break
+            fi
+
+            echo "Production health check not ready (attempt $attempt/30, HTTP ${status_code:-no-response}); retrying."
+            sleep 10
+          done
+
+          if [[ "$passed" != "true" ]]; then
+            echo "::error::Production did not report the expected release and a healthy Vertex route within five minutes."
+            cat "$response_file"
+            exit 1
+          fi
