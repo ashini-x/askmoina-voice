@@ -4,11 +4,11 @@ This is a non-production experiment. It does not change `src/index.ts`, Wrangler
 
 ## What it compares
 
-The script creates two prompted voice assets via the Gemini Enterprise Voices API:
-- **A — Sweet Bright:** warm, light, naturally high-pitched and clear, with restrained playful energy.
-- **B — Sparkly Warm:** a slightly more sparkling upper-register voice with soft rounded resonance and cheerful curiosity.
+The script creates two prompted voice assets via the Gemini Enterprise Voices API, with the API's male gender setting:
+- **A — Full acoustic prompt:** high-pitched, bright/light resonance, sweet/crisp/soft tone, gentle airy breathiness, no vocal fry or deep/gravelly resonance, warm and comforting.
+- **B — Ultra-short acoustic prompt:** high-pitched bright formant resonance, sweet/crisp/soft, airy breathiness, warm and comforting.
 
-Both prompts describe a fictional boy around age 10 and ask for natural conversational Upper Assamese where supported, without exaggerated cartoon delivery.
+These candidates intentionally focus on acoustic characteristics rather than age or regional-language cues. Their Assamese speech clips test how the generated voice handles Assamese content; Upper Assamese naturalness still needs native-speaker listening.
 
 It generates:
 - Assamese baseline speech with no turn-level style instruction.
