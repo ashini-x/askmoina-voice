@@ -4,3 +4,11 @@
 
 /* Direct static-homepage link to the local-first Memory Vault. */
 .brand .vault-link{color:#9edbe3;text-decoration:none;border:1px solid #2e5360;border-radius:999px;padding:5px 9px;white-space:nowrap}.brand .vault-link:hover{background:#172b3d}
+
+
+/* Protected Gemini Live voice audition lab. */
+.voice-lab-panel{width:min(100%,640px);margin:20px auto 0;padding:18px;border:1px solid #2c3c5c;border-radius:18px;background:#101a30;text-align:left;box-shadow:0 18px 50px #00000018}
+.voice-lab-label{display:block;color:#e2eaff;font-size:.88rem;font-weight:750;margin-bottom:9px}
+.voice-lab-select{width:100%;padding:13px 14px;border:1px solid #3a4a6b;border-radius:12px;background:#0b1428;color:#f3f6ff;font:inherit;outline-offset:3px}
+.voice-lab-copy{font-size:.82rem;line-height:1.55;color:#9eafd0;margin:12px 0 0}
+.voice-lab-copy strong{color:#e5edff}
