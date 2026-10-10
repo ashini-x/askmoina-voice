@@ -6,6 +6,7 @@ import { inspectProviderControlFrame, isProviderAudioFrame } from "./sessions/pr
 import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
+import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "./sessions/voice-config";
 
@@ -375,6 +376,7 @@ async function handleVoiceSocket(
   const upstreamStartedAt = Date.now();
   let firstAudioFrameLogged = false;
   let setupForwarded = false;
+  let setupInitializing = false;
   let setupCompleteReceived = false;
   let closed = false;
   let inputWindowStart = Date.now();
@@ -436,7 +438,7 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
-  workerSocket.addEventListener("message", (event: MessageEvent) => {
+  workerSocket.addEventListener("message", async (event: MessageEvent) => {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
 
     // This browser proxy accepts small JSON frames only. Raw/binary frames and arbitrary
@@ -447,6 +449,11 @@ async function handleVoiceSocket(
     }
 
     if (!setupForwarded) {
+      if (setupInitializing) {
+        closeBoth(1008, "Duplicate setup message");
+        return;
+      }
+      setupInitializing = true;
       try {
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown };
         const allowedKeys = ["setup", "memory_context"];
@@ -455,7 +462,11 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const systemInstruction = buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext);
+        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
+const baseInstruction = pronunciationGuidance
+  ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
+  : SYSTEM_INSTRUCTION;
+const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, memoryContext);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),

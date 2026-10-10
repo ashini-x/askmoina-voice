@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          message="Conversational Assamese-English and expressive Live voice (AskMoina Voice v0.4.6)"
+          message="Assamese pronunciation reference rules (AskMoina Voice v0.4.7)"
           # Upload a version without syncing queue-consumer triggers; those triggers already exist.
           upload_output="$(npx wrangler versions upload --message "$message" 2>&1)" || {
             printf '%s\n' "$upload_output"

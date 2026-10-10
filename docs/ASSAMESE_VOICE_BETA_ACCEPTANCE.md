@@ -64,3 +64,10 @@ A successful deployment or health endpoint alone does not satisfy this gate.
 ## Live expression limitation
 
 AskMoina currently uses Gemini Live for direct real-time audio-to-audio conversation, not a scripted Gemini TTS transcript. Instructions can encourage laughter, sighs, breaths and expressive prosody, but prompt wording cannot guarantee that every non-speech sound will be generated on every turn. The bracketed/inline vocal tags documented for Gemini TTS are not a control interface that can simply be dropped into this Live audio stream. If reliable, deliberately placed tags are a hard product requirement, evaluate a separate Live-to-TTS cascade as a distinct architecture experiment and measure its added latency and turn-taking trade-offs before replacing the current path.
+
+
+## Pronunciation-reference prototype
+
+- Apply migration `0004_assamese_pronunciation_rules.sql` in the target D1 database before expecting the reference to be included in Live session instructions.
+- Synthetic checks cover the documented Assamese /x/ baseline, conditional word-initial [h] variation, non-globalization, English pronunciation negative controls, Romanized text ambiguity, and graceful fallback if the table is unavailable.
+- These synthetic tests validate rule plumbing only. They are not an audio quality test. Use the source audit in `docs/UPPER_ASSAM_PRONUNCIATION_DATA_AUDIT.md` and complete native-speaker audio evaluation before claiming the Upper Assam accent is correct.

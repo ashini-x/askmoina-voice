@@ -23,6 +23,7 @@ Memory notes are entered and managed by the user in this release. Automatic extr
 
 - Google service-account credentials are stored only as Cloudflare Worker Secrets. Never place secrets in Git or browser code.
 - The Worker pins the model, base system instruction, and Live voice; browser clients cannot override them. The current voice is Leda (documented by Google as “Youthful”); its quality for Upper Assamese must still be checked with native speakers.
+- The Worker can append a source-attributed Assamese pronunciation-rule reference from D1 at live-session setup. Seed rules are bounded, fail open if the migration/table is unavailable, and remain explicitly unverified by local listeners until evaluated.
 - WebSocket browser connections must use the exact same origin as the Worker.
 - Durable Objects enforce connection-attempt, session-duration, per-IP daily usage and global capacity limits. The IP hash is used for abuse controls, not personal identity.
 - The optional `ADMIN_VOICE_DAILY_QUOTA_BYPASS=true` setting exempts only a browser with a valid signed admin session from the per-network and global daily voice budgets. Admin testing still keeps the 9-minute per-conversation cap, five connection attempts per minute per network, one active admin session per network, and the separate five-session admin concurrency ceiling. Public visitors keep the normal 30-minute per-network and 60-minute app-wide daily allowances. This bypass is not a Google Cloud billing limit; usage is still billable and must be monitored in Google Cloud Billing.

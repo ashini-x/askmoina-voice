@@ -8,7 +8,8 @@ describe("static client memory handoff", () => {
     expect(app).toContain("setupPayload.memory_context = selectedMemoryContext");
     expect(app).toContain("sessionSocket.send(JSON.stringify(setupPayload))");
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
-    expect(worker).toContain("buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext)");
+    expect(worker).toContain("buildPersonalizedSystemInstruction(baseInstruction, memoryContext)");
+    expect(worker).toContain("buildAssamesePronunciationInstruction(env.DB)");
     expect(worker).toContain("inputAudioTranscription: {}");
     expect(worker).toContain("outputAudioTranscription: {}");
   });
