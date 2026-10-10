@@ -6,6 +6,7 @@ import { inspectProviderControlFrame, isProviderAudioFrame } from "./sessions/pr
 import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
+import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "./sessions/voice-config";
 
@@ -455,7 +456,11 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const systemInstruction = buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext);
+        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
+const baseInstruction = pronunciationGuidance
+  ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
+  : SYSTEM_INSTRUCTION;
+const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, memoryContext);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
