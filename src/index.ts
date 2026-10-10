@@ -878,6 +878,25 @@ export default {
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
 
+    if (url.pathname === "/copilot" || url.pathname === "/copilot.html") {
+      const copilotUrl = new URL(request.url);
+      copilotUrl.pathname = "/copilot";
+      const copilotResponse = await env.ASSETS.fetch(new Request(copilotUrl.toString(), request));
+      const headers = new Headers(copilotResponse.headers);
+      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "DENY");
+      headers.set("Referrer-Policy", "no-referrer");
+      headers.set("Permissions-Policy", "microphone=(self), camera=(self), geolocation=(), payment=()");
+      headers.set("Cross-Origin-Resource-Policy", "same-origin");
+      headers.set("Cache-Control", "no-store");
+      return new Response(copilotResponse.body, {
+        status: copilotResponse.status,
+        statusText: copilotResponse.statusText,
+        headers,
+      });
+    }
+
     if (url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html") {
       if (!await isAdmin(request, env)) {
         return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
