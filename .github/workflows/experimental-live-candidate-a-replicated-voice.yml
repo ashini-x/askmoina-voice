@@ -100,34 +100,54 @@ jobs:
           GEMINI_MODEL: gemini-3.8-live
         run: python scripts/test-live-replicated-voice.py
 
+      - name: Run Live text-brain plus Candidate A streaming TTS fallback
+        id: cascade_test
+        if: steps.credentials.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
+          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          GEMINI_LOCATION: us-central1
+          GEMINI_MODEL: gemini-3.8-live
+        run: python scripts/test-live-brain-candidate-a-tts-cascade.py
+
       - name: Publish test result summary
         if: always()
         shell: bash
         run: |
           python - <<'PY'
           import json, pathlib
-          p = pathlib.Path("live-candidate-a-output/live-voice-test-report.json")
-          if not p.exists():
-              result = {"status": "no_report", "reason": "Test did not produce a report; inspect the preceding workflow step."}
-          else:
+          out = pathlib.Path("live-candidate-a-output")
+          out.mkdir(exist_ok=True)
+          def load(name):
+              p = out / name
               try:
-                  result = json.loads(p.read_text(encoding="utf-8"))
+                  return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"status": "no_report"}
               except Exception:
-                  result = {"status": "report_unreadable"}
-          lines = ["## Candidate A Gemini Live custom-voice test", "", f"**Status:** {result.get('status', 'unknown')}"]
-          if result.get("error_type"):
-              lines += ["", f"**Error type:** {result['error_type']}", "", f"**Diagnostic:** {result.get('error', '')}"]
-          if result.get("reason"):
-              lines += ["", result["reason"]]
-          if result.get("timing"):
-              lines += ["", f"- Time to first audio: {result['timing'].get('first_audio_ms')} ms", f"- Total response: {result['timing'].get('total_response_ms')} ms"]
-          if result.get("audio_output"):
-              lines += ["", f"- Generated audio: {result['audio_output'].get('duration_seconds')} seconds"]
+                  return {"status": "report_unreadable"}
+          native = load("live-voice-test-report.json")
+          cascade = load("candidate-a-brain-plus-tts-report.json")
+          lines = ["## Candidate A voice experiments", "", "### Native Live replicated voice", "", f"**Status:** {native.get('status', 'unknown')}"]
+          if native.get("error_type"):
+              lines += ["", f"**Error type:** {native['error_type']}", "", f"**Diagnostic:** {native.get('error', '')}"]
+          if native.get("reason"):
+              lines += ["", native["reason"]]
+          lines += ["", "### Live brain + Candidate A streaming TTS fallback", "", f"**Status:** {cascade.get('status', 'unknown')}"]
+          if cascade.get("error_type"):
+              lines += ["", f"**Error type:** {cascade['error_type']}", "", f"**Diagnostic:** {cascade.get('error', '')}"]
+          timing = cascade.get("timing", {})
+          if timing:
+              lines += [
+                  "", f"- Live answer complete: {timing.get('live_brain_text_complete_ms')} ms",
+                  f"- TTS first audio after synthesis starts: {timing.get('candidate_a_tts_first_audio_ms_after_tts_start')} ms",
+                  f"- Estimated total time to first audio: {timing.get('total_time_to_first_audio_ms_estimate')} ms",
+                  f"- End-to-end response generation: {timing.get('total_end_to_end_ms')} ms",
+              ]
+          audio = cascade.get("audio_output", {})
+          if audio:
+              lines += ["", f"- Candidate A audio duration: {audio.get('duration_seconds')} seconds"]
           lines += ["", "No production Worker configuration or deployment was changed."]
-          pathlib.Path("live-candidate-a-output").mkdir(exist_ok=True)
-          pathlib.Path("live-candidate-a-output/live-voice-test-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-          with open("live-candidate-a-output/live-voice-test-report.json", "w", encoding="utf-8") as f:
-              json.dump(result, f, ensure_ascii=False, indent=2)
+          (out / "live-voice-test-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
           print("\n".join(lines))
           PY
 
