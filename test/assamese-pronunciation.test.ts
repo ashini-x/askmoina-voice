@@ -4,6 +4,18 @@ import { buildAssamesePronunciationInstruction, type AssamesePronunciationRuleRo
 
 const syntheticRules: AssamesePronunciationRuleRow[] = [
   {
+    rule_id: "upper-assam-horu-small-lexeme",
+    title: "Word-specific Upper Assam target: সৰু (small) closer to horu",
+    dialect_scope: "User-reported Upper Assam preference; only this lexeme",
+    position_scope: "Assamese word meaning small",
+    guidance: "For the Assamese word সৰু meaning “small”, the product tester reports a preferred Upper Assam target closer to “horu” [hɔru], not “soru/xoru”. Follow this exact word-specific target in the user's preferred Upper Assam style; this is listener-reported and not an independently established community-wide norm. Do not generalize h for s/x to other words.",
+    examples: "User listening correction: Assamese সৰু (“small”) → target audio closer to “horu”; preserve English sounds in English words.",
+    source_title: "AskMoina Voice listener feedback (2026-10-10; user-reported target, not independent dataset)",
+    evidence_status: "engineering_guardrail",
+    native_verified: 0,
+    priority: 5,
+  },
+  {
     rule_id: "assamese-sibilants-x-baseline",
     title: "Assamese শ, ষ, স baseline",
     dialect_scope: "Assamese-wide baseline; lexical exceptions exist",
@@ -78,6 +90,10 @@ function mockDb(rows: AssamesePronunciationRuleRow[], shouldThrow = false): Pick
 
 const syntheticCases = [
   {
+    name: "listener-reported horu target is scoped to the exact Assamese word সৰু",
+    expected: "preferred Upper Assam target closer to “horu”",
+  },
+  {
     name: "Assamese-native শ/ষ/স baseline",
     expected: "voiceless velar fricative /x/",
   },
@@ -107,7 +123,7 @@ const syntheticCases = [
   },
   {
     name: "the database's seed rules are not falsely claimed to be native-verified",
-    expected: "None of the seed rules is yet locally verified",
+    expected: "Seed rules without native-speaker verification are not proof of a community-wide norm",
   },
 ] as const;
 
