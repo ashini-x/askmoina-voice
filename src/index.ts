@@ -9,6 +9,7 @@ import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
+import { parseLiveClientInput } from "./sessions/copilot-protocol";
 
 export { UserState } from "./sessions/user-state";
 
@@ -482,8 +483,6 @@ async function handleVoiceSocket(
   let inputFrameCount = 0;
   let inputBytesInWindow = 0;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
-  const MAX_AUDIO_BASE64_CHARS = 12_000;
-  const MAX_VIDEO_BASE64_CHARS = 12_000;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
   // Network and browser audio callbacks can arrive in short bursts. Keep the
@@ -592,94 +591,31 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
 
     try {
-      const message = JSON.parse(event.data) as Record<string, unknown>;
-      if (!message || typeof message !== "object" || Array.isArray(message)) {
-        closeBoth(1008, "Invalid client message");
+      const message = JSON.parse(event.data) as unknown;
+      const parsed = parseLiveClientInput(message, copilotMode);
+      if (!parsed) {
+        closeBoth(1008, "Invalid or unsupported live input");
         return;
       }
 
-      if (Object.keys(message).length === 1 && message.tool_response && typeof message.tool_response === "object") {
-        if (!copilotMode) {
-          closeBoth(1008, "Tool response not enabled");
-          return;
-        }
-        const toolResponse = message.tool_response as { function_responses?: unknown };
-        const rawResponses = toolResponse.function_responses;
-        if (!Array.isArray(rawResponses) || rawResponses.length < 1 || rawResponses.length > 4) {
-          closeBoth(1008, "Invalid tool response");
-          return;
-        }
-        const functionResponses = [];
-        for (const rawResponse of rawResponses) {
-          if (!rawResponse || typeof rawResponse !== "object" || Array.isArray(rawResponse)) {
-            closeBoth(1008, "Invalid tool response");
-            return;
-          }
-          const candidate = rawResponse as { id?: unknown; name?: unknown };
-          if (
-            Object.keys(candidate).some((key) => key !== "id" && key !== "name") ||
-            typeof candidate.id !== "string" ||
-            candidate.id.length < 1 ||
-            candidate.id.length > 128 ||
-            /[\u0000-\u001f\u007f]/.test(candidate.id) ||
-            candidate.name !== "display_screen_overlay"
-          ) {
-            closeBoth(1008, "Invalid tool response");
-            return;
-          }
-          functionResponses.push({
-            id: candidate.id,
-            name: "display_screen_overlay",
-            response: { result: "The approximate overlay label was displayed to the user." },
-          });
-        }
-        upstreamSocket.send(JSON.stringify({ toolResponse: { functionResponses } }));
+      if (parsed.kind === "tool_response") {
+        upstreamSocket.send(JSON.stringify({
+          toolResponse: {
+            functionResponses: parsed.ids.map((id) => ({
+              id,
+              name: "display_screen_overlay",
+              response: { result: "The approximate overlay label was displayed to the user." },
+            })),
+          },
+        }));
         return;
       }
-
-      if (
-        Object.keys(message).length !== 1 ||
-        !message.realtime_input ||
-        typeof message.realtime_input !== "object" ||
-        Array.isArray(message.realtime_input)
-      ) {
-        closeBoth(1008, "Only realtime audio or enabled copilot video input is allowed");
-        return;
-      }
-
-      const realtimeInput = message.realtime_input as Record<string, unknown>;
-      if (Object.keys(realtimeInput).length !== 1) {
-        closeBoth(1008, "Invalid realtime input");
-        return;
-      }
-      if (realtimeInput.audio_stream_end === true) {
+      if (parsed.kind === "audio_stream_end") {
         upstreamSocket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
         return;
       }
 
-      const isVideo = Object.prototype.hasOwnProperty.call(realtimeInput, "video");
-      const frame = isVideo ? realtimeInput.video : realtimeInput.audio;
-      if (!frame || typeof frame !== "object" || Array.isArray(frame)) {
-        closeBoth(1008, "Invalid realtime media frame");
-        return;
-      }
-
-      const media = frame as { data?: unknown; mime_type?: unknown };
-      const maxBase64Chars = isVideo ? MAX_VIDEO_BASE64_CHARS : MAX_AUDIO_BASE64_CHARS;
-      const expectedMimeType = isVideo ? "image/jpeg" : "audio/pcm;rate=16000";
-      if (
-        (isVideo && !copilotMode) ||
-        Object.keys(media).some((key) => key !== "data" && key !== "mime_type") ||
-        typeof media.data !== "string" ||
-        media.data.length < 4 ||
-        media.data.length > maxBase64Chars ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(media.data) ||
-        media.mime_type !== expectedMimeType
-      ) {
-        closeBoth(1008, isVideo ? "Invalid copilot video frame" : "Invalid PCM audio frame");
-        return;
-      }
-
+      const isVideo = parsed.kind === "video";
       const now = Date.now();
       if (isVideo) {
         // Gemini Live consumes video as individual frames; keep camera input near 1 FPS.
@@ -712,21 +648,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
       if (isVideo) {
         upstreamSocket.send(JSON.stringify({
-          realtimeInput: {
-            video: {
-              data: media.data,
-              mimeType: "image/jpeg",
-            },
-          },
+          realtimeInput: { video: { data: parsed.data, mimeType: "image/jpeg" } },
         }));
       } else {
         upstreamSocket.send(JSON.stringify({
-          realtimeInput: {
-            audio: {
-              data: media.data,
-              mimeType: "audio/pcm;rate=16000",
-            },
-          },
+          realtimeInput: { audio: { data: parsed.data, mimeType: "audio/pcm;rate=16000" } },
         }));
       }
     } catch {
