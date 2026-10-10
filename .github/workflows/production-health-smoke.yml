@@ -1,0 +1,61 @@
+name: Production health smoke
+
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-production-health-smoke
+  cancel-in-progress: true
+
+jobs:
+  production-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check production health and provider route
+        env:
+          PRODUCTION_URL: https://askmoina-voice.thenewtongs.workers.dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          status_code="$(curl --silent --show-error --max-time 12 \
+            --output "$response_file" --write-out '%{http_code}' \
+            "$PRODUCTION_URL/api/health")"
+
+          if [[ "$status_code" != "200" ]]; then
+            echo "::error::Production health endpoint returned HTTP $status_code"
+            cat "$response_file"
+            exit 1
+          fi
+
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+
+          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          if (body.ok !== true) throw new Error("Production health endpoint did not report ok=true.");
+          if (body.app !== "askmoina-voice") throw new Error("Unexpected production app identity.");
+          if (body.status !== "vertex-live-proxy-configured") {
+            throw new Error(`Unexpected voice route status: ${String(body.status)}`);
+          }
+          if (typeof body.model !== "string" || !body.model.trim()) {
+            throw new Error("Production model configuration is missing.");
+          }
+          if (typeof body.location !== "string" || !body.location.trim()) {
+            throw new Error("Production Vertex location is missing.");
+          }
+          console.log(JSON.stringify({
+            ok: body.ok,
+            app: body.app,
+            status: body.status,
+            model: body.model,
+            location: body.location
+          }));
+          NODE
