@@ -16,10 +16,10 @@ interface GuardRecord {
 
 const STORAGE_KEY = "voice-guard";
 const RATE_WINDOW_MS = 60_000;
-const IP_REQUESTS_PER_MINUTE = 5;
+const IP_REQUESTS_PER_MINUTE = 20;
 const MAX_SUPPORTED_SESSION_SECONDS = 540;
-const MAX_SUPPORTED_DAILY_SECONDS = 3_600;
-const MAX_SUPPORTED_CONCURRENT_SESSIONS = 10;
+const MAX_SUPPORTED_DAILY_SECONDS = 36_000;
+const MAX_SUPPORTED_CONCURRENT_SESSIONS = 100;
 const STALE_SESSION_GRACE_MS = 60_000;
 
 function indiaDate(now: number): string {
@@ -122,6 +122,7 @@ export class UserState {
         maxConcurrentSessions?: number;
         enforceRateLimit?: boolean;
         enforceDailyLimit?: boolean;
+        rateLimitOnly?: boolean;
       };
       try {
         input = (await request.json()) as typeof input;
@@ -172,6 +173,11 @@ export class UserState {
             await transaction.put(STORAGE_KEY, record);
             return { allowed: false, reason: "rate_limited" as const };
           }
+        }
+
+        if (input.rateLimitOnly) {
+          await transaction.put(STORAGE_KEY, record);
+          return { allowed: true, reason: "rate_limit_checked" as const, reservedSeconds: maxSessionSeconds };
         }
 
         if (Object.keys(record.sessions).length >= maxConcurrentSessions) {
