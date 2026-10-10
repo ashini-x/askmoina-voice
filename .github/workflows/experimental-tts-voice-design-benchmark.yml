@@ -14,7 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Avoid billable TTS calls on routine pushes. Add [run-benchmark] to a commit message to opt in.
   benchmark:
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-benchmark]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
