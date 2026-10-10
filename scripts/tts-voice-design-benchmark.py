@@ -24,23 +24,14 @@ MODEL_LITE = "gemini-3.8-flash-lite-tts"
 
 VOICE_DESIGNS = [
     {
-        "key": "A",
-        "display_name": "Moina Acoustic Voice A - Full Prompt",
+        "key": "C",
+        "display_name": "Moina Sweet Voice C - Soft and Unforced",
         "prompt": (
-            "Acoustic profile: High-pitched, exceptionally bright, and light vocal "
-            "resonance with a small vocal tract. The tone must be inherently sweet, "
-            "crisp, and soft, carrying a gentle, airy breathiness. Crisp and clear output, "
-            "completely free of vocal fry, deep resonance, or gravelly undertones. "
-            "High-clarity, warm, and comforting acoustic signature."
-        ),
-    },
-    {
-        "key": "B",
-        "display_name": "Moina Acoustic Voice B - Bright Airy Alternative",
-        "prompt": (
-            "A male speaking voice with exceptionally high pitch, bright lightweight "
-            "resonance, and a sweet, crisp yet soft tone. Gentle airy breathiness adds "
-            "warmth; the sound is clear and comforting, without a deep or gravelly quality."
+            "A naturally sweet, light male speaking voice with a gentle, slightly high "
+            "register. Soft, smooth and warm, with delicate airy quality and rounded "
+            "resonance. The delivery feels relaxed and effortless, like speaking to a "
+            "friend: clear and bright without pushing the pitch, over-enunciating, or "
+            "putting on a sugary or theatrical sweetness."
         ),
     },
 ]
@@ -182,9 +173,9 @@ def main() -> None:
         "model_flash": MODEL_FLASH,
         "model_lite": MODEL_LITE,
         "note": (
-            "Model generation was measured end-to-end for complete WAV responses, "
-            "not as a streaming first-audio latency test. Assamese naturalness and "
-            "perceived age require human listening, ideally by native Upper Assamese speakers."
+            "Single-candidate refinement focused on softer, effortless sweetness. "
+            "Only one Assamese baseline and one English control clip are generated to "
+            "minimize billable calls. Assamese naturalness requires native-speaker listening."
         ),
         "voice_designs": [],
         "voice_design_failures": [],
@@ -236,74 +227,18 @@ def main() -> None:
         report_path.write_text(json.dumps(json_safe(report), ensure_ascii=False, indent=2), encoding="utf-8")
         raise RuntimeError("No voice candidates were created successfully; see benchmark-report.json.")
 
-    fallback_voice_id = voice_ids.get("A") or next(iter(voice_ids.values()))
-    for key, voice_id in voice_ids.items():
-        report["clips"].append(generate_clip(
-            client, MODEL_FLASH, voice_id, ASSAMESE_BASELINE,
-            f"voice_{key}_assamese_baseline_flash.wav",
-        ))
-        report["clips"].append(generate_clip(
-            client, MODEL_FLASH, voice_id, ASSAMESE_EXCITED,
-            f"voice_{key}_assamese_excited_flash.wav",
-            "high pitch, cheerful and excited, naturally playful, not exaggerated",
-        ))
-        report["clips"].append(generate_clip(
-            client, MODEL_FLASH, voice_id, ASSAMESE_CALM,
-            f"voice_{key}_assamese_calm_flash.wav",
-            "soft, gentle and reassuring, calm but still youthful",
-        ))
-        report["clips"].append(generate_clip(
-            client, MODEL_FLASH, voice_id, ENGLISH_CONTROL,
-            f"voice_{key}_english_control_flash.wav",
-            "bright, sweet, high-pitched, cheerful and friendly",
-        ))
-
-    # A single Flash-Lite comparison checks the lower-latency model family with
-    # the same designed voice and transcript. This is unary latency, not streaming TTFB.
+    candidate_key, candidate_voice_id = next(iter(voice_ids.items()))
     report["clips"].append(generate_clip(
-        client, MODEL_LITE, fallback_voice_id, ASSAMESE_BASELINE,
-        "voice_A_assamese_baseline_flash_lite.wav",
+        client, MODEL_FLASH, candidate_voice_id, ASSAMESE_BASELINE,
+        f"voice_{candidate_key}_assamese_baseline_flash.wav",
     ))
-
-    # Test the documented two-speaker script schema using designed Moina voice A
-    # and a prebuilt second voice. This is scripted TTS, not interactive Live audio.
-    multi_started = time.perf_counter()
-    multi_response = client.models.generate_content(
-        model=MODEL_FLASH,
-        contents=[{
-            "role": "user",
-            "parts": [
-                {"text": "হেই! আজি কি শিকিবা?", "speech_metadata": {
-                    "speaker": "Moina", "style": "bright and curious",
-                }},
-                {"text": "মই আজি অসমৰ ইতিহাস শিকিম। তুমি সহায় কৰিবানে?", "speech_metadata": {
-                    "speaker": "Friend", "style": "warm and relaxed",
-                }},
-            ],
-        }],
-        config={
-            "response_modalities": ["AUDIO"],
-            "speech_config": {
-                "multi_speaker_voice_config": {
-                    "speaker_voice_configs": [
-                        {"speaker": "Moina", "voice_config": {"voice": fallback_voice_id}},
-                        {"speaker": "Friend", "voice_config": {"voice": "Puck"}},
-                    ],
-                },
-            },
-        },
-    )
-    multi_elapsed = time.perf_counter() - multi_started
-    multi_path = OUT / "two_speaker_assamese_dialogue_flash.wav"
-    multi_path.write_bytes(get_audio_from_response(multi_response))
+    report["clips"].append(generate_clip(
+        client, MODEL_FLASH, candidate_voice_id, ENGLISH_CONTROL,
+        f"voice_{candidate_key}_english_control_flash.wav",
+    ))
     report["multi_speaker"] = {
-        "file": multi_path.name,
-        "elapsed_seconds": round(multi_elapsed, 3),
-        "speaker_1": {"name": "Moina", "voice_id": fallback_voice_id},
-        "speaker_2": {"name": "Friend", "voice_id": "Puck"},
-        "note": "Scripted two-speaker TTS control; not live conversational turn-taking.",
-        **wav_metadata(multi_path),
-        "usage": token_usage(multi_response),
+        "status": "not_run",
+        "reason": "This refinement tests voice quality only; skipped extra paid comparison calls.",
     }
 
     report_path = OUT / "benchmark-report.json"
