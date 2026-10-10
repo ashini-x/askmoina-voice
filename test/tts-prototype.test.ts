@@ -47,7 +47,8 @@ describe("designed-voice TTS prototype", () => {
 
   it("calls the conversation model then TTS using the exact designed voice ID", async () => {
     const audio = makeWavBase64();
-    const fetchMock = vi.fn()
+    type MockFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    const fetchMock = vi.fn<MockFetch>()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         candidates: [{
           content: {
@@ -103,7 +104,8 @@ describe("designed-voice TTS prototype", () => {
   });
 
   it("does not call TTS when the conversation request fails", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(new Response("denied", { status: 403 }));
+    type MockFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValueOnce(new Response("denied", { status: 403 }));
     await expect(generateTtsPrototypeTurn(env, {
       audioWavBase64: makeWavBase64(),
       history: [],
