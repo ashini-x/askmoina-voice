@@ -7,7 +7,7 @@
 5. Cloudflare Workers Builds deploys the production branch after checks succeed.
 6. Apply reviewed production D1 migrations deliberately before relying on new indexes or schema.
 7. Verify the active Worker deployment, scheduled-retention trigger, health endpoint, Cloudflare errors and critical flows.
-8. Confirm the scheduled production health workflow passes. Separately perform an end-to-end voice and selected-memory test before widening access; the health endpoint alone does not exercise provider audio.
+8. Confirm the scheduled production health workflow passes, including the expected configured Live voice. Separately perform an end-to-end voice and selected-memory test and have Upper Assamese speakers rate pronunciation, naturalness, perceived age, warmth, interruption, and first-audio latency before widening access; the health endpoint alone does not exercise provider audio or prove speech quality.
 9. Roll back to the last known-good deployment if health or critical flows degrade.
 
 ## Large-scale public rollout gate
