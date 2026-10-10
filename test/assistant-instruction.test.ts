@@ -7,7 +7,7 @@ describe("AskMoina live voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("answer in the same kind of Assamese-English mix");
     expect(SYSTEM_INSTRUCTION).toContain("Keep natural English phrases in English");
     expect(SYSTEM_INSTRUCTION).toContain("not a schoolteacher, newsreader, audiobook narrator");
-    expect(SYSTEM_INSTRUCTION).toContain("Match the user's level of code-switching");
+    expect(SYSTEM_INSTRUCTION).toContain("Mirror the user's level of code-switching");
   });
 
   it("includes examples of contemporary casual Assamese-English conversation", () => {
