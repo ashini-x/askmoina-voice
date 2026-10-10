@@ -25,31 +25,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download the prior Candidate A sample artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: askmoina-tts-voice-design-benchmark
-          repository: ashini-x/askmoina-voice
-          run-id: "38028441503"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: candidate-a-input
-
-      - name: Validate sample is present without printing audio data
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s candidate-a-input/voice_A_design_sample.wav
-          echo "Candidate A reference sample found."
-          python - <<'PY'
-          import wave
-          p = "candidate-a-input/voice_A_design_sample.wav"
-          with wave.open(p, "rb") as f:
-              duration = f.getnframes() / f.getframerate()
-              print(f"Sample: {duration:.2f}s, {f.getframerate()} Hz, {f.getnchannels()} channel(s), {f.getsampwidth()*8}-bit")
-              assert 10 <= duration <= 20
-              assert (f.getframerate(), f.getnchannels(), f.getsampwidth()) == (24000, 1, 2)
-          PY
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -89,28 +64,6 @@ jobs:
         if: steps.credentials.outputs.available == 'true'
         run: python -m pip install --disable-pip-version-check "google-genai>=2.25.0"
 
-      - name: Open a single Gemini Live session with Candidate A reference audio
-        id: live_test
-        if: steps.credentials.outputs.available == 'true'
-        continue-on-error: true
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
-          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
-          GEMINI_LOCATION: us-central1
-          GEMINI_MODEL: gemini-3.8-live
-        run: python scripts/test-live-replicated-voice.py
-
-      - name: Run Live text-brain plus Candidate A streaming TTS fallback
-        id: cascade_test
-        if: steps.credentials.outputs.available == 'true'
-        continue-on-error: true
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
-          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
-          GEMINI_LOCATION: us-central1
-          GEMINI_MODEL: gemini-3.8-live
-        run: python scripts/test-live-brain-candidate-a-tts-cascade.py
-
       - name: Test Candidate A voice-design ID directly in Gemini Live
         id: direct_voice_test
         if: steps.credentials.outputs.available == 'true'
@@ -121,6 +74,17 @@ jobs:
           GEMINI_LOCATION: us-central1
           GEMINI_MODEL: gemini-3.8-live
         run: python scripts/test-live-custom-voice-id.py
+
+      - name: Compare Candidate A with Leda and probe expressive audio
+        id: comparison_test
+        if: steps.credentials.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
+          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          GEMINI_LOCATION: us-central1
+          GEMINI_MODEL: gemini-3.8-live
+        run: python scripts/compare-live-candidate-a-vs-leda.py
 
       - name: Publish test result summary
         if: always()
@@ -136,32 +100,26 @@ jobs:
                   return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"status": "no_report"}
               except Exception:
                   return {"status": "report_unreadable"}
-          tests = [
-              ("Native Live replicated voice", load("live-voice-test-report.json")),
-              ("Live brain + Candidate A streaming TTS fallback", load("candidate-a-brain-plus-tts-report.json")),
-              ("Candidate A voice-design ID directly in Live", load("candidate-a-direct-live-voice-report.json")),
-          ]
-          lines = ["## Candidate A voice experiments"]
-          for title, result in tests:
-              lines += ["", f"### {title}", "", f"**Status:** {result.get('status', 'unknown')}"]
-              if result.get("error_type"):
-                  lines += ["", f"**Error type:** {result['error_type']}", "", f"**Diagnostic:** {result.get('error', '')}"]
-              if result.get("reason"):
-                  lines += ["", result["reason"]]
-              timing = result.get("timing", {})
-              if timing:
-                  lines += [
-                      "", f"- Live answer complete: {timing.get('live_brain_text_complete_ms')} ms",
-                      f"- TTS first audio after TTS starts: {timing.get('candidate_a_tts_first_audio_ms_after_tts_start')} ms",
-                      f"- Estimated total time to first audio: {timing.get('total_time_to_first_audio_ms_estimate')} ms",
-                      f"- End-to-end generation: {timing.get('total_end_to_end_ms')} ms",
-                  ]
-              for field in ("first_audio_ms", "total_response_ms"):
-                  if result.get(field) is not None:
-                      lines += ["", f"- {field.replace('_', ' ')}: {result[field]} ms"]
-              if result.get("audio_duration_seconds") is not None:
-                  lines += ["", f"- Candidate A audio duration: {result['audio_duration_seconds']} seconds"]
-          lines += ["", "No production Worker configuration or deployment was changed."]
+          direct = load("candidate-a-direct-live-voice-report.json")
+          comparison = load("candidate-a-live-comparison-report.json")
+          lines = ["## Candidate A Gemini Live voice test", "", "### Direct custom voice ID", "", f"**Status:** {direct.get('status', 'unknown')}"]
+          if direct.get("error_type"):
+              lines += ["", f"**Error type:** {direct['error_type']}", "", f"**Diagnostic:** {direct.get('error', '')}"]
+          if direct.get("first_audio_ms") is not None:
+              lines += ["", f"- First audio: {direct['first_audio_ms']} ms", f"- Total response generation: {direct.get('total_response_ms')} ms", f"- Audio duration: {direct.get('audio_duration_seconds')} seconds"]
+          lines += ["", "### Candidate A vs Leda and expression probe", "", f"**Status:** {comparison.get('status', 'unknown')}"]
+          if comparison.get("error_type"):
+              lines += ["", f"**Error type:** {comparison['error_type']}", "", f"**Diagnostic:** {comparison.get('error', '')}"]
+          comp = comparison.get("comparison", {})
+          if comp:
+              lines += [
+                  "", f"- Candidate A first audio: {comp.get('candidate_a_first_audio_ms')} ms",
+                  f"- Leda first audio: {comp.get('leda_first_audio_ms')} ms",
+                  f"- Candidate A minus Leda: {comp.get('candidate_a_minus_leda_first_audio_ms')} ms",
+              ]
+          for item in comparison.get("scenarios", []):
+              lines += ["", f"- {item.get('label')}: {item.get('audio_duration_seconds')} seconds; first audio {item.get('first_audio_ms')} ms; total {item.get('total_response_ms')} ms"]
+          lines += ["", "The timing is based on one sample per scenario; a listener should judge voice similarity and whether any expressions sound natural.", "", "No production Worker configuration or deployment was changed."]
           (out / "live-voice-test-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
           print("\n".join(lines))
           PY
