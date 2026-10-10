@@ -566,18 +566,18 @@ async function handleVoiceSocket(
 const baseInstruction = pronunciationGuidance
   ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
   : SYSTEM_INSTRUCTION;
-const copilotMode = message.copilot_mode === true;
+const enableCopilotForSetup = message.copilot_mode === true;
 const systemInstruction = buildPersonalizedSystemInstruction(
-  copilotMode ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}` : baseInstruction,
+  enableCopilotForSetup ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}` : baseInstruction,
   memoryContext,
 );
-        copilotMode = message.copilot_mode === true;
+        copilotMode = enableCopilotForSetup;
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           generationConfig: voicePreviewRequested
             ? buildVoiceGenerationConfig(requestedPreviewVoice)
             : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
-          tools: copilotMode ? [COPILOT_TOOL] : undefined,
+          tools: enableCopilotForSetup ? [COPILOT_TOOL] : undefined,
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
