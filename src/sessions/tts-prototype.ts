@@ -165,7 +165,7 @@ function inlineAudio(payload: unknown): { data: string; mimeType: string } | nul
   if (!content || !Array.isArray(content.parts)) return null;
   for (const part of content.parts) {
     if (!part || typeof part !== "object") continue;
-    const item = part as { inlineData?: { data?: unknown; mimeType?: unknown }; inline_data?: { data?: unknown; mime_type?: unknown } };
+    const item = part as { inlineData?: { data?: unknown; mimeType?: unknown; mime_type?: unknown }; inline_data?: { data?: unknown; mimeType?: unknown; mime_type?: unknown } };
     const audio = item.inlineData ?? item.inline_data;
     if (audio && typeof audio.data === "string" && audio.data.length > 0) {
       const mimeType = typeof audio.mimeType === "string" ? audio.mimeType : typeof audio.mime_type === "string" ? audio.mime_type : "audio/wav";
@@ -244,7 +244,6 @@ export async function generateTtsPrototypeTurn(
             required: ["userTranscript", "reply", "vocalStyle"],
           },
           maxOutputTokens: 512,
-          temperature: 0.7,
         },
       }),
     });
