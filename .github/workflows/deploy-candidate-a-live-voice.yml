@@ -52,8 +52,47 @@ jobs:
           npm test
           npx wrangler deploy --dry-run --outdir=dist
 
-      - name: Deploy Candidate A voice to the existing Worker
-        run: npx wrangler deploy --message "Apply Candidate A custom Live voice (v0.4.4)"
+      - name: Upload validated Candidate A version without changing triggers
+        id: upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          message="Apply Candidate A custom Live voice (v0.4.4)"
+          npx wrangler versions upload --message "$message"
+
+          # Find the exact version we just uploaded. Avoid "wrangler deploy" here:
+          # it also synchronizes queue consumers and needs account-wide queue write access.
+          versions_json="$(curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            --header "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/askmoina-voice/versions")"
+          version_id="$(printf '%s' "$versions_json" | node -e '
+            let input = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              const response = JSON.parse(input);
+              if (response.success !== true) {
+                throw new Error("Cloudflare versions API did not return success.");
+              }
+              const version = (response.result || []).find(item =>
+                item.annotations?.["workers/message"] === "Apply Candidate A custom Live voice (v0.4.4)"
+              );
+              if (!version?.id) {
+                throw new Error("Could not find the uploaded Candidate A version.");
+              }
+              process.stdout.write(version.id);
+            });
+          ')"
+          if [[ ! "$version_id" =~ ^[0-9a-f-]{36}$ ]]; then
+            echo "::error::Cloudflare returned an unexpected Worker version ID."
+            exit 1
+          fi
+          echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
+          echo "Validated Candidate A version is uploaded: $version_id"
+
+      - name: Promote uploaded version to 100% without changing triggers
+        run: npx wrangler versions deploy "${{ steps.upload.outputs.version_id }}@100%"
 
       - name: Verify production health and selected voice
         shell: bash
