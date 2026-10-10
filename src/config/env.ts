@@ -9,6 +9,7 @@ export interface Env {
   GEMINI_MODEL: string;
   GEMINI_LOCATION: string;
   LIVE_VOICE_NAME?: string;
+  LIVE_VOICE_ID?: string;
   GCP_PROJECT_ID: string;
   MAX_LIVE_SESSION_SECONDS: string;
   MAX_DAILY_SESSION_SECONDS: string;
