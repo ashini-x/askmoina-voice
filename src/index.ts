@@ -255,14 +255,24 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
 
   const now = Date.now();
   const adminDailyQuotaBypassed = await hasAdminDailyQuotaBypass(request, env);
-  const visitor = adminDailyQuotaBypassed ? null : await ensureVisitor(request, env);
-  if (visitor?.cookie) await visitor.touch;
-  const responseHeaders = visitor?.cookie ? { "Set-Cookie": visitor.cookie } : undefined;
+  let publicVisitorId: string | null = null;
+  let responseHeaders: HeadersInit | undefined;
+  if (!adminDailyQuotaBypassed) {
+    publicVisitorId = await visitorIdFromRequest(request);
+    if (!publicVisitorId) {
+      const visitor = await ensureVisitor(request, env);
+      publicVisitorId = visitor.visitorId;
+      if (visitor.cookie) {
+        responseHeaders = { "Set-Cookie": visitor.cookie };
+        await visitor.touch;
+      }
+    }
+  }
   const ipHash = await sha256(ip);
   const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:v2:" : "voice-ip-rate:v1:"}${ipHash}`;
   const userObjectName = adminDailyQuotaBypassed
     ? ipObjectName
-    : `voice-visitor:${visitor?.visitorId ?? `ip:${ipHash}`}`;
+    : `voice-visitor:${publicVisitorId ?? `ip:${ipHash}`}`;
   const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
   const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
   const maxDailySeconds = positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800);
