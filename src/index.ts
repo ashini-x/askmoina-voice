@@ -86,7 +86,7 @@ async function reserveVoiceSession(
   const visitorId = adminDailyQuotaBypassed ? null : await visitorIdFromRequest(request);
   const userObjectName = adminDailyQuotaBypassed
     ? `voice-admin-ip:v2:${ipHash}`
-    : `voice-visitor:${visitorId ?? `ip:${ipHash}`}`;
+    : `voice-visitor:v2:${visitorId ?? `ip:${ipHash}`}`;
   const rateObjectName = `voice-ip-rate:v1:${ipHash}`;
   const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
   const sessionId = crypto.randomUUID();
@@ -272,7 +272,7 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:v2:" : "voice-ip-rate:v1:"}${ipHash}`;
   const userObjectName = adminDailyQuotaBypassed
     ? ipObjectName
-    : `voice-visitor:${publicVisitorId ?? `ip:${ipHash}`}`;
+    : `voice-visitor:v2:${publicVisitorId ?? `ip:${ipHash}`}`;
   const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
   const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
   const maxDailySeconds = positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800);
