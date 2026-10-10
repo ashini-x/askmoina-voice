@@ -30,3 +30,12 @@ export function inspectProviderControlFrame(frameText: string): ProviderControlF
     error: parsed.error,
   };
 }
+
+
+/**
+ * Identify audio-bearing model frames without parsing or copying their base64 payload.
+ * Keep this cheap: it runs on each upstream frame in the live voice path.
+ */
+export function isProviderAudioFrame(frameText: string): boolean {
+  return frameText.includes('"inlineData"') || frameText.includes('"inline_data"');
+}
