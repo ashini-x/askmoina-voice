@@ -18,7 +18,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("copilot_mode: true");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
-    expect(script).toContain("video.toDataURL(\"image/jpeg\"");
+    expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
   });
 
   it("styles region-specific focus markers for narrow screens", () => {
