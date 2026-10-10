@@ -407,7 +407,10 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (url.pathname === "/admin/logout" && request.method === "POST") {
     if (!sameOrigin(request) || !await isAdmin(request,env)) return json({ error:"unauthorized" },401);
     await audit(env,"admin_logout").catch(()=>undefined);
-    return json({ok:true},200,{"Set-Cookie":ADMIN_COOKIE+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict"});
+    const logoutHeaders = new Headers();
+    logoutHeaders.append("Set-Cookie", ADMIN_COOKIE + "=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict");
+    logoutHeaders.append("Set-Cookie", ADMIN_COOKIE + "=; Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict");
+    return json({ok:true},200,logoutHeaders);
   }
   if (url.pathname === "/admin.js" && request.method === "GET") return scriptResponse(ADMIN_JS);
   if (url.pathname === "/admin-login.js" && request.method === "GET") return scriptResponse(ADMIN_LOGIN_JS);
