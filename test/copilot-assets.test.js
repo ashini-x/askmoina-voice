@@ -1,9 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "../src/copilot-assets";
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
+
+describe("Worker-embedded Co-Pilot assets", () => {
+  it("serves the same browser assets as the checked-in public files", () => {
+    expect(COPILOT_HTML).toBe(html);
+    expect(COPILOT_JS).toBe(script);
+    expect(COPILOT_CSS).toBe(css);
+  });
+});
 
 describe("Live Co-Pilot browser assets", () => {
   it("ships the camera preview, guided conversation, and a clear approximation disclaimer", () => {
@@ -19,6 +28,14 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
+  });
+
+  it("retries a just-ended session reservation before reporting a second active voice session", () => {
+    expect(script).toContain("async function refreshAvailabilityAfterRelease()");
+    expect(script).toContain("options.quietActiveLock === true");
+    expect(script).toContain("lastSessionEndedAt = Date.now()");
+    expect(script).toContain("result.reason !== \"already_active\"");
+    expect(script).toContain("const endedRecently = Date.now() - lastSessionEndedAt < 15_000;");
   });
 
   it("styles region-specific focus markers for narrow screens", () => {
