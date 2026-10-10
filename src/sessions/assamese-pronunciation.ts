@@ -57,7 +57,8 @@ export async function buildAssamesePronunciationInstruction(
       "UPPER ASSAM ASSAMESE PRONUNCIATION REFERENCE (source-attributed rule database):",
       "- Use these notes as phonetic guidance, not as literal character substitutions. Never speak IPA notation, slash-delimited phonemes, or bracketed examples to the user.",
       "- Apply Assamese sound patterns only to words identified as Assamese. Preserve conventional English pronunciation in English words inside Assamese-English code-switching.",
-      "- A native-speaker-verified, word-specific pronunciation takes precedence over a broad phonological rule. None of the seed rules is yet locally verified, so regional alternatives below are possibilities, not universal prescriptions.",
+      "- Apply word-specific guidance before broad phonology. A pronunciation target reported by an AskMoina listener should be followed for that exact word when targeting their preferred regional style, even if it differs from a general baseline; do not generalize it to similar-looking words.",
+      "- Seed rules without native-speaker verification are not proof of a community-wide norm. Honor explicit lexeme-specific user targets as product preferences while keeping them scoped to the reported word.",
     ];
 
     for (const rule of rules) {
