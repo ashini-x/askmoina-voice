@@ -22,6 +22,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Python for offline validation
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate benchmark script syntax without using credentials
+        run: python -m py_compile scripts/tts-voice-design-benchmark.py
+
       - name: Read project ID from the experiment's checked-in Worker config
         id: project
         shell: bash
@@ -57,12 +65,6 @@ jobs:
           chmod 600 "$RUNNER_TEMP/gcp-service-account.json"
           echo "available=true" >> "$GITHUB_OUTPUT"
           echo "Google credential presence verified; value is not printed or archived."
-
-      - name: Set up Python
-        if: steps.credentials.outputs.available == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Install Google Gen AI SDK
         if: steps.credentials.outputs.available == 'true'
