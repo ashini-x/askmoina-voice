@@ -86,6 +86,19 @@ describe("Encrypted vault API boundary", () => {
     });
     await expect(isAdmin(voiceRequest, env)).resolves.toBe(true);
     await expect(isAdmin(new Request("https://askmoina.test/api/voice/socket"), env)).resolves.toBe(false);
+
+    const logout = await handleContinuityRequest(
+      new Request("https://askmoina.test/admin/logout", {
+        method: "POST",
+        headers: { Origin: "https://askmoina.test", Cookie: cookie },
+      }),
+      env,
+      ctx,
+    );
+    expect(logout?.status).toBe(200);
+    const clearedCookies = logout?.headers.get("Set-Cookie") || "";
+    expect(clearedCookies).toContain("Path=/;");
+    expect(clearedCookies).toContain("Path=/admin;");
   });
 
   it("requires an authenticated admin session before returning dashboard APIs", async () => {
