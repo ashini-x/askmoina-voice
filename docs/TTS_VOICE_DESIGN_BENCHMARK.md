@@ -6,7 +6,7 @@ This is a non-production experiment. It does not change `src/index.ts`, Wrangler
 
 The script creates two prompted voice assets via the Gemini Enterprise Voices API, with the API's male gender setting:
 - **A — Full acoustic prompt:** high-pitched, bright/light resonance, sweet/crisp/soft tone, gentle airy breathiness, no vocal fry or deep/gravelly resonance, warm and comforting.
-- **B — Concise natural-language acoustic prompt:** a sweet, high-pitched voice with bright, light resonance, a crisp and soft tone, gentle airy breathiness, and a warm, comforting sound.
+- **B — Bright airy alternative:** a male speaking voice with exceptionally high pitch, bright lightweight resonance, sweet/crisp yet soft tone, gentle airy breathiness, warmth, and no deep or gravelly quality.
 
 These candidates intentionally focus on acoustic characteristics rather than age or regional-language cues. Their Assamese speech clips test how the generated voice handles Assamese content; Upper Assamese naturalness still needs native-speaker listening. If one voice prompt fails to generate, the script records the error and continues with any successful candidate instead of losing all samples.
 
