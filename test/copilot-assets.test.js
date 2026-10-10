@@ -51,7 +51,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
     expect(script).toContain("Surface marker placed for");
-    expect(script).toContain("the cue stays in this panel");
+    expect(script).toContain("The cue stays in this panel");
   });
 
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
