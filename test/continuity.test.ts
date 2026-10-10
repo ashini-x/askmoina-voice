@@ -101,6 +101,33 @@ describe("Encrypted vault API boundary", () => {
     expect(clearedCookies).toContain("Path=/admin;");
   });
 
+  it("shows the voice audition lab link on the authenticated admin dashboard", async () => {
+    const env = {
+      ...mockEnv(),
+      ADMIN_DASHBOARD_USER: "admin",
+      ADMIN_DASHBOARD_PASSWORD: "test-admin-password",
+      ADMIN_SESSION_SECRET: "test-session-secret-with-sufficient-entropy",
+    } as unknown as Env;
+    const login = await handleContinuityRequest(
+      new Request("https://askmoina.test/admin/login", {
+        method: "POST",
+        headers: { Origin: "https://askmoina.test", "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "test-admin-password" }),
+      }),
+      env,
+      ctx,
+    );
+    expect(login?.status).toBe(200);
+    const cookie = (login?.headers.get("Set-Cookie") || "").split(";")[0];
+    const dashboard = await handleContinuityRequest(
+      new Request("https://askmoina.test/admin", { headers: { Cookie: cookie } }),
+      env,
+      ctx,
+    );
+    expect(dashboard?.status).toBe(200);
+    expect(await dashboard?.text()).toContain('href="/voice-lab">Voice audition lab</a>');
+  });
+
   it("requires an authenticated admin session before returning dashboard APIs", async () => {
     const response = await handleContinuityRequest(
       new Request("https://askmoina.test/admin/api/overview"),
