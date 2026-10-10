@@ -53,3 +53,12 @@ Apply migrations in order (including `migrations/0002_continuity_vault.sql`) to 
 - Real device/mobile acceptance, a security review of the cryptographic lifecycle and the AI provider data-flow/retention configuration are required before making high-assurance privacy claims or opening access broadly.
 
 See `docs/ARCHITECTURE.md`, `docs/SECURITY_MODEL.md`, `docs/PRIVACY.md`, and `docs/RELEASE_PROCESS.md`.
+
+
+## Private designed-voice TTS prototype (separate Worker)
+
+The experimental test page and API can be deployed as a separate Worker using `wrangler.tts-prototype.jsonc` and `src/tts-prototype-worker.ts`. This config intentionally binds only static assets; it does not bind the production D1 database, Durable Objects, or background Queue. Do not use `wrangler.jsonc` for this prototype Worker.
+
+Required Cloudflare Worker secrets are `GCP_SERVICE_ACCOUNT_JSON` and `TTS_PROTOTYPE_ACCESS_TOKEN`. The access token should be a random, high-entropy secret entered directly in the Cloudflare dashboard and in the prototype page; never commit it, put it in a `vars` field, or share it in issue comments. The prototype endpoint requires a same-origin POST and bearer token and is intended for private testing only.
+
+For a Cloudflare Workers Builds connection, use the branch `prototype/moina-designed-voice-tts`, set the deployment command to `npx wrangler deploy --config wrangler.tts-prototype.jsonc`, and set the root directory to the repository root. Verify the target Worker name is `askmoina-tts-prototype`, not `askmoina-voice`. Set the two secrets on that prototype Worker before running the audio test. This Worker is a turn-based TTS experiment, not the production real-time Live service.
