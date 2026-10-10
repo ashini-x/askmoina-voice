@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.APP_VERSION")"
-          live_voice="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.LIVE_VOICE_NAME")"
+          live_voice="$(node -p "(()=>{const c=JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')); return c.vars.LIVE_VOICE_ID?.trim() || c.vars.LIVE_VOICE_NAME})()")"
           echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
           echo "live_voice=$live_voice" >> "$GITHUB_OUTPUT"
 

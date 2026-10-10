@@ -437,7 +437,7 @@ async function handleVoiceSocket(
         const systemInstruction = buildPersonalizedSystemInstruction(SYSTEM_INSTRUCTION, memoryContext);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME),
+          generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -689,7 +689,7 @@ export default {
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
         location: env.GEMINI_LOCATION || "us-central1",
-        liveVoice: env.LIVE_VOICE_NAME?.trim() || DEFAULT_LIVE_VOICE_NAME,
+        liveVoice: env.LIVE_VOICE_ID?.trim() || env.LIVE_VOICE_NAME?.trim() || DEFAULT_LIVE_VOICE_NAME,
       });
     }
 

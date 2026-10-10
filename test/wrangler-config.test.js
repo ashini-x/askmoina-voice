@@ -6,6 +6,13 @@ const config = JSON.parse(
 );
 
 describe("production Worker configuration", () => {
+  it("declares UserState as a SQLite-backed Durable Object using Wrangler's current schema", () => {
+    expect(config.exports?.UserState).toEqual({
+      type: "durable-object",
+      storage: "sqlite",
+    });
+  });
+
   it("declares the production credentials required by voice and admin routes", () => {
     expect(config.secrets?.required).toEqual(
       expect.arrayContaining([
