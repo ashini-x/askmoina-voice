@@ -376,6 +376,7 @@ async function handleVoiceSocket(
   const upstreamStartedAt = Date.now();
   let firstAudioFrameLogged = false;
   let setupForwarded = false;
+  let setupInitializing = false;
   let setupCompleteReceived = false;
   let closed = false;
   let inputWindowStart = Date.now();
@@ -437,7 +438,7 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
-  workerSocket.addEventListener("message", (event: MessageEvent) => {
+  workerSocket.addEventListener("message", async (event: MessageEvent) => {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
 
     // This browser proxy accepts small JSON frames only. Raw/binary frames and arbitrary
@@ -448,6 +449,11 @@ async function handleVoiceSocket(
     }
 
     if (!setupForwarded) {
+      if (setupInitializing) {
+        closeBoth(1008, "Duplicate setup message");
+        return;
+      }
+      setupInitializing = true;
       try {
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown };
         const allowedKeys = ["setup", "memory_context"];
