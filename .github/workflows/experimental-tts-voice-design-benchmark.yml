@@ -1,6 +1,7 @@
 name: Experimental Gemini TTS voice-design benchmark
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - experiment/vertex-tts-voice-design-benchmark
