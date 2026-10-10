@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1222">
+  <meta name="description" content="Private AskMoina designed-voice TTS prototype.">
+  <title>AskMoina — Designed Voice Prototype</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/tts-prototype.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true">m</span>
+      <span>AskMoina</span>
+      <span class="brand-location">Private voice prototype</span>
+    </header>
+
+    <section class="hero tts-prototype" aria-labelledby="prototype-title">
+      <p class="eyebrow">Experimental · Not production</p>
+      <h1 id="prototype-title">Moina's <span>designed voice.</span></h1>
+      <p class="intro">This isolated test uses a separate text response plus Gemini Flash TTS with the voice you approved. It is not connected to the production conversation endpoint.</p>
+
+      <label class="prototype-label" for="prototypeToken">Prototype access token</label>
+      <input id="prototypeToken" class="prototype-token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the staging access token">
+      <p class="prototype-hint">The token is kept only in this page's memory. The microphone starts only after you press Start prototype.</p>
+
+      <p class="status" id="prototypeStatus" role="status" aria-live="polite">Prototype is disabled unless its separate Worker has been explicitly configured.</p>
+      <div class="prototype-controls">
+        <button type="button" id="prototypeToggle" class="voice-button"><span class="button-icon" aria-hidden="true">●</span><span id="prototypeButtonLabel">Start prototype</span></button>
+        <button type="button" id="prototypeInterrupt" class="prototype-secondary" disabled>Interrupt / speak now</button>
+      </div>
+      <p class="availability" id="prototypeMetrics">Voice: Candidate A · gemini-3.8-flash-tts</p>
+
+      <section class="conversation" aria-label="Prototype conversation">
+        <div class="conversation-heading">
+          <span>Test conversation</span>
+          <button type="button" id="prototypeClear" class="clear-button">Clear</button>
+        </div>
+        <div class="prototype-transcript" id="prototypeTranscript" role="log" aria-live="polite">
+          <p class="empty-transcript" id="prototypeEmpty">When the prototype is configured, speak naturally. Pause briefly to send your turn.</p>
+        </div>
+      </section>
+      <p class="prototype-footnote">Experimental pipeline: mic audio → Gemini Flash conversation response → your designed voice via Gemini Flash TTS. This version waits for a complete TTS response before playback; latency and real-world interruption behavior are being evaluated.</p>
+      <p><a class="prototype-back" href="/">← Back to AskMoina production</a></p>
+    </section>
+
+    <footer>Experimental test page · Do not use for sensitive conversations</footer>
+  </main>
+  <script src="/tts-prototype.js" defer></script>
+</body>
+</html>
