@@ -75,8 +75,8 @@ describe("public voice pilot capacity", () => {
     const idA = await visitorIdFromRequest(statusRequest(tokenA));
     const idB = await visitorIdFromRequest(statusRequest(tokenB));
     expect(idA).not.toBe(idB);
-    expect(objectNames).toContain("voice-visitor:" + idA);
-    expect(objectNames).toContain("voice-visitor:" + idB);
+    expect(objectNames).toContain("voice-visitor:v2:" + idA);
+    expect(objectNames).toContain("voice-visitor:v2:" + idB);
     expect(objectNames.filter(name => name.startsWith("voice-ip-rate:v1:"))).toHaveLength(2);
   });
 
@@ -89,7 +89,7 @@ describe("public voice pilot capacity", () => {
     );
     expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toMatch(/^moina_visitor=[A-Za-z0-9_-]{43};/);
-    expect(objectNames.some(name => name.startsWith("voice-visitor:"))).toBe(true);
+    expect(objectNames.some(name => name.startsWith("voice-visitor:v2:"))).toBe(true);
   });
 });
 
