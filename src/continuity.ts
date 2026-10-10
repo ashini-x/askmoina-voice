@@ -287,10 +287,10 @@ function safeEqual(left: string, right: string): boolean {
 async function adminSessionCookie(env: Env): Promise<string> {
   const expiry = Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS;
   const signature = await hmac("askmoina-admin-v1:" + expiry, env.ADMIN_SESSION_SECRET || "");
-  return ADMIN_COOKIE + "=" + expiry + "." + signature + "; Max-Age=" + ADMIN_SESSION_SECONDS + "; Path=/admin; Secure; HttpOnly; SameSite=Strict";
+  return ADMIN_COOKIE + "=" + expiry + "." + signature + "; Max-Age=" + ADMIN_SESSION_SECONDS + "; Path=/; Secure; HttpOnly; SameSite=Strict";
 }
 
-async function isAdmin(request: Request, env: Env): Promise<boolean> {
+export async function isAdmin(request: Request, env: Env): Promise<boolean> {
   if (!env.ADMIN_SESSION_SECRET) return false;
   const value = readCookie(request, ADMIN_COOKIE);
   if (!value) return false;
@@ -407,7 +407,7 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (url.pathname === "/admin/logout" && request.method === "POST") {
     if (!sameOrigin(request) || !await isAdmin(request,env)) return json({ error:"unauthorized" },401);
     await audit(env,"admin_logout").catch(()=>undefined);
-    return json({ok:true},200,{"Set-Cookie":ADMIN_COOKIE+"=; Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict"});
+    return json({ok:true},200,{"Set-Cookie":ADMIN_COOKIE+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict"});
   }
   if (url.pathname === "/admin.js" && request.method === "GET") return scriptResponse(ADMIN_JS);
   if (url.pathname === "/admin-login.js" && request.method === "GET") return scriptResponse(ADMIN_LOGIN_JS);

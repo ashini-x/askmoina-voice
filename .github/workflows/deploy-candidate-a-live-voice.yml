@@ -52,12 +52,12 @@ jobs:
           npm test
           npx wrangler deploy --dry-run --outdir=dist
 
-      - name: Upload validated Candidate A version without changing triggers
+      - name: Upload validated AskMoina version without changing triggers
         id: upload
         shell: bash
         run: |
           set -euo pipefail
-          message="Apply Candidate A custom Live voice (v0.4.4)"
+          message="Enable admin daily quota bypass (AskMoina Voice v0.4.5)"
           # Upload a version without syncing queue-consumer triggers; those triggers already exist.
           upload_output="$(npx wrangler versions upload --message "$message" 2>&1)" || {
             printf '%s\n' "$upload_output"
@@ -85,7 +85,7 @@ jobs:
             exit 1
           fi
           echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
-          echo "Validated Candidate A version is uploaded: $version_id"
+          echo "Validated AskMoina version is uploaded: $version_id"
 
       - name: Promote uploaded version to 100% without changing triggers
         run: npx wrangler versions deploy "${{ steps.upload.outputs.version_id }}@100%"

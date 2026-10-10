@@ -13,6 +13,12 @@ describe("production Worker configuration", () => {
     });
   });
 
+  it("enables the daily quota bypass only for authenticated admin sessions", () => {
+    expect(config.vars?.ADMIN_VOICE_DAILY_QUOTA_BYPASS).toBe("true");
+    expect(config.vars?.MAX_LIVE_SESSION_SECONDS).toBe("540");
+    expect(config.vars?.MAX_CONCURRENT_SESSIONS_PER_USER).toBe("1");
+  });
+
   it("declares the production credentials required by voice and admin routes", () => {
     expect(config.secrets?.required).toEqual(
       expect.arrayContaining([

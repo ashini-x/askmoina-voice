@@ -205,6 +205,57 @@ describe("AskMoina voice session guard", () => {
     expect((await next.json()).reason).toBe("daily_session_limit");
   });
 
+  it("bypasses the daily budget only when the trusted caller explicitly disables it", async () => {
+    const { userState } = makeState();
+    const first = await acquire(userState, {
+      sessionId: "daily-cap-first",
+      now: TODAY,
+      maxSessionSeconds: 100,
+      maxDailySeconds: 100,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+    });
+    expect(first.status).toBe(200);
+    await release(userState, "daily-cap-first", TODAY + 100_000);
+
+    const adminTestingSession = await acquire(userState, {
+      sessionId: "admin-test-second",
+      now: TODAY + 101_000,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 100,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+      enforceDailyLimit: false,
+    });
+    expect(adminTestingSession.status).toBe(200);
+    expect(await adminTestingSession.json()).toMatchObject({ allowed: true, reservedSeconds: 300 });
+
+    const statusForAdmin = await status(userState, {
+      now: TODAY + 101_000,
+      maxDailySeconds: 100,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+      enforceDailyLimit: false,
+    });
+    expect(await statusForAdmin.json()).toMatchObject({
+      dailyLimitReached: false,
+      activeSessions: 1,
+      concurrencyLimited: true,
+    });
+
+    const concurrentAttempt = await acquire(userState, {
+      sessionId: "admin-test-third",
+      now: TODAY + 102_000,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 100,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+      enforceDailyLimit: false,
+    });
+    expect(concurrentAttempt.status).toBe(429);
+    expect((await concurrentAttempt.json()).reason).toBe("concurrent_session_limit");
+  });
+
   it("does not allow reservations to exceed the daily budget", async () => {
     const { userState } = makeState();
 

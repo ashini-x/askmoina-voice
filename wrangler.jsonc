@@ -11,9 +11,10 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.4",
+    "APP_VERSION": "0.4.5",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
+    "ADMIN_VOICE_DAILY_QUOTA_BYPASS": "true",
     "GEMINI_MODEL": "gemini-3.8-live",
     "LIVE_VOICE_NAME": "Leda",
     "LIVE_VOICE_ID": "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",

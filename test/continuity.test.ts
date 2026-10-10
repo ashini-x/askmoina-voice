@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleContinuityRequest, visitorIdFromRequest } from "../src/continuity";
+import { handleContinuityRequest, isAdmin, visitorIdFromRequest } from "../src/continuity";
 import type { Env } from "../src/config/env";
 
 function mockEnv() {
@@ -54,6 +54,38 @@ describe("Encrypted vault API boundary", () => {
     );
     expect(response?.status).toBe(403);
     expect(await response?.json()).toMatchObject({ error: "forbidden_origin" });
+  });
+
+  it("makes the signed admin session available to same-origin voice routes", async () => {
+    const env = {
+      ...mockEnv(),
+      ADMIN_DASHBOARD_USER: "admin",
+      ADMIN_DASHBOARD_PASSWORD: "test-admin-password",
+      ADMIN_SESSION_SECRET: "test-session-secret-with-sufficient-entropy",
+    } as unknown as Env;
+    const response = await handleContinuityRequest(
+      new Request("https://askmoina.test/admin/login", {
+        method: "POST",
+        headers: {
+          Origin: "https://askmoina.test",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username: "admin", password: "test-admin-password" }),
+      }),
+      env,
+      ctx,
+    );
+    expect(response?.status).toBe(200);
+    const setCookie = response?.headers.get("Set-Cookie") || "";
+    expect(setCookie).toContain("moina_admin_session=");
+    expect(setCookie).toContain("Path=/;");
+    expect(setCookie).toContain("HttpOnly");
+    const cookie = setCookie.split(";")[0];
+    const voiceRequest = new Request("https://askmoina.test/api/voice/socket", {
+      headers: { Cookie: cookie },
+    });
+    await expect(isAdmin(voiceRequest, env)).resolves.toBe(true);
+    await expect(isAdmin(new Request("https://askmoina.test/api/voice/socket"), env)).resolves.toBe(false);
   });
 
   it("requires an authenticated admin session before returning dashboard APIs", async () => {

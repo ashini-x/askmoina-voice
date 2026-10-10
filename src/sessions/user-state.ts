@@ -63,6 +63,7 @@ export class UserState {
         maxDailySeconds?: number;
         maxConcurrentSessions?: number;
         enforceRateLimit?: boolean;
+        enforceDailyLimit?: boolean;
       };
       try {
         input = (await request.json()) as typeof input;
@@ -86,7 +87,10 @@ export class UserState {
         const staleAt = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
         return now <= staleAt;
       }).length;
-      const dailySecondsRemaining = Math.max(0, maxDailySeconds - (sameDay ? record.dailySeconds : 0));
+      const enforceDailyLimit = input.enforceDailyLimit !== false;
+      const dailySecondsRemaining = enforceDailyLimit
+        ? Math.max(0, maxDailySeconds - (sameDay ? record.dailySeconds : 0))
+        : maxDailySeconds;
       const requestsRemaining = input.enforceRateLimit
         ? Math.max(0, IP_REQUESTS_PER_MINUTE - currentRequestCount)
         : null;
@@ -105,7 +109,7 @@ export class UserState {
         retryAfterSeconds,
         rateLimited,
         concurrencyLimited: activeSessions >= maxConcurrentSessions,
-        dailyLimitReached: dailySecondsRemaining <= 0,
+        dailyLimitReached: enforceDailyLimit && dailySecondsRemaining <= 0,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -117,6 +121,7 @@ export class UserState {
         maxDailySeconds?: number;
         maxConcurrentSessions?: number;
         enforceRateLimit?: boolean;
+        enforceDailyLimit?: boolean;
       };
       try {
         input = (await request.json()) as typeof input;
@@ -174,12 +179,14 @@ export class UserState {
           return { allowed: false, reason: "concurrent_session_limit" as const };
         }
 
-        if (record.dailySeconds >= maxDailySeconds) {
+        if (input.enforceDailyLimit !== false && record.dailySeconds >= maxDailySeconds) {
           await transaction.put(STORAGE_KEY, record);
           return { allowed: false, reason: "daily_session_limit" as const };
         }
 
-        const reservedSeconds = Math.min(maxSessionSeconds, maxDailySeconds - record.dailySeconds);
+        const reservedSeconds = input.enforceDailyLimit === false
+          ? maxSessionSeconds
+          : Math.min(maxSessionSeconds, maxDailySeconds - record.dailySeconds);
         record.sessions[sessionId] = {
           startedAt: now,
           reservedSeconds,
