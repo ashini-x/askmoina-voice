@@ -19,7 +19,7 @@ export interface AssamesePronunciationRuleRow {
 }
 
 const MAX_RULES = 12;
-const MAX_GUIDANCE_CHARS = 4_000;
+const MAX_GUIDANCE_CHARS = 5_000;
 
 function safeText(value: unknown, maximum: number): string {
   if (typeof value !== "string") return "";
