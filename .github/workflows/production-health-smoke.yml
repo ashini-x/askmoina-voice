@@ -19,10 +19,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
+      - name: Check out the expected release configuration
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Read expected app version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8')).vars.APP_VERSION")"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+
       - name: Check production health and Vertex route
         env:
           PRODUCTION_URL: https://askmoina-voice.thenewtongs.workers.dev
-          EXPECTED_APP_VERSION: ${{ github.event_name == 'push' && '0.4.2' || '' }}
+          EXPECTED_APP_VERSION: ${{ steps.release.outputs.app_version }}
         shell: bash
         run: |
           set -euo pipefail
@@ -31,7 +44,7 @@ jobs:
           passed=false
 
           # A main-branch push can race the independent Cloudflare deployment.
-          # Poll for up to five minutes and require the release version on pushes.
+          # Poll for up to five minutes and require the version from wrangler.jsonc.
           for attempt in $(seq 1 30); do
             status_code="$(curl --silent --show-error --max-time 12 \
               --output "$response_file" --write-out '%{http_code}' \
@@ -41,7 +54,7 @@ jobs:
           import fs from "node:fs";
 
           const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          const expectedVersion = process.argv[3] || "";
+          const expectedVersion = process.argv[3];
           if (body.ok !== true) throw new Error("Production health endpoint did not report ok=true.");
           if (body.app !== "askmoina-voice") throw new Error("Unexpected production app identity.");
           if (body.status !== "vertex-live-proxy-configured") {
@@ -53,7 +66,7 @@ jobs:
           if (typeof body.location !== "string" || !body.location.trim()) {
             throw new Error("Production Vertex location is missing.");
           }
-          if (expectedVersion && body.version !== expectedVersion) {
+          if (body.version !== expectedVersion) {
             throw new Error(`Expected release version ${expectedVersion}, found ${String(body.version)}`);
           }
           console.log(JSON.stringify({
@@ -75,7 +88,7 @@ jobs:
           done
 
           if [[ "$passed" != "true" ]]; then
-            echo "::error::Production did not report a healthy Vertex route and expected release within five minutes."
+            echo "::error::Production did not report the expected release and a healthy Vertex route within five minutes."
             cat "$response_file"
             exit 1
           fi
