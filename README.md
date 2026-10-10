@@ -28,6 +28,8 @@ Memory notes are entered and managed by the user in this release. Automatic extr
 - The anonymous continuity cookie uses a random token; only its SHA-256 hash is used as the server-side pseudonymous visitor ID.
 - D1 stores operational metadata and encrypted vault backups, not decrypted memory notes, microphone recordings or transcript archives.
 - The admin dashboard uses HMAC-signed, 12-hour HttpOnly/Secure/SameSite cookies and a login throttle. Configure `ADMIN_DASHBOARD_PASSWORD` as a Worker Secret before using it.
+- An hourly bounded retention task removes operational analytics after the configured period (30 days by default), keeps admin audit records for 90 days, and deliberately preserves encrypted vault backups. Cloudflare logs flag cleanup failures or tables reaching their per-run batch limit.
+- A scheduled production health workflow checks the public health endpoint and confirms the Worker still reports its Vertex AI route. This is a configuration smoke test, not proof of successful live audio, response latency, or Assamese speech quality.
 - Configure Cloudflare Access in front of `/admin*` as an additional protection where practical.
 - App-level usage limits are not Google Cloud billing hard caps. Use Google Cloud budgets and billing reports for actual spend.
 - Raw audio and transcripts are not saved by default.
