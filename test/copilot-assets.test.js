@@ -30,6 +30,19 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
   });
 
+  it("offers a gated WebXR surface-anchor mode without replacing the V2 fallback", () => {
+    expect(html).toContain('id="spatialArButton"');
+    expect(html).toContain('id="spatialHud"');
+    expect(html).toContain('id="placeSpatialAnchor"');
+    expect(script).toContain('navigator.xr.requestSession("immersive-ar"');
+    expect(script).toContain('requiredFeatures: ["local", "hit-test", "anchors", "dom-overlay"]');
+    expect(script).toContain("requestHitTestSource({ space: spatialViewerSpace })");
+    expect(script).toContain("hitForAnchor.createAnchor()");
+    expect(script).toContain("frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace)");
+    expect(script).toContain("Starting this lab pauses live voice guidance");
+    expect(css).toContain(".spatial-hud[hidden]{display:none}");
+  });
+
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
     expect(script).toContain("function startLocalTracking(clientX, clientY)");
     expect(script).toContain("function updateLocalTracking()");
