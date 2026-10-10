@@ -61,6 +61,15 @@ describe("Voice Audition Lab routing", () => {
     expect(await response.text()).toContain("Voice Audition Lab");
     expect(mock.requestedAssetPath()).toBe("/voice-lab");
     expect(response.status).not.toBe(307);
+
+    // The compatibility .html entry point must normalize to the same clean path.
+    const aliasResponse = await worker.fetch(
+      new Request("https://askmoina.test/voice-lab.html", { headers: { Cookie: cookie } }),
+      mock.env,
+      ctx,
+    );
+    expect(aliasResponse.status).toBe(200);
+    expect(mock.requestedAssetPath()).toBe("/voice-lab");
   });
 
   it("redirects unauthenticated users to admin login", async () => {

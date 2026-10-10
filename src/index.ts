@@ -728,7 +728,9 @@ export default {
         return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
       }
       const labUrl = new URL(request.url);
-      // Request the canonical clean URL: with Cloudflare auto HTML handling,\n      // requesting the .html path redirects back to /voice-lab and loops here.\n      labUrl.pathname = "/voice-lab";
+      // Keep the asset request on the canonical clean path. Cloudflare's
+      // automatic HTML handling redirects .html back to this route.
+      labUrl.pathname = "/voice-lab";
       const labRequest = new Request(labUrl.toString(), request);
       const labResponse = await env.ASSETS.fetch(labRequest);
       const headers = new Headers(labResponse.headers);
