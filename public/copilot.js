@@ -22,6 +22,19 @@
   const focusInstruction = $("#focusInstruction");
   const approxTag = $("#approxTag");
   const clearTranscriptButton = $("#clearTranscript");
+  const muteButton = $("#muteMic");
+  const zoomSlider = $("#zoomSlider");
+  const zoomLabel = $("#zoomLabel");
+  const zoomInButton = $("#zoomIn");
+  const zoomOutButton = $("#zoomOut");
+  let microphoneMuted = false;
+  let zoomLevel = 1;
+  let zoomMin = 1;
+  let zoomMax = 3;
+  let nativeZoomSupported = false;
+  let pinchStartDistance = 0;
+  let pinchStartZoom = 1;
+  let lastZoomApplyAt = 0;
 
   let socket = null;
   let microphoneStream = null;
@@ -76,6 +89,12 @@
     toggleButton.classList.toggle("is-live", active);
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     flipButton.disabled = !active || !microphoneStream;
+    muteButton.disabled = !active || !microphoneStream;
+    zoomSlider.disabled = !microphoneStream;
+    zoomInButton.disabled = !microphoneStream || zoomLevel >= zoomMax;
+    zoomOutButton.disabled = !microphoneStream || zoomLevel <= zoomMin;
+    muteButton.innerHTML = microphoneMuted ? '<span aria-hidden="true">♩</span> Unmute' : '<span aria-hidden="true">♩</span> Mute';
+    muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
     clearMarkerButton.disabled = focusMarker.hidden;
   }
 
@@ -324,7 +343,13 @@
       for (let attempt = 0; attempt < 4; attempt += 1) {
         canvas.width = width;
         canvas.height = height;
+        if (!nativeZoomSupported && zoomLevel > 1) {
+        const sourceWidth = video.videoWidth / zoomLevel;
+        const sourceHeight = video.videoHeight / zoomLevel;
+        context.drawImage(video, (video.videoWidth - sourceWidth) / 2, (video.videoHeight - sourceHeight) / 2, sourceWidth, sourceHeight, 0, 0, width, height);
+      } else {
         context.drawImage(video, 0, 0, width, height);
+      }
         const quality = [0.42, 0.32, 0.25, 0.19][attempt];
         data = canvas.toDataURL("image/jpeg", quality).split(",")[1] || "";
         if (data.length <= 12_000) break;
@@ -385,6 +410,12 @@
       microphoneStream.getTracks().forEach((track) => track.stop());
       microphoneStream = null;
     }
+    microphoneMuted = false;
+    zoomLevel = 1;
+    nativeZoomSupported = false;
+    video.style.transform = "";
+    zoomLabel.textContent = "1×";
+    zoomSlider.value = "1";
     if (audioContext) {
       const previous = audioContext;
       audioContext = null;
@@ -563,6 +594,7 @@
       });
       video.srcObject = microphoneStream;
       await video.play();
+      initializeZoom();
       stage.classList.add("has-camera");
       setCameraState("Camera ready", "live");
 
@@ -634,6 +666,88 @@
     }
   }
 
+  function initializeZoom() {
+    const track = microphoneStream && microphoneStream.getVideoTracks()[0];
+    if (!track) return;
+    let capabilities = {};
+    let settings = {};
+    try { capabilities = track.getCapabilities ? track.getCapabilities() : {}; } catch (_) {}
+    try { settings = track.getSettings ? track.getSettings() : {}; } catch (_) {}
+    const range = capabilities.zoom;
+    nativeZoomSupported = Boolean(range && Number(range.max) > Number(range.min));
+    zoomMin = nativeZoomSupported ? Number(range.min) : 1;
+    zoomMax = nativeZoomSupported ? Math.min(Number(range.max), 6) : 3;
+    zoomLevel = nativeZoomSupported && Number.isFinite(Number(settings.zoom)) ? Number(settings.zoom) : 1;
+    zoomLevel = Math.max(zoomMin, Math.min(zoomMax, zoomLevel));
+    zoomSlider.min = String(zoomMin);
+    zoomSlider.max = String(zoomMax);
+    zoomSlider.step = nativeZoomSupported ? String(Number(range.step) > 0 ? range.step : 0.1) : "0.1";
+    void applyZoom(zoomLevel, false);
+  }
+
+  async function applyZoom(value, announce) {
+    const track = microphoneStream && microphoneStream.getVideoTracks()[0];
+    const requested = Number(value);
+    if (!Number.isFinite(requested)) return;
+    zoomLevel = Math.max(zoomMin, Math.min(zoomMax, requested));
+    zoomSlider.value = String(zoomLevel);
+    zoomLabel.textContent = (Math.abs(zoomLevel - Math.round(zoomLevel)) < 0.001 ? String(Math.round(zoomLevel)) : zoomLevel.toFixed(1)) + "×";
+    if (nativeZoomSupported && track) {
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: zoomLevel }] });
+        video.style.transform = "";
+      } catch (_) {
+        nativeZoomSupported = false;
+        zoomMin = 1;
+        zoomMax = 3;
+        zoomLevel = Math.max(1, Math.min(3, zoomLevel));
+        zoomSlider.min = "1";
+        zoomSlider.max = "3";
+        zoomSlider.step = "0.1";
+        video.style.transform = "scale(" + zoomLevel + ")";
+      }
+    } else {
+      // Digital crop fallback is applied to preview and model-bound camera frames.
+      video.style.transform = "scale(" + zoomLevel + ")";
+    }
+    zoomInButton.disabled = !microphoneStream || zoomLevel >= zoomMax;
+    zoomOutButton.disabled = !microphoneStream || zoomLevel <= zoomMin;
+    if (announce) setStatus("Camera zoom " + zoomLabel.textContent + ".");
+  }
+
+  function toggleMicrophoneMute() {
+    if (!microphoneStream) return;
+    microphoneMuted = !microphoneMuted;
+    microphoneStream.getAudioTracks().forEach((track) => { track.enabled = !microphoneMuted; });
+    muteButton.innerHTML = microphoneMuted ? '<span aria-hidden="true">♩</span> Unmute' : '<span aria-hidden="true">♩</span> Mute';
+    muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
+    setStatus(microphoneMuted ? "Microphone muted. Tap Unmute when you're ready to speak." : "Microphone is on.");
+  }
+
+  function touchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  stage.addEventListener("touchstart", (event) => {
+    if (event.touches.length === 2) {
+      pinchStartDistance = touchDistance(event.touches);
+      pinchStartZoom = zoomLevel;
+    }
+  }, { passive: true });
+  stage.addEventListener("touchmove", (event) => {
+    if (event.touches.length !== 2 || !pinchStartDistance || !microphoneStream) return;
+    event.preventDefault();
+    const now = Date.now();
+    if (now - lastZoomApplyAt < 55) return;
+    lastZoomApplyAt = now;
+    void applyZoom(pinchStartZoom * touchDistance(event.touches) / pinchStartDistance, false);
+  }, { passive: false });
+  stage.addEventListener("touchend", (event) => { if (event.touches.length < 2) pinchStartDistance = 0; }, { passive: true });
+  stage.addEventListener("touchcancel", () => { pinchStartDistance = 0; }, { passive: true });
+  zoomSlider.addEventListener("input", () => { void applyZoom(zoomSlider.value, false); });
+  zoomInButton.addEventListener("click", () => { void applyZoom(zoomLevel + 0.25, true); });
+  zoomOutButton.addEventListener("click", () => { void applyZoom(zoomLevel - 0.25, true); });
   async function flipCamera() {
     if (!active || !microphoneStream) return;
     const nextFacingMode = facingMode === "environment" ? "user" : "environment";
@@ -653,6 +767,7 @@
       microphoneStream.addTrack(newTrack);
       video.srcObject = microphoneStream;
       await video.play();
+      initializeZoom();
       facingMode = nextFacingMode;
       setStatus(facingMode === "environment" ? "Switched to the rear camera." : "Switched to the front camera.");
       setCameraState("Live · frames ~1/sec", "live");
@@ -668,6 +783,7 @@
     else void startCopilot();
   });
   flipButton.addEventListener("click", () => { void flipCamera(); });
+  muteButton.addEventListener("click", toggleMicrophoneMute);
   clearMarkerButton.addEventListener("click", clearOverlay);
   clearTranscriptButton.addEventListener("click", resetTranscript);
   window.addEventListener("pagehide", () => {
