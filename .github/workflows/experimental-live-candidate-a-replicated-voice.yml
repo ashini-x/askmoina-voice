@@ -111,6 +111,17 @@ jobs:
           GEMINI_MODEL: gemini-3.8-live
         run: python scripts/test-live-brain-candidate-a-tts-cascade.py
 
+      - name: Test Candidate A voice-design ID directly in Gemini Live
+        id: direct_voice_test
+        if: steps.credentials.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-service-account.json
+          GCP_PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          GEMINI_LOCATION: us-central1
+          GEMINI_MODEL: gemini-3.8-live
+        run: python scripts/test-live-custom-voice-id.py
+
       - name: Publish test result summary
         if: always()
         shell: bash
@@ -125,27 +136,31 @@ jobs:
                   return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"status": "no_report"}
               except Exception:
                   return {"status": "report_unreadable"}
-          native = load("live-voice-test-report.json")
-          cascade = load("candidate-a-brain-plus-tts-report.json")
-          lines = ["## Candidate A voice experiments", "", "### Native Live replicated voice", "", f"**Status:** {native.get('status', 'unknown')}"]
-          if native.get("error_type"):
-              lines += ["", f"**Error type:** {native['error_type']}", "", f"**Diagnostic:** {native.get('error', '')}"]
-          if native.get("reason"):
-              lines += ["", native["reason"]]
-          lines += ["", "### Live brain + Candidate A streaming TTS fallback", "", f"**Status:** {cascade.get('status', 'unknown')}"]
-          if cascade.get("error_type"):
-              lines += ["", f"**Error type:** {cascade['error_type']}", "", f"**Diagnostic:** {cascade.get('error', '')}"]
-          timing = cascade.get("timing", {})
-          if timing:
-              lines += [
-                  "", f"- Live answer complete: {timing.get('live_brain_text_complete_ms')} ms",
-                  f"- TTS first audio after synthesis starts: {timing.get('candidate_a_tts_first_audio_ms_after_tts_start')} ms",
-                  f"- Estimated total time to first audio: {timing.get('total_time_to_first_audio_ms_estimate')} ms",
-                  f"- End-to-end response generation: {timing.get('total_end_to_end_ms')} ms",
-              ]
-          audio = cascade.get("audio_output", {})
-          if audio:
-              lines += ["", f"- Candidate A audio duration: {audio.get('duration_seconds')} seconds"]
+          tests = [
+              ("Native Live replicated voice", load("live-voice-test-report.json")),
+              ("Live brain + Candidate A streaming TTS fallback", load("candidate-a-brain-plus-tts-report.json")),
+              ("Candidate A voice-design ID directly in Live", load("candidate-a-direct-live-voice-report.json")),
+          ]
+          lines = ["## Candidate A voice experiments"]
+          for title, result in tests:
+              lines += ["", f"### {title}", "", f"**Status:** {result.get('status', 'unknown')}"]
+              if result.get("error_type"):
+                  lines += ["", f"**Error type:** {result['error_type']}", "", f"**Diagnostic:** {result.get('error', '')}"]
+              if result.get("reason"):
+                  lines += ["", result["reason"]]
+              timing = result.get("timing", {})
+              if timing:
+                  lines += [
+                      "", f"- Live answer complete: {timing.get('live_brain_text_complete_ms')} ms",
+                      f"- TTS first audio after TTS starts: {timing.get('candidate_a_tts_first_audio_ms_after_tts_start')} ms",
+                      f"- Estimated total time to first audio: {timing.get('total_time_to_first_audio_ms_estimate')} ms",
+                      f"- End-to-end generation: {timing.get('total_end_to_end_ms')} ms",
+                  ]
+              for field in ("first_audio_ms", "total_response_ms"):
+                  if result.get(field) is not None:
+                      lines += ["", f"- {field.replace('_', ' ')}: {result[field]} ms"]
+              if result.get("audio_duration_seconds") is not None:
+                  lines += ["", f"- Candidate A audio duration: {result['audio_duration_seconds']} seconds"]
           lines += ["", "No production Worker configuration or deployment was changed."]
           (out / "live-voice-test-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
           print("\n".join(lines))
