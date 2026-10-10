@@ -4,7 +4,7 @@ const DEFAULT_ANALYTICS_RETENTION_DAYS = 30;
 const MAX_RETENTION_DAYS = 3_650;
 const ADMIN_AUDIT_RETENTION_DAYS = 90;
 const DELETE_BATCH_SIZE = 10_000;
-const MAX_BATCHES_PER_TABLE_PER_RUN = 2;
+const MAX_BATCHES_PER_TABLE_PER_RUN = 4;
 
 type CleanupTable =
   | "voice_sessions"
@@ -129,6 +129,9 @@ export async function runRetentionMaintenance(
     failedTables,
   };
 
+  if (tablesAtBatchLimit.length > 0) {
+    console.warn("[AskMoina] Retention backlog may remain after bounded cleanup", JSON.stringify({ tables: tablesAtBatchLimit }));
+  }
   console.info("[AskMoina] Retention maintenance completed", JSON.stringify(result));
   return result;
 }
