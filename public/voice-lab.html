@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1222">
+  <meta name="description" content="Protected AskMoina Gemini Live prebuilt voice audition lab.">
+  <title>AskMoina — Voice audition lab</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true">m</span>
+      <span>AskMoina</span>
+      <span class="brand-location">Voice lab</span>
+      <a class="brand-location vault-link" href="/">Back to Moina</a>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="eyebrow">Admin-only · temporary audition</p>
+      <h1 id="hero-title">Find Moina’s<br><span>voice.</span></h1>
+      <p class="intro">Compare Gemini Live’s prebuilt voices in the actual Vertex AI conversation path.</p>
+
+      <section class="voice-lab-panel" aria-label="Voice selection">
+        <label for="voicePicker" class="voice-lab-label">Choose a prebuilt voice</label>
+        <select id="voicePicker" class="voice-lab-select">
+      <option value="Leda" selected>Leda — Youthful</option>
+      <option value="Zephyr">Zephyr — Bright</option>
+      <option value="Autonoe">Autonoe — Bright</option>
+      <option value="Aoede">Aoede — Breezy</option>
+      <option value="Laomedeia">Laomedeia — Upbeat</option>
+      <option value="Sadachbia">Sadachbia — Lively</option>
+      <option value="Achernar">Achernar — Soft</option>
+      <option value="Vindemiatrix">Vindemiatrix — Gentle</option>
+      <option value="Sulafat">Sulafat — Warm</option>
+      <option value="Callirrhoe">Callirrhoe — Easy-going</option>
+      <option value="Puck">Puck — Upbeat</option>
+      <option value="Fenrir">Fenrir — Excitable</option>
+      <option value="Kore">Kore — Firm</option>
+      <option value="Orus">Orus — Firm</option>
+      <option value="Umbriel">Umbriel — Easy-going</option>
+      <option value="Erinome">Erinome — Clear</option>
+      <option value="Schedar">Schedar — Even</option>
+      <option value="Achird">Achird — Friendly</option>
+      <option value="Enceladus">Enceladus — Breathy</option>
+      <option value="Algieba">Algieba — Smooth</option>
+      <option value="Algenib">Algenib — Gravelly</option>
+      <option value="Gacrux">Gacrux — Mature</option>
+      <option value="Zubenelgenubi">Zubenelgenubi — Casual</option>
+      <option value="Sadaltager">Sadaltager — Knowledgeable</option>
+      <option value="Charon">Charon — Informative</option>
+      <option value="Iapetus">Iapetus — Clear</option>
+      <option value="Despina">Despina — Smooth</option>
+      <option value="Rasalgethi">Rasalgethi — Informative</option>
+      <option value="Alnilam">Alnilam — Firm</option>
+      <option value="Pulcherrima">Pulcherrima — Forward</option>
+        </select>
+        <p class="voice-lab-copy">Start a new session for each voice. Say the same test line every time, then end the session before selecting the next voice.</p>
+        <p class="voice-lab-copy"><strong>Say the same prompt for every audition:</strong> “Repeat exactly this line, with no extra words: ‘Hi, I’m Moina. আজি কেনে আছা? Come on, let’s talk! মই তোমাৰ লগত আছোঁ।’”</p>
+        <p class="voice-lab-copy">The voice’s exact pitch and perceived gender should be judged from the audio: Google’s Live prebuilt list publishes vocal styles, not a measured pitch/gender classification for every name.</p>
+      </section>
+
+      <p class="status" id="status" role="status" aria-live="polite">Ready when you are.</p>
+      <button type="button" id="toggleVoice" class="voice-button" disabled>
+        <span class="button-icon" aria-hidden="true">●</span>
+        <span id="buttonLabel">Start talking</span>
+      </button>
+      <p class="availability" id="availability" role="status" aria-live="polite">Checking voice availability…</p>
+
+      <p class="note" id="privacyNote">This page changes the voice only for the current admin audition session. It does not change the permanent public voice setting. Your microphone audio is streamed to Google Cloud Vertex AI and is not recorded by AskMoina.</p>
+
+      <section class="conversation" aria-label="Conversation transcript">
+        <div class="conversation-heading">
+          <span>Audition transcript</span>
+          <button type="button" id="clearTranscript" class="clear-button">Clear</button>
+        </div>
+        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text">
+          <p class="empty-transcript" id="emptyTranscript">Choose a voice, start talking, and say the test line above.</p>
+        </div>
+      </section>
+    </section>
+
+    <footer>All 30 documented Gemini Live prebuilt voice names are available in the selector.</footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>

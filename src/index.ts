@@ -8,7 +8,7 @@ import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
 import { runRetentionMaintenance } from "./maintenance/retention";
-import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME } from "./sessions/voice-config";
+import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 
 export { UserState } from "./sessions/user-state";
 
@@ -306,6 +306,17 @@ async function handleVoiceSocket(
   if (!origin || origin !== requestUrl.origin) {
     return json({ error: "forbidden_origin" }, 403);
   }
+  const voicePreviewRequested = requestUrl.searchParams.get("voice_preview") === "1";
+  const requestedPreviewVoice = requestUrl.searchParams.get("voice_name") || undefined;
+  if (requestUrl.searchParams.has("voice_name") && !voicePreviewRequested) {
+    return json({ error: "invalid_voice_preview_request" }, 400);
+  }
+  if (voicePreviewRequested) {
+    if (!await isAdmin(request, env)) return json({ error: "admin_required" }, 401);
+    if (!isPrebuiltLiveVoiceName(requestedPreviewVoice)) {
+      return json({ error: "unsupported_prebuilt_voice" }, 400);
+    }
+  }
   if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
 
   const adminDailyQuotaBypassed = await hasAdminDailyQuotaBypass(request, env);
@@ -469,7 +480,9 @@ const baseInstruction = pronunciationGuidance
 const systemInstruction = buildPersonalizedSystemInstruction(baseInstruction, memoryContext);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
+          generationConfig: voicePreviewRequested
+            ? buildVoiceGenerationConfig(requestedPreviewVoice)
+            : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -709,6 +722,29 @@ export default {
 
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return continuityResponse;
+
+    if (url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html") {
+      if (!await isAdmin(request, env)) {
+        return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
+      }
+      const labUrl = new URL(request.url);
+      labUrl.pathname = "/voice-lab.html";
+      const labRequest = new Request(labUrl.toString(), request);
+      const labResponse = await env.ASSETS.fetch(labRequest);
+      const headers = new Headers(labResponse.headers);
+      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "DENY");
+      headers.set("Referrer-Policy", "no-referrer");
+      headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
+      headers.set("Cross-Origin-Resource-Policy", "same-origin");
+      headers.set("Cache-Control", "no-store");
+      return new Response(labResponse.body, {
+        status: labResponse.status,
+        statusText: labResponse.statusText,
+        headers,
+      });
+    }
 
     if (url.pathname === "/api/health") {
       return json({

@@ -21,6 +21,6 @@ describe("static client memory handoff", () => {
 
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {
     const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
-    expect(config).toContain('"run_worker_first": ["/", "/index.html", "/api/*"]');
+    expect(config).toContain('"run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html"]');
   });
 });

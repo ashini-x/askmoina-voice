@@ -7,11 +7,11 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/index.html", "/api/*"]
+    "run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html"]
   },
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.4.8",
+    "APP_VERSION": "0.4.9",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "ADMIN_VOICE_DAILY_QUOTA_BYPASS": "true",

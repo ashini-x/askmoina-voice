@@ -19,6 +19,12 @@ describe("production Worker configuration", () => {
     expect(config.vars?.MAX_CONCURRENT_SESSIONS_PER_USER).toBe("1");
   });
 
+  it("routes both voice-lab URLs through the Worker so the admin gate cannot be bypassed by static assets", () => {
+    expect(config.assets?.run_worker_first).toEqual(
+      expect.arrayContaining(["/voice-lab", "/voice-lab.html"]),
+    );
+  });
+
   it("declares the production credentials required by voice and admin routes", () => {
     expect(config.secrets?.required).toEqual(
       expect.arrayContaining([

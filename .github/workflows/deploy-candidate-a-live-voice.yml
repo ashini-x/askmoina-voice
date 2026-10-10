@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          message="Upper Assam word-specific pronunciation preference (AskMoina Voice v0.4.8)"
+          message="Protected Gemini Live prebuilt voice audition lab (AskMoina Voice v0.4.9)"
           # Upload a version without syncing queue-consumer triggers; those triggers already exist.
           upload_output="$(npx wrangler versions upload --message "$message" 2>&1)" || {
             printf '%s\n' "$upload_output"

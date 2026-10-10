@@ -8,6 +8,7 @@
   const transcriptNode = document.querySelector("#transcript");
   const clearButton = document.querySelector("#clearTranscript");
   const emptyTranscript = document.querySelector("#emptyTranscript");
+  const voicePicker = document.querySelector("#voicePicker");
 
   async function ensureVisitorIdentity() {
     const controller = new AbortController();
@@ -509,7 +510,13 @@
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      setStatus("Connecting securely to the voice service…");
+      if (voicePicker) {
+        wsUrl.searchParams.set("voice_preview", "1");
+        wsUrl.searchParams.set("voice_name", voicePicker.value);
+      }
+      setStatus(voicePicker
+        ? `Testing prebuilt voice: ${voicePicker.value}. Connecting securely…`
+        : "Connecting securely to the voice service…");
       const sessionSocket = new WebSocket(wsUrl.toString());
       socket = sessionSocket;
       sessionSocket.binaryType = "arraybuffer";
