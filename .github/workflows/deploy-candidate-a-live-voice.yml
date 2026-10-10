@@ -88,7 +88,7 @@ jobs:
           echo "Validated Candidate A version is uploaded: $version_id"
 
       - name: Promote uploaded version to 100% without changing triggers
-        run: npx wrangler versions deploy "\${{ steps.upload.outputs.version_id }}@100%"
+        run: npx wrangler versions deploy "${{ steps.upload.outputs.version_id }}@100%"
 
       - name: Verify production health and selected voice
         shell: bash
