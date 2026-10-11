@@ -38,6 +38,26 @@
       </div>
       <small>Progress is user-confirmed, not automatically detected. Advancing clears the old anchor so each step can be aligned separately.</small>
     </div>
+    <div class="spatial-scene-panel" aria-label="Saved spatial scene">
+      <div class="spatial-scene-header">
+        <strong>SPATIAL SCENE</strong>
+        <span id="spatialSceneCount" role="status" aria-live="polite">0 pinned cues</span>
+      </div>
+      <label class="spatial-scene-label" for="spatialSceneName">Scene name</label>
+      <input id="spatialSceneName" maxlength="60" autocomplete="off" placeholder="e.g. My study desk" />
+      <div class="spatial-scene-actions">
+        <button type="button" id="spatialScenePin" disabled>Pin current cue</button>
+        <button type="button" id="spatialSceneSave" disabled>Save scene</button>
+      </div>
+      <div class="spatial-scene-actions">
+        <select id="spatialSceneSelect" aria-label="Choose saved scene">
+          <option value="">No saved scenes yet</option>
+        </select>
+        <button type="button" id="spatialSceneLoad" disabled>Load scene</button>
+        <button type="button" id="spatialSceneClear" disabled>Clear pins</button>
+      </div>
+      <small>Scenes save cue descriptions on this device, not physical anchor positions. Re-align each saved cue in a later AR session. Up to five cues per scene.</small>
+    </div>
     <div class="spatial-aim-panel" aria-label="AI-assisted target alignment">
       <strong>ALIGN TARGET RAY</strong>
       <p id="spatialAimLabel" role="status" aria-live="polite">Waiting for the AI target region…</p>
