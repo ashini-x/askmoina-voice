@@ -613,6 +613,7 @@ async function handleVoiceSocket(
   let copilotMode = false;
   let groundedSearchCount = 0;
   let lastGroundedSearchAt = 0;
+  let targetSelectionCount = 0;
   let lastVideoFrameAt = 0;
   let closed = false;
   let inputWindowStart = Date.now();
@@ -752,6 +753,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (parsed.kind === "target_selection") {
+        if (targetSelectionCount >= 12) {
+          closeBoth(1008, "Target selection limit reached");
+          return;
+        }
+        targetSelectionCount += 1;
         const xPercent = Math.round(parsed.x * 100);
         const yPercent = Math.round(parsed.y * 100);
         upstreamSocket.send(JSON.stringify({
@@ -771,7 +777,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             functionResponses: parsed.ids.map((id) => ({
               id,
               name: "display_screen_overlay",
-              response: { result: "The approximate overlay label was displayed to the user." },
+              response: { result: "The on-screen target prompt or approximate overlay was handled by the client." },
             })),
           },
         }));
