@@ -15,6 +15,18 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "f1", name: "display_screen_overlay" }] } }, false)).toBeNull();
   });
 
+  it("accepts bounded text turns only in normal voice mode for grounded smoke/fallback turns", () => {
+    expect(parseLiveClientInput({ text_input: "Search the web for the latest Android release." }, false)).toEqual({
+      kind: "text_input",
+      text: "Search the web for the latest Android release.",
+    });
+    expect(parseLiveClientInput({ text_input: "  " }, false)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "x".repeat(1_501) }, false)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "find\\u0000something" }, false)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "test" }, true)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "test", extra: true }, false)).toBeNull();
+  });
+
   it("accepts one JPEG frame only in explicit co-pilot mode", () => {
     expect(parseLiveClientInput(video(), true)).toEqual({ kind: "video", data: "AAAA" });
     expect(parseLiveClientInput({ realtime_input: { video: { data: "AAAA", mime_type: "image/png" } } }, true)).toBeNull();
