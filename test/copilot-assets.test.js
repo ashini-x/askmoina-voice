@@ -126,6 +126,25 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).not.toContain("Spatial AR uses the phone's camera and will pause your current live voice session.");
   });
 
+  it("supports local saved spatial scene templates and multiple session-local anchors without claiming physical persistence", () => {
+    expect(html).toContain('id="spatialSceneName"');
+    expect(html).toContain('id="spatialScenePin"');
+    expect(html).toContain('id="spatialSceneSave"');
+    expect(html).toContain('id="spatialSceneSelect"');
+    expect(html).toContain('id="spatialSceneLoad"');
+    expect(script).toContain('const SPATIAL_SCENE_STORAGE_KEY = "askmoina.spatial.scenes.v1";');
+    expect(script).toContain("function loadSpatialSceneLibrary()");
+    expect(script).toContain("function saveCurrentSpatialScene()");
+    expect(script).toContain("function loadSavedSpatialScene()");
+    expect(script).toContain("function pinCurrentSpatialCue()");
+    expect(script).toContain("spatialSceneAnchors.push({ anchor: spatialAnchor, guidance, stepIndex:");
+    expect(script).toContain("for (const pinned of pinnedPoses)");
+    expect(script).toContain("clearPinnedSpatialCues()");
+    expect(html).toContain("Scenes save cue descriptions on this device, not physical anchor positions");
+    expect(test).not.toContain("requestPersistentHandle");
+    expect(css).toContain(".spatial-scene-panel");
+  });
+
   it("supports numbered spatial walkthroughs with explicit per-step confirmation and a fresh anchor for each step", () => {
     expect(workerSource).toContain("steps array of 2–5 ordered, short actions");
     expect(workerSource).toContain("steps: {");
