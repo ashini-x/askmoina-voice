@@ -48,7 +48,15 @@ def synthesize_pcm_16k() -> bytes:
             fraction = position - left
             value = int(samples[left] * (1 - fraction) + samples[right] * fraction)
             struct.pack_into("<h", output, i * 2, max(-32768, min(32767, value)))
-        return bytes(output)
+        # Normalize espeak output so browser-independent speech volume does not
+        # fall below Live API voice-activity detection. Add a short trailing-silence
+        # segment before audio_stream_end to make the synthetic turn boundary explicit.
+        resampled = struct.unpack("<" + "h" * output_count, output)
+        peak = max((abs(sample) for sample in resampled), default=0)
+        gain = min(3.0, 24_000 / max(peak, 1))
+        for index, sample in enumerate(resampled):
+            struct.pack_into("<h", output, index * 2, max(-32_768, min(32_767, int(sample * gain))))
+        return bytes(output) + (b"\\x00" * 16_000)
 
 
 def extract_text(message: dict) -> str:
@@ -139,7 +147,7 @@ def main() -> int:
                     }
                 }
             }))
-            time.sleep(0.09)
+            time.sleep(0.1)
         ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
 
         deadline = time.time() + MAX_WAIT_SECONDS
