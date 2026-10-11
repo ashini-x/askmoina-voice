@@ -47,12 +47,12 @@ describe("Live Co-Pilot browser assets", () => {
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
-    expect(html).toContain("Aim the ring at the target yourself");
+    expect(html).toContain("Inspect the ring and adjust it to the object yourself");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
-    expect(script).toContain("Surface marker placed for");
-    expect(script).toContain("The cue stays in this panel");
+    expect(script).toContain("Cue anchored at the confirmed hit-test point for");
+    expect(script).toContain("Verify it lines up with the intended object");
   });
 
   it("renders the selected cue as a world-anchored 3D tag after surface placement", () => {
