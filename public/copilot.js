@@ -1265,7 +1265,7 @@
       ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
     }
     function wrapText(value,maxWidth,maxLines) {
-      const words=String(value||"").trim().split(/\\s+/).filter(Boolean), lines=[];
+      const words=String(value||"").trim().split(/\s+/).filter(Boolean), lines=[];
       while(words.length && lines.length<maxLines) {
         let line=words.shift();
         while(words.length && ctx.measureText(line+" "+words[0]).width<=maxWidth) line+=" "+words.shift();
