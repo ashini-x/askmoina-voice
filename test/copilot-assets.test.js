@@ -60,13 +60,13 @@ describe("Live Co-Pilot browser assets", () => {
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
-    expect(html).toContain("Inspect the ring and adjust it to the object yourself");
+    expect(html).toContain("does not recognize object geometry");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("const currentGuidance = activeSpatialGuidance();");
     expect(script).toContain("spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;");
-    expect(script).toContain("Cue anchored at the confirmed hit-test point for");
-    expect(script).toContain("Verify it lines up with the intended object");
+    expect(script).toContain('"Cue placed · " + spatialPlacedGuidance.label');
+    expect(html).toContain("does not recognize object geometry");
   });
 
   it("renders the selected cue as a world-anchored 3D tag after surface placement", () => {
@@ -108,7 +108,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialAimLabel"');
     expect(html).toContain('id="spatialAimLeft"');
     expect(html).toContain('id="spatialAimReset"');
-    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
     expect(html).toContain("does not recognize object geometry");
     expect(css).toContain(".spatial-aim-panel");
   });
@@ -141,7 +141,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("item.sequenceId === spatialGuidanceSequenceId && item.stepIndex === spatialStepIndex");
     expect(script).toContain("for (const pinned of pinnedPoses)");
     expect(script).toContain("clearPinnedSpatialCues()");
-    expect(html).toContain("Scenes save cue descriptions on this device, not physical anchor positions");
+    expect(html).toContain("Saved guides keep instructions on this device.");
     expect(script).not.toContain("requestPersistentHandle");
     expect(css).toContain(".spatial-scene-panel");
   });
@@ -162,8 +162,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialStepProgress"');
     expect(html).toContain('id="spatialStepConfirm"');
     expect(html).toContain('id="spatialStepNext"');
-    expect(html).toContain("Tap Next when the cue looks right.");
-    expect(html).toContain("Moina keeps it in place and guides you to the next step.");
+    expect(html).toContain("Follow the ring. Moina will show you one step at a time.");
+    expect(html).toContain("The ring is a guide, not object recognition. Check placement before continuing.");
     expect(css).toContain(".spatial-step-panel[hidden]{display:none}");
   });
 
@@ -194,12 +194,27 @@ describe("Live Co-Pilot browser assets", () => {
   it("keeps advanced spatial controls out of the default guided flow", () => {
     expect(html).toContain('<details class="spatial-advanced" id="spatialAdvanced">');
     expect(html).toContain("<summary>More options</summary>");
-    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
-    expect(html).toContain('id="exitSpatialAr">Done</button>');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
+    expect(html).toContain('id="exitSpatialAr" class="spatial-close" aria-label="Done and return to Co-Pilot">×</button>');
     expect(script).toContain("function advanceSpatialGuidance()");
     expect(script).toContain('spatialStepButtons.next.addEventListener("click", advanceSpatialGuidance);');
     expect(css).toContain(".spatial-advanced>summary");
     expect(css).toContain(".spatial-step-actions #spatialStepConfirm");
+  });
+
+  
+  it("renders a JARVIS-style visual guidance HUD with a single contextual action", () => {
+    expect(html).toContain('class="spatial-hud spatial-hud-jarvis"');
+    expect(html).toContain('> AR Guide</button>');
+    expect(html).toContain('id="spatialActionHint"');
+    expect(html).toContain('id="spatialProgressTrack"');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
+    expect(html).toContain('id="exitSpatialAr" class="spatial-close"');
+    expect(script).toContain('function syncSpatialButtons()');
+    expect(script).toContain('buttonText = isLastStep ? "Finish guide" : "Next step";');
+    expect(script).toContain('spatialProgressTrack.replaceChildren();');
+    expect(css).toContain(".spatial-hud.spatial-hud-jarvis .spatial-guidance");
+    expect(css).toContain(".spatial-progress-segment.is-current");
   });
 
 });
