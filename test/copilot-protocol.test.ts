@@ -9,7 +9,7 @@ const video = (data = "AAAA") => ({
 });
 
 describe("Live Co-Pilot input protocol", () => {
-  it("keeps normal voice sessions audio-only", () => {
+  it("keeps normal voice sessions from accessing video and overlay tools", () => {
     expect(parseLiveClientInput(audio(), false)).toEqual({ kind: "audio", data: "AAAA" });
     expect(parseLiveClientInput(video(), false)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "f1", name: "display_screen_overlay" }] } }, false)).toBeNull();
@@ -22,7 +22,7 @@ describe("Live Co-Pilot input protocol", () => {
     });
     expect(parseLiveClientInput({ text_input: "  " }, false)).toBeNull();
     expect(parseLiveClientInput({ text_input: "x".repeat(1_501) }, false)).toBeNull();
-    expect(parseLiveClientInput({ text_input: "find\\u0000something" }, false)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "find" + String.fromCharCode(0) + "something" }, false)).toBeNull();
     expect(parseLiveClientInput({ text_input: "test" }, true)).toBeNull();
     expect(parseLiveClientInput({ text_input: "test", extra: true }, false)).toBeNull();
   });
