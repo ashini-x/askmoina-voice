@@ -53,3 +53,14 @@
 
 .spatial-card #spatialStatus[data-kind="warning"]{color:#ffd59e}
 .spatial-card #spatialStatus[data-kind="anchored"]{color:#c9ffec}
+
+.spatial-aim-panel{margin:0 0 13px;padding:10px 11px;border:1px solid #b5e9db28;border-radius:14px;background:#ffffff06}
+.spatial-aim-panel>strong{display:block;color:#bde9dc;font-size:.58rem;font-weight:750;letter-spacing:.12em}
+.spatial-aim-panel>p{margin:5px 0 8px;color:#f0f2f5;font-size:.7rem;line-height:1.4}
+.spatial-aim-panel>small{display:block;margin-top:7px;color:#aeb8c3;font-size:.61rem;line-height:1.4}
+.spatial-aim-controls{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.spatial-aim-controls button{min-width:35px;min-height:34px;padding:0 9px;border:1px solid #ffffff3b;border-radius:10px;background:#ffffff10;color:#fff;font-size:.82rem;font-weight:700}
+.spatial-aim-controls button:nth-child(3){font-size:.65rem}
+.spatial-aim-controls button:disabled{opacity:.35}
+.spatial-card #spatialStatus[data-kind="aiming"]{color:#c8fff0}
+@media(max-width:430px){.spatial-aim-panel{padding:8px 9px;margin-bottom:9px}.spatial-aim-controls{gap:4px}.spatial-aim-controls button{min-width:31px;min-height:31px;padding:0 7px}}
