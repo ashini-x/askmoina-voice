@@ -1179,6 +1179,7 @@
 
   const spatialArButton = $("#spatialArButton");
   const spatialHud = $("#spatialHud");
+  const spatialAdvanced = $("#spatialAdvanced");
   const spatialStatus = $("#spatialStatus");
   const spatialTargetLabel = $("#spatialTargetLabel");
   const spatialTargetInstruction = $("#spatialTargetInstruction");
@@ -1714,19 +1715,24 @@
     spatialStepPanel.hidden = !hasSequence;
     if (!hasSequence) return;
     const total = spatialGuidanceSteps.length;
+    const isLastStep = spatialStepIndex >= total - 1;
+    const hasCue = hasSpatialCueForCurrentStep();
     spatialStepProgress.textContent = spatialSequenceFinished
-      ? "Walkthrough complete · " + total + " steps"
-      : "Step " + (spatialStepIndex + 1) + " of " + total + (spatialStepConfirmed ? " · confirmed" : " · awaiting confirmation");
+      ? "Done · " + total + " steps"
+      : "Step " + (spatialStepIndex + 1) + " of " + total;
     spatialStepMessage.textContent = spatialSequenceFinished
-      ? "All steps were marked complete. The final anchor remains visible until you clear it or exit AR."
-      : spatialStepConfirmed
-        ? "Confirmed by you. Advance only after the visible result matches this instruction; the next step requires a new anchor."
-        : "Place the cue at this step's target, inspect the result, then confirm before advancing.";
+      ? "All cues are placed. They remain visible until you leave AR."
+      : hasCue
+        ? (isLastStep
+          ? "Your cue is ready. Tap Finish when it looks right."
+          : "Your cue is ready. Tap Next when it looks right; Moina will keep it in place.")
+        : "Move the ring onto the target, then tap Place cue.";
     const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     spatialStepButtons.previous.disabled = spatialStepIndex <= 0 || busy;
-    spatialStepButtons.confirm.disabled = !hasSpatialCueForCurrentStep() || spatialStepConfirmed || spatialSequenceFinished || busy;
-    spatialStepButtons.next.disabled = !spatialStepConfirmed || !hasSpatialCueForCurrentStep() || spatialStepIndex >= total - 1 || spatialSequenceFinished || busy;
-    spatialStepButtons.finish.disabled = !spatialStepConfirmed || spatialStepIndex !== total - 1 || spatialSequenceFinished || busy;
+    spatialStepButtons.confirm.disabled = true;
+    spatialStepButtons.next.textContent = isLastStep ? "Finish" : "Next";
+    spatialStepButtons.next.disabled = !hasCue || spatialSequenceFinished || busy;
+    spatialStepButtons.finish.disabled = true;
   }
 
   function syncSpatialGuidance() {
@@ -1789,7 +1795,31 @@
     setSpatialStatus("Guided walkthrough complete. The final cue remains anchored until you clear it or exit AR.", "anchored");
   }
 
+  function advanceSpatialGuidance() {
+    if (!spatialSession || spatialGuidanceSteps.length < 2) return;
+    if (spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    if (!hasSpatialCueForCurrentStep()) return;
+
+    // Tapping Next/Finish confirms the visible cue and removes a separate confirmation step.
+    spatialStepConfirmed = true;
+    if (spatialAnchor) {
+      pinCurrentSpatialCue();
+      // Keep the active cue and ask the user to resolve any pinning limit.
+      if (spatialAnchor) {
+        spatialStepConfirmed = false;
+        syncSpatialSequenceControls();
+        return;
+      }
+    }
+    if (spatialStepIndex >= spatialGuidanceSteps.length - 1) {
+      finishSpatialGuidanceSequence();
+      return;
+    }
+    moveSpatialGuidanceStep(1);
+  }
+
   function syncSpatialButtons() {
+    placeSpatialAnchorButton.textContent = spatialAnchor ? "Cue placed ✓" : "Place cue";
     placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     clearSpatialAnchorButton.disabled = !spatialAnchor;
     const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
@@ -1882,8 +1912,8 @@
     const hasCopilotSession = Boolean(active || starting || microphoneStream || socket);
     if (hasCopilotSession) {
       const prompt = canKeepVoiceDuringSpatialAr
-        ? "Spatial AR needs the camera. Keep your live voice conversation connected while camera frames pause until you exit AR?"
-        : "Spatial AR needs the camera. The current Co-Pilot setup cannot be kept alive, so it will end before AR starts. Continue?";
+        ? "Open AR Guide? Moina will keep listening and speaking, but will not receive new camera images until you exit AR."
+        : "Open AR Guide? Your current voice session will end before AR starts. Continue?";
       if (!window.confirm(prompt)) return;
       if (canKeepVoiceDuringSpatialAr) {
         if (!suspendCameraForSpatialAr()) {
@@ -1904,6 +1934,7 @@
     spatialStepConfirmed = false;
     spatialSequenceFinished = false;
     syncSpatialGuidance();
+    if (spatialAdvanced) spatialAdvanced.open = false;
     spatialHud.hidden = false;
     spatialHud.classList.add("is-preparing");
     setSpatialStatus("Opening the device's spatial tracking session…", "starting");
@@ -2232,7 +2263,7 @@
 
   spatialStepButtons.previous.addEventListener("click", () => moveSpatialGuidanceStep(-1));
   spatialStepButtons.confirm.addEventListener("click", confirmSpatialGuidanceStep);
-  spatialStepButtons.next.addEventListener("click", () => moveSpatialGuidanceStep(1));
+  spatialStepButtons.next.addEventListener("click", advanceSpatialGuidance);
   spatialStepButtons.finish.addEventListener("click", finishSpatialGuidanceSequence);
 
   placeSpatialAnchorButton.addEventListener("click", () => {

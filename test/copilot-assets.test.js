@@ -108,7 +108,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialAimLabel"');
     expect(html).toContain('id="spatialAimLeft"');
     expect(html).toContain('id="spatialAimReset"');
-    expect(html).toContain("Confirm &amp; place cue");
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
     expect(html).toContain("does not recognize object geometry");
     expect(css).toContain(".spatial-aim-panel");
   });
@@ -162,8 +162,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialStepProgress"');
     expect(html).toContain('id="spatialStepConfirm"');
     expect(html).toContain('id="spatialStepNext"');
-    expect(html).toContain("Progress is user-confirmed, not automatically detected");
-    expect(html).toContain("Advancing clears the old anchor");
+    expect(html).toContain("Tap Next when the cue looks right.");
+    expect(html).toContain("Moina keeps it in place and guides you to the next step.");
     expect(css).toContain(".spatial-step-panel[hidden]{display:none}");
   });
 
@@ -190,4 +190,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain('.focus-marker[data-region="lower-right"]');
     expect(css).toContain("@media(max-width:760px)");
   });
+  
+  it("keeps advanced spatial controls out of the default guided flow", () => {
+    expect(html).toContain('<details class="spatial-advanced" id="spatialAdvanced">');
+    expect(html).toContain("<summary>More options</summary>");
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
+    expect(html).toContain('id="exitSpatialAr">Done</button>');
+    expect(script).toContain("function advanceSpatialGuidance()");
+    expect(script).toContain('spatialStepButtons.next.addEventListener("click", advanceSpatialGuidance);');
+    expect(css).toContain(".spatial-advanced>summary");
+    expect(css).toContain(".spatial-step-actions #spatialStepConfirm");
+  });
+
 });

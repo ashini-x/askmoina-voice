@@ -13,31 +13,34 @@
 <div class="approx-tag" id="approxTag" hidden>Approximate focus · not world-locked AR</div>
 <div class="zoom-dock" aria-label="Camera zoom controls"><button type="button" id="zoomOut" aria-label="Zoom out" disabled>−</button><label class="sr-only" for="zoomSlider">Camera zoom</label><input id="zoomSlider" type="range" min="1" max="3" step="0.1" value="1" aria-label="Camera zoom" disabled><output id="zoomLabel" for="zoomSlider">1×</output><button type="button" id="zoomIn" aria-label="Zoom in" disabled>+</button></div>
 <section class="caption-dock" aria-label="Live conversation"><div class="status-line"><span class="assistant-orb" aria-hidden="true">m</span><div class="status-copy"><strong id="connectionPill" data-state="ready">READY</strong><p id="status" role="status" aria-live="polite">Checking the voice service…</p></div><span id="availability" class="availability" role="status" aria-live="polite">Checking capacity…</span></div><div class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text"><div class="empty-state" id="emptyTranscript"><p>Ask about what’s in front of you.</p></div></div><button type="button" id="clearTranscript" class="clear-captions">Clear captions</button></section>
-<nav class="camera-controls" aria-label="Camera and voice controls"><button type="button" id="flipCamera" class="control-pill" disabled><span aria-hidden="true">↻</span> Flip</button><button type="button" id="muteMic" class="control-pill" disabled><span aria-hidden="true">♩</span> Mute</button><button type="button" id="spatialArButton" class="control-pill spatial-ar-button" hidden disabled title="Try surface-anchored AR on supported devices"><span aria-hidden="true">◎</span> Spatial AR</button><button type="button" id="toggleCopilot" class="control-pill stop-button" disabled aria-pressed="false"><span class="button-symbol" aria-hidden="true">●</span><span id="buttonLabel">Checking voice…</span></button></nav>
+<nav class="camera-controls" aria-label="Camera and voice controls"><button type="button" id="flipCamera" class="control-pill" disabled><span aria-hidden="true">↻</span> Flip</button><button type="button" id="muteMic" class="control-pill" disabled><span aria-hidden="true">♩</span> Mute</button><button type="button" id="spatialArButton" class="control-pill spatial-ar-button" hidden disabled title="Open the guided AR view on supported devices"><span aria-hidden="true">◎</span> AR Guide</button><button type="button" id="toggleCopilot" class="control-pill stop-button" disabled aria-pressed="false"><span class="button-symbol" aria-hidden="true">●</span><span id="buttonLabel">Checking voice…</span></button></nav>
 <div class="spatial-hud" id="spatialHud" hidden aria-label="Spatial anchor lab">
   <section class="spatial-card">
-    <div class="spatial-brand"><span class="brand-mark" aria-hidden="true">m</span><strong>Moina Spatial Lab</strong><span class="spatial-live-dot" aria-hidden="true"></span></div>
-    <p id="spatialStatus" role="status" aria-live="polite">Preparing a spatial session…</p>
+    <div class="spatial-brand"><span class="brand-mark" aria-hidden="true">m</span><strong>Moina AR Guide</strong><span class="spatial-live-dot" aria-hidden="true"></span></div>
+    <p id="spatialStatus" role="status" aria-live="polite">Look at a surface, place a cue, and follow Moina’s next step.</p>
     <div class="spatial-guidance" id="spatialGuidance" aria-label="Most recent Moina visual guidance">
-      <span class="spatial-guidance-eyebrow">MOINA'S CURRENT STEP</span>
+      <span class="spatial-guidance-eyebrow">MOINA'S GUIDANCE</span>
       <strong id="spatialTargetLabel">No recent visual target</strong>
-      <p id="spatialTargetInstruction">Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.</p>
-      <small id="spatialTargetHint">The surface marker can still be placed without a recent cue.</small>
+      <p id="spatialTargetInstruction">Ask Moina what you want to find, then open AR Guide.</p>
+      <small id="spatialTargetHint">Move slowly until the ring sits where you want the cue.</small>
     </div>
     <div class="spatial-step-panel" id="spatialStepPanel" hidden aria-label="Multi-step guided walkthrough">
       <div class="spatial-step-header">
         <strong>GUIDED WALKTHROUGH</strong>
         <span id="spatialStepProgress" role="status" aria-live="polite">Step 1 of 1</span>
       </div>
-      <p id="spatialStepMessage">Place a cue at the target, inspect the result, then confirm before advancing.</p>
+      <p id="spatialStepMessage">Move the ring onto the target and tap Place cue. When it looks right, tap Next.</p>
       <div class="spatial-step-actions">
         <button type="button" id="spatialStepPrevious" disabled>Back</button>
         <button type="button" id="spatialStepConfirm" disabled>Confirm step</button>
         <button type="button" id="spatialStepNext" disabled>Next step</button>
         <button type="button" id="spatialStepFinish" disabled>Done</button>
       </div>
-      <small>Progress is user-confirmed, not automatically detected. Advancing clears the old anchor so each step can be aligned separately.</small>
+      <small>Tap Next when the cue looks right. Moina keeps it in place and guides you to the next step.</small>
     </div>
+    <details class="spatial-advanced" id="spatialAdvanced">
+      <summary>More options</summary>
+      <div class="spatial-advanced-content">
     <div class="spatial-scene-panel" aria-label="Saved spatial scene">
       <div class="spatial-scene-header">
         <strong>SPATIAL SCENE</strong>
@@ -70,12 +73,17 @@
       </div>
       <small>The aim ray uses Moina's approximate screen region. Inspect the ring and adjust it to the object yourself before confirming.</small>
     </div>
+        <p class="spatial-note">After confirmation, the 3D cue card is anchored at the selected hit-test point. This uses screen-region guidance plus your visual confirmation; it does not recognize object geometry or guarantee the chosen surface is the named object. When Co-Pilot is already connected, voice stays live in Spatial AR while camera frames pause; live visual updates resume after you exit AR. If voice setup is incomplete, it may need to end before AR starts.</p>
+      </div>
+    </details>
     <div class="spatial-actions">
-      <button type="button" id="placeSpatialAnchor" disabled>Confirm &amp; place cue</button>
-      <button type="button" id="clearSpatialAnchor" disabled>Clear marker</button>
-      <button type="button" id="exitSpatialAr">Exit AR</button>
+      <button type="button" id="placeSpatialAnchor" disabled>Place cue</button>
+      <button type="button" id="clearSpatialAnchor" disabled>Clear cue</button>
+      <button type="button" id="exitSpatialAr">Done</button>
     </div>
-    <p class="spatial-note">After confirmation, the 3D cue card is anchored at the selected hit-test point. This uses screen-region guidance plus your visual confirmation; it does not recognize object geometry or guarantee the chosen surface is the named object. When Co-Pilot is already connected, voice stays live in Spatial AR while camera frames pause; live visual updates resume after you exit AR. If voice setup is incomplete, it may need to end before AR starts.</p>
+    
+  <p class="spatial-note spatial-note-short">Moina suggests a target; check the ring before placing it.</p>
   </section>
 </div>
+
 <p class="privacy-hint">Camera and microphone start only after you tap Start Co-Pilot. They are shared only while your session is active.</p><a class="home-link" href="/">AskMoina</a></section></main></body></html>
