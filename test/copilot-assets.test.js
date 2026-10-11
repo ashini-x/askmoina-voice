@@ -65,8 +65,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("const currentGuidance = activeSpatialGuidance();");
     expect(script).toContain("spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;");
-    expect(script).toContain("Cue anchored at the confirmed hit-test point for");
-    expect(script).toContain("Verify it lines up with the intended object");
+    expect(script).toContain('"Cue placed · " + spatialPlacedGuidance.label');
+    expect(html).toContain("does not recognize object geometry");
   });
 
   it("renders the selected cue as a world-anchored 3D tag after surface placement", () => {
