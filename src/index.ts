@@ -146,7 +146,7 @@ async function performGroundedWebSearch(env: Env, query: string): Promise<string
     const answer = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
     const sources = (candidate?.groundingMetadata?.groundingChunks || [])
       .map((chunk) => chunk.web)
-      .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri))
+      .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri && /^https?:\\/\\//i.test(web.uri)))
       .slice(0, 5)
       .map((web) => `- ${String(web.title || web.uri).slice(0, 180)}: ${web.uri}`);
     if (!sources.length) return "The web lookup did not return verifiable source URLs. Treat this as unverified; ask the user for the exact model or another detail rather than presenting current instructions as confirmed.";
@@ -862,7 +862,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           for (const call of calls) {
             if (call?.name !== "search_current_web" || typeof call.id !== "string" || !call.id) continue;
             const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
-            const query = typeof args.query === "string" ? args.query.trim().slice(0, 240) : "";
+            const query = typeof args.query === "string" ? args.query.trim().replace(/[\\u0000-\\u001f]/g, " ").slice(0, 240) : "";
             let result: string;
             const now = Date.now();
             if (!query) {
