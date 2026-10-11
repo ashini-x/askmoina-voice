@@ -1181,6 +1181,9 @@
   const spatialHud = $("#spatialHud");
   const spatialAdvanced = $("#spatialAdvanced");
   const spatialStatus = $("#spatialStatus");
+  const spatialProgressTrack = $("#spatialProgressTrack");
+  const spatialActionEyebrow = $("#spatialActionEyebrow");
+  const spatialActionHint = $("#spatialActionHint");
   const spatialTargetLabel = $("#spatialTargetLabel");
   const spatialTargetInstruction = $("#spatialTargetInstruction");
   const spatialTargetHint = $("#spatialTargetHint");
@@ -1711,22 +1714,48 @@
   }
 
   function syncSpatialSequenceControls() {
-    const hasSequence = Boolean(spatialSession) && spatialGuidanceSteps.length > 1;
-    spatialStepPanel.hidden = !hasSequence;
-    if (!hasSequence) return;
-    const total = spatialGuidanceSteps.length;
+    const hasSession = Boolean(spatialSession);
+    spatialStepPanel.hidden = !hasSession;
+    if (!hasSession) return;
+
+    const hasSequence = spatialGuidanceSteps.length > 1;
+    const total = Math.max(1, spatialGuidanceSteps.length);
+    const current = Math.min(total, spatialStepIndex + 1);
     const isLastStep = spatialStepIndex >= total - 1;
     const hasCue = hasSpatialCueForCurrentStep();
     spatialStepProgress.textContent = spatialSequenceFinished
-      ? "Done · " + total + " steps"
-      : "Step " + (spatialStepIndex + 1) + " of " + total;
+      ? "GUIDE COMPLETE"
+      : hasSequence
+        ? "STEP " + current + " / " + total
+        : hasCue ? "CUE PLACED" : spatialLatestHit ? "SURFACE FOUND" : "READY";
     spatialStepMessage.textContent = spatialSequenceFinished
-      ? "All cues are placed. They remain visible until you leave AR."
+      ? "You're all set. Your cues will stay visible until you finish the guide."
       : hasCue
-        ? (isLastStep
-          ? "Your cue is ready. Tap Finish when it looks right."
-          : "Your cue is ready. Tap Next when it looks right; Moina will keep it in place.")
-        : "Move the ring onto the target, then tap Place cue.";
+        ? (hasSequence
+          ? (isLastStep ? "Last target is placed. Tap Finish guide when it looks right." : "Target placed. Tap Next step when you're ready.")
+          : "Cue placed. You're all set — tap Done when you're ready to return.")
+        : spatialPlacing || spatialPendingPlacement
+          ? "Placing your cue. Hold the phone steady for a moment."
+          : spatialLatestHit
+            ? "Surface found. Tap Place cue."
+            : "Move the phone slowly until the ring rests on a surface.";
+
+    if (spatialProgressTrack) {
+      spatialProgressTrack.hidden = !hasSequence;
+      spatialProgressTrack.replaceChildren();
+      spatialProgressTrack.setAttribute("aria-valuemax", String(total));
+      spatialProgressTrack.setAttribute("aria-valuenow", String(spatialSequenceFinished ? total : current));
+      if (hasSequence) {
+        for (let index = 0; index < total; index += 1) {
+          const segment = document.createElement("span");
+          segment.className = "spatial-progress-segment" +
+            (spatialSequenceFinished || index < spatialStepIndex ? " is-complete" : index === spatialStepIndex ? " is-current" : "");
+          segment.setAttribute("aria-hidden", "true");
+          spatialProgressTrack.appendChild(segment);
+        }
+      }
+    }
+
     const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     spatialStepButtons.previous.disabled = spatialStepIndex <= 0 || busy;
     spatialStepButtons.confirm.disabled = true;
@@ -1791,8 +1820,9 @@
   function finishSpatialGuidanceSequence() {
     if (!spatialSession || !spatialStepConfirmed || spatialStepIndex !== spatialGuidanceSteps.length - 1) return;
     spatialSequenceFinished = true;
+    syncSpatialButtons();
     syncSpatialSequenceControls();
-    setSpatialStatus("Guided walkthrough complete. The final cue remains anchored until you clear it or exit AR.", "anchored");
+    setSpatialStatus("Guide complete. All cues are placed.", "anchored");
   }
 
   function advanceSpatialGuidance() {
@@ -1819,12 +1849,58 @@
   }
 
   function syncSpatialButtons() {
-    placeSpatialAnchorButton.textContent = spatialAnchor ? "Cue placed ✓" : "Place cue";
-    placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    const hasSequence = spatialGuidanceSteps.length > 1;
+    const isLastStep = spatialStepIndex >= spatialGuidanceSteps.length - 1;
+    const completed = spatialSequenceFinished;
+    let phase = "searching";
+    let buttonText = "Finding surface…";
+    let actionTitle = "SCANNING FOR A SURFACE";
+    let hint = "Move your phone slowly until the ring rests over a surface.";
+    let disabled = true;
+
+    if (completed) {
+      phase = "complete";
+      buttonText = "Guide complete";
+      actionTitle = "ALL STEPS COMPLETE";
+      hint = "You're all set. Tap Done in the top-right corner to return.";
+    } else if (busy) {
+      phase = "placing";
+      buttonText = "Placing cue…";
+      actionTitle = "ONE MOMENT";
+      hint = "Hold your phone steady while Moina places the cue.";
+    } else if (spatialAnchor && hasSequence) {
+      phase = "anchored";
+      buttonText = isLastStep ? "Finish guide" : "Next step";
+      actionTitle = isLastStep ? "FINAL TARGET READY" : "TARGET PLACED";
+      hint = isLastStep
+        ? "Does it look right? Finish the guide when you're ready."
+        : "Does it look right? Tap Next step to continue.";
+      disabled = false;
+    } else if (spatialAnchor) {
+      phase = "anchored";
+      buttonText = "Cue placed ✓";
+      actionTitle = "TARGET PLACED";
+      hint = "You're all set. Tap Done in the top-right corner to return.";
+      disabled = true;
+    } else if (spatialLatestHit) {
+      phase = "surface";
+      buttonText = "Place cue";
+      actionTitle = "SURFACE FOUND";
+      hint = "The ring is on a surface. Tap Place cue to continue.";
+      disabled = false;
+    }
+
+    placeSpatialAnchorButton.textContent = buttonText;
+    placeSpatialAnchorButton.disabled = disabled;
+    spatialHud.dataset.phase = phase;
+    if (spatialActionEyebrow) spatialActionEyebrow.textContent = actionTitle;
+    if (spatialActionHint) spatialActionHint.textContent = hint;
     clearSpatialAnchorButton.disabled = !spatialAnchor;
-    const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || busy;
     Object.values(spatialAimButtons).forEach((button) => { button.disabled = aimDisabled; });
     syncSpatialSceneControls();
+    syncSpatialSequenceControls();
   }
 
   function createSpatialOffsetRay() {
@@ -1935,6 +2011,7 @@
     spatialSequenceFinished = false;
     syncSpatialGuidance();
     if (spatialAdvanced) spatialAdvanced.open = false;
+    spatialHud.dataset.phase = "searching";
     spatialHud.hidden = false;
     spatialHud.classList.add("is-preparing");
     setSpatialStatus("Opening the device's spatial tracking session…", "starting");
@@ -2087,8 +2164,8 @@
         spatialPlacing = false;
         updateSpatialTagTexture(spatialPlacedGuidance);
         setSpatialStatus(spatialPlacedGuidance
-          ? "Cue anchored at the confirmed hit-test point for “" + spatialPlacedGuidance.label + "”. Verify it lines up with the intended object; the AI screen region is only an estimate."
-          : "Marker anchored to the confirmed hit-test point. No recent AI target cue was available.", "anchored");
+          ? "Cue placed · " + spatialPlacedGuidance.label
+          : "Cue placed", "anchored");
         syncSpatialButtons();
         syncSpatialSequenceControls();
       }).catch(() => {
@@ -2103,8 +2180,8 @@
       spatialLastStatusAt = time;
       if (!spatialAnchor && !spatialPendingPlacement && !spatialPlacing) {
         setSpatialStatus(spatialLatestHit
-          ? "Surface detected. Tap Place cue anchor, then move the phone slowly in a small arc and return to check for drift."
-          : "Searching for a surface. Aim at a table, floor, or wall and move the phone slowly.", spatialLatestHit ? "surface" : "searching");
+          ? "Surface found"
+          : "Scanning for a surface", spatialLatestHit ? "surface" : "searching");
       }
     }
 
@@ -2267,20 +2344,29 @@
   spatialStepButtons.finish.addEventListener("click", finishSpatialGuidanceSequence);
 
   placeSpatialAnchorButton.addEventListener("click", () => {
-    if (!spatialSession || spatialAnchor || spatialPlacing) return;
-    if (!spatialLatestHit) {
-      setSpatialStatus("No surface detected on the current aim ray. Move slowly or adjust the ray and try again.", "searching");
+    if (!spatialSession || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    if (spatialSequenceFinished) return;
+
+    if (spatialAnchor && spatialGuidanceSteps.length > 1) {
+      advanceSpatialGuidance();
       return;
     }
+    if (spatialAnchor) {
+      setSpatialStatus("Cue placed. You're all set.", "anchored");
+      return;
+    }
+    if (!spatialLatestHit) {
+      setSpatialStatus("Move your phone slowly until the ring rests on a surface.", "searching");
+      return;
+    }
+
     const currentGuidance = activeSpatialGuidance();
     spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;
     spatialStepConfirmed = false;
     spatialPendingPlacement = true;
     spatialPendingPlacementAt = performance.now();
-    setSpatialStatus(spatialPlacedGuidance
-      ? "Placing “" + spatialPlacedGuidance.label + "” cue on the next detected surface point…"
-      : "Placing a marker on the next confirmed surface hit…", "placing");
     syncSpatialButtons();
+    setSpatialStatus("Placing cue…", "placing");
   });
 
   clearSpatialAnchorButton.addEventListener("click", () => {
