@@ -63,7 +63,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("gl.drawArrays(gl.TRIANGLE_STRIP,0,4);");
     expect(script).toContain("drawSpatialTag(gl, view, anchorPose.transform.matrix)");
     expect(script).toContain("updateSpatialTagTexture(spatialPlacedGuidance);");
-    expect(script).toContain("the target is not automatically recognized");
+    expect(html).toContain("the target is not automatically recognized");
   });
 
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
