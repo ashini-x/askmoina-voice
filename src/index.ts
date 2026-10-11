@@ -887,6 +887,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             if (call?.name !== "search_current_web" || typeof call.id !== "string" || !call.id) continue;
             const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
             const query = typeof args.query === "string" ? args.query.trim().slice(0, 240) : "";
+            console.info("[AskMoina] Grounded search requested", JSON.stringify({
+              mode: copilotMode ? "copilot" : "voice",
+              queryLength: query.length,
+              searchIndex: groundedSearchCount + 1,
+            }));
             let result: string;
             const now = Date.now();
             if (!query) {
