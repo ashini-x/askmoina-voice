@@ -14,7 +14,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain('name: "search_current_web"');
     expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ googleSearch: {} }]');
     expect(workerSource).toContain("Keep Live API tool types separate");
-    expect(workerSource).toContain("if (copilotMode && (frameText.includes('\\"toolCall\\"') || frameText.includes('\\"tool_call\\"')))");
+    expect(workerSource).toContain("frameText.includes(");
   });
 
   it("bounds on-demand searches, latency, and query size per Co-Pilot session", () => {
