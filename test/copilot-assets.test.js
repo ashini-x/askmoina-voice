@@ -51,7 +51,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("Inspect the ring and adjust it to the object yourself");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
-    expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
+    expect(script).toContain("const currentGuidance = activeSpatialGuidance();");
+    expect(script).toContain("spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;");
     expect(script).toContain("Cue anchored at the confirmed hit-test point for");
     expect(script).toContain("Verify it lines up with the intended object");
   });
@@ -90,7 +91,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function nudgeSpatialAim(dx, dy)");
     expect(script).toContain("spatialAimButtons.left.addEventListener");
     expect(script).toContain("spatialAimButtons.reset.addEventListener");
-    expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
+    expect(script).toContain("const currentGuidance = activeSpatialGuidance();");
+    expect(script).toContain("spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;");
     expect(html).toContain('id="spatialAimLabel"');
     expect(html).toContain('id="spatialAimLeft"');
     expect(html).toContain('id="spatialAimReset"');
