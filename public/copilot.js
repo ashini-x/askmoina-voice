@@ -1943,6 +1943,9 @@
   }
 
   function finishSpatialAr() {
+    // The exit button and XRSession's "end" event can both reach cleanup.
+    // Ignore duplicate calls once the session and GL resources are released.
+    if (!spatialSession && !spatialGl && !spatialRenderer) return;
     const oldAnchor = spatialAnchor;
     const oldHitSource = spatialHitSource;
     spatialSession = null;
@@ -1972,7 +1975,21 @@
     if (oldAnchor) {
       try { oldAnchor.delete(); } catch (_) {}
     }
+
+    // WebXR leaves the XR layer framebuffer bound to the context after the
+    // immersive session. Restore the ordinary/default framebuffer before
+    // releasing GL objects; this is especially important on mobile browsers.
+    const endedGl = spatialGl;
+    if (endedGl) {
+      try {
+        if (!endedGl.isContextLost()) {
+          endedGl.bindFramebuffer(endedGl.FRAMEBUFFER, null);
+          endedGl.flush();
+        }
+      } catch (_) {}
+    }
     releaseSpatialRenderer();
+    exitSpatialArButton.disabled = false;
     spatialHud.hidden = true;
     spatialHud.classList.remove("is-preparing");
     spatialArButton.disabled = !spatialFeatureSupported;
@@ -2033,9 +2050,23 @@
     }
   });
 
-  exitSpatialArButton.addEventListener("click", () => {
-    if (spatialSession) void spatialSession.end();
-  });
+  async function requestSpatialArExit() {
+    const session = spatialSession;
+    if (!session) return;
+    exitSpatialArButton.disabled = true;
+    setSpatialStatus("Closing Spatial AR and restoring the page…", "normal");
+    try {
+      await session.end();
+      // Usually the "end" event has already run cleanup. This fallback keeps
+      // teardown complete if a browser resolves end() before dispatching it.
+      if (spatialSession === session) finishSpatialAr();
+    } catch (_) {
+      exitSpatialArButton.disabled = false;
+      setSpatialStatus("Spatial AR could not close cleanly. Use the device or browser Back control to exit, then try again.", "warning");
+    }
+  }
+
+  exitSpatialArButton.addEventListener("click", () => { void requestSpatialArExit(); });
   spatialArButton.addEventListener("click", () => { void startSpatialAr(); });
 
   if (!window.AudioContext && window.webkitAudioContext) window.AudioContext = window.webkitAudioContext;
