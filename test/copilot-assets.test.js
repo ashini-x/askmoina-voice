@@ -162,8 +162,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialStepProgress"');
     expect(html).toContain('id="spatialStepConfirm"');
     expect(html).toContain('id="spatialStepNext"');
-    expect(html).toContain("Tap Next when the cue looks right.");
-    expect(html).toContain("Moina keeps it in place and guides you to the next step.");
+    expect(html).toContain("Follow the ring. Moina will show you one step at a time.");
+    expect(html).toContain("The ring is a guide, not object recognition. Check placement before continuing.");
     expect(css).toContain(".spatial-step-panel[hidden]{display:none}");
   });
 
@@ -200,6 +200,20 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('spatialStepButtons.next.addEventListener("click", advanceSpatialGuidance);');
     expect(css).toContain(".spatial-advanced>summary");
     expect(css).toContain(".spatial-step-actions #spatialStepConfirm");
+  });
+
+  
+  it("renders a JARVIS-style visual guidance HUD with a single contextual action", () => {
+    expect(html).toContain('class="spatial-hud spatial-hud-jarvis"');
+    expect(html).toContain('id="spatialActionHint"');
+    expect(html).toContain('id="spatialProgressTrack"');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
+    expect(html).toContain('id="exitSpatialAr" class="spatial-close"');
+    expect(script).toContain('function syncSpatialButtons()');
+    expect(script).toContain('buttonText = isLastStep ? "Finish guide" : "Next step";');
+    expect(script).toContain('spatialProgressTrack.replaceChildren();');
+    expect(css).toContain(".spatial-hud.spatial-hud-jarvis .spatial-guidance");
+    expect(css).toContain(".spatial-progress-segment.is-current");
   });
 
 });
