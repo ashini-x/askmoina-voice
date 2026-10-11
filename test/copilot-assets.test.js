@@ -36,6 +36,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="placeSpatialAnchor"');
     expect(script).toContain('navigator.xr.requestSession("immersive-ar"');
     expect(script).toContain('requiredFeatures: ["local", "hit-test", "anchors", "dom-overlay"]');
+    expect(script).toContain("requestHitTestSource({ space: spatialViewerSpace, offsetRay: ray })");
     expect(script).toContain("requestHitTestSource({ space: spatialViewerSpace })");
     expect(script).toContain("hitForAnchor.createAnchor()");
     expect(script).toContain("frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace)");
@@ -77,6 +78,24 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("The graphics context was lost");
     expect(script).toContain('spatialStatus.dataset.kind = mode || "normal"');
     expect(css).toContain('#spatialStatus[data-kind="warning"]');
+  });
+
+  it("uses the AI screen region to aim an adjustable hit-test ray before explicit world-anchor confirmation", () => {
+    expect(script).toContain("screenRegion: region");
+    expect(script).toContain("function spatialRegionToAim(region)");
+    expect(script).toContain("function createSpatialOffsetRay()");
+    expect(script).toContain("new XRRay(");
+    expect(script).toContain("function rebuildSpatialHitTestSource(session = spatialSession)");
+    expect(script).toContain("function nudgeSpatialAim(dx, dy)");
+    expect(script).toContain("spatialAimButtons.left.addEventListener");
+    expect(script).toContain("spatialAimButtons.reset.addEventListener");
+    expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
+    expect(html).toContain('id="spatialAimLabel"');
+    expect(html).toContain('id="spatialAimLeft"');
+    expect(html).toContain('id="spatialAimReset"');
+    expect(html).toContain("Confirm &amp; place cue");
+    expect(html).toContain("does not recognize object geometry");
+    expect(css).toContain(".spatial-aim-panel");
   });
 
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
