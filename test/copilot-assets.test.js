@@ -60,7 +60,7 @@ describe("Live Co-Pilot browser assets", () => {
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
-    expect(html).toContain("Inspect the ring and adjust it to the object yourself");
+    expect(html).toContain("does not recognize object geometry");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("const currentGuidance = activeSpatialGuidance();");
@@ -141,7 +141,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("item.sequenceId === spatialGuidanceSequenceId && item.stepIndex === spatialStepIndex");
     expect(script).toContain("for (const pinned of pinnedPoses)");
     expect(script).toContain("clearPinnedSpatialCues()");
-    expect(html).toContain("Scenes save cue descriptions on this device, not physical anchor positions");
+    expect(html).toContain("Saved guides keep instructions on this device.");
     expect(script).not.toContain("requestPersistentHandle");
     expect(css).toContain(".spatial-scene-panel");
   });
