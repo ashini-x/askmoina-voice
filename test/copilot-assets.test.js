@@ -20,7 +20,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="videoPreview"');
     expect(html).toContain('id="toggleCopilot"');
     expect(html).toContain("not world-locked AR");
-    expect(html).toContain("Camera and microphone start only after you tap Start Co-Pilot");
+    expect(html).toContain("Camera and microphone start only when you tap Start.");
+    expect(html).toContain("processed by Google Cloud Vertex AI");
   });
 
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
@@ -215,6 +216,17 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('spatialProgressTrack.replaceChildren();');
     expect(css).toContain(".spatial-hud.spatial-hud-jarvis .spatial-guidance");
     expect(css).toContain(".spatial-progress-segment.is-current");
+  });
+  
+  it("keeps the default Co-Pilot camera-first and reveals secondary controls only on request", () => {
+    expect(html).toContain('id="toggleMoreControls"');
+    expect(html).toContain('id="secondaryControls" hidden');
+    expect(html).toContain('id="toggleCaptions"');
+    expect(script).toContain('stage.classList.toggle("controls-expanded", expanded)');
+    expect(script).toContain('stage.classList.toggle("captions-expanded", expanded)');
+    expect(css).toContain(".secondary-controls[hidden]{display:none!important}");
+    expect(css).toContain(".camera-stage.captions-expanded .transcript{display:flex}");
+    expect(css).toContain(".camera-stage.controls-expanded .zoom-dock{display:flex}");
   });
 
 });
