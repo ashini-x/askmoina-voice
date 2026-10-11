@@ -1476,11 +1476,14 @@
 
   function moveSpatialGuidanceStep(delta) {
     if (!spatialSession || spatialGuidanceSteps.length < 2 || spatialSequenceFinished) return;
+    if (spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    if (delta > 0 && (!spatialStepConfirmed || !spatialAnchor)) return;
     const nextIndex = Math.max(0, Math.min(spatialGuidanceSteps.length - 1, spatialStepIndex + delta));
     if (nextIndex === spatialStepIndex) return;
     clearCurrentSpatialAnchorForStepChange();
     spatialStepIndex = nextIndex;
     spatialStepConfirmed = false;
+    spatialSequenceFinished = false;
     setSuggestedSpatialAim();
     syncSpatialGuidance();
     syncSpatialButtons();
@@ -1672,6 +1675,7 @@
         }
       });
       spatialHud.classList.remove("is-preparing");
+      syncSpatialGuidance();
       setSpatialStatus(spatialOffsetRaySupported
         ? "Moina's approximate target region sets the initial aim ray. Check the ring, nudge it if needed, then confirm the surface before placing."
         : "This browser uses a center hit-test ray. Move the phone until the ring overlays the intended object, then confirm placement.", spatialOffsetRaySupported ? "aiming" : "warning");
@@ -1751,10 +1755,12 @@
           ? "Cue anchored at the confirmed hit-test point for “" + spatialPlacedGuidance.label + "”. Verify it lines up with the intended object; the AI screen region is only an estimate."
           : "Marker anchored to the confirmed hit-test point. No recent AI target cue was available.", "anchored");
         syncSpatialButtons();
+        syncSpatialSequenceControls();
       }).catch(() => {
         spatialPlacing = false;
         setSpatialStatus("The device could not create a persistent anchor. Scan a well-lit, textured surface and try again.", "warning");
         syncSpatialButtons();
+        syncSpatialSequenceControls();
       });
     }
 
