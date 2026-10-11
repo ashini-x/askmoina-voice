@@ -21,6 +21,7 @@
 .focus-marker[data-tracking="true"] .focus-brackets{filter:drop-shadow(0 0 10px #65ffd2)}
 .focus-marker[data-tracking="true"] .focus-brackets i{border-color:#8ff5d8}
 .focus-marker[data-tracking="lost"] .focus-brackets i{border-color:#ffd17a;opacity:.7}
+.focus-marker[data-tracking="reacquiring"]{opacity:.38;transition:opacity .22s ease}.focus-marker[data-tracking="reacquiring"] .focus-brackets i{border-color:#ffd17a;opacity:.55}
 
 .camera-controls{flex-wrap:wrap}
 .spatial-ar-button[hidden]{display:none}

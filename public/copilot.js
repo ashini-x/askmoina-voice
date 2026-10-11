@@ -38,6 +38,9 @@
   let trackedPoint = null;
   let trackingTemplate = null;
   let trackingLostFrames = 0;
+  let trackingLostAt = 0;
+  let trackingLastReacquireAt = 0;
+  let trackingReacquiring = false;
   let trackingLastTick = 0;
   let trackingCanvasWidth = 0;
   let trackingCanvasHeight = 0;
@@ -981,12 +984,43 @@
     return best;
   }
 
+  // Wider, infrequent scan used only after the local tracker loses confidence.
+  // The stricter threshold in updateLocalTracking helps prevent jumps to similar-looking objects.
+  function findTemplateAcrossFrame(gray) {
+    if (!trackingTemplate || !trackingCanvasWidth || !trackingCanvasHeight) return null;
+    const margin = trackingTemplate.radius + 1;
+    const minX = margin;
+    const maxX = trackingCanvasWidth - margin - 1;
+    const minY = margin;
+    const maxY = trackingCanvasHeight - margin - 1;
+    if (maxX <= minX || maxY <= minY) return null;
+    let best = { x: 0, y: 0, score: -2 };
+    const stride = 5;
+    for (let y = minY; y <= maxY; y += stride) {
+      for (let x = minX; x <= maxX; x += stride) {
+        const score = compareTemplate(gray, x, y);
+        if (score > best.score) best = { x, y, score };
+      }
+    }
+    const coarse = { ...best };
+    for (let y = Math.max(minY, coarse.y - stride); y <= Math.min(maxY, coarse.y + stride); y += 1) {
+      for (let x = Math.max(minX, coarse.x - stride); x <= Math.min(maxX, coarse.x + stride); x += 1) {
+        const score = compareTemplate(gray, x, y);
+        if (score > best.score) best = { x, y, score };
+      }
+    }
+    return best;
+  }
+
   function stopLocalTracking(showStatus = true) {
     localTrackingActive = false;
     if (trackingTimer) window.clearInterval(trackingTimer);
     trackingTimer = null;
     trackingTemplate = null;
     trackingLostFrames = 0;
+    trackingLostAt = 0;
+    trackingLastReacquireAt = 0;
+    trackingReacquiring = false;
     trackedPoint = null;
     trackingCrop = null;
     if (focusMarker) delete focusMarker.dataset.tracking;
@@ -1034,6 +1068,9 @@
     trackingTemplate = template;
     trackedPoint = point;
     trackingLostFrames = 0;
+    trackingLostAt = 0;
+    trackingLastReacquireAt = 0;
+    trackingReacquiring = false;
     localTrackingActive = true;
     focusMarker.hidden = false;
     focusMarker.dataset.tracking = "true";
@@ -1059,26 +1096,89 @@
     try {
       if (!configureTrackingCanvas() || !trackingPixels) return;
       const gray = pixelsToGray(trackingPixels);
-      const result = findTemplate(gray, trackedPoint);
-      const confidenceThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.62 : 0.42;
-      if (!result || result.score < confidenceThreshold) {
-        trackingLostFrames += 1;
-        if (trackingLostFrames >= 5) {
-          stopLocalTracking(false);
-          focusMarker.dataset.tracking = "lost";
-          setStatus("I lost the local target. Keep it clearly visible and tap it again to resume tracking.", "warning");
-        }
-        return;
+      const ordinaryThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.62 : 0.42;
+      let result = null;
+
+      if (!trackingReacquiring) {
+        result = findTemplate(gray, trackedPoint);
+        if (result && result.score < ordinaryThreshold) result = null;
       }
+
+      if (!result) {
+        if (!trackingLostAt) trackingLostAt = now;
+        trackingLostFrames += 1;
+
+        if (trackingLostFrames >= 3) {
+          if (!trackingReacquiring) {
+            trackingReacquiring = true;
+            focusMarker.dataset.tracking = "reacquiring";
+            approxTag.hidden = false;
+            approxTag.textContent = "Target unclear · reacquiring";
+            setStatus("Target not clear. Hold the camera steady while I try to find it again.", "warning");
+          }
+
+          // Keep the last cue only briefly; a stale marker must not imply confident location.
+          if (now - trackingLostAt >= 1_300) {
+            focusMarker.hidden = true;
+            clearMarkerButton.disabled = true;
+            approxTag.textContent = "Target not visible · move slowly";
+          }
+
+          // Wider matching is expensive enough to run only periodically during loss.
+          if (now - trackingLastReacquireAt >= 350) {
+            trackingLastReacquireAt = now;
+            const candidate = findTemplateAcrossFrame(gray);
+            const reacquireThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.84 : 0.68;
+            if (candidate && candidate.score >= reacquireThreshold) result = candidate;
+          }
+        }
+
+        if (!result) {
+          if (now - trackingLostAt >= 8_000) {
+            stopLocalTracking(false);
+            focusMarker.hidden = true;
+            approxTag.hidden = true;
+            clearMarkerButton.disabled = true;
+            focusMarker.dataset.tracking = "lost";
+            setStatus("I could not reacquire that target. Move it clearly into view and tap it again.", "warning");
+          }
+          return;
+        }
+      }
+
+      const recovered = trackingReacquiring;
       trackingLostFrames = 0;
+      trackingLostAt = 0;
+      trackingLastReacquireAt = 0;
+      trackingReacquiring = false;
+      focusMarker.hidden = false;
+      focusMarker.dataset.tracking = "true";
+      approxTag.hidden = false;
+      approxTag.textContent = "Local visual tracking · not world-locked AR";
+      clearMarkerButton.disabled = false;
       markerAtTrackingPoint(result);
+      if (recovered) setStatus("Target found again. Tracking has resumed.", "normal");
     } catch (_) {
-      stopLocalTracking(false);
-      focusMarker.dataset.tracking = "lost";
-      setStatus("Local tracking paused because the camera frame could not be processed. Tap the target to retry.", "warning");
+      if (!trackingLostAt) trackingLostAt = now;
+      trackingReacquiring = true;
+      trackingLostFrames += 1;
+      focusMarker.dataset.tracking = "reacquiring";
+      if (now - trackingLostAt >= 1_300) {
+        focusMarker.hidden = true;
+        clearMarkerButton.disabled = true;
+        approxTag.hidden = false;
+        approxTag.textContent = "Target unclear · move slowly";
+      }
+      if (now - trackingLostAt >= 8_000) {
+        stopLocalTracking(false);
+        focusMarker.hidden = true;
+        approxTag.hidden = true;
+        clearMarkerButton.disabled = true;
+        focusMarker.dataset.tracking = "lost";
+        setStatus("I could not reacquire that target. Move it clearly into view and tap it again.", "warning");
+      }
     }
   }
-
   stage.addEventListener("click", (event) => {
     if (event.target.closest(".floating-top,.camera-controls,.caption-dock,.zoom-dock,.camera-top-badge,.camera-state,.approx-tag,.focus-card,.clear-marker,.vision-pill,.vault-link")) return;
     if (!microphoneStream || !active || !setupReady) return;
