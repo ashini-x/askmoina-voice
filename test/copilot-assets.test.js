@@ -110,6 +110,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function syncSpatialSequenceControls()");
     expect(script).toContain("function confirmSpatialGuidanceStep()");
     expect(script).toContain("function moveSpatialGuidanceStep(delta)");
+    expect(script).toContain("if (!spatialSession || spatialGuidanceSteps.length < 2) return;");
     expect(script).toContain("clearCurrentSpatialAnchorForStepChange()");
     expect(script).toContain("function finishSpatialGuidanceSequence()");
     expect(script).toContain("spatialStepConfirmed = false;\n      spatialSequenceFinished = false;");
