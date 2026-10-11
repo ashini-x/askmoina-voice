@@ -25,8 +25,16 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("maxOutputTokens: 650");
   });
 
-  it("uses the supported Vertex grounding model and surfaces provider diagnostics in logs", () => {
-    expect(workerSource).toContain('const model = "gemini-3.5-flash"');
+  it("uses the globally available Gemini 3.8 Flash grounding endpoint independently of Live region config", () => {
+    expect(workerSource).toContain('const location = "global"');
+    expect(workerSource).toContain('const host = "aiplatform.googleapis.com"');
+    expect(workerSource).toContain('const model = "gemini-3.8-flash"');
+    expect(workerSource).toContain("tools: [{ googleSearch: {} }]");
+    expect(workerSource).toContain('[AskMoina] Grounded search finished');
+    expect(workerSource).toContain("sourceCount: sources.length");
+  });
+
+  it("preserves provider diagnostics on grounding API errors", () => {
     expect(workerSource).toContain("payload.error?.message");
     expect(workerSource).toContain("Grounded search request failed");
   });
