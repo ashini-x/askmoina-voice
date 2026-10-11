@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-11 (M19 dynamic task-planning instructions added; production release pending)
+Last updated: 2026-10-11 (M19 dynamic task-planning instructions deployed; real-task acceptance pending)
 
 ## Product vision
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
@@ -22,7 +22,7 @@ Milestones 1–18 are deployed on the production Worker; a follow-up tracking-an
 
 ### Phase 3 — Problem solving
 - **M18 — Understand the user's problem (deployed 2026-10-11; real-task acceptance pending):** before proposing action, infer the desired outcome or symptom, relevant visible/user-provided context, known facts versus hypotheses, the one missing fact that could change the next step, and the consequence if wrong. Keep this assessment internal and conversational; ask one high-value clarification only when needed, otherwise start with a low-risk observation/check. Do not confuse a symptom with a cause or assume the visible object is the problem.
-- **M19 — Dynamic task planning (implementation in this branch; production pending):** select the lightest useful approach for the real goal and context rather than forcing a fixed template; size the plan to the task; define the next action and what evidence will guide the next branch; adapt to feedback and constraints; avoid long checklists and padded steps. Real-task quality still requires hands-on acceptance.
+- **M19 — Dynamic task planning (deployed 2026-10-11; real-task acceptance pending):** select the lightest useful approach for the real goal and context rather than forcing a fixed template; size the plan to the task; define the next action and what evidence will guide the next branch; adapt to feedback and constraints; avoid long checklists and padded steps. Real-task quality still requires hands-on acceptance.
 - **M20 — Adaptive step-by-step guidance:** provide one useful action at a time and adjust using user feedback and new visual evidence.
 - **M21 — Observe, verify, recover:** compare visible states before/after actions, ask the user to confirm facts the camera cannot see, and revise failed steps.
 - **M22 — Evidence-grounded guidance:** match model numbers and labels to reliable manuals/schematics; surface sources and uncertainty.
