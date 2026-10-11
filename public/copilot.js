@@ -1177,7 +1177,54 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
       return { buffer, count: vertices.length / 3 };
     }
-    return { program, position, modelView, projection, color, anchorRing: makeRing(0.075), previewRing: makeRing(0.045) };
+
+    const tagVs = compileSpatialShader(gl, gl.VERTEX_SHADER,
+      "attribute vec3 aPosition; attribute vec2 aUv; uniform mat4 uModelView; uniform mat4 uProjection; varying vec2 vUv; void main(){ vUv=aUv; gl_Position=uProjection*uModelView*vec4(aPosition,1.0); }");
+    const tagFs = compileSpatialShader(gl, gl.FRAGMENT_SHADER,
+      "precision mediump float; uniform sampler2D uTexture; varying vec2 vUv; void main(){ gl_FragColor=texture2D(uTexture,vUv); }");
+    const tagProgram = gl.createProgram();
+    if (!tagProgram) throw new Error("Could not create the spatial cue-card program.");
+    gl.attachShader(tagProgram, tagVs); gl.attachShader(tagProgram, tagFs); gl.linkProgram(tagProgram);
+    gl.deleteShader(tagVs); gl.deleteShader(tagFs);
+    if (!gl.getProgramParameter(tagProgram, gl.LINK_STATUS)) {
+      const message = gl.getProgramInfoLog(tagProgram) || "Spatial cue-card shader linking failed.";
+      gl.deleteProgram(tagProgram); throw new Error(message);
+    }
+    const tagPosition = gl.getAttribLocation(tagProgram, "aPosition");
+    const tagUv = gl.getAttribLocation(tagProgram, "aUv");
+    const tagModelView = gl.getUniformLocation(tagProgram, "uModelView");
+    const tagProjection = gl.getUniformLocation(tagProgram, "uProjection");
+    const tagSampler = gl.getUniformLocation(tagProgram, "uTexture");
+    if (tagPosition < 0 || tagUv < 0 || !tagModelView || !tagProjection || !tagSampler) {
+      gl.deleteProgram(tagProgram); throw new Error("Spatial cue-card shader bindings are unavailable.");
+    }
+    const tagBuffer = gl.createBuffer();
+    if (!tagBuffer) throw new Error("Could not create the spatial cue-card geometry.");
+    gl.bindBuffer(gl.ARRAY_BUFFER, tagBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -0.28,-0.14,0,0,0, 0.28,-0.14,0,1,0,
+      -0.28, 0.14,0,0,1, 0.28, 0.14,0,1,1
+    ]), gl.STATIC_DRAW);
+    const tagCanvas = document.createElement("canvas");
+    tagCanvas.width = 512; tagCanvas.height = 256;
+    const tagContext = tagCanvas.getContext("2d");
+    if (!tagContext) { gl.deleteBuffer(tagBuffer); gl.deleteProgram(tagProgram); throw new Error("Could not create the spatial cue-card canvas."); }
+    const tagTexture = gl.createTexture();
+    if (!tagTexture) { gl.deleteBuffer(tagBuffer); gl.deleteProgram(tagProgram); throw new Error("Could not create the spatial cue-card texture."); }
+    gl.bindTexture(gl.TEXTURE_2D, tagTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tagCanvas);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    return {
+      program, position, modelView, projection, color,
+      anchorRing: makeRing(0.075), previewRing: makeRing(0.045),
+      tagProgram, tagPosition, tagUv, tagModelView, tagProjection, tagSampler,
+      tagBuffer, tagTexture, tagCanvas, tagContext
+    };
   }
 
   function multiplySpatialMatrices(a, b) {
@@ -1205,6 +1252,72 @@
     gl.uniformMatrix4fv(spatialRenderer.projection, false, view.projectionMatrix);
     gl.uniform4fv(spatialRenderer.color, color);
     gl.drawArrays(gl.LINES, 0, ring.count);
+  }
+
+
+  function updateSpatialTagTexture(guidance) {
+    if (!spatialGl || !spatialRenderer) return;
+    const canvas = spatialRenderer.tagCanvas, ctx = spatialRenderer.tagContext, gl = spatialGl;
+    const width = canvas.width, height = canvas.height;
+    function roundedRect(x,y,w,h,r) {
+      ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+    }
+    function wrapText(value,maxWidth,maxLines) {
+      const words=String(value||"").trim().split(/\\s+/).filter(Boolean), lines=[];
+      while(words.length && lines.length<maxLines) {
+        let line=words.shift();
+        while(words.length && ctx.measureText(line+" "+words[0]).width<=maxWidth) line+=" "+words.shift();
+        if(words.length && lines.length===maxLines-1) {
+          while(line.length>1 && ctx.measureText(line+"…").width>maxWidth) line=line.slice(0,-1);
+          line+="…"; words.length=0;
+        }
+        lines.push(line);
+      }
+      return lines;
+    }
+    ctx.clearRect(0,0,width,height); ctx.fillStyle="rgba(7,11,17,0.96)";
+    roundedRect(3,3,width-6,height-6,24); ctx.fill();
+    ctx.lineWidth=3; ctx.strokeStyle="rgba(143,245,216,0.94)"; ctx.stroke();
+    ctx.fillStyle="#9cf5da"; ctx.font="700 17px system-ui, sans-serif"; ctx.fillText("MOINA  /  SPATIAL CUE",24,36);
+    const label=String(guidance && guidance.label || "Spatial marker").trim().slice(0,72);
+    ctx.font="700 31px system-ui, sans-serif";
+    if(ctx.measureText(label).width>width-48) ctx.font="700 25px system-ui, sans-serif";
+    if(ctx.measureText(label).width>width-48) ctx.font="700 20px system-ui, sans-serif";
+    ctx.fillStyle="#ffffff"; ctx.fillText(label||"Spatial marker",24,88);
+    ctx.font="500 22px system-ui, sans-serif"; ctx.fillStyle="#f0f3f6";
+    wrapText(guidance && guidance.instruction || "Aim the ring at the target and place the cue yourself.",width-48,2)
+      .forEach((line,i)=>ctx.fillText(line,24,130+i*29));
+    ctx.font="500 16px system-ui, sans-serif"; ctx.fillStyle="#aebdc8";
+    const hints=wrapText(guidance && guidance.hint || "User-aligned surface anchor",width-48,1);
+    if(hints.length)ctx.fillText(hints[0],24,218);
+    gl.bindTexture(gl.TEXTURE_2D,spatialRenderer.tagTexture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+  }
+
+  function drawSpatialTag(gl,view,anchorMatrix) {
+    if(!spatialRenderer || !anchorMatrix)return;
+    // Keep the card's position attached to the surface anchor while making its face readable.
+    const raisedAnchor=new Float32Array(anchorMatrix); raisedAnchor[13]+=0.22;
+    const anchorInView=multiplySpatialMatrices(view.transform.inverse.matrix,raisedAnchor);
+    const modelView=new Float32Array([
+      1,0,0,0, 0,1,0,0, 0,0,1,0,
+      anchorInView[12],anchorInView[13],anchorInView[14],1
+    ]);
+    gl.useProgram(spatialRenderer.tagProgram); gl.bindBuffer(gl.ARRAY_BUFFER,spatialRenderer.tagBuffer);
+    const stride=5*Float32Array.BYTES_PER_ELEMENT;
+    gl.enableVertexAttribArray(spatialRenderer.tagPosition);
+    gl.vertexAttribPointer(spatialRenderer.tagPosition,3,gl.FLOAT,false,stride,0);
+    gl.enableVertexAttribArray(spatialRenderer.tagUv);
+    gl.vertexAttribPointer(spatialRenderer.tagUv,2,gl.FLOAT,false,stride,3*Float32Array.BYTES_PER_ELEMENT);
+    gl.uniformMatrix4fv(spatialRenderer.tagModelView,false,modelView);
+    gl.uniformMatrix4fv(spatialRenderer.tagProjection,false,view.projectionMatrix);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,spatialRenderer.tagTexture);
+    gl.uniform1i(spatialRenderer.tagSampler,0);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   }
 
   function setSpatialStatus(message, mode) {
@@ -1351,6 +1464,7 @@
         }
         spatialAnchor = anchor;
         spatialPlacing = false;
+        updateSpatialTagTexture(spatialPlacedGuidance);
         setSpatialStatus(spatialPlacedGuidance
           ? "Surface marker placed for “" + spatialPlacedGuidance.label + "”. The cue stays in this panel; align the ring with the target yourself."
           : "Marker anchored to this surface. No recent AI target cue was available.", "anchored");
@@ -1387,7 +1501,10 @@
 
       if (spatialAnchor) {
         const anchorPose = frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace);
-        if (anchorPose) drawSpatialRing(gl, view, anchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
+        if (anchorPose) {
+          drawSpatialRing(gl, view, anchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
+          drawSpatialTag(gl, view, anchorPose.transform.matrix);
+        }
       } else if (spatialLatestHit) {
         const hitPose = spatialLatestHit.getPose(spatialReferenceSpace);
         if (hitPose) drawSpatialRing(gl, view, hitPose.transform.matrix, spatialRenderer.previewRing, [1.0, 1.0, 1.0, 0.95]);
@@ -1401,6 +1518,9 @@
         spatialGl.deleteBuffer(spatialRenderer.anchorRing.buffer);
         spatialGl.deleteBuffer(spatialRenderer.previewRing.buffer);
         spatialGl.deleteProgram(spatialRenderer.program);
+        spatialGl.deleteBuffer(spatialRenderer.tagBuffer);
+        spatialGl.deleteTexture(spatialRenderer.tagTexture);
+        spatialGl.deleteProgram(spatialRenderer.tagProgram);
       } catch (_) {}
     }
     spatialRenderer = null;
