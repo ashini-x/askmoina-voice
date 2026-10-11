@@ -61,7 +61,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function drawSpatialTag(gl,view,anchorMatrix)");
     expect(script).toContain("raisedAnchor[13]+=0.22;");
     expect(script).toContain("gl.drawArrays(gl.TRIANGLE_STRIP,0,4);");
-    expect(script).toContain("drawSpatialTag(gl, view, anchorPose.transform.matrix)");
+    expect(script).toContain("drawSpatialTag(gl, view, currentAnchorPose.transform.matrix)");
     expect(script).toContain("updateSpatialTagTexture(spatialPlacedGuidance);");
     expect(html).toContain("the target is not automatically recognized");
   });
