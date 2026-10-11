@@ -47,3 +47,6 @@
 .spatial-guidance strong{display:block;font-size:.87rem;line-height:1.35;overflow-wrap:anywhere}
 .spatial-guidance p{margin:5px 0 0;color:#eff2f5;font-size:.75rem;line-height:1.45;overflow-wrap:anywhere}
 .spatial-guidance small{display:block;margin-top:5px;color:#aeb8c3;font-size:.65rem;line-height:1.4;overflow-wrap:anywhere}
+
+/* The 3D cue card is rendered in the WebXR layer; keep the HUD fallback readable. */
+.spatial-guidance p,.spatial-guidance small{overflow-wrap:anywhere}
