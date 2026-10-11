@@ -71,6 +71,7 @@
   let lastVideoSentAt = 0;
   let sendingVideo = false;
   let lastSessionEndedAt = 0;
+  let latestVisualGuidance = null;
 
   function setStatus(message, kind) {
     statusNode.textContent = message;
@@ -127,6 +128,13 @@
     const hint = typeof args.target_hint === "string" ? args.target_hint.trim().slice(0, 120) : "";
     const instruction = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 220) : "";
     if (!label && !instruction) return;
+
+    latestVisualGuidance = {
+      label: label || "Moina\'s focus",
+      hint,
+      instruction
+    };
+    syncSpatialGuidance();
 
     if (!localTrackingActive) {
       focusMarker.dataset.region = region;
@@ -1072,6 +1080,9 @@
   const spatialArButton = $("#spatialArButton");
   const spatialHud = $("#spatialHud");
   const spatialStatus = $("#spatialStatus");
+  const spatialTargetLabel = $("#spatialTargetLabel");
+  const spatialTargetInstruction = $("#spatialTargetInstruction");
+  const spatialTargetHint = $("#spatialTargetHint");
   const placeSpatialAnchorButton = $("#placeSpatialAnchor");
   const clearSpatialAnchorButton = $("#clearSpatialAnchor");
   const exitSpatialArButton = $("#exitSpatialAr");
@@ -1084,6 +1095,7 @@
   let spatialViewerSpace = null;
   let spatialReferenceSpace = null;
   let spatialAnchor = null;
+  let spatialPlacedGuidance = null;
   let spatialLatestHit = null;
   let spatialPendingPlacement = false;
   let spatialPlacing = false;
@@ -1200,6 +1212,18 @@
     spatialStatusMode = mode || "";
   }
 
+  function syncSpatialGuidance() {
+    if (!latestVisualGuidance) {
+      spatialTargetLabel.textContent = "No recent visual target";
+      spatialTargetInstruction.textContent = "Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.";
+      spatialTargetHint.textContent = "The surface marker can still be placed without a recent cue.";
+      return;
+    }
+    spatialTargetLabel.textContent = latestVisualGuidance.label;
+    spatialTargetInstruction.textContent = latestVisualGuidance.instruction || "No next-step instruction was provided.";
+    spatialTargetHint.textContent = latestVisualGuidance.hint || "Moina supplied no extra target description.";
+  }
+
   function syncSpatialButtons() {
     placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement;
     clearSpatialAnchorButton.disabled = !spatialAnchor;
@@ -1217,6 +1241,7 @@
       stopCopilot(true);
     }
 
+    syncSpatialGuidance();
     spatialHud.hidden = false;
     spatialHud.classList.add("is-preparing");
     setSpatialStatus("Opening the device's spatial tracking session…", "starting");
@@ -1260,13 +1285,14 @@
       spatialHitSource = await session.requestHitTestSource({ space: spatialViewerSpace });
       spatialRenderer = createSpatialRenderer(gl);
       spatialAnchor = null;
+      spatialPlacedGuidance = null;
       spatialLatestHit = null;
       spatialPendingPlacement = false;
       spatialPlacing = false;
       spatialStatusMode = "";
       spatialLastStatusAt = 0;
       spatialHud.classList.remove("is-preparing");
-      setSpatialStatus("Aim at a table, floor, or wall and move slowly. Tap Place marker when a surface is found.", "searching");
+      setSpatialStatus("Aim at the surface you want to mark and move slowly. Place a cue anchor when the ring appears.", "searching");
       syncSpatialButtons();
       session.addEventListener("end", finishSpatialAr, { once: true });
       session.requestAnimationFrame(drawSpatialFrame);
@@ -1315,7 +1341,9 @@
       spatialPlacing = true;
       syncSpatialButtons();
       const hitForAnchor = spatialLatestHit;
-      setSpatialStatus("Creating a world anchor on the detected surface…", "placing");
+      setSpatialStatus(spatialPlacedGuidance
+        ? "Anchoring “" + spatialPlacedGuidance.label + "” cue to the next detected surface point…"
+        : "Creating a world anchor on the detected surface…", "placing");
       hitForAnchor.createAnchor().then((anchor) => {
         if (spatialSession !== session) {
           anchor.delete();
@@ -1323,7 +1351,9 @@
         }
         spatialAnchor = anchor;
         spatialPlacing = false;
-        setSpatialStatus("Marker anchored to this surface. Move the phone carefully; the marker should stay at that real-world point.", "anchored");
+        setSpatialStatus(spatialPlacedGuidance
+          ? "Surface marker placed for “" + spatialPlacedGuidance.label + "”. The cue stays in this panel; align the ring with the target yourself."
+          : "Marker anchored to this surface. No recent AI target cue was available.", "anchored");
         syncSpatialButtons();
       }).catch(() => {
         spatialPlacing = false;
@@ -1387,6 +1417,7 @@
     spatialLatestHit = null;
     spatialPendingPlacement = false;
     spatialPlacing = false;
+    spatialPlacedGuidance = null;
     if (oldAnchor) {
       try { oldAnchor.delete(); } catch (_) {}
     }
@@ -1403,8 +1434,11 @@
       setSpatialStatus("No surface detected yet. Aim at a textured surface and move slowly.", "searching");
       return;
     }
+    spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;
     spatialPendingPlacement = true;
-    setSpatialStatus("Placing marker on the next confirmed surface hit…", "placing");
+    setSpatialStatus(spatialPlacedGuidance
+      ? "Placing “" + spatialPlacedGuidance.label + "” cue on the next detected surface point…"
+      : "Placing a marker on the next confirmed surface hit…", "placing");
     syncSpatialButtons();
   });
 
@@ -1412,6 +1446,7 @@
     if (spatialAnchor) {
       try { spatialAnchor.delete(); } catch (_) {}
       spatialAnchor = null;
+      spatialPlacedGuidance = null;
       setSpatialStatus("Anchor cleared. Aim at a surface and place a new marker.", "searching");
       syncSpatialButtons();
     }

@@ -40,3 +40,10 @@
 .spatial-hud.is-preparing .spatial-card{border-color:#c4fff088}
 .spatial-hud.is-preparing .spatial-actions{display:none}
 @media(max-width:430px){.camera-controls{gap:7px}.spatial-hud{padding-left:11px;padding-right:11px}.spatial-card{padding:13px 12px 11px}.spatial-actions{gap:6px}.spatial-actions button{padding:0 11px;font-size:.7rem}}
+
+.spatial-card{max-height:min(78dvh,620px);overflow-y:auto;overscroll-behavior:contain}
+.spatial-guidance{margin:0 0 13px;padding:11px 12px;border:1px solid #b5e9db33;border-radius:14px;background:#b5e9db0b}
+.spatial-guidance-eyebrow{display:block;margin-bottom:5px;color:#bde9dc;font-size:.58rem;font-weight:750;letter-spacing:.12em}
+.spatial-guidance strong{display:block;font-size:.87rem;line-height:1.35;overflow-wrap:anywhere}
+.spatial-guidance p{margin:5px 0 0;color:#eff2f5;font-size:.75rem;line-height:1.45;overflow-wrap:anywhere}
+.spatial-guidance small{display:block;margin-top:5px;color:#aeb8c3;font-size:.65rem;line-height:1.4;overflow-wrap:anywhere}
