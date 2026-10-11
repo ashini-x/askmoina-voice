@@ -17,11 +17,8 @@ import wave
 import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
-PROMPT = (
-    "Search the web for the latest official Android release. "
-    "Tell me the version number, its release date, and the name of one official source."
-)
-MAX_WAIT_SECONDS = 65
+PROMPT = "Search Google for the latest Android release. Say its version, release date, and one official source."
+MAX_WAIT_SECONDS = 55
 SETUP_WAIT_SECONDS = 18
 
 
@@ -76,6 +73,22 @@ def extract_text(message: dict) -> str:
     return " ".join(texts)
 
 
+def extract_input_text(message: dict) -> str:
+    texts = []
+    for key in ("serverContent", "server_content"):
+        content = message.get(key)
+        if not isinstance(content, dict):
+            continue
+        for transcript_key in ("inputTranscription", "input_transcription"):
+            item = content.get(transcript_key)
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                texts.append(item["text"])
+    item = message.get("input_transcription") or message.get("inputTranscription")
+    if isinstance(item, dict) and isinstance(item.get("text"), str):
+        texts.append(item["text"])
+    return " ".join(texts)
+
+
 def has_grounding_tool_call(message: dict) -> bool:
     for key in ("toolCall", "tool_call"):
         frame = message.get(key)
@@ -98,6 +111,7 @@ def main() -> int:
     ws = websocket.create_connection(ws_url, origin=base_origin, timeout=12, enable_multithread=True)
     tool_called = False
     transcript = ""
+    input_transcript = ""
     turn_complete = False
     try:
         ws.send(json.dumps({"setup": {}}))
@@ -137,6 +151,7 @@ def main() -> int:
             if msg.get("error"):
                 raise RuntimeError("The synthetic Live API turn returned an error.")
             tool_called = tool_called or has_grounding_tool_call(msg)
+            input_transcript += " " + extract_input_text(msg)
             transcript += " " + extract_text(msg)
             content = msg.get("serverContent") or msg.get("server_content") or {}
             if isinstance(content, dict) and (content.get("turnComplete") or content.get("turn_complete")):
@@ -145,8 +160,10 @@ def main() -> int:
                     break
 
         lowered = transcript.lower()
+        if "android" not in input_transcript.lower() or "search" not in input_transcript.lower():
+            raise RuntimeError("Synthetic speech was not fully recognized by Live API; grounding tool assertion is inconclusive.")
         if not tool_called:
-            raise RuntimeError("Live API did not call search_current_web for a current-information prompt.")
+            raise RuntimeError("Live API recognized the synthetic prompt but did not call search_current_web.")
         if not turn_complete:
             raise RuntimeError("Timed out before the synthetic grounded answer completed.")
         if "temporarily unavailable" in lowered or "could not be verified" in lowered or "no live search" in lowered:
