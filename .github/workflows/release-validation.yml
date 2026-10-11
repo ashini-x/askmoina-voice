@@ -104,6 +104,12 @@ jobs:
           grep -q '.focus-marker' /tmp/moina-copilot.css
           echo "Live Co-Pilot styles: OK"
 
+          status="$(fetch_status /transcript-merge.js /tmp/moina-transcript-merge.js)"
+          test "$status" = "200"
+          grep -q 'root.AskMoinaTranscript = Object.freeze({ merge })' /tmp/moina-transcript-merge.js
+          node --check /tmp/moina-transcript-merge.js
+          echo "Shared transcript merge helper: OK"
+
           status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
           test "$status" = "200"
           grep -q 'AskMoina Admin' /tmp/moina-admin-login.html
