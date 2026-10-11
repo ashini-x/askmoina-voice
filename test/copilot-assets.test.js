@@ -56,7 +56,7 @@ describe("Live Co-Pilot browser assets", () => {
   });
 
   it("renders the selected cue as a world-anchored 3D tag after surface placement", () => {
-    expect(html).toContain("a floating 3D cue card stays at a fixed world position");
+    expect(html).toContain("the 3D cue card is anchored at the selected hit-test point");
     expect(script).toContain("const tagVs = compileSpatialShader");
     expect(script).toContain("function updateSpatialTagTexture(guidance)");
     expect(script).toContain("function drawSpatialTag(gl,view,anchorMatrix)");
@@ -64,7 +64,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("gl.drawArrays(gl.TRIANGLE_STRIP,0,4);");
     expect(script).toContain("drawSpatialTag(gl, view, currentAnchorPose.transform.matrix)");
     expect(script).toContain("updateSpatialTagTexture(spatialPlacedGuidance);");
-    expect(html).toContain("the target is not automatically recognized");
+    expect(html).toContain("it does not recognize object geometry");
   });
 
   it("recovers cleanly from brief surface loss and reports anchor tracking reacquisition", () => {
