@@ -1913,6 +1913,7 @@
       spatialAnchor = null;
       spatialPlacedGuidance = null;
       spatialStepConfirmed = false;
+      spatialSequenceFinished = false;
       syncSpatialSequenceControls();
       spatialAnchorPoseLostAt = 0;
       spatialAnchorPoseWarningShown = false;
