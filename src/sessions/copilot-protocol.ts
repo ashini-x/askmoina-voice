@@ -2,6 +2,7 @@ export type ParsedLiveClientInput =
   | { kind: "audio"; data: string }
   | { kind: "video"; data: string }
   | { kind: "text_input"; text: string }
+  | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
   | { kind: "tool_response"; ids: string[] };
 
@@ -39,6 +40,21 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
       ids.push(rawResponse.id);
     }
     return { kind: "tool_response", ids };
+  }
+
+  if (keys.length === 1 && isRecord(value.target_selection)) {
+    if (!copilotMode) return null;
+    const selection = value.target_selection;
+    if (
+      Object.keys(selection).some((key) => key !== "x" && key !== "y") ||
+      typeof selection.x !== "number" ||
+      typeof selection.y !== "number" ||
+      !Number.isFinite(selection.x) ||
+      !Number.isFinite(selection.y) ||
+      selection.x < 0 || selection.x >= 1 ||
+      selection.y < 0 || selection.y >= 1
+    ) return null;
+    return { kind: "target_selection", x: selection.x, y: selection.y };
   }
 
   if (keys.length === 1 && typeof value.text_input === "string") {
