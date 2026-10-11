@@ -21,7 +21,6 @@ Milestones 1–18 are deployed on the production Worker; a follow-up tracking-an
 - **M17 — Minimal target overlays (deployed 2026-10-11; phone layout acceptance pending):** reduce target brackets, add a small center-point indicator, shrink labels and one-line instruction previews, and keep visual guidance compact over a camera-first scene. A follow-up tracking-anchor fix additionally suppresses untracked, guessed markers. Cues remain approximate screen-space hints; they are not semantic object boundaries or world-locked AR.
 
 ### Phase 3 — Problem solving
-- **M18 — Understand the user's problem:** infer the task goal, known facts, relevant objects, missing information, and risk.
 - **M18 — Understand the user's problem (deployed 2026-10-11; real-task acceptance pending):** before proposing action, infer the desired outcome or symptom, relevant visible/user-provided context, known facts versus hypotheses, the one missing fact that could change the next step, and the consequence if wrong. Keep this assessment internal and conversational; ask one high-value clarification only when needed, otherwise start with a low-risk observation/check. Do not confuse a symptom with a cause or assume the visible object is the problem.
 - **M19 — Dynamic task planning:** generate an appropriate plan for the specific situation rather than force every task into fixed templates.
 - **M20 — Adaptive step-by-step guidance:** provide one useful action at a time and adjust using user feedback and new visual evidence.
