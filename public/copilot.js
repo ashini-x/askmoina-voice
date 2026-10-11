@@ -41,6 +41,10 @@
   let trackingLostAt = 0;
   let trackingLastReacquireAt = 0;
   let trackingReacquiring = false;
+  let trackingReacquireCandidate = null;
+  let trackingReacquireCandidateFrames = 0;
+  let trackedTargetKey = "";
+  let pendingTrackingTargetKey = "";
   let trackingLastTick = 0;
   let trackingCanvasWidth = 0;
   let trackingCanvasHeight = 0;
@@ -126,6 +130,8 @@
 
   function clearOverlay() {
     awaitingTargetSelection = false;
+    pendingTrackingTargetKey = "";
+    latestVisualGuidance = null;
     stopLocalTracking(false);
     focusMarker.hidden = true;
     approxTag.hidden = true;
@@ -135,15 +141,42 @@
     delete focusMarker.dataset.tracking;
   }
 
+  function visualTargetKey(guidance) {
+    const value = guidance && typeof guidance.hint === "string" && guidance.hint.trim()
+      ? guidance.hint
+      : guidance && typeof guidance.label === "string" ? guidance.label : "";
+    return value.trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  }
+
+  function requestTargetSelection(guidance, message) {
+    if (localTrackingActive) stopLocalTracking(false);
+    const target = String((guidance && (guidance.hint || guidance.label)) || "the visible target").trim().slice(0, 38);
+    pendingTrackingTargetKey = visualTargetKey(guidance);
+    awaitingTargetSelection = true;
+    focusMarker.hidden = true;
+    focusMarker.style.left = "";
+    focusMarker.style.top = "";
+    delete focusMarker.dataset.tracking;
+    clearMarkerButton.disabled = true;
+    approxTag.hidden = false;
+    approxTag.textContent = ("Tap " + target + " to track").slice(0, 72);
+    setStatus(message || ("Tap the visible " + target + " in the camera so I can anchor the highlight to that spot. I will not guess its position."), "normal");
+  }
+
   function showOverlay(args) {
     if (args && args.await_user_selection === true) {
       clearOverlay();
-      awaitingTargetSelection = true;
-      const selectionPrompt = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 180) : "";
-      setStatus(selectionPrompt || "Tap the exact object you mean in the camera view.");
+      const requested = {
+        label: typeof args.text_to_display === "string" ? args.text_to_display.trim().slice(0, 72) : "Target",
+        hint: typeof args.target_hint === "string" ? args.target_hint.trim().slice(0, 120) : "",
+        instruction: typeof args.instruction === "string" ? args.instruction.trim().slice(0, 220) : "",
+        screenRegion: ["center", "upper-left", "upper-right", "lower-left", "lower-right"].includes(args.screen_region)
+          ? args.screen_region : "center"
+      };
+      latestVisualGuidance = { ...requested, steps: [requested] };
+      requestTargetSelection(requested, requested.instruction || ("Tap the exact " + (requested.hint || requested.label) + " in the camera view."));
       return;
     }
-    awaitingTargetSelection = false;
 
     const regions = ["center", "upper-left", "upper-right", "lower-left", "lower-right"];
     const region = regions.includes(args.screen_region) ? args.screen_region : "center";
@@ -158,8 +191,7 @@
       const stepLabel = typeof step.text_to_display === "string" ? step.text_to_display.trim().slice(0, 72) : "";
       const stepHint = typeof step.target_hint === "string" ? step.target_hint.trim().slice(0, 120) : "";
       const stepInstruction = typeof step.instruction === "string" ? step.instruction.trim().slice(0, 220) : "";
-      const validRegions = ["center", "upper-left", "upper-right", "lower-left", "lower-right"];
-      const stepRegion = validRegions.includes(step.screen_region) ? step.screen_region : "center";
+      const stepRegion = regions.includes(step.screen_region) ? step.screen_region : "center";
       if (!stepLabel && !stepInstruction) return null;
       return { label: stepLabel || "Guided step", hint: stepHint, instruction: stepInstruction, screenRegion: stepRegion };
     }).filter(Boolean) : [];
@@ -168,24 +200,22 @@
     latestVisualGuidance = { ...firstStep, steps: guidanceSteps };
     syncSpatialGuidance();
 
-    if (!localTrackingActive) {
-      focusMarker.dataset.region = firstStep.screenRegion;
-      focusMarker.style.left = "";
-      focusMarker.style.top = "";
-      focusMarker.dataset.tracking = "approximate";
+    const nextTargetKey = visualTargetKey(firstStep);
+    const targetChanged = localTrackingActive && (!trackedTargetKey || !nextTargetKey || trackedTargetKey !== nextTargetKey);
+    if (!localTrackingActive || targetChanged) {
+      requestTargetSelection(firstStep,
+        "Tap the visible " + (firstStep.hint || firstStep.label || "target") + " in the camera view. I will place the highlight only after I can track the tapped area.");
+      return;
     }
+
+    focusMarker.dataset.region = firstStep.screenRegion;
     focusLabel.textContent = firstStep.label;
     focusHint.textContent = firstStep.hint;
     focusInstruction.textContent = firstStep.instruction;
     focusMarker.hidden = false;
     approxTag.hidden = false;
     clearMarkerButton.disabled = false;
-    approxTag.textContent = localTrackingActive
-      ? "Local visual tracking · not world-locked AR"
-      : "Approximate focus · not world-locked AR";
-    if (!localTrackingActive) {
-      setStatus("Moina highlighted a possible target. Tap the object in the camera to track it locally.");
-    }
+    approxTag.textContent = "Local visual tracking · not world-locked AR";
   }
 
   async function refreshAvailability(options = {}) {
@@ -830,7 +860,7 @@
   // It is screen-space tracking, not world-locked AR or a persistent 3D anchor.
   function configureTrackingCanvas() {
     if (!trackingContext || !video.videoWidth || !video.videoHeight) return false;
-    const scale = Math.min(1, 256 / Math.max(video.videoWidth, video.videoHeight));
+    const scale = Math.min(1, 320 / Math.max(video.videoWidth, video.videoHeight));
     const width = Math.max(64, Math.round(video.videoWidth * scale));
     const height = Math.max(64, Math.round(video.videoHeight * scale));
     if (width !== trackingCanvasWidth || height !== trackingCanvasHeight) {
@@ -902,7 +932,8 @@
   }
 
   function extractTemplate(gray, x, y) {
-    const radius = 6;
+    // Include nearby edges/context so a tiny uniform patch does not masquerade as an object.
+    const radius = 8;
     if (x < radius + 2 || y < radius + 2 || x >= trackingCanvasWidth - radius - 2 || y >= trackingCanvasHeight - radius - 2) return null;
     const size = radius * 2 + 1;
     const values = new Float32Array(size * size);
@@ -918,6 +949,7 @@
     const mean = sum / values.length;
     let variance = 0;
     for (const value of values) variance += (value - mean) * (value - mean);
+    if (variance < 500) return null;
     return { values, mean, variance, radius, size };
   }
 
@@ -946,8 +978,9 @@
         i += 1;
       }
     }
+    if (candidateVariance < 500) return -1;
     if (template.variance < 1800 || candidateVariance < 1800) {
-      return 1 - absoluteDifference / template.values.length / 48;
+      return 1 - absoluteDifference / template.values.length / 32;
     }
     const denominator = Math.sqrt(template.variance * candidateVariance);
     return denominator > 0 ? covariance / denominator : -1;
@@ -1021,6 +1054,9 @@
     trackingLostAt = 0;
     trackingLastReacquireAt = 0;
     trackingReacquiring = false;
+    trackingReacquireCandidate = null;
+    trackingReacquireCandidateFrames = 0;
+    trackedTargetKey = "";
     trackedPoint = null;
     trackingCrop = null;
     if (focusMarker) delete focusMarker.dataset.tracking;
@@ -1031,6 +1067,12 @@
     if (!active || !setupReady || !microphoneStream || !trackingContext) {
       setStatus("Start the Co-Pilot first, then tap a visible object to track it.", "warning");
       return null;
+    }
+    if (localTrackingActive) {
+      stopLocalTracking(false);
+      focusMarker.hidden = true;
+      delete focusMarker.dataset.tracking;
+      clearMarkerButton.disabled = true;
     }
     if (!configureTrackingCanvas()) {
       setStatus("The camera frame isn't ready yet. Hold the view steady and try again.", "warning");
@@ -1052,16 +1094,14 @@
         setStatus("Move a little closer to the target and tap its center again.", "warning");
         return null;
       }
-      // Preserve a user selection even when local patch tracking cannot lock onto a low-detail region.
-      focusMarker.hidden = false;
-      focusMarker.dataset.tracking = "selected";
-      focusLabel.textContent = "Selected point";
-      focusHint.textContent = "Checking this area with Moina";
-      focusInstruction.textContent = "Tap another point to retarget";
+      // A point is useful to the model, but without a stable image patch it is not a track.
+      // Never turn an untrackable selection into a marker that stays fixed on screen.
+      focusMarker.hidden = true;
+      delete focusMarker.dataset.tracking;
+      clearMarkerButton.disabled = true;
       approxTag.hidden = false;
-      approxTag.textContent = "User-selected point · approximate";
-      clearMarkerButton.disabled = false;
-      markerAtTrackingPoint(point);
+      approxTag.textContent = "Too little detail · tap an edge";
+      setStatus("I got your tap, but that spot has too little visual detail to track. Tap a textured edge, logo, or button outline; I will not leave a fixed marker.", "warning");
       return selectedPoint;
     }
     if (trackingTimer) window.clearInterval(trackingTimer);
@@ -1071,6 +1111,9 @@
     trackingLostAt = 0;
     trackingLastReacquireAt = 0;
     trackingReacquiring = false;
+    trackingReacquireCandidate = null;
+    trackingReacquireCandidateFrames = 0;
+    trackedTargetKey = pendingTrackingTargetKey || visualTargetKey(latestVisualGuidance);
     localTrackingActive = true;
     focusMarker.hidden = false;
     focusMarker.dataset.tracking = "true";
@@ -1096,7 +1139,7 @@
     try {
       if (!configureTrackingCanvas() || !trackingPixels) return;
       const gray = pixelsToGray(trackingPixels);
-      const ordinaryThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.62 : 0.42;
+      const ordinaryThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.72 : 0.52;
       let result = null;
 
       if (!trackingReacquiring) {
@@ -1128,19 +1171,33 @@
           if (now - trackingLastReacquireAt >= 350) {
             trackingLastReacquireAt = now;
             const candidate = findTemplateAcrossFrame(gray);
-            const reacquireThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.84 : 0.68;
-            if (candidate && candidate.score >= reacquireThreshold) result = candidate;
+            const reacquireThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.90 : 0.76;
+            if (candidate && candidate.score >= reacquireThreshold) {
+              const prior = trackingReacquireCandidate;
+              const nearPrior = prior && Math.hypot(candidate.x - prior.x, candidate.y - prior.y) <= 22;
+              trackingReacquireCandidateFrames = nearPrior ? trackingReacquireCandidateFrames + 1 : 1;
+              trackingReacquireCandidate = { x: candidate.x, y: candidate.y, score: candidate.score };
+              // Require the wider scan to see the same patch in two scans before restoring the marker.
+              if (trackingReacquireCandidateFrames >= 2) result = candidate;
+            } else {
+              trackingReacquireCandidate = null;
+              trackingReacquireCandidateFrames = 0;
+            }
           }
         }
 
         if (!result) {
           if (now - trackingLostAt >= 8_000) {
+            const lostTargetKey = trackedTargetKey;
             stopLocalTracking(false);
+            pendingTrackingTargetKey = lostTargetKey;
+            awaitingTargetSelection = true;
             focusMarker.hidden = true;
-            approxTag.hidden = true;
+            approxTag.hidden = false;
+            approxTag.textContent = "Target lost · tap to track";
             clearMarkerButton.disabled = true;
             focusMarker.dataset.tracking = "lost";
-            setStatus("I could not reacquire that target. Move it clearly into view and tap it again.", "warning");
+            setStatus("I could not reacquire that target. The old highlight is removed. Bring it back into view and tap it again.", "warning");
           }
           return;
         }
@@ -1151,6 +1208,8 @@
       trackingLostAt = 0;
       trackingLastReacquireAt = 0;
       trackingReacquiring = false;
+      trackingReacquireCandidate = null;
+      trackingReacquireCandidateFrames = 0;
       focusMarker.hidden = false;
       focusMarker.dataset.tracking = "true";
       approxTag.hidden = false;
@@ -1170,12 +1229,16 @@
         approxTag.textContent = "Target unclear · move slowly";
       }
       if (now - trackingLostAt >= 8_000) {
+        const lostTargetKey = trackedTargetKey;
         stopLocalTracking(false);
+        pendingTrackingTargetKey = lostTargetKey;
+        awaitingTargetSelection = true;
         focusMarker.hidden = true;
-        approxTag.hidden = true;
+        approxTag.hidden = false;
+        approxTag.textContent = "Target lost · tap to track";
         clearMarkerButton.disabled = true;
         focusMarker.dataset.tracking = "lost";
-        setStatus("I could not reacquire that target. Move it clearly into view and tap it again.", "warning");
+        setStatus("I could not reacquire that target. The old highlight is removed. Bring it back into view and tap it again.", "warning");
       }
     }
   }
@@ -1189,8 +1252,16 @@
       // Include a recent camera frame when the per-second frame budget permits.
       sendVideoFrame();
       socket.send(JSON.stringify({ target_selection: selectedPoint }));
-      awaitingTargetSelection = false;
-      setStatus("Checking the selected area with Moina…");
+      if (localTrackingActive) {
+        awaitingTargetSelection = false;
+        pendingTrackingTargetKey = "";
+        setStatus("Checking the selected area with Moina…");
+      } else {
+        awaitingTargetSelection = true;
+        approxTag.hidden = false;
+        approxTag.textContent = "Too little detail · tap an edge";
+        setStatus("I sent the point to Moina, but could not lock the highlight locally. Tap a more textured edge or detail to start tracking.", "warning");
+      }
     } catch (_) {
       setStatus("Unable to send that selection. Tap the object again.", "warning");
     }

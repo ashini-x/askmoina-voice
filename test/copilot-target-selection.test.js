@@ -11,7 +11,16 @@ describe("Milestone 15 spoken-reference target selection", () => {
     expect(worker).toContain("await_user_selection=true");
     expect(worker).toContain("await_user_selection: { type: \"BOOLEAN\"");
     expect(client).toContain("args.await_user_selection === true");
-    expect(client).toContain("Tap the exact object you mean in the camera view.");
+    expect(client).toContain("Tap the exact ");
+    expect(client).toContain("function requestTargetSelection(guidance, message)");
+  });
+
+  it("requires a user anchor before placing any new target marker", () => {
+    expect(client).toContain("function requestTargetSelection(guidance, message)");
+    expect(client).toContain("if (!localTrackingActive || targetChanged)");
+    expect(client).toContain("Tap the visible");
+    expect(client).toContain("I will not guess its position.");
+    expect(worker).toContain("Do not place a new target label over a default center position");
   });
 
   it("sends normalized point coordinates through an allowlisted Co-Pilot-only message", () => {
@@ -29,6 +38,7 @@ describe("Milestone 15 spoken-reference target selection", () => {
   it("keeps the production-embedded client asset synchronized with the public source", () => {
     expect(bundledAssets).toContain("awaitingTargetSelection");
     expect(bundledAssets).toContain("target_selection: selectedPoint");
-    expect(bundledAssets).toContain("User-selected point");
+    expect(bundledAssets).toContain("Too little detail · tap an edge");
+    expect(bundledAssets).toContain("Tap the visible");
   });
 });
