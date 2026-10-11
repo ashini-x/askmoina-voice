@@ -129,8 +129,6 @@ jobs:
           BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
         run: |
           set -eu
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends espeak-ng
           python3 -m venv .venv-grounding-smoke
           . .venv-grounding-smoke/bin/activate
           python -m pip install --quiet --disable-pip-version-check websocket-client
