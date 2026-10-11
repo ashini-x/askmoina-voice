@@ -263,9 +263,12 @@
     const text = String(incomingText || "").trim();
     if (!text) return;
     const entry = getTranscriptEntry(role);
-    if (text === entry.text || entry.text.endsWith(text)) return;
-    if (!entry.text || text.startsWith(entry.text)) entry.text = text;
-    else entry.text = (entry.text + " " + text).replace(/\s+/g, " ").trim();
+    const mergeTranscript = window.AskMoinaTranscript && window.AskMoinaTranscript.merge;
+    const merged = typeof mergeTranscript === "function"
+      ? mergeTranscript(entry.text, text)
+      : (!entry.text || text.startsWith(entry.text) ? text : (text === entry.text || entry.text.endsWith(text) ? entry.text : entry.text + " " + text));
+    if (merged === entry.text) return;
+    entry.text = merged;
     entry.body.textContent = entry.text;
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
   }
@@ -578,7 +581,7 @@
     starting = false;
     active = false;
     stopping = false;
-    setControls("Start Co-Pilot", false);
+    setControls(statusMessage && (statusKind === "error" || statusKind === "warning") ? "Try again" : "Start Co-Pilot", false);
     setConnectionState("READY", "ready");
     clearOverlay();
     if (statusMessage) setStatus(statusMessage, statusKind);
@@ -657,7 +660,8 @@
     if (serverContent) {
       if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);
       if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);
-      if (serverContent.interrupted) {
+      const wasInterrupted = serverContent.interrupted === true;
+      if (wasInterrupted) {
         stopPlayback();
         setStatus("Listening — go ahead.");
       }
@@ -666,7 +670,10 @@
       for (const part of parts) {
         if (part.text) updateTranscript("assistant", part.text);
         const inlineData = part.inline_data || part.inlineData;
-        if (inlineData && inlineData.data) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
+        // An interruption invalidates audio queued in the interrupted turn.
+        if (inlineData && inlineData.data && !wasInterrupted) {
+          playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
+        }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
         finalizeTurn();
@@ -782,7 +789,7 @@
         cleanupMedia();
         active = false;
         starting = false;
-        setControls("Start Co-Pilot", false);
+        setControls("Try again", false);
         setConnectionState("ENDED", "error");
         setStatus(message, "error");
         setAvailability("The connection ended. Checking that the session has been released…", "warning");
