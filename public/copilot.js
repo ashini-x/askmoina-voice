@@ -1453,7 +1453,18 @@
       }
     }
     if (!source && session === spatialSession && generation === spatialHitSourceGeneration) {
-      source = await session.requestHitTestSource({ space: spatialViewerSpace });
+      try {
+        source = await session.requestHitTestSource({ space: spatialViewerSpace });
+      } catch (_) {
+        if (session === spatialSession && generation === spatialHitSourceGeneration) {
+          spatialHitSourcePending = false;
+          spatialOffsetRaySupported = false;
+          syncSpatialAimLabel();
+          syncSpatialButtons();
+          setSpatialStatus("The browser could not create a hit-test ray. Exit and restart Spatial AR, or use the normal Co-Pilot fallback.", "warning");
+        }
+        return;
+      }
     }
     if (session !== spatialSession || generation !== spatialHitSourceGeneration) {
       if (source) { try { source.cancel(); } catch (_) {} }
