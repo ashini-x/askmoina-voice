@@ -9,12 +9,15 @@ describe("Milestone 16 persistent visual tracking", () => {
   it("keeps the local patch tracker and adds a separate wider reacquisition scan", () => {
     expect(client).toContain("function findTemplate(gray, center)");
     expect(client).toContain("function findTemplateAcrossFrame(gray)");
+    expect(client).toContain("const scale = Math.min(1, 320 / Math.max(video.videoWidth, video.videoHeight));");
     expect(client).toContain("const stride = 5;");
     expect(client).toContain("trackingLastReacquireAt >= 350");
   });
 
   it("uses stricter matching during reacquisition to reduce target jumps", () => {
-    expect(client).toContain("reacquireThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.84 : 0.68");
+    expect(client).toContain("reacquireThreshold = trackingTemplate && trackingTemplate.variance < 1800 ? 0.90 : 0.76");
+    expect(client).toContain("trackingReacquireCandidateFrames >= 2");
+    expect(client).toContain("candidateVariance < 500");
     expect(client).toContain('focusMarker.dataset.tracking = "reacquiring"');
     expect(client).toContain("Target found again. Tracking has resumed.");
   });
@@ -31,6 +34,12 @@ describe("Milestone 16 persistent visual tracking", () => {
     expect(client).toContain("trackingLostAt = 0;");
     expect(client).toContain("trackingLastReacquireAt = 0;");
     expect(client).toContain("trackingReacquiring = false;");
+  });
+
+  it("never leaves a marker on an untrackable low-detail point", () => {
+    expect(client).toContain("if (variance < 500) return null;");
+    expect(client).toContain("I will not leave a fixed marker.");
+    expect(client).toContain('focusMarker.hidden = true;');
   });
 
   it("renders compact, camera-first target cues with a small exact-point indicator", () => {
