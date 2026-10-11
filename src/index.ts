@@ -145,8 +145,8 @@ async function performGroundedWebSearch(env: Env, query: string): Promise<string
       .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri))
       .slice(0, 5)
       .map((web) => `- ${String(web.title || web.uri).slice(0, 180)}: ${web.uri}`);
-    if (!answer && !sources.length) return "The web search returned no usable results. Ask the user for the exact model or another detail rather than guessing.";
-    return [answer || "Relevant sources were found.", sources.length ? `Sources:\n${sources.join("\n")}` : ""].filter(Boolean).join("\n\n").slice(0, 7_000);
+    if (!sources.length) return "The web lookup did not return verifiable source URLs. Treat this as unverified; ask the user for the exact model or another detail rather than presenting current instructions as confirmed.";
+    return [answer || "Relevant sources were found.", `Sources:\n${sources.join("\n")}`].filter(Boolean).join("\n\n").slice(0, 7_000);
   } finally {
     clearTimeout(timeout);
   }
