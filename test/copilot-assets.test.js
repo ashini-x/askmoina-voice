@@ -41,7 +41,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("requestHitTestSource({ space: spatialViewerSpace })");
     expect(script).toContain("hitForAnchor.createAnchor()");
     expect(script).toContain("frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace)");
-    expect(html).toContain("Starting this lab pauses live voice guidance");
+    expect(html).toContain("voice stays live in Spatial AR while camera frames pause");
     expect(css).toContain(".spatial-hud[hidden]{display:none}");
   });
 
@@ -99,6 +99,19 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("Confirm &amp; place cue");
     expect(html).toContain("does not recognize object geometry");
     expect(css).toContain(".spatial-aim-panel");
+  });
+
+  it("keeps the live microphone and WebSocket connected during Spatial AR, pausing only camera frames", () => {
+    expect(script).toContain("function suspendCameraForSpatialAr()");
+    expect(script).toContain("microphoneStream.getVideoTracks().forEach((track) =>");
+    expect(script).toContain("async function resumeCameraAfterSpatialAr(reason = \"Spatial AR ended\")");
+    expect(script).toContain("microphoneStream.getAudioTracks().some((track) => track.readyState === \"live\")");
+    expect(script).toContain("const canKeepVoiceDuringSpatialAr = Boolean(active && setupReady");
+    expect(script).toContain("Live voice stays connected; camera frames are paused until you exit AR.");
+    expect(script).toContain("startVideoFrames();");
+    expect(script).toContain("Live voice and camera frames are back.");
+    expect(html).toContain("voice stays live in Spatial AR while camera frames pause");
+    expect(script).not.toContain("Spatial AR uses the phone's camera and will pause your current live voice session.");
   });
 
   it("supports numbered spatial walkthroughs with explicit per-step confirmation and a fresh anchor for each step", () => {
