@@ -137,8 +137,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function saveCurrentSpatialScene()");
     expect(script).toContain("function loadSavedSpatialScene()");
     expect(script).toContain("function pinCurrentSpatialCue()");
-    expect(script).toContain("spatialSceneAnchors.push({ anchor: spatialAnchor, guidance, stepIndex:");
-    expect(script).toContain("for (const pinned of pinnedPoses)");
+    expect(script).toContain("sequenceId: spatialGuidanceSequenceId");
+    expect(script).toContain("item.sequenceId === spatialGuidanceSequenceId && item.stepIndex === spatialStepIndex");
+    expect(script).toContain("for (const pinned of pinnedPoses");
     expect(script).toContain("clearPinnedSpatialCues()");
     expect(html).toContain("Scenes save cue descriptions on this device, not physical anchor positions");
     expect(script).not.toContain("requestPersistentHandle");
