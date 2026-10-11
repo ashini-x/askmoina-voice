@@ -1475,7 +1475,7 @@
   }
 
   function moveSpatialGuidanceStep(delta) {
-    if (!spatialSession || spatialGuidanceSteps.length < 2 || spatialSequenceFinished) return;
+    if (!spatialSession || spatialGuidanceSteps.length < 2) return;
     if (spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
     if (delta > 0 && (!spatialStepConfirmed || !spatialAnchor)) return;
     const nextIndex = Math.max(0, Math.min(spatialGuidanceSteps.length - 1, spatialStepIndex + delta));
