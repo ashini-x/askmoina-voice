@@ -1386,13 +1386,15 @@
     if (dx !== 0) adjustments.push(Math.abs(dx) + " step" + (Math.abs(dx) === 1 ? "" : "s") + (dx < 0 ? " left" : " right"));
     if (dy !== 0) adjustments.push(Math.abs(dy) + " step" + (Math.abs(dy) === 1 ? "" : "s") + (dy < 0 ? " down" : " up"));
     const current = spatialAimDescription(spatialAimOffsetX, spatialAimOffsetY);
-    if (latestVisualGuidance) {
+    if (!spatialOffsetRaySupported) {
+      spatialAimLabel.textContent = latestVisualGuidance
+        ? "Moina suggested " + region + ", but this browser uses a center ray. Move the phone until the ring is over the intended object."
+        : "No recent AI region; this browser uses a center ray. Move the phone until the ring is over the intended object.";
+    } else if (latestVisualGuidance) {
       spatialAimLabel.textContent = "Moina suggested " + region + "; ray aims " + current +
-        (adjustments.length ? " · nudged " + adjustments.join(", ") : "") +
-        (spatialOffsetRaySupported ? "." : " · center-ray fallback; move the phone to center the target.");
+        (adjustments.length ? " · nudged " + adjustments.join(", ") : "") + ".";
     } else {
-      spatialAimLabel.textContent = "No recent AI region; ray aims " + current +
-        (spatialOffsetRaySupported ? ". Adjust and confirm the ring before placing." : " · center-ray fallback; move the phone to center the target.");
+      spatialAimLabel.textContent = "No recent AI region; ray aims " + current + ". Adjust and confirm the ring before placing.";
     }
   }
 
