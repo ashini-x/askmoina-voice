@@ -122,6 +122,7 @@
   }
 
   function clearOverlay() {
+    awaitingTargetSelection = false;
     stopLocalTracking(false);
     focusMarker.hidden = true;
     approxTag.hidden = true;
@@ -133,6 +134,7 @@
 
   function showOverlay(args) {
     if (args && args.await_user_selection === true) {
+      clearOverlay();
       awaitingTargetSelection = true;
       const selectionPrompt = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 180) : "";
       setStatus(selectionPrompt || "Tap the exact object you mean in the camera view.");
