@@ -108,7 +108,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="spatialAimLabel"');
     expect(html).toContain('id="spatialAimLeft"');
     expect(html).toContain('id="spatialAimReset"');
-    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
     expect(html).toContain("does not recognize object geometry");
     expect(css).toContain(".spatial-aim-panel");
   });
@@ -194,8 +194,8 @@ describe("Live Co-Pilot browser assets", () => {
   it("keeps advanced spatial controls out of the default guided flow", () => {
     expect(html).toContain('<details class="spatial-advanced" id="spatialAdvanced">');
     expect(html).toContain("<summary>More options</summary>");
-    expect(html).toContain('id="placeSpatialAnchor" disabled>Place cue</button>');
-    expect(html).toContain('id="exitSpatialAr">Done</button>');
+    expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');
+    expect(html).toContain('id="exitSpatialAr" class="spatial-close" aria-label="Done and return to Co-Pilot">×</button>');
     expect(script).toContain("function advanceSpatialGuidance()");
     expect(script).toContain('spatialStepButtons.next.addEventListener("click", advanceSpatialGuidance);');
     expect(css).toContain(".spatial-advanced>summary");
