@@ -1251,6 +1251,7 @@
   let spatialStepIndex = 0;
   let spatialStepConfirmed = false;
   let spatialSequenceFinished = false;
+  let spatialLastHudHitState = null;
 
   function normalizeSavedSpatialCue(value) {
     if (!value || typeof value !== "object") return null;
@@ -1786,6 +1787,7 @@
     spatialAnchor = null;
     spatialPlacedGuidance = null;
     spatialLatestHit = null;
+    spatialLastHudHitState = null;
     spatialPendingPlacement = false;
     spatialPlacing = false;
     spatialPendingPlacementAt = 0;
@@ -1900,7 +1902,6 @@
     const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || busy;
     Object.values(spatialAimButtons).forEach((button) => { button.disabled = aimDisabled; });
     syncSpatialSceneControls();
-    syncSpatialSequenceControls();
   }
 
   function createSpatialOffsetRay() {
@@ -2060,6 +2061,7 @@
       spatialSceneAnchors = [];
       spatialPlacedGuidance = null;
       spatialLatestHit = null;
+      spatialLastHudHitState = null;
       spatialPendingPlacement = false;
       spatialStepConfirmed = false;
       spatialSequenceFinished = false;
@@ -2087,8 +2089,8 @@
       spatialHud.classList.remove("is-preparing");
       syncSpatialGuidance();
       setSpatialStatus(spatialOffsetRaySupported
-        ? "Moina's approximate target region sets the initial aim ray. Check the ring, nudge it if needed, then confirm the surface before placing."
-        : "This browser uses a center hit-test ray. Move the phone until the ring overlays the intended object, then confirm placement.", spatialOffsetRaySupported ? "aiming" : "warning");
+        ? "Guide ready · check the ring"
+        : "Guide ready · align the ring with your target", spatialOffsetRaySupported ? "aiming" : "warning");
       syncSpatialAimLabel();
       syncSpatialButtons();
       session.addEventListener("end", finishSpatialAr, { once: true });
@@ -2138,6 +2140,13 @@
         const hits = frame.getHitTestResults(spatialHitSource);
         if (hits.length) spatialLatestHit = hits[0];
       } catch (_) {}
+    }
+    if (!spatialAnchor && !spatialPendingPlacement && !spatialPlacing) {
+      const hasHit = Boolean(spatialLatestHit);
+      if (spatialLastHudHitState !== hasHit) {
+        spatialLastHudHitState = hasHit;
+        syncSpatialSequenceControls();
+      }
     }
     if (spatialPendingPlacement && !spatialLatestHit && spatialPendingPlacementAt && time - spatialPendingPlacementAt > 1800) {
       spatialPendingPlacement = false;
