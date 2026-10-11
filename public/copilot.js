@@ -70,6 +70,8 @@
   let facingMode = "environment";
   let lastVideoSentAt = 0;
   let sendingVideo = false;
+  let cameraSuspendedForSpatialAr = false;
+  let cameraResumeInProgress = false;
   let lastSessionEndedAt = 0;
   let latestVisualGuidance = null;
 
@@ -101,11 +103,15 @@
     toggleButton.disabled = Boolean(disabled);
     toggleButton.classList.toggle("is-live", active);
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
-    flipButton.disabled = !active || !microphoneStream;
-    muteButton.disabled = !active || !microphoneStream;
-    zoomSlider.disabled = !microphoneStream;
-    zoomInButton.disabled = !microphoneStream || zoomLevel >= zoomMax;
-    zoomOutButton.disabled = !microphoneStream || zoomLevel <= zoomMin;
+    const cameraAvailable = Boolean(microphoneStream && !cameraSuspendedForSpatialAr &&
+      microphoneStream.getVideoTracks().some((track) => track.readyState === "live"));
+    const microphoneAvailable = Boolean(microphoneStream &&
+      microphoneStream.getAudioTracks().some((track) => track.readyState === "live"));
+    flipButton.disabled = !active || !cameraAvailable;
+    muteButton.disabled = !active || !microphoneAvailable;
+    zoomSlider.disabled = !cameraAvailable;
+    zoomInButton.disabled = !cameraAvailable || zoomLevel >= zoomMax;
+    zoomOutButton.disabled = !cameraAvailable || zoomLevel <= zoomMin;
     muteButton.innerHTML = microphoneMuted ? '<span aria-hidden="true">♩</span> Unmute' : '<span aria-hidden="true">♩</span> Mute';
     muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
     clearMarkerButton.disabled = focusMarker.hidden;
@@ -423,6 +429,89 @@
     videoTimer = window.setInterval(sendVideoFrame, 1200);
   }
 
+  // WebXR takes ownership of the camera during immersive AR. Stop only the
+  // video track so the existing microphone, WebSocket, and audio graph survive.
+  function suspendCameraForSpatialAr() {
+    if (!microphoneStream || !microphoneStream.getVideoTracks().some((track) => track.readyState === "live")) return false;
+    if (videoTimer) window.clearInterval(videoTimer);
+    if (firstVideoTimer) window.clearTimeout(firstVideoTimer);
+    videoTimer = null;
+    firstVideoTimer = null;
+    stopLocalTracking(false);
+    microphoneStream.getVideoTracks().forEach((track) => {
+      try { track.stop(); } catch (_) {}
+    });
+    video.pause();
+    video.srcObject = null;
+    stage.classList.remove("has-camera");
+    cameraSuspendedForSpatialAr = true;
+    setCameraState("Camera released to Spatial AR", "xr");
+    setControls(active ? "End Co-Pilot" : "Start Co-Pilot", false);
+    return true;
+  }
+
+  async function resumeCameraAfterSpatialAr(reason = "Spatial AR ended") {
+    if (!cameraSuspendedForSpatialAr || cameraResumeInProgress) return;
+    if (!active || !setupReady || stopping || !microphoneStream) {
+      cameraSuspendedForSpatialAr = false;
+      return;
+    }
+
+    cameraResumeInProgress = true;
+    setStatus(reason + ". Restoring camera frames while live voice stays connected…");
+    let cameraOnlyStream = null;
+    let lastError = null;
+    try {
+      for (let attempt = 0; attempt < 3 && !cameraOnlyStream; attempt += 1) {
+        if (!active || stopping || !microphoneStream) {
+          cameraSuspendedForSpatialAr = false;
+          return;
+        }
+        try {
+          cameraOnlyStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: facingMode },
+              width: { ideal: 640 },
+              height: { ideal: 480 }
+            },
+            audio: false
+          });
+        } catch (error) {
+          lastError = error;
+          if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+
+      const cameraTrack = cameraOnlyStream && cameraOnlyStream.getVideoTracks()[0];
+      if (!cameraTrack) throw lastError || new Error("No camera track was returned.");
+      if (!active || stopping || !microphoneStream) {
+        cameraTrack.stop();
+        return;
+      }
+
+      microphoneStream.getVideoTracks().forEach((track) => {
+        try { microphoneStream.removeTrack(track); } catch (_) {}
+        try { track.stop(); } catch (_) {}
+      });
+      microphoneStream.addTrack(cameraTrack);
+      video.srcObject = microphoneStream;
+      await video.play();
+      cameraSuspendedForSpatialAr = false;
+      initializeZoom();
+      stage.classList.add("has-camera");
+      setCameraState("Live · frames ~1/sec", "live");
+      startVideoFrames();
+      setControls("End Co-Pilot", false);
+      setStatus(reason + ". Live voice and camera frames are back.");
+    } catch (error) {
+      if (cameraOnlyStream) cameraOnlyStream.getTracks().forEach((track) => track.stop());
+      setCameraState("Camera paused", "idle");
+      setStatus(reason + ". Voice is still connected, but the camera could not resume. End Co-Pilot and restart to restore live vision.", "warning");
+    } finally {
+      cameraResumeInProgress = false;
+    }
+  }
+
   function clearTimers() {
     if (setupTimer) window.clearTimeout(setupTimer);
     if (videoTimer) window.clearInterval(videoTimer);
@@ -455,6 +544,8 @@
       microphoneStream = null;
     }
     microphoneMuted = false;
+    cameraSuspendedForSpatialAr = false;
+    cameraResumeInProgress = false;
     zoomLevel = 1;
     nativeZoomSupported = false;
     video.style.transform = "";
@@ -1591,10 +1682,24 @@
       return;
     }
     if (spatialSession) return;
-    if (active || starting || microphoneStream || socket) {
-      const proceed = window.confirm("Spatial AR uses the phone's camera and will pause your current live voice session. Continue?");
-      if (!proceed) return;
-      stopCopilot(true);
+    const canKeepVoiceDuringSpatialAr = Boolean(active && setupReady && !stopping &&
+      socket && socket.readyState === WebSocket.OPEN && audioContext && microphoneStream &&
+      microphoneStream.getAudioTracks().some((track) => track.readyState === "live"));
+    const hasCopilotSession = Boolean(active || starting || microphoneStream || socket);
+    if (hasCopilotSession) {
+      const prompt = canKeepVoiceDuringSpatialAr
+        ? "Spatial AR needs the camera. Keep your live voice conversation connected while camera frames pause until you exit AR?"
+        : "Spatial AR needs the camera. The current Co-Pilot setup cannot be kept alive, so it will end before AR starts. Continue?";
+      if (!window.confirm(prompt)) return;
+      if (canKeepVoiceDuringSpatialAr) {
+        if (!suspendCameraForSpatialAr()) {
+          setStatus("Couldn't release the camera for Spatial AR. Live voice was left untouched.", "warning");
+          return;
+        }
+        setStatus("Spatial AR is starting. Live voice stays connected; camera frames are paused until you exit AR.");
+      } else {
+        stopCopilot(true);
+      }
     }
 
     spatialGuidanceSteps = latestVisualGuidance && Array.isArray(latestVisualGuidance.steps)
@@ -1632,6 +1737,7 @@
       spatialHud.classList.remove("is-preparing");
       spatialArButton.disabled = false;
       setStatus(error && error.message ? error.message : "Could not start spatial AR.", "error");
+      void resumeCameraAfterSpatialAr("Spatial AR could not start");
       return;
     }
 
@@ -1708,6 +1814,7 @@
         ? "This device/browser does not support every feature required for world-anchored AR (hit-test, anchors, and DOM overlay). Use a supported Android browser; V2 remains available."
         : (error && error.message ? error.message : "Spatial AR could not be started. Check browser support and camera permissions.");
       setStatus(explanation, "warning");
+      void resumeCameraAfterSpatialAr("Spatial AR could not start");
     }
   }
 
@@ -1869,7 +1976,11 @@
     spatialHud.hidden = true;
     spatialHud.classList.remove("is-preparing");
     spatialArButton.disabled = !spatialFeatureSupported;
-    setStatus("Spatial AR ended. Start Co-Pilot to resume live voice guidance.");
+    if (active && setupReady && socket && socket.readyState === WebSocket.OPEN && cameraSuspendedForSpatialAr) {
+      void resumeCameraAfterSpatialAr("Spatial AR ended");
+    } else {
+      setStatus("Spatial AR ended. Start Co-Pilot to resume live voice guidance.");
+    }
   }
 
   spatialAimButtons.left.addEventListener("click", () => nudgeSpatialAim(-0.12, 0));
