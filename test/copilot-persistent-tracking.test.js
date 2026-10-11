@@ -33,6 +33,15 @@ describe("Milestone 16 persistent visual tracking", () => {
     expect(client).toContain("trackingReacquiring = false;");
   });
 
+  it("renders compact, camera-first target cues with a small exact-point indicator", () => {
+    expect(styles).toContain("Milestone 17 — minimal target overlays");
+    expect(styles).toContain(".focus-brackets{\n  width:48px;");
+    expect(styles).toContain(".focus-brackets::after");
+    expect(styles).toContain("width:min(158px,46vw)");
+    expect(styles).toContain(".focus-eyebrow{display:none}");
+    expect(styles).toContain("-webkit-line-clamp:1");
+  });
+
   it("keeps the worker-embedded JavaScript and styles synchronized with public assets", () => {
     expect(bundledAssets).toContain(JSON.stringify(client));
     expect(bundledAssets).toContain(JSON.stringify(styles));
