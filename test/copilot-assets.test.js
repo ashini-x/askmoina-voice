@@ -46,7 +46,7 @@ describe("Live Co-Pilot browser assets", () => {
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
-    expect(html).toContain("you must align the marker yourself");
+    expect(html).toContain("Aim the ring at the target yourself");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
