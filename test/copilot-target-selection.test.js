@@ -14,6 +14,14 @@ describe("Milestone 15 spoken-reference target selection", () => {
     expect(client).toContain("Tap the exact object you mean in the camera view.");
   });
 
+  it("requires a user anchor before placing any new target marker", () => {
+    expect(client).toContain("function requestTargetSelection(guidance, message)");
+    expect(client).toContain("if (!localTrackingActive || targetChanged)");
+    expect(client).toContain("Tap the visible");
+    expect(client).toContain("I will not guess its position.");
+    expect(worker).toContain("Do not place a new target label over a default center position");
+  });
+
   it("sends normalized point coordinates through an allowlisted Co-Pilot-only message", () => {
     expect(client).toContain("target_selection: selectedPoint");
     expect(worker).toContain('parsed.kind === "target_selection"');
