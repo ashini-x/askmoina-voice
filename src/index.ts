@@ -35,7 +35,7 @@ const COPILOT_SYSTEM_INSTRUCTION = [
 const COPILOT_TOOL = {
   functionDeclarations: [{
     name: "display_screen_overlay",
-    description: "Display a concise on-screen focus label and next-step hint over the live camera preview. Use only when a visible target or step is relevant. The screen region is approximate, not a measured object coordinate.",
+    description: "Display a concise on-screen focus label for the live camera preview. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
     parameters: {
       type: "OBJECT",
       properties: {
