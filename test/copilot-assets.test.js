@@ -5,6 +5,7 @@ import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "../src/copilot-assets";
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
+const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
   it("serves the same browser assets as the checked-in public files", () => {
@@ -96,6 +97,25 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("Confirm &amp; place cue");
     expect(html).toContain("does not recognize object geometry");
     expect(css).toContain(".spatial-aim-panel");
+  });
+
+  it("supports numbered spatial walkthroughs with explicit per-step confirmation and a fresh anchor for each step", () => {
+    expect(workerSource).toContain("steps array of 2–5 ordered, short actions");
+    expect(workerSource).toContain("steps: {");
+    expect(workerSource).toContain('type: "ARRAY"');
+    expect(script).toContain("const normalizedSteps = Array.isArray(args.steps)");
+    expect(script).toContain("const guidanceSteps = normalizedSteps.length > 1 ? normalizedSteps : [primary]");
+    expect(script).toContain("function syncSpatialSequenceControls()");
+    expect(script).toContain("function confirmSpatialGuidanceStep()");
+    expect(script).toContain("function moveSpatialGuidanceStep(delta)");
+    expect(script).toContain("clearCurrentSpatialAnchorForStepChange()");
+    expect(script).toContain("function finishSpatialGuidanceSequence()");
+    expect(html).toContain('id="spatialStepProgress"');
+    expect(html).toContain('id="spatialStepConfirm"');
+    expect(html).toContain('id="spatialStepNext"');
+    expect(html).toContain("Progress is user-confirmed, not automatically detected");
+    expect(html).toContain("Advancing clears the old anchor");
+    expect(css).toContain(".spatial-step-panel[hidden]{display:none}");
   });
 
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
