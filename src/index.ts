@@ -720,6 +720,19 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         return;
       }
 
+      if (parsed.kind === "text_input") {
+        // Test/fallback text turns use the Live API's explicit turn-complete
+        // content path instead of synthetic microphone audio, isolating grounding
+        // and tool handling from speech-recognition/VAD variability.
+        upstreamSocket.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: "user", parts: [{ text: parsed.text }] }],
+            turnComplete: true,
+          },
+        }));
+        return;
+      }
+
       if (parsed.kind === "tool_response") {
         upstreamSocket.send(JSON.stringify({
           toolResponse: {
