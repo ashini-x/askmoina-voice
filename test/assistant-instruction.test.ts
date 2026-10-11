@@ -10,6 +10,14 @@ describe("AskMoina live voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Mirror the user's level of code-switching");
   });
 
+  it("handles short follow-ups, interruptions, topic switches and honest session continuity", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("Treat follow-ups such as 'why?', 'how?', 'what about that?'");
+    expect(SYSTEM_INSTRUCTION).toContain("Answer the newest request first");
+    expect(SYSTEM_INSTRUCTION).toContain("If the user interrupts your answer, stop pursuing the old response");
+    expect(SYSTEM_INSTRUCTION).toContain("If the user changes topic");
+    expect(SYSTEM_INSTRUCTION).toContain("Do not imply that reconnecting preserved a conversation you cannot see");
+  });
+
   it("includes examples of contemporary casual Assamese-English conversation", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Aji mood tu bhal nai yaar.");
     expect(SYSTEM_INSTRUCTION).toContain("Kalir exam loi bohut tension hoi ase.");

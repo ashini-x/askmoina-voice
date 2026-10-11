@@ -5,13 +5,13 @@ Last updated: 2026-10-11
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
 
 ## Shipped foundation
-Milestones 1–10 are the current foundation and are deployed on the production Worker. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. These cues are not general object recognition or verified real-world understanding.
+Milestones 1–11 are the current foundation and are deployed on the production Worker. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. These cues are not general object recognition or verified real-world understanding.
 
 ## Remaining roadmap
 
 ### Phase 1 — Effortless JARVIS experience
-- **M11 — Camera-first visual reset:** make the live camera dominant; reduce persistent chrome; show a single primary voice action; collapse secondary camera controls, zoom, memory link, and captions until requested. Done when a first-time user can start without learning the interface and the UI does not obscure the scene.
-- **M12 — Natural voice copilot:** improve conversational references, interruptions, follow-ups, reconnect/session release, and continuity. Done when users can redirect naturally without restarting.
+- **M11 — Camera-first visual reset (deployed):** live camera dominance, restrained focus overlays, secondary controls under More, and captions on demand. Real-device acceptance was confirmed by the product owner.
+- **M12 — Natural voice copilot (in validation):** merge overlapping transcription fragments, suppress stale audio after an interruption, strengthen follow-up and topic-switch behavior, and show an explicit Try again action after unexpected disconnects. Done when CI passes and post-deploy smoke tests pass; hands-on voice interruption and recovery still need browser/device acceptance.
 
 ### Phase 2 — Visual awareness
 - **M13 — Conditional web grounding:** integrate on-demand search and equipment documentation where it improves answers; avoid needless searches. Current candidate: PR #52, not yet merged at this roadmap snapshot.

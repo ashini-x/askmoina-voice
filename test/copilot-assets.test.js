@@ -30,6 +30,12 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
+    expect(script).toContain("const wasInterrupted = serverContent.interrupted === true");
+    expect(script).toContain("inlineData.data && !wasInterrupted");
+    expect(script).toContain('setControls("Try again", false)');
+    expect(html).toContain('<script src="/transcript-merge.js" defer></script>');
+    expect(workerSource).toContain("Resolve references like 'this'");
+    expect(workerSource).toContain("latest speech as the priority");
   });
 
   it("offers a gated WebXR surface-anchor mode without replacing the V2 fallback", () => {
