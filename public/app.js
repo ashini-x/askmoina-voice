@@ -161,15 +161,17 @@
     const entry = getTranscriptNode(role);
     if (!entry) return;
 
-    // Some servers send cumulative partial transcripts; others send small fragments.
-    if (!entry.text) {
+    const mergeTranscript = window.AskMoinaTranscript && window.AskMoinaTranscript.merge;
+    if (typeof mergeTranscript === "function") {
+      const merged = mergeTranscript(entry.text, text);
+      if (merged === entry.text) return;
+      entry.text = merged;
+    } else if (!entry.text || text.startsWith(entry.text)) {
       entry.text = text;
-    } else if (text === entry.text || entry.text.endsWith(text)) {
-      // Duplicate/cumulative event: keep what is already displayed.
-    } else if (text.startsWith(entry.text)) {
-      entry.text = text;
-    } else {
+    } else if (text !== entry.text && !entry.text.endsWith(text)) {
       entry.text = (entry.text + " " + text).replace(/\s+/g, " ").trim();
+    } else {
+      return;
     }
     entry.body.textContent = entry.text;
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
@@ -372,7 +374,8 @@
 
     const serverContent = message.server_content || message.serverContent;
     if (serverContent) {
-      if (serverContent.interrupted) {
+      const wasInterrupted = serverContent.interrupted === true;
+      if (wasInterrupted) {
         stopPlayback();
         setStatus("Listening — go ahead.");
       }
@@ -383,7 +386,7 @@
         if (part.text) updateLiveTranscript("assistant", part.text);
         const inlineData = part.inline_data || part.inlineData;
         if (inlineData && inlineData.data) {
-          playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
+          if (!wasInterrupted) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
         }
       }
 
@@ -608,6 +611,7 @@
         }
         finishStoppedState(closeMessage);
         if (!wasStopping) {
+          setButton("Try again", false);
           setStatus(closeMessage, "error");
           setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
         }
