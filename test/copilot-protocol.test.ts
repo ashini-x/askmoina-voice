@@ -15,6 +15,25 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "f1", name: "display_screen_overlay" }] } }, false)).toBeNull();
   });
 
+  it("accepts normalized target-selection points only in Co-Pilot mode", () => {
+    expect(parseLiveClientInput({ target_selection: { x: 0.34, y: 0.72 } }, true)).toEqual({
+      kind: "target_selection",
+      x: 0.34,
+      y: 0.72,
+    });
+    expect(parseLiveClientInput({ target_selection: { x: 0, y: 0.999 } }, true)).toEqual({
+      kind: "target_selection",
+      x: 0,
+      y: 0.999,
+    });
+    expect(parseLiveClientInput({ target_selection: { x: 0.34, y: 0.72 } }, false)).toBeNull();
+    expect(parseLiveClientInput({ target_selection: { x: -0.1, y: 0.5 } }, true)).toBeNull();
+    expect(parseLiveClientInput({ target_selection: { x: 1, y: 0.5 } }, true)).toBeNull();
+    expect(parseLiveClientInput({ target_selection: { x: 0.5, y: Number.NaN } }, true)).toBeNull();
+    expect(parseLiveClientInput({ target_selection: { x: 0.5, y: 0.5, command: "run" } }, true)).toBeNull();
+    expect(parseLiveClientInput({ target_selection: { x: "0.5", y: 0.5 } }, true)).toBeNull();
+  });
+
   it("accepts bounded text turns only in normal voice mode for grounded smoke/fallback turns", () => {
     expect(parseLiveClientInput({ text_input: "Search the web for the latest Android release." }, false)).toEqual({
       kind: "text_input",
