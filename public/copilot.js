@@ -129,23 +129,31 @@
     const instruction = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 220) : "";
     if (!label && !instruction) return;
 
-    latestVisualGuidance = {
-      label: label || "Moina\'s focus",
-      hint,
-      instruction,
-      screenRegion: region
-    };
+    const primary = { label: label || "Moina's focus", hint, instruction, screenRegion: region };
+    const normalizedSteps = Array.isArray(args.steps) ? args.steps.slice(0, 5).map((step) => {
+      if (!step || typeof step !== "object") return null;
+      const stepLabel = typeof step.text_to_display === "string" ? step.text_to_display.trim().slice(0, 72) : "";
+      const stepHint = typeof step.target_hint === "string" ? step.target_hint.trim().slice(0, 120) : "";
+      const stepInstruction = typeof step.instruction === "string" ? step.instruction.trim().slice(0, 220) : "";
+      const validRegions = ["center", "upper-left", "upper-right", "lower-left", "lower-right"];
+      const stepRegion = validRegions.includes(step.screen_region) ? step.screen_region : "center";
+      if (!stepLabel && !stepInstruction) return null;
+      return { label: stepLabel || "Guided step", hint: stepHint, instruction: stepInstruction, screenRegion: stepRegion };
+    }).filter(Boolean) : [];
+    const guidanceSteps = normalizedSteps.length > 1 ? normalizedSteps : [primary];
+    const firstStep = guidanceSteps[0];
+    latestVisualGuidance = { ...firstStep, steps: guidanceSteps };
     syncSpatialGuidance();
 
     if (!localTrackingActive) {
-      focusMarker.dataset.region = region;
+      focusMarker.dataset.region = firstStep.screenRegion;
       focusMarker.style.left = "";
       focusMarker.style.top = "";
       focusMarker.dataset.tracking = "approximate";
     }
-    focusLabel.textContent = label || "Moina's focus";
-    focusHint.textContent = hint;
-    focusInstruction.textContent = instruction;
+    focusLabel.textContent = firstStep.label;
+    focusHint.textContent = firstStep.hint;
+    focusInstruction.textContent = firstStep.instruction;
     focusMarker.hidden = false;
     approxTag.hidden = false;
     clearMarkerButton.disabled = false;
@@ -1084,6 +1092,15 @@
   const spatialTargetLabel = $("#spatialTargetLabel");
   const spatialTargetInstruction = $("#spatialTargetInstruction");
   const spatialTargetHint = $("#spatialTargetHint");
+  const spatialStepPanel = $("#spatialStepPanel");
+  const spatialStepProgress = $("#spatialStepProgress");
+  const spatialStepMessage = $("#spatialStepMessage");
+  const spatialStepButtons = {
+    previous: $("#spatialStepPrevious"),
+    confirm: $("#spatialStepConfirm"),
+    next: $("#spatialStepNext"),
+    finish: $("#spatialStepFinish")
+  };
   const spatialAimLabel = $("#spatialAimLabel");
   const spatialAimButtons = {
     left: $("#spatialAimLeft"),
@@ -1120,6 +1137,10 @@
   let spatialHitSourceGeneration = 0;
   let spatialHitSourcePending = false;
   let spatialOffsetRaySupported = false;
+  let spatialGuidanceSteps = [];
+  let spatialStepIndex = 0;
+  let spatialStepConfirmed = false;
+  let spatialSequenceFinished = false;
 
   async function checkSpatialArSupport() {
     if (!navigator.xr || typeof navigator.xr.isSessionSupported !== "function") {
@@ -1356,10 +1377,16 @@
     return offsets[region] || offsets.center;
   }
 
+  function activeSpatialGuidance() {
+    if (spatialGuidanceSteps.length && spatialStepIndex < spatialGuidanceSteps.length) {
+      return spatialGuidanceSteps[spatialStepIndex];
+    }
+    return latestVisualGuidance;
+  }
+
   function suggestedSpatialRegion() {
-    return latestVisualGuidance && latestVisualGuidance.screenRegion
-      ? latestVisualGuidance.screenRegion
-      : "center";
+    const guidance = activeSpatialGuidance();
+    return guidance && guidance.screenRegion ? guidance.screenRegion : "center";
   }
 
   function setSuggestedSpatialAim() {
@@ -1398,17 +1425,81 @@
     }
   }
 
+  function syncSpatialSequenceControls() {
+    const hasSequence = Boolean(spatialSession) && spatialGuidanceSteps.length > 1;
+    spatialStepPanel.hidden = !hasSequence;
+    if (!hasSequence) return;
+    const total = spatialGuidanceSteps.length;
+    spatialStepProgress.textContent = spatialSequenceFinished
+      ? "Walkthrough complete · " + total + " steps"
+      : "Step " + (spatialStepIndex + 1) + " of " + total + (spatialStepConfirmed ? " · confirmed" : " · awaiting confirmation");
+    spatialStepMessage.textContent = spatialSequenceFinished
+      ? "All steps were marked complete. The final anchor remains visible until you clear it or exit AR."
+      : spatialStepConfirmed
+        ? "Confirmed by you. Advance only after the visible result matches this instruction; the next step requires a new anchor."
+        : "Place the cue at this step's target, inspect the result, then confirm before advancing.";
+    const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    spatialStepButtons.previous.disabled = spatialStepIndex <= 0 || busy;
+    spatialStepButtons.confirm.disabled = !spatialAnchor || spatialStepConfirmed || spatialSequenceFinished || busy;
+    spatialStepButtons.next.disabled = !spatialStepConfirmed || spatialStepIndex >= total - 1 || spatialSequenceFinished || busy;
+    spatialStepButtons.finish.disabled = !spatialStepConfirmed || spatialStepIndex !== total - 1 || spatialSequenceFinished || busy;
+  }
+
   function syncSpatialGuidance() {
-    if (!latestVisualGuidance) {
+    const guidance = activeSpatialGuidance();
+    if (!guidance) {
       spatialTargetLabel.textContent = "No recent visual target";
       spatialTargetInstruction.textContent = "Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.";
       spatialTargetHint.textContent = "The surface marker can still be placed without a recent cue.";
     } else {
-      spatialTargetLabel.textContent = latestVisualGuidance.label;
-      spatialTargetInstruction.textContent = latestVisualGuidance.instruction || "No next-step instruction was provided.";
-      spatialTargetHint.textContent = latestVisualGuidance.hint || "Moina supplied no extra target description.";
+      spatialTargetLabel.textContent = guidance.label;
+      spatialTargetInstruction.textContent = guidance.instruction || "No next-step instruction was provided.";
+      spatialTargetHint.textContent = guidance.hint || "Moina supplied no extra target description.";
     }
     syncSpatialAimLabel();
+    syncSpatialSequenceControls();
+  }
+
+  function clearCurrentSpatialAnchorForStepChange() {
+    if (spatialAnchor) {
+      try { spatialAnchor.delete(); } catch (_) {}
+    }
+    spatialAnchor = null;
+    spatialPlacedGuidance = null;
+    spatialLatestHit = null;
+    spatialPendingPlacement = false;
+    spatialPlacing = false;
+    spatialPendingPlacementAt = 0;
+    spatialAnchorPoseLostAt = 0;
+    spatialAnchorPoseWarningShown = false;
+  }
+
+  function moveSpatialGuidanceStep(delta) {
+    if (!spatialSession || spatialGuidanceSteps.length < 2 || spatialSequenceFinished) return;
+    const nextIndex = Math.max(0, Math.min(spatialGuidanceSteps.length - 1, spatialStepIndex + delta));
+    if (nextIndex === spatialStepIndex) return;
+    clearCurrentSpatialAnchorForStepChange();
+    spatialStepIndex = nextIndex;
+    spatialStepConfirmed = false;
+    setSuggestedSpatialAim();
+    syncSpatialGuidance();
+    syncSpatialButtons();
+    void rebuildSpatialHitTestSource();
+    setSpatialStatus("Step " + (spatialStepIndex + 1) + " of " + spatialGuidanceSteps.length + ": align the ring with this step's target and place a new cue anchor.", "aiming");
+  }
+
+  function confirmSpatialGuidanceStep() {
+    if (!spatialSession || !spatialAnchor || spatialSequenceFinished || spatialStepConfirmed) return;
+    spatialStepConfirmed = true;
+    syncSpatialSequenceControls();
+    setSpatialStatus("Step " + (spatialStepIndex + 1) + " confirmed by you. Check the visible result before advancing.", "anchored");
+  }
+
+  function finishSpatialGuidanceSequence() {
+    if (!spatialSession || !spatialStepConfirmed || spatialStepIndex !== spatialGuidanceSteps.length - 1) return;
+    spatialSequenceFinished = true;
+    syncSpatialSequenceControls();
+    setSpatialStatus("Guided walkthrough complete. The final cue remains anchored until you clear it or exit AR.", "anchored");
   }
 
   function syncSpatialButtons() {
@@ -1503,6 +1594,12 @@
       stopCopilot(true);
     }
 
+    spatialGuidanceSteps = latestVisualGuidance && Array.isArray(latestVisualGuidance.steps)
+      ? latestVisualGuidance.steps.slice(0, 5)
+      : latestVisualGuidance ? [latestVisualGuidance] : [];
+    spatialStepIndex = 0;
+    spatialStepConfirmed = false;
+    spatialSequenceFinished = false;
     syncSpatialGuidance();
     spatialHud.hidden = false;
     spatialHud.classList.add("is-preparing");
@@ -1551,6 +1648,8 @@
       spatialPlacedGuidance = null;
       spatialLatestHit = null;
       spatialPendingPlacement = false;
+      spatialStepConfirmed = false;
+      spatialSequenceFinished = false;
       spatialPlacing = false;
       spatialStatusMode = "";
       spatialLastStatusAt = 0;
@@ -1753,6 +1852,10 @@
     spatialSuggestedAimX = 0;
     spatialSuggestedAimY = 0;
     spatialPlacedGuidance = null;
+    spatialGuidanceSteps = [];
+    spatialStepIndex = 0;
+    spatialStepConfirmed = false;
+    spatialSequenceFinished = false;
     if (oldAnchor) {
       try { oldAnchor.delete(); } catch (_) {}
     }
@@ -1776,13 +1879,20 @@
     void rebuildSpatialHitTestSource();
   });
 
+  spatialStepButtons.previous.addEventListener("click", () => moveSpatialGuidanceStep(-1));
+  spatialStepButtons.confirm.addEventListener("click", confirmSpatialGuidanceStep);
+  spatialStepButtons.next.addEventListener("click", () => moveSpatialGuidanceStep(1));
+  spatialStepButtons.finish.addEventListener("click", finishSpatialGuidanceSequence);
+
   placeSpatialAnchorButton.addEventListener("click", () => {
     if (!spatialSession || spatialAnchor || spatialPlacing) return;
     if (!spatialLatestHit) {
       setSpatialStatus("No surface detected on the current aim ray. Move slowly or adjust the ray and try again.", "searching");
       return;
     }
-    spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;
+    const currentGuidance = activeSpatialGuidance();
+    spatialPlacedGuidance = currentGuidance ? { ...currentGuidance } : null;
+    spatialStepConfirmed = false;
     spatialPendingPlacement = true;
     spatialPendingPlacementAt = performance.now();
     setSpatialStatus(spatialPlacedGuidance
@@ -1796,6 +1906,8 @@
       try { spatialAnchor.delete(); } catch (_) {}
       spatialAnchor = null;
       spatialPlacedGuidance = null;
+      spatialStepConfirmed = false;
+      syncSpatialSequenceControls();
       spatialAnchorPoseLostAt = 0;
       spatialAnchorPoseWarningShown = false;
       setSpatialStatus("Anchor cleared. Aim at a surface and place a new marker.", "searching");
