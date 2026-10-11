@@ -1217,6 +1217,7 @@
 
   let spatialSavedScenes = loadSpatialSceneLibrary();
   let spatialSceneAnchors = [];
+  let spatialGuidanceSequenceId = "live-initial";
 
   let spatialFeatureSupported = false;
   let spatialSession = null;
@@ -1308,7 +1309,11 @@
   }
 
   function hasSpatialCueForCurrentStep() {
-    return Boolean(spatialAnchor) || spatialSceneAnchors.some((item) => item.stepIndex === spatialStepIndex);
+    if (spatialAnchor) return true;
+    if (spatialGuidanceSteps.length < 2) return false;
+    return spatialSceneAnchors.some((item) =>
+      item.sequenceId === spatialGuidanceSequenceId && item.stepIndex === spatialStepIndex
+    );
   }
 
   function syncSpatialSceneControls() {
@@ -1339,7 +1344,12 @@
       setSpatialStatus("This cue has no label or instruction to save.", "warning");
       return;
     }
-    spatialSceneAnchors.push({ anchor: spatialAnchor, guidance, stepIndex: spatialGuidanceSteps.length > 1 ? spatialStepIndex : -1 });
+    spatialSceneAnchors.push({
+      anchor: spatialAnchor,
+      guidance,
+      sequenceId: spatialGuidanceSequenceId,
+      stepIndex: spatialGuidanceSteps.length > 1 ? spatialStepIndex : -1
+    });
     updateSpatialTagTexture(guidance);
     spatialAnchor = null;
     spatialPlacedGuidance = null;
@@ -1389,6 +1399,7 @@
     spatialPlacedGuidance = null;
     spatialLatestHit = null;
     spatialGuidanceSteps = scene.cues.map((cue) => ({ ...cue }));
+    spatialGuidanceSequenceId = "saved-" + scene.id + "-" + Date.now();
     spatialStepIndex = 0;
     spatialStepConfirmed = false;
     spatialSequenceFinished = false;
@@ -1888,6 +1899,7 @@
     spatialGuidanceSteps = latestVisualGuidance && Array.isArray(latestVisualGuidance.steps)
       ? latestVisualGuidance.steps.slice(0, 5)
       : latestVisualGuidance ? [latestVisualGuidance] : [];
+    spatialGuidanceSequenceId = "live-" + Date.now();
     spatialStepIndex = 0;
     spatialStepConfirmed = false;
     spatialSequenceFinished = false;
