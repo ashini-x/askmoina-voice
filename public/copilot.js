@@ -1101,6 +1101,9 @@
   let spatialPlacing = false;
   let spatialStatusMode = "";
   let spatialLastStatusAt = 0;
+  let spatialPendingPlacementAt = 0;
+  let spatialAnchorPoseLostAt = 0;
+  let spatialAnchorPoseWarningShown = false;
 
   async function checkSpatialArSupport() {
     if (!navigator.xr || typeof navigator.xr.isSessionSupported !== "function") {
@@ -1322,6 +1325,7 @@
 
   function setSpatialStatus(message, mode) {
     spatialStatus.textContent = message;
+    spatialStatus.dataset.kind = mode || "normal";
     spatialStatusMode = mode || "";
   }
 
@@ -1404,6 +1408,24 @@
       spatialPlacing = false;
       spatialStatusMode = "";
       spatialLastStatusAt = 0;
+      spatialPendingPlacementAt = 0;
+      spatialAnchorPoseLostAt = 0;
+      spatialAnchorPoseWarningShown = false;
+      canvas.addEventListener("webglcontextlost", (event) => {
+        event.preventDefault();
+        setSpatialStatus("The graphics context was lost. Exiting Spatial AR safely; start Co-Pilot again to resume voice.", "warning");
+        if (spatialSession) void spatialSession.end();
+      }, { once: true });
+      session.addEventListener("visibilitychange", () => {
+        if (spatialSession !== session) return;
+        if (session.visibilityState === "hidden") {
+          setSpatialStatus("The AR view is temporarily backgrounded. Return to it and check the marker after tracking resumes.", "warning");
+        } else if (spatialAnchor) {
+          setSpatialStatus("AR view resumed. Check the ring against the surface for any drift.", "anchored");
+        } else {
+          setSpatialStatus("AR view resumed. Move slowly to reacquire a surface.", "searching");
+        }
+      });
       spatialHud.classList.remove("is-preparing");
       setSpatialStatus("Aim at the surface you want to mark and move slowly. Place a cue anchor when the ring appears.", "searching");
       syncSpatialButtons();
@@ -1415,11 +1437,17 @@
       if (failedSession) {
         try { await failedSession.end(); } catch (_) {}
       }
+      if (spatialHitSource) { try { spatialHitSource.cancel(); } catch (_) {} }
       spatialHitSource = null;
       spatialViewerSpace = null;
       spatialReferenceSpace = null;
       spatialAnchor = null;
       spatialLatestHit = null;
+      spatialPendingPlacement = false;
+      spatialPlacing = false;
+      spatialPendingPlacementAt = 0;
+      spatialAnchorPoseLostAt = 0;
+      spatialAnchorPoseWarningShown = false;
       releaseSpatialRenderer();
       spatialHud.hidden = true;
       spatialHud.classList.remove("is-preparing");
@@ -1447,10 +1475,16 @@
         if (hits.length) spatialLatestHit = hits[0];
       } catch (_) {}
     }
+    if (spatialPendingPlacement && !spatialLatestHit && spatialPendingPlacementAt && time - spatialPendingPlacementAt > 1800) {
+      spatialPendingPlacement = false;
+      spatialPendingPlacementAt = 0;
+      setSpatialStatus("Surface detection was lost before placement. Hold the ring over a visible surface and tap Place cue anchor again.", "warning");
+    }
     syncSpatialButtons();
 
     if (spatialPendingPlacement && spatialLatestHit && !spatialPlacing && !spatialAnchor) {
       spatialPendingPlacement = false;
+      spatialPendingPlacementAt = 0;
       spatialPlacing = true;
       syncSpatialButtons();
       const hitForAnchor = spatialLatestHit;
@@ -1480,9 +1514,30 @@
       spatialLastStatusAt = time;
       if (!spatialAnchor && !spatialPendingPlacement && !spatialPlacing) {
         setSpatialStatus(spatialLatestHit
-          ? "Surface detected. Tap Place marker, then move the phone to check whether the marker stays put."
+          ? "Surface detected. Tap Place cue anchor, then move the phone slowly in a small arc and return to check for drift."
           : "Searching for a surface. Aim at a table, floor, or wall and move the phone slowly.", spatialLatestHit ? "surface" : "searching");
       }
+    }
+
+    let currentAnchorPose = null;
+    if (spatialAnchor) {
+      try { currentAnchorPose = frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace); } catch (_) {}
+      if (!currentAnchorPose) {
+        if (!spatialAnchorPoseLostAt) spatialAnchorPoseLostAt = time;
+        if (!spatialAnchorPoseWarningShown && time - spatialAnchorPoseLostAt > 900) {
+          spatialAnchorPoseWarningShown = true;
+          setSpatialStatus("Spatial tracking is reacquiring this anchor. Hold the phone steady, then slowly scan the surrounding surface.", "warning");
+        }
+      } else {
+        spatialAnchorPoseLostAt = 0;
+        if (spatialAnchorPoseWarningShown) {
+          spatialAnchorPoseWarningShown = false;
+          setSpatialStatus("Tracking recovered. Move slowly and check that the ring still lines up with the intended target.", "anchored");
+        }
+      }
+    } else {
+      spatialAnchorPoseLostAt = 0;
+      spatialAnchorPoseWarningShown = false;
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
@@ -1500,10 +1555,9 @@
       gl.disable(gl.SCISSOR_TEST);
 
       if (spatialAnchor) {
-        const anchorPose = frame.getPose(spatialAnchor.anchorSpace, spatialReferenceSpace);
-        if (anchorPose) {
-          drawSpatialRing(gl, view, anchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
-          drawSpatialTag(gl, view, anchorPose.transform.matrix);
+        if (currentAnchorPose) {
+          drawSpatialRing(gl, view, currentAnchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
+          drawSpatialTag(gl, view, currentAnchorPose.transform.matrix);
         }
       } else if (spatialLatestHit) {
         const hitPose = spatialLatestHit.getPose(spatialReferenceSpace);
@@ -1529,14 +1583,19 @@
 
   function finishSpatialAr() {
     const oldAnchor = spatialAnchor;
+    const oldHitSource = spatialHitSource;
     spatialSession = null;
     spatialHitSource = null;
+    if (oldHitSource) { try { oldHitSource.cancel(); } catch (_) {} }
     spatialViewerSpace = null;
     spatialReferenceSpace = null;
     spatialAnchor = null;
     spatialLatestHit = null;
     spatialPendingPlacement = false;
     spatialPlacing = false;
+    spatialPendingPlacementAt = 0;
+    spatialAnchorPoseLostAt = 0;
+    spatialAnchorPoseWarningShown = false;
     spatialPlacedGuidance = null;
     if (oldAnchor) {
       try { oldAnchor.delete(); } catch (_) {}
@@ -1556,6 +1615,7 @@
     }
     spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;
     spatialPendingPlacement = true;
+    spatialPendingPlacementAt = performance.now();
     setSpatialStatus(spatialPlacedGuidance
       ? "Placing “" + spatialPlacedGuidance.label + "” cue on the next detected surface point…"
       : "Placing a marker on the next confirmed surface hit…", "placing");
@@ -1567,6 +1627,8 @@
       try { spatialAnchor.delete(); } catch (_) {}
       spatialAnchor = null;
       spatialPlacedGuidance = null;
+      spatialAnchorPoseLostAt = 0;
+      spatialAnchorPoseWarningShown = false;
       setSpatialStatus("Anchor cleared. Aim at a surface and place a new marker.", "searching");
       syncSpatialButtons();
     }
