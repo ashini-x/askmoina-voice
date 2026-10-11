@@ -22,6 +22,9 @@
   const focusInstruction = $("#focusInstruction");
   const approxTag = $("#approxTag");
   const clearTranscriptButton = $("#clearTranscript");
+  const captionsToggleButton = $("#toggleCaptions");
+  const moreControlsButton = $("#toggleMoreControls");
+  const secondaryControls = $("#secondaryControls");
   const muteButton = $("#muteMic");
   const zoomSlider = $("#zoomSlider");
   const zoomLabel = $("#zoomLabel");
@@ -1172,6 +1175,21 @@
   muteButton.addEventListener("click", toggleMicrophoneMute);
   clearMarkerButton.addEventListener("click", clearOverlay);
   clearTranscriptButton.addEventListener("click", resetTranscript);
+  captionsToggleButton.addEventListener("click", () => {
+    const expanded = !stage.classList.contains("captions-expanded");
+    stage.classList.toggle("captions-expanded", expanded);
+    captionsToggleButton.setAttribute("aria-expanded", String(expanded));
+    captionsToggleButton.setAttribute("aria-label", expanded ? "Hide conversation captions" : "Show conversation captions");
+    captionsToggleButton.textContent = expanded ? "×" : "CC";
+  });
+  moreControlsButton.addEventListener("click", () => {
+    const expanded = !stage.classList.contains("controls-expanded");
+    stage.classList.toggle("controls-expanded", expanded);
+    secondaryControls.hidden = !expanded;
+    moreControlsButton.setAttribute("aria-expanded", String(expanded));
+    moreControlsButton.setAttribute("aria-label", expanded ? "Hide more controls" : "More controls");
+    moreControlsButton.textContent = expanded ? "×" : "•••";
+  });
   window.addEventListener("pagehide", () => {
     if (active || starting || socket) stopCopilot(false);
   });
