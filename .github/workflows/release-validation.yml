@@ -123,6 +123,19 @@ jobs:
           test "$status" = "401"
           echo "Unauthenticated admin API denied: OK"
 
+      - name: Synthetic live web grounding test
+        if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'fix: verify live web grounding') }}"
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng
+          python3 -m venv .venv-grounding-smoke
+          . .venv-grounding-smoke/bin/activate
+          python -m pip install --quiet --disable-pip-version-check websocket-client
+          python scripts/live-grounding-smoke.py
+
       - name: Synthetic live voice memory smoke test
         if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'fix: share opted-in memory context across browser tabs') }}"
         env:
