@@ -35,7 +35,7 @@ describe("Milestone 16 persistent visual tracking", () => {
 
   it("renders compact, camera-first target cues with a small exact-point indicator", () => {
     expect(styles).toContain("Milestone 17 — minimal target overlays");
-    expect(styles).toContain(".focus-brackets{\\n  width:48px;");
+    expect(styles).toContain(".focus-brackets{\n  width:48px;");
     expect(styles).toContain(".focus-brackets::after");
     expect(styles).toContain("width:min(158px,46vw)");
     expect(styles).toContain(".focus-eyebrow{display:none}");
