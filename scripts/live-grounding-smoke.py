@@ -56,7 +56,7 @@ def synthesize_pcm_16k() -> bytes:
         gain = min(3.0, 24_000 / max(peak, 1))
         for index, sample in enumerate(resampled):
             struct.pack_into("<h", output, index * 2, max(-32_768, min(32_767, int(sample * gain))))
-        return bytes(output) + (b"\\x00" * 16_000)
+        return bytes(output) + (b"\x00" * 16_000)
 
 
 def extract_text(message: dict) -> str:
