@@ -50,3 +50,6 @@
 
 /* The 3D cue card is rendered in the WebXR layer; keep the HUD fallback readable. */
 .spatial-guidance p,.spatial-guidance small{overflow-wrap:anywhere}
+
+.spatial-card #spatialStatus[data-kind="warning"]{color:#ffd59e}
+.spatial-card #spatialStatus[data-kind="anchored"]{color:#c9ffec}
