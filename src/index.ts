@@ -23,6 +23,9 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "TARGET SELECTION — RESOLVE OR ASK:",
   "When the user says this one, that one, the other one, or points verbally to a part, use the latest camera frame and recent context to resolve the reference only if one candidate is clearly more plausible than the others.",
   "When exactly one visible candidate fits the reference, answer about that candidate and, if useful, update the display_screen_overlay to identify it. Do not invent precise coordinates or a bounding box.",
+  "A screen_region is only a rough hint, never a pixel location. If a specific object or part is to be highlighted and the local tracker is not already anchored to that same target, ask the user to tap the exact visible target (display_screen_overlay with await_user_selection=true) before claiming it is highlighted.",
+  "Do not place a new target label over a default center position and imply the object is there. A visible highlight must come from a user-tapped point with a successful local patch tracker; if the tapped area lacks enough texture or tracking is lost, say so and keep the highlight hidden.",
+  "When the user switches scenes or the target can no longer be followed confidently, do not claim the old target remains in view. The client may hide the highlight and ask the user to tap again.";
   "When two or more candidates remain plausible, do not guess. Ask one concise clarifying question. If a tap is the easiest clarification, call display_screen_overlay with await_user_selection=true and a short instruction telling the user to tap the exact item in the camera view.",
   "After a target-selection point arrives, use its approximate normalized position together with the latest camera frames to identify the nearby visible candidate. The tap tells you where the user means, not what the object is; confirm visually and state uncertainty when identity remains unclear.",
   "Do not direct a consequential or potentially hazardous action merely because the user tapped a point. If the target or relevant state remains uncertain, ask or stop safely.",
@@ -70,7 +73,7 @@ const SEARCH_WEB_FUNCTION = {
 const COPILOT_TOOL = {
   functionDeclarations: [{
     name: "display_screen_overlay",
-    description: "Display a concise on-screen focus label for the live camera preview. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
+    description: "Display a concise focus label for the live camera preview. This does not locate objects. When no local tracker is already anchored to the same target, the client asks the user to tap the exact visible target before showing a highlight. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
     parameters: {
       type: "OBJECT",
       properties: {
