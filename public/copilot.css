@@ -64,3 +64,16 @@
 .spatial-aim-controls button:disabled{opacity:.35}
 .spatial-card #spatialStatus[data-kind="aiming"]{color:#c8fff0}
 @media(max-width:430px){.spatial-aim-panel{padding:8px 9px;margin-bottom:9px}.spatial-aim-controls{gap:4px}.spatial-aim-controls button{min-width:31px;min-height:31px;padding:0 7px}}
+
+.spatial-step-panel{margin:0 0 12px;padding:11px 12px;border:1px solid #d4c2ff3b;border-radius:14px;background:#b7a0ff0a}
+.spatial-step-panel[hidden]{display:none}
+.spatial-step-header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.spatial-step-header strong{color:#d5c8ff;font-size:.58rem;font-weight:750;letter-spacing:.12em}
+.spatial-step-header span{color:#f2efff;font-size:.65rem;font-weight:700;font-variant-numeric:tabular-nums}
+.spatial-step-panel>p{margin:7px 0 9px;color:#eff0f7;font-size:.7rem;line-height:1.4}
+.spatial-step-actions{display:flex;flex-wrap:wrap;gap:6px}
+.spatial-step-actions button{min-height:34px;padding:0 10px;border:1px solid #ffffff3b;border-radius:999px;background:#ffffff10;color:#fff;font-size:.66rem;font-weight:700}
+.spatial-step-actions button:nth-child(2){background:#dfd4ff;color:#1b1330;border-color:#dfd4ff}
+.spatial-step-actions button:disabled{opacity:.34}
+.spatial-step-panel small{display:block;margin-top:7px;color:#b9b6c7;font-size:.59rem;line-height:1.4}
+@media(max-width:430px){.spatial-step-panel{padding:9px 10px;margin-bottom:8px}.spatial-step-actions{gap:4px}.spatial-step-actions button{min-height:31px;padding:0 8px;font-size:.62rem}}
