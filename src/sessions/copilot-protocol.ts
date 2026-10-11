@@ -14,8 +14,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Parse the deliberately small browser-to-live-session protocol. Normal voice
- * sessions can send PCM audio only; the camera and the one display-only tool
- * are available only when the server accepted copilot_mode during setup.
+ * sessions accept PCM audio or bounded text turns; camera frames and the
+ * display-only overlay tool are available only in explicit Co-Pilot mode.
  */
 export function parseLiveClientInput(value: unknown, copilotMode: boolean): ParsedLiveClientInput | null {
   if (!isRecord(value)) return null;
