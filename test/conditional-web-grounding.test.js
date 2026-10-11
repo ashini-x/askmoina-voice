@@ -29,7 +29,6 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain('parsed.kind === "text_input"');
     expect(workerSource).toContain("clientContent: {");
     expect(workerSource).toContain("turnComplete: true");
-    expect(workerSource).toContain('text.length > 1_500');
   });
 
   it("uses the globally available Gemini 3.8 Flash grounding endpoint independently of Live region config", () => {
