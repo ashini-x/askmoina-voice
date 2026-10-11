@@ -1,6 +1,7 @@
 export type ParsedLiveClientInput =
   | { kind: "audio"; data: string }
   | { kind: "video"; data: string }
+  | { kind: "text_input"; text: string }
   | { kind: "audio_stream_end" }
   | { kind: "tool_response"; ids: string[] };
 
@@ -38,6 +39,17 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
       ids.push(rawResponse.id);
     }
     return { kind: "tool_response", ids };
+  }
+
+  if (keys.length === 1 && typeof value.text_input === "string") {
+    if (copilotMode) return null;
+    const text = value.text_input.trim();
+    if (
+      !text ||
+      text.length > 1_500 ||
+      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(text)
+    ) return null;
+    return { kind: "text_input", text };
   }
 
   if (keys.length !== 1 || !isRecord(value.realtime_input)) return null;
