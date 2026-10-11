@@ -2088,9 +2088,7 @@
       });
       spatialHud.classList.remove("is-preparing");
       syncSpatialGuidance();
-      setSpatialStatus(spatialOffsetRaySupported
-        ? "Guide ready · check the ring"
-        : "Guide ready · align the ring with your target", spatialOffsetRaySupported ? "aiming" : "warning");
+      setSpatialStatus("Guide ready · move until the ring appears", spatialOffsetRaySupported ? "aiming" : "normal");
       syncSpatialAimLabel();
       syncSpatialButtons();
       session.addEventListener("end", finishSpatialAr, { once: true });
