@@ -24,12 +24,24 @@
       <p id="spatialTargetInstruction">Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.</p>
       <small id="spatialTargetHint">The surface marker can still be placed without a recent cue.</small>
     </div>
+    <div class="spatial-aim-panel" aria-label="AI-assisted target alignment">
+      <strong>ALIGN TARGET RAY</strong>
+      <p id="spatialAimLabel" role="status" aria-live="polite">Waiting for the AI target region…</p>
+      <div class="spatial-aim-controls">
+        <button type="button" id="spatialAimLeft" aria-label="Nudge target ray left" disabled>←</button>
+        <button type="button" id="spatialAimUp" aria-label="Nudge target ray up" disabled>↑</button>
+        <button type="button" id="spatialAimReset" disabled>Reset AI aim</button>
+        <button type="button" id="spatialAimDown" aria-label="Nudge target ray down" disabled>↓</button>
+        <button type="button" id="spatialAimRight" aria-label="Nudge target ray right" disabled>→</button>
+      </div>
+      <small>The aim ray uses Moina's approximate screen region. Inspect the ring and adjust it to the object yourself before confirming.</small>
+    </div>
     <div class="spatial-actions">
-      <button type="button" id="placeSpatialAnchor" disabled>Place cue anchor</button>
+      <button type="button" id="placeSpatialAnchor" disabled>Confirm &amp; place cue</button>
       <button type="button" id="clearSpatialAnchor" disabled>Clear marker</button>
       <button type="button" id="exitSpatialAr">Exit AR</button>
     </div>
-    <p class="spatial-note">After placement, a floating 3D cue card stays at a fixed world position above the ring and faces your view. Aim the ring at the target yourself; the target is not automatically recognized. Starting this lab pauses live voice guidance.</p>
+    <p class="spatial-note">After confirmation, the 3D cue card is anchored at the selected hit-test point. This uses screen-region guidance plus your visual confirmation; it does not recognize object geometry or guarantee the chosen surface is the named object. Starting this lab pauses live voice guidance.</p>
   </section>
 </div>
 <p class="privacy-hint">Camera and microphone start only after you tap Start Co-Pilot. They are shared only while your session is active.</p><a class="home-link" href="/">AskMoina</a></section></main></body></html>
