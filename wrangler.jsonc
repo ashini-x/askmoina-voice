@@ -7,7 +7,7 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html", "/copilot", "/copilot.html", "/copilot.js", "/copilot.css"]
+    "run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html", "/copilot", "/copilot.html", "/copilot.js", "/copilot.css", "/transcript-merge.js"]
   },
   "observability": { "enabled": true },
   "vars": {
