@@ -13,7 +13,7 @@ describe("Milestone 13 conditional web grounding", () => {
   it("uses an explicit on-demand search function for Co-Pilot rather than combining tool types in Live setup", () => {
     expect(workerSource).toContain('name: "search_current_web"');
     expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ googleSearch: {} }]');
-    expect(workerSource).toContain("The Live API tool types");
+    expect(workerSource).toContain("Keep Live API tool types separate");
     expect(workerSource).toContain("if (copilotMode && (frameText.includes('\\"toolCall\\"') || frameText.includes('\\"tool_call\\"')))");
   });
 
