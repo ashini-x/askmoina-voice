@@ -1068,6 +1068,12 @@
       setStatus("Start the Co-Pilot first, then tap a visible object to track it.", "warning");
       return null;
     }
+    if (localTrackingActive) {
+      stopLocalTracking(false);
+      focusMarker.hidden = true;
+      delete focusMarker.dataset.tracking;
+      clearMarkerButton.disabled = true;
+    }
     if (!configureTrackingCanvas()) {
       setStatus("The camera frame isn't ready yet. Hold the view steady and try again.", "warning");
       return null;
