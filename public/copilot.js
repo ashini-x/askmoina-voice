@@ -77,6 +77,7 @@
   let cameraResumeInProgress = false;
   let lastSessionEndedAt = 0;
   let latestVisualGuidance = null;
+  let awaitingTargetSelection = false;
 
   function setStatus(message, kind) {
     statusNode.textContent = message;
@@ -131,6 +132,14 @@
   }
 
   function showOverlay(args) {
+    if (args && args.await_user_selection === true) {
+      awaitingTargetSelection = true;
+      const selectionPrompt = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 180) : "";
+      setStatus(selectionPrompt || "Tap the exact object you mean in the camera view.");
+      return;
+    }
+    awaitingTargetSelection = false;
+
     const regions = ["center", "upper-left", "upper-right", "lower-left", "lower-right"];
     const region = regions.includes(args.screen_region) ? args.screen_region : "center";
     const label = typeof args.text_to_display === "string" ? args.text_to_display.trim().slice(0, 72) : "";
@@ -982,25 +991,42 @@
     if (showStatus && microphoneStream) setStatus("Local tracking stopped. Tap a visible object to track it again.");
   }
 
-  function startLocalTracking(clientX, clientY) {
+  function startLocalTracking(clientX, clientY, allowStaticSelection = false) {
     if (!active || !setupReady || !microphoneStream || !trackingContext) {
       setStatus("Start the Co-Pilot first, then tap a visible object to track it.", "warning");
-      return;
+      return null;
     }
     if (!configureTrackingCanvas()) {
       setStatus("The camera frame isn't ready yet. Hold the view steady and try again.", "warning");
-      return;
+      return null;
     }
     const point = framePointFromClient(clientX, clientY);
     if (!point) {
       setStatus("Tap on the visible camera image, not the cropped edge.", "warning");
-      return;
+      return null;
     }
+    const selectedPoint = {
+      x: Math.max(0, Math.min(0.9999, point.x / trackingCanvasWidth)),
+      y: Math.max(0, Math.min(0.9999, point.y / trackingCanvasHeight))
+    };
     const gray = pixelsToGray(trackingPixels);
     const template = extractTemplate(gray, point.x, point.y);
     if (!template) {
-      setStatus("Move a little closer to the target and tap its center again.", "warning");
-      return;
+      if (!allowStaticSelection) {
+        setStatus("Move a little closer to the target and tap its center again.", "warning");
+        return null;
+      }
+      // Preserve a user selection even when local patch tracking cannot lock onto a low-detail region.
+      focusMarker.hidden = false;
+      focusMarker.dataset.tracking = "selected";
+      focusLabel.textContent = "Selected point";
+      focusHint.textContent = "Checking this area with Moina";
+      focusInstruction.textContent = "Tap another point to retarget";
+      approxTag.hidden = false;
+      approxTag.textContent = "User-selected point · approximate";
+      clearMarkerButton.disabled = false;
+      markerAtTrackingPoint(point);
+      return selectedPoint;
     }
     if (trackingTimer) window.clearInterval(trackingTimer);
     trackingTemplate = template;
@@ -1020,6 +1046,7 @@
     setStatus("Tracking this image area locally. Keep it visible and move the phone slowly; tap another point to retarget.");
     trackingLastTick = 0;
     trackingTimer = window.setInterval(updateLocalTracking, 90);
+    return selectedPoint;
   }
 
   function updateLocalTracking() {
@@ -1053,7 +1080,18 @@
   stage.addEventListener("click", (event) => {
     if (event.target.closest(".floating-top,.camera-controls,.caption-dock,.zoom-dock,.camera-top-badge,.camera-state,.approx-tag,.focus-card,.clear-marker,.vision-pill,.vault-link")) return;
     if (!microphoneStream || !active || !setupReady) return;
-    startLocalTracking(event.clientX, event.clientY);
+    const isTargetSelection = awaitingTargetSelection;
+    const selectedPoint = startLocalTracking(event.clientX, event.clientY, isTargetSelection);
+    if (!isTargetSelection || !selectedPoint || !socket || socket.readyState !== WebSocket.OPEN) return;
+    try {
+      // Include a recent camera frame when the per-second frame budget permits.
+      sendVideoFrame();
+      socket.send(JSON.stringify({ target_selection: selectedPoint }));
+      awaitingTargetSelection = false;
+      setStatus("Checking the selected area with Moina…");
+    } catch (_) {
+      setStatus("Unable to send that selection. Tap the object again.", "warning");
+    }
   });
 
   function initializeZoom() {
