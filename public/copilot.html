@@ -19,10 +19,24 @@
     <div class="spatial-brand"><span class="brand-mark" aria-hidden="true">m</span><strong>Moina Spatial Lab</strong><span class="spatial-live-dot" aria-hidden="true"></span></div>
     <p id="spatialStatus" role="status" aria-live="polite">Preparing a spatial session…</p>
     <div class="spatial-guidance" id="spatialGuidance" aria-label="Most recent Moina visual guidance">
-      <span class="spatial-guidance-eyebrow">LAST MOINA VISUAL CUE</span>
+      <span class="spatial-guidance-eyebrow">MOINA'S CURRENT STEP</span>
       <strong id="spatialTargetLabel">No recent visual target</strong>
       <p id="spatialTargetInstruction">Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.</p>
       <small id="spatialTargetHint">The surface marker can still be placed without a recent cue.</small>
+    </div>
+    <div class="spatial-step-panel" id="spatialStepPanel" hidden aria-label="Multi-step guided walkthrough">
+      <div class="spatial-step-header">
+        <strong>GUIDED WALKTHROUGH</strong>
+        <span id="spatialStepProgress" role="status" aria-live="polite">Step 1 of 1</span>
+      </div>
+      <p id="spatialStepMessage">Place a cue at the target, inspect the result, then confirm before advancing.</p>
+      <div class="spatial-step-actions">
+        <button type="button" id="spatialStepPrevious" disabled>Back</button>
+        <button type="button" id="spatialStepConfirm" disabled>Confirm step</button>
+        <button type="button" id="spatialStepNext" disabled>Next step</button>
+        <button type="button" id="spatialStepFinish" disabled>Done</button>
+      </div>
+      <small>Progress is user-confirmed, not automatically detected. Advancing clears the old anchor so each step can be aligned separately.</small>
     </div>
     <div class="spatial-aim-panel" aria-label="AI-assisted target alignment">
       <strong>ALIGN TARGET RAY</strong>

@@ -21,8 +21,10 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
   "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
   "When you have identified a useful visual target or a next step worth highlighting, call display_screen_overlay with a concise label, one safe next-step instruction, a brief target hint, and the approximate screen region.",
+  "If the user explicitly asks for a walkthrough that needs multiple visual steps, you may include a steps array of 2–5 ordered, short actions. Each step must include its own label, one safe instruction, target hint, and approximate screen region. Keep the top-level fields consistent with step one; do not invent steps just to fill the array.",
+  "Only emit a multi-step sequence for low-risk tasks with visible, user-verifiable actions. Never generate a guided repair sequence for live electrical equipment, gas leaks, bypassing safety systems, or tasks with a meaningful risk of injury; recommend a qualified professional instead.",
   "Screen regions are rough screen-space hints, not calibrated coordinates. Never claim the marker is physically anchored to the object. If the target is ambiguous, ask the user to point more steadily or move closer rather than guessing.",
-  "For troubleshooting, guide one step at a time and wait for the user to confirm before proceeding. Do not advise users to open live electrical equipment, handle gas leaks, bypass safety systems, or perform other hazardous repairs; recommend a qualified professional when appropriate.",
+  "For troubleshooting, guide one step at a time and wait for the user to confirm before proceeding. When a sequence is present, its progress remains unconfirmed until the user inspects the result and taps Confirm step. Do not treat a button tap as independent proof that the task succeeded.",
   "Maintain the user's current task across turns: track their stated goal, the last step they confirmed, and visible changes in later camera frames. Do not restart from step one or repeat the full explanation unless asked.",
   "Keep each reply focused on the next useful action. Use the user's confirmation or the visible result before advancing; if the view changes or the target is uncertain, ask a short clarifying question.",
   "Keep overlays minimal: one concise label and one actionable instruction near the rough target region. Never imply precise object tracking or calibrated coordinates.",
@@ -33,7 +35,7 @@ const COPILOT_SYSTEM_INSTRUCTION = [
 const COPILOT_TOOL = {
   functionDeclarations: [{
     name: "display_screen_overlay",
-    description: "Display a concise on-screen focus label and next-step hint over the live camera preview. Use only when a visible target or step is relevant. The screen region is approximate, not a measured object coordinate.",
+    description: "Display a concise on-screen focus label for the live camera preview. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -44,6 +46,24 @@ const COPILOT_TOOL = {
           type: "STRING",
           description: "Approximate screen region where the target appears in the most recent frame.",
           enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
+        },
+        steps: {
+          type: "ARRAY",
+          description: "Optional ordered walkthrough of 2 to 5 low-risk, visible, user-verifiable steps. Each step has the same fields as the top-level cue. Do not include for hazardous or uncertain tasks.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              text_to_display: { type: "STRING", description: "Short label for this step, under 50 characters." },
+              instruction: { type: "STRING", description: "One safe action the user can inspect and confirm, under 160 characters." },
+              target_hint: { type: "STRING", description: "Short description of this step's visible target." },
+              screen_region: {
+                type: "STRING",
+                description: "Approximate screen region for this step's target.",
+                enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
+              }
+            },
+            required: ["text_to_display", "instruction", "target_hint", "screen_region"]
+          }
         }
       },
       required: ["text_to_display", "instruction", "target_hint", "screen_region"]
