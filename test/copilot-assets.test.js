@@ -216,5 +216,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".spatial-hud.spatial-hud-jarvis .spatial-guidance");
     expect(css).toContain(".spatial-progress-segment.is-current");
   });
+  
+  it("keeps the default Co-Pilot camera-first and reveals secondary controls only on request", () => {
+    expect(html).toContain('id="toggleMoreControls"');
+    expect(html).toContain('id="secondaryControls" hidden');
+    expect(html).toContain('id="toggleCaptions"');
+    expect(script).toContain('stage.classList.toggle("controls-expanded", expanded)');
+    expect(script).toContain('stage.classList.toggle("captions-expanded", expanded)');
+    expect(css).toContain(".secondary-controls[hidden]{display:none!important}");
+    expect(css).toContain(".camera-stage.captions-expanded .transcript{display:flex}");
+    expect(css).toContain(".camera-stage.controls-expanded .zoom-dock{display:flex}");
+  });
 
 });
