@@ -132,7 +132,8 @@
     latestVisualGuidance = {
       label: label || "Moina\'s focus",
       hint,
-      instruction
+      instruction,
+      screenRegion: region
     };
     syncSpatialGuidance();
 
@@ -1083,6 +1084,14 @@
   const spatialTargetLabel = $("#spatialTargetLabel");
   const spatialTargetInstruction = $("#spatialTargetInstruction");
   const spatialTargetHint = $("#spatialTargetHint");
+  const spatialAimLabel = $("#spatialAimLabel");
+  const spatialAimButtons = {
+    left: $("#spatialAimLeft"),
+    up: $("#spatialAimUp"),
+    reset: $("#spatialAimReset"),
+    down: $("#spatialAimDown"),
+    right: $("#spatialAimRight")
+  };
   const placeSpatialAnchorButton = $("#placeSpatialAnchor");
   const clearSpatialAnchorButton = $("#clearSpatialAnchor");
   const exitSpatialArButton = $("#exitSpatialAr");
@@ -1104,6 +1113,13 @@
   let spatialPendingPlacementAt = 0;
   let spatialAnchorPoseLostAt = 0;
   let spatialAnchorPoseWarningShown = false;
+  let spatialAimOffsetX = 0;
+  let spatialAimOffsetY = 0;
+  let spatialSuggestedAimX = 0;
+  let spatialSuggestedAimY = 0;
+  let spatialHitSourceGeneration = 0;
+  let spatialHitSourcePending = false;
+  let spatialOffsetRaySupported = false;
 
   async function checkSpatialArSupport() {
     if (!navigator.xr || typeof navigator.xr.isSessionSupported !== "function") {
@@ -1329,21 +1345,137 @@
     spatialStatusMode = mode || "";
   }
 
+  function spatialRegionToAim(region) {
+    const offsets = {
+      "center": { x: 0, y: 0 },
+      "upper-left": { x: -0.38, y: 0.28 },
+      "upper-right": { x: 0.38, y: 0.28 },
+      "lower-left": { x: -0.38, y: -0.28 },
+      "lower-right": { x: 0.38, y: -0.28 }
+    };
+    return offsets[region] || offsets.center;
+  }
+
+  function suggestedSpatialRegion() {
+    return latestVisualGuidance && latestVisualGuidance.screenRegion
+      ? latestVisualGuidance.screenRegion
+      : "center";
+  }
+
+  function setSuggestedSpatialAim() {
+    const suggested = spatialRegionToAim(suggestedSpatialRegion());
+    spatialSuggestedAimX = suggested.x;
+    spatialSuggestedAimY = suggested.y;
+    spatialAimOffsetX = suggested.x;
+    spatialAimOffsetY = suggested.y;
+    syncSpatialAimLabel();
+  }
+
+  function spatialAimDescription(x, y) {
+    const horizontal = x < -0.07 ? "left" : (x > 0.07 ? "right" : "");
+    const vertical = y > 0.07 ? "up" : (y < -0.07 ? "down" : "");
+    return [vertical, horizontal].filter(Boolean).join("-") || "center";
+  }
+
+  function syncSpatialAimLabel() {
+    if (!spatialAimLabel) return;
+    const region = suggestedSpatialRegion().replace("-", " ");
+    const dx = Math.round((spatialAimOffsetX - spatialSuggestedAimX) / 0.12);
+    const dy = Math.round((spatialAimOffsetY - spatialSuggestedAimY) / 0.12);
+    const adjustments = [];
+    if (dx !== 0) adjustments.push(Math.abs(dx) + " step" + (Math.abs(dx) === 1 ? "" : "s") + (dx < 0 ? " left" : " right"));
+    if (dy !== 0) adjustments.push(Math.abs(dy) + " step" + (Math.abs(dy) === 1 ? "" : "s") + (dy < 0 ? " down" : " up"));
+    const current = spatialAimDescription(spatialAimOffsetX, spatialAimOffsetY);
+    if (latestVisualGuidance) {
+      spatialAimLabel.textContent = "Moina suggested " + region + "; ray aims " + current +
+        (adjustments.length ? " · nudged " + adjustments.join(", ") : "") +
+        (spatialOffsetRaySupported ? "." : " · center-ray fallback; move the phone to center the target.");
+    } else {
+      spatialAimLabel.textContent = "No recent AI region; ray aims " + current +
+        (spatialOffsetRaySupported ? ". Adjust and confirm the ring before placing." : " · center-ray fallback; move the phone to center the target.");
+    }
+  }
+
   function syncSpatialGuidance() {
     if (!latestVisualGuidance) {
       spatialTargetLabel.textContent = "No recent visual target";
       spatialTargetInstruction.textContent = "Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.";
       spatialTargetHint.textContent = "The surface marker can still be placed without a recent cue.";
-      return;
+    } else {
+      spatialTargetLabel.textContent = latestVisualGuidance.label;
+      spatialTargetInstruction.textContent = latestVisualGuidance.instruction || "No next-step instruction was provided.";
+      spatialTargetHint.textContent = latestVisualGuidance.hint || "Moina supplied no extra target description.";
     }
-    spatialTargetLabel.textContent = latestVisualGuidance.label;
-    spatialTargetInstruction.textContent = latestVisualGuidance.instruction || "No next-step instruction was provided.";
-    spatialTargetHint.textContent = latestVisualGuidance.hint || "Moina supplied no extra target description.";
+    syncSpatialAimLabel();
   }
 
   function syncSpatialButtons() {
-    placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement;
+    placeSpatialAnchorButton.disabled = !spatialLatestHit || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     clearSpatialAnchorButton.disabled = !spatialAnchor;
+    const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    Object.values(spatialAimButtons).forEach((button) => { button.disabled = aimDisabled; });
+  }
+
+  function createSpatialOffsetRay() {
+    if (typeof XRRay !== "function") return null;
+    try {
+      return new XRRay(
+        { x: 0, y: 0, z: 0, w: 1 },
+        { x: spatialAimOffsetX, y: spatialAimOffsetY, z: -1, w: 0 }
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function rebuildSpatialHitTestSource(session = spatialSession) {
+    if (!session || session !== spatialSession || !spatialViewerSpace) return;
+    const generation = ++spatialHitSourceGeneration;
+    const oldSource = spatialHitSource;
+    spatialHitSource = null;
+    spatialLatestHit = null;
+    spatialHitSourcePending = true;
+    if (oldSource) {
+      try { oldSource.cancel(); } catch (_) {}
+    }
+    syncSpatialButtons();
+    let source = null;
+    let offsetRayUsed = false;
+    const ray = createSpatialOffsetRay();
+    if (ray) {
+      try {
+        source = await session.requestHitTestSource({ space: spatialViewerSpace, offsetRay: ray });
+        offsetRayUsed = true;
+      } catch (_) {
+        // Older implementations may provide hit testing but reject the offset-ray option.
+      }
+    }
+    if (!source && session === spatialSession && generation === spatialHitSourceGeneration) {
+      source = await session.requestHitTestSource({ space: spatialViewerSpace });
+    }
+    if (session !== spatialSession || generation !== spatialHitSourceGeneration) {
+      if (source) { try { source.cancel(); } catch (_) {} }
+      return;
+    }
+    spatialHitSource = source;
+    spatialHitSourcePending = false;
+    spatialOffsetRaySupported = offsetRayUsed;
+    syncSpatialAimLabel();
+    syncSpatialButtons();
+    if (!offsetRayUsed && (Math.abs(spatialAimOffsetX) > 0.01 || Math.abs(spatialAimOffsetY) > 0.01)) {
+      setSpatialStatus("This browser fell back to a center ray. Move the phone until the target is centered in the ring, then place the cue.", "warning");
+    } else {
+      setSpatialStatus("Aim ray ready. Check the ring against the intended object, nudge the ray if needed, and confirm placement.", "aiming");
+    }
+  }
+
+  function nudgeSpatialAim(dx, dy) {
+    if (!spatialSession || !spatialOffsetRaySupported || spatialAnchor || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    spatialAimOffsetX = Math.max(-0.62, Math.min(0.62, spatialAimOffsetX + dx));
+    spatialAimOffsetY = Math.max(-0.5, Math.min(0.5, spatialAimOffsetY + dy));
+    syncSpatialAimLabel();
+    setSpatialStatus("Adjusting the target ray. Wait for the ring to reappear and verify it points at the intended object.", "aiming");
+    void rebuildSpatialHitTestSource();
   }
 
   async function startSpatialAr() {
@@ -1399,7 +1531,8 @@
       session.updateRenderState({ baseLayer: layer });
       spatialReferenceSpace = await session.requestReferenceSpace("local");
       spatialViewerSpace = await session.requestReferenceSpace("viewer");
-      spatialHitSource = await session.requestHitTestSource({ space: spatialViewerSpace });
+      setSuggestedSpatialAim();
+      await rebuildSpatialHitTestSource(session);
       spatialRenderer = createSpatialRenderer(gl);
       spatialAnchor = null;
       spatialPlacedGuidance = null;
@@ -1427,7 +1560,10 @@
         }
       });
       spatialHud.classList.remove("is-preparing");
-      setSpatialStatus("Aim at the surface you want to mark and move slowly. Place a cue anchor when the ring appears.", "searching");
+      setSpatialStatus(spatialOffsetRaySupported
+        ? "Moina's approximate target region sets the initial aim ray. Check the ring, nudge it if needed, then confirm the surface before placing."
+        : "This browser uses a center hit-test ray. Move the phone until the ring overlays the intended object, then confirm placement.", spatialOffsetRaySupported ? "aiming" : "warning");
+      syncSpatialAimLabel();
       syncSpatialButtons();
       session.addEventListener("end", finishSpatialAr, { once: true });
       session.requestAnimationFrame(drawSpatialFrame);
@@ -1500,8 +1636,8 @@
         spatialPlacing = false;
         updateSpatialTagTexture(spatialPlacedGuidance);
         setSpatialStatus(spatialPlacedGuidance
-          ? "Surface marker placed for “" + spatialPlacedGuidance.label + "”. The cue stays in this panel; align the ring with the target yourself."
-          : "Marker anchored to this surface. No recent AI target cue was available.", "anchored");
+          ? "Cue anchored at the confirmed hit-test point for “" + spatialPlacedGuidance.label + "”. Verify it lines up with the intended object; the AI screen region is only an estimate."
+          : "Marker anchored to the confirmed hit-test point. No recent AI target cue was available.", "anchored");
         syncSpatialButtons();
       }).catch(() => {
         spatialPlacing = false;
@@ -1596,6 +1732,13 @@
     spatialPendingPlacementAt = 0;
     spatialAnchorPoseLostAt = 0;
     spatialAnchorPoseWarningShown = false;
+    spatialHitSourcePending = false;
+    spatialHitSourceGeneration += 1;
+    spatialOffsetRaySupported = false;
+    spatialAimOffsetX = 0;
+    spatialAimOffsetY = 0;
+    spatialSuggestedAimX = 0;
+    spatialSuggestedAimY = 0;
     spatialPlacedGuidance = null;
     if (oldAnchor) {
       try { oldAnchor.delete(); } catch (_) {}
@@ -1607,10 +1750,23 @@
     setStatus("Spatial AR ended. Start Co-Pilot to resume live voice guidance.");
   }
 
+  spatialAimButtons.left.addEventListener("click", () => nudgeSpatialAim(-0.12, 0));
+  spatialAimButtons.right.addEventListener("click", () => nudgeSpatialAim(0.12, 0));
+  spatialAimButtons.up.addEventListener("click", () => nudgeSpatialAim(0, 0.12));
+  spatialAimButtons.down.addEventListener("click", () => nudgeSpatialAim(0, -0.12));
+  spatialAimButtons.reset.addEventListener("click", () => {
+    if (!spatialSession || !spatialOffsetRaySupported || spatialAnchor || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    spatialAimOffsetX = spatialSuggestedAimX;
+    spatialAimOffsetY = spatialSuggestedAimY;
+    syncSpatialAimLabel();
+    setSpatialStatus("Restored Moina's suggested screen region. Check the ring before placing.", "aiming");
+    void rebuildSpatialHitTestSource();
+  });
+
   placeSpatialAnchorButton.addEventListener("click", () => {
     if (!spatialSession || spatialAnchor || spatialPlacing) return;
     if (!spatialLatestHit) {
-      setSpatialStatus("No surface detected yet. Aim at a textured surface and move slowly.", "searching");
+      setSpatialStatus("No surface detected on the current aim ray. Move slowly or adjust the ray and try again.", "searching");
       return;
     }
     spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;
