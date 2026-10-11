@@ -31,6 +31,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain('const model = "gemini-3.8-flash"');
     expect(workerSource).toContain("tools: [{ googleSearch: {} }]");
     expect(workerSource).toContain('[AskMoina] Grounded search finished');
+    expect(workerSource).toContain('[AskMoina] Grounded search requested');
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
