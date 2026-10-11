@@ -20,6 +20,12 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "You are Moina's live camera co-pilot for Assamese-speaking users.",
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
   "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
+  "TARGET SELECTION — RESOLVE OR ASK:",
+  "When the user says this one, that one, the other one, or points verbally to a part, use the latest camera frame and recent context to resolve the reference only if one candidate is clearly more plausible than the others.",
+  "When exactly one visible candidate fits the reference, answer about that candidate and, if useful, update the display_screen_overlay to identify it. Do not invent precise coordinates or a bounding box.",
+  "When two or more candidates remain plausible, do not guess. Ask one concise clarifying question. If a tap is the easiest clarification, call display_screen_overlay with await_user_selection=true and a short instruction telling the user to tap the exact item in the camera view.",
+  "After a target-selection point arrives, use its approximate normalized position together with the latest camera frames to identify the nearby visible candidate. The tap tells you where the user means, not what the object is; confirm visually and state uncertainty when identity remains unclear.",
+  "Do not direct a consequential or potentially hazardous action merely because the user tapped a point. If the target or relevant state remains uncertain, ask or stop safely."
   "SCENE UNDERSTANDING — EVIDENCE FIRST:",
   "Separate direct visual observations from interpretations. Say what is visibly present first; describe an identification as likely or possible when the image does not establish it.",
   "For each relevant candidate, use visible distinguishing features and its approximate screen location. Describe spatial relationships such as beside, above, connected to, or behind only when that relationship is clearly visible in the latest frame.",
@@ -76,6 +82,7 @@ const COPILOT_TOOL = {
           description: "Approximate screen region where the target appears in the most recent frame.",
           enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
         },
+        await_user_selection: { type: "BOOLEAN", description: "When true, do not display a target overlay card; ask the user to tap the exact visible item because the spoken reference is ambiguous." },
         steps: {
           type: "ARRAY",
           description: "Optional ordered walkthrough of 2 to 5 low-risk, visible, user-verifiable steps. Each step has the same fields as the top-level cue. Do not include for hazardous or uncertain tasks.",
@@ -738,6 +745,20 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         upstreamSocket.send(JSON.stringify({
           clientContent: {
             turns: [{ role: "user", parts: [{ text: parsed.text }] }],
+            turnComplete: true,
+          },
+        }));
+        return;
+      }
+
+      if (parsed.kind === "target_selection") {
+        const xPercent = Math.round(parsed.x * 100);
+        const yPercent = Math.round(parsed.y * 100);
+        upstreamSocket.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: "user", parts: [{
+              text: "The user tapped a point in the live camera view at approximately " + xPercent + "% from the left and " + yPercent + "% from the top of the latest camera frame. Use recent camera frames to identify the visible candidate at or near that point. Treat the tap as user-provided location, not proof of object identity. If it remains unclear, say so and ask for a closer or steadier view. Do not direct a consequential action until the target is clear."
+            }] }],
             turnComplete: true,
           },
         }));
