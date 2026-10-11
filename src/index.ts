@@ -119,9 +119,13 @@ function hasVertexCredentials(env: Env): boolean {
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
 async function performGroundedWebSearch(env: Env, query: string): Promise<string> {
-  const location = env.GEMINI_LOCATION?.trim() || "us-central1";
-  const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
-  const model = "gemini-3.5-flash"; // Known-supported Vertex Search-grounding compatibility target
+  // Google documents Gemini 3.8 Flash Search grounding at the global endpoint.
+  // Do not reuse GEMINI_LOCATION here: the Live model may use a regional endpoint
+  // where this separate grounding model is not available.
+  const location = "global";
+  const host = "aiplatform.googleapis.com";
+  const model = "gemini-3.8-flash";
+  const searchStartedAt = Date.now();
   const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
   const accessToken = await getGoogleAccessToken(env);
   const controller = new AbortController();
@@ -160,6 +164,13 @@ async function performGroundedWebSearch(env: Env, query: string): Promise<string
       .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri && (web.uri.startsWith("https://") || web.uri.startsWith("http://"))))
       .slice(0, 5)
       .map((web) => `- ${String(web.title || web.uri).slice(0, 180)}: ${web.uri}`);
+    console.info("[AskMoina] Grounded search finished", JSON.stringify({
+      model,
+      location,
+      verified: sources.length > 0,
+      sourceCount: sources.length,
+      elapsedMs: Date.now() - searchStartedAt,
+    }));
     if (!sources.length) return "The web lookup did not return verifiable source URLs. Treat this as unverified; ask the user for the exact model or another detail rather than presenting current instructions as confirmed.";
     return [answer || "Relevant sources were found.", `Sources:\n${sources.join("\n")}`].filter(Boolean).join("\n\n").slice(0, 7_000);
   } finally {
