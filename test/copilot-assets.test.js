@@ -45,6 +45,18 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".spatial-hud[hidden]{display:none}");
   });
 
+  it("restores the default WebGL framebuffer and handles Spatial AR exit idempotently", () => {
+    expect(script).toContain("if (!spatialSession && !spatialGl && !spatialRenderer) return;");
+    expect(script).toContain("endedGl.bindFramebuffer(endedGl.FRAMEBUFFER, null);");
+    expect(script).toContain("endedGl.flush();");
+    expect(script).toContain("async function requestSpatialArExit()");
+    expect(script).toContain("await session.end();");
+    expect(script).toContain("if (spatialSession === session) finishSpatialAr();");
+    expect(script).toContain("exitSpatialArButton.disabled = false;");
+    expect(css).toContain("background:#080b10f5");
+    expect(css).not.toContain("backdrop-filter:blur(18px);box-shadow:0 14px 44px #0006");
+  });
+
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
