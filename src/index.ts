@@ -121,7 +121,7 @@ function hasVertexCredentials(env: Env): boolean {
 async function performGroundedWebSearch(env: Env, query: string): Promise<string> {
   const location = env.GEMINI_LOCATION?.trim() || "us-central1";
   const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
-  const model = "gemini-3.8-flash";
+  const model = "gemini-3.5-flash"; // Known-supported Vertex Search-grounding compatibility target
   const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
   const accessToken = await getGoogleAccessToken(env);
   const controller = new AbortController();
@@ -141,12 +141,18 @@ async function performGroundedWebSearch(env: Env, query: string): Promise<string
       signal: controller.signal
     });
     const payload = await response.json().catch(() => ({})) as {
+      error?: { code?: number; message?: string; status?: string };
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
         groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
       }>;
     };
-    if (!response.ok) throw new Error(`Grounded search request failed (${response.status}).`);
+    if (!response.ok) {
+      const providerMessage = typeof payload.error?.message === "string"
+        ? payload.error.message.slice(0, 500)
+        : "no provider error detail returned";
+      throw new Error(`Grounded search request failed (${response.status}) on ${model}: ${providerMessage}`);
+    }
     const candidate = payload.candidates?.[0];
     const answer = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
     const sources = (candidate?.groundingMetadata?.groundingChunks || [])
