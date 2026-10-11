@@ -1203,6 +1203,20 @@
   const placeSpatialAnchorButton = $("#placeSpatialAnchor");
   const clearSpatialAnchorButton = $("#clearSpatialAnchor");
   const exitSpatialArButton = $("#exitSpatialAr");
+  const spatialSceneName = $("#spatialSceneName");
+  const spatialSceneCount = $("#spatialSceneCount");
+  const spatialScenePinButton = $("#spatialScenePin");
+  const spatialSceneSaveButton = $("#spatialSceneSave");
+  const spatialSceneSelect = $("#spatialSceneSelect");
+  const spatialSceneLoadButton = $("#spatialSceneLoad");
+  const spatialSceneClearButton = $("#spatialSceneClear");
+
+  const SPATIAL_SCENE_STORAGE_KEY = "askmoina.spatial.scenes.v1";
+  const MAX_SPATIAL_SCENES = 12;
+  const MAX_SPATIAL_CUES = 5;
+
+  let spatialSavedScenes = loadSpatialSceneLibrary();
+  let spatialSceneAnchors = [];
 
   let spatialFeatureSupported = false;
   let spatialSession = null;
@@ -1232,6 +1246,174 @@
   let spatialStepIndex = 0;
   let spatialStepConfirmed = false;
   let spatialSequenceFinished = false;
+
+  function normalizeSavedSpatialCue(value) {
+    if (!value || typeof value !== "object") return null;
+    const label = typeof value.label === "string" ? value.label.trim().slice(0, 72) : "";
+    const instruction = typeof value.instruction === "string" ? value.instruction.trim().slice(0, 220) : "";
+    const hint = typeof value.hint === "string" ? value.hint.trim().slice(0, 120) : "";
+    const regions = ["center", "upper-left", "upper-right", "lower-left", "lower-right"];
+    const screenRegion = regions.includes(value.screenRegion) ? value.screenRegion : "center";
+    if (!label && !instruction) return null;
+    return { label: label || "Saved cue", instruction, hint, screenRegion };
+  }
+
+  function loadSpatialSceneLibrary() {
+    try {
+      const raw = window.localStorage.getItem(SPATIAL_SCENE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.slice(0, MAX_SPATIAL_SCENES).map((scene) => {
+        const cues = Array.isArray(scene && scene.cues)
+          ? scene.cues.slice(0, MAX_SPATIAL_CUES).map(normalizeSavedSpatialCue).filter(Boolean)
+          : [];
+        return {
+          id: typeof scene?.id === "string" ? scene.id.slice(0, 80) : "",
+          name: typeof scene?.name === "string" ? scene.name.trim().slice(0, 60) : "",
+          savedAt: typeof scene?.savedAt === "string" ? scene.savedAt : "",
+          cues
+        };
+      }).filter((scene) => scene.id && scene.name && scene.cues.length);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function persistSpatialSceneLibrary() {
+    try {
+      window.localStorage.setItem(SPATIAL_SCENE_STORAGE_KEY, JSON.stringify(spatialSavedScenes.slice(0, MAX_SPATIAL_SCENES)));
+      return true;
+    } catch (_) {
+      setSpatialStatus("The scene could not be saved on this browser. Check local storage availability.", "warning");
+      return false;
+    }
+  }
+
+  function refreshSpatialSceneSelect() {
+    if (!spatialSceneSelect) return;
+    const previousValue = spatialSceneSelect.value;
+    spatialSceneSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = spatialSavedScenes.length ? "Choose a saved scene…" : "No saved scenes yet";
+    spatialSceneSelect.appendChild(placeholder);
+    for (const scene of spatialSavedScenes) {
+      const option = document.createElement("option");
+      option.value = scene.id;
+      option.textContent = scene.name + " · " + scene.cues.length + " cues";
+      spatialSceneSelect.appendChild(option);
+    }
+    if (spatialSavedScenes.some((scene) => scene.id === previousValue)) spatialSceneSelect.value = previousValue;
+    syncSpatialSceneControls();
+  }
+
+  function hasSpatialCueForCurrentStep() {
+    return Boolean(spatialAnchor) || spatialSceneAnchors.some((item) => item.stepIndex === spatialStepIndex);
+  }
+
+  function syncSpatialSceneControls() {
+    if (!spatialSceneCount) return;
+    const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
+    spatialSceneCount.textContent = spatialSceneAnchors.length + " pinned cue" + (spatialSceneAnchors.length === 1 ? "" : "s");
+    spatialScenePinButton.disabled = !spatialSession || !spatialAnchor || busy ||
+      spatialSceneAnchors.length >= MAX_SPATIAL_CUES ||
+      (spatialGuidanceSteps.length > 1 && !spatialStepConfirmed);
+    spatialSceneSaveButton.disabled = spatialSceneAnchors.length < 1 || !spatialSceneName.value.trim();
+    spatialSceneLoadButton.disabled = !spatialSceneSelect.value ||
+      !spatialSavedScenes.some((scene) => scene.id === spatialSceneSelect.value);
+    spatialSceneClearButton.disabled = spatialSceneAnchors.length < 1 || busy;
+  }
+
+  function pinCurrentSpatialCue() {
+    if (!spatialSession || !spatialAnchor || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
+    if (spatialSceneAnchors.length >= MAX_SPATIAL_CUES) {
+      setSpatialStatus("A scene can hold up to " + MAX_SPATIAL_CUES + " pinned cues. Save this scene or clear pins before adding another.", "warning");
+      return;
+    }
+    if (spatialGuidanceSteps.length > 1 && !spatialStepConfirmed) {
+      setSpatialStatus("Confirm this walkthrough step before pinning it into the scene.", "warning");
+      return;
+    }
+    const guidance = normalizeSavedSpatialCue(spatialPlacedGuidance || activeSpatialGuidance());
+    if (!guidance) {
+      setSpatialStatus("This cue has no label or instruction to save.", "warning");
+      return;
+    }
+    spatialSceneAnchors.push({ anchor: spatialAnchor, guidance, stepIndex: spatialGuidanceSteps.length > 1 ? spatialStepIndex : -1 });
+    updateSpatialTagTexture(guidance);
+    spatialAnchor = null;
+    spatialPlacedGuidance = null;
+    spatialLatestHit = null;
+    spatialAnchorPoseLostAt = 0;
+    spatialAnchorPoseWarningShown = false;
+    setSpatialStatus("Pinned “" + guidance.label + "” in this AR scene. The marker stays visible while you align another cue.", "anchored");
+    syncSpatialButtons();
+    syncSpatialSequenceControls();
+    syncSpatialSceneControls();
+  }
+
+  function saveCurrentSpatialScene() {
+    const name = spatialSceneName.value.trim().slice(0, 60);
+    if (!name) {
+      setSpatialStatus("Give this scene a short name before saving it.", "warning");
+      spatialSceneName.focus();
+      return;
+    }
+    const cues = spatialSceneAnchors.map((item) => normalizeSavedSpatialCue(item.guidance)).filter(Boolean).slice(0, MAX_SPATIAL_CUES);
+    if (!cues.length) {
+      setSpatialStatus("Pin at least one cue before saving a scene.", "warning");
+      return;
+    }
+    const existing = spatialSavedScenes.find((scene) => scene.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+    const scene = {
+      id: existing ? existing.id : (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "scene-" + Date.now()),
+      name,
+      savedAt: new Date().toISOString(),
+      cues
+    };
+    spatialSavedScenes = [scene, ...spatialSavedScenes.filter((item) => item.id !== scene.id)].slice(0, MAX_SPATIAL_SCENES);
+    if (!persistSpatialSceneLibrary()) return;
+    refreshSpatialSceneSelect();
+    spatialSceneSelect.value = scene.id;
+    syncSpatialSceneControls();
+    setSpatialStatus("Saved scene “" + name + "” on this device with " + cues.length + " cue" + (cues.length === 1 ? "" : "s") + ". Cue descriptions are saved; physical anchor positions are not.", "anchored");
+  }
+
+  function loadSavedSpatialScene() {
+    const scene = spatialSavedScenes.find((item) => item.id === spatialSceneSelect.value);
+    if (!scene || !scene.cues.length) return;
+    if (spatialAnchor && !spatialSceneAnchors.some((item) => item.anchor === spatialAnchor)) {
+      try { spatialAnchor.delete(); } catch (_) {}
+    }
+    spatialAnchor = null;
+    spatialPlacedGuidance = null;
+    spatialLatestHit = null;
+    spatialGuidanceSteps = scene.cues.map((cue) => ({ ...cue }));
+    spatialStepIndex = 0;
+    spatialStepConfirmed = false;
+    spatialSequenceFinished = false;
+    setSuggestedSpatialAim();
+    syncSpatialGuidance();
+    syncSpatialButtons();
+    syncSpatialSceneControls();
+    void rebuildSpatialHitTestSource();
+    setSpatialStatus("Loaded “" + scene.name + "”. Align and place each saved cue again; this browser cannot restore physical anchor positions across sessions.", "aiming");
+  }
+
+  function clearPinnedSpatialCues() {
+    if (!spatialSceneAnchors.length) return;
+    for (const item of spatialSceneAnchors) {
+      try { item.anchor.delete(); } catch (_) {}
+    }
+    spatialSceneAnchors = [];
+    if (!spatialAnchor) spatialPlacedGuidance = null;
+    syncSpatialButtons();
+    syncSpatialSequenceControls();
+    syncSpatialSceneControls();
+    setSpatialStatus("Pinned markers cleared from this session. Saved scene templates remain on this device.", "normal");
+  }
+
+  refreshSpatialSceneSelect();
 
   async function checkSpatialArSupport() {
     if (!navigator.xr || typeof navigator.xr.isSessionSupported !== "function") {
@@ -1531,8 +1713,8 @@
         : "Place the cue at this step's target, inspect the result, then confirm before advancing.";
     const busy = spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     spatialStepButtons.previous.disabled = spatialStepIndex <= 0 || busy;
-    spatialStepButtons.confirm.disabled = !spatialAnchor || spatialStepConfirmed || spatialSequenceFinished || busy;
-    spatialStepButtons.next.disabled = !spatialStepConfirmed || spatialStepIndex >= total - 1 || spatialSequenceFinished || busy;
+    spatialStepButtons.confirm.disabled = !hasSpatialCueForCurrentStep() || spatialStepConfirmed || spatialSequenceFinished || busy;
+    spatialStepButtons.next.disabled = !spatialStepConfirmed || !hasSpatialCueForCurrentStep() || spatialStepIndex >= total - 1 || spatialSequenceFinished || busy;
     spatialStepButtons.finish.disabled = !spatialStepConfirmed || spatialStepIndex !== total - 1 || spatialSequenceFinished || busy;
   }
 
@@ -1552,7 +1734,7 @@
   }
 
   function clearCurrentSpatialAnchorForStepChange() {
-    if (spatialAnchor) {
+    if (spatialAnchor && !spatialSceneAnchors.some((item) => item.anchor === spatialAnchor)) {
       try { spatialAnchor.delete(); } catch (_) {}
     }
     spatialAnchor = null;
@@ -1568,7 +1750,7 @@
   function moveSpatialGuidanceStep(delta) {
     if (!spatialSession || spatialGuidanceSteps.length < 2) return;
     if (spatialPlacing || spatialPendingPlacement || spatialHitSourcePending) return;
-    if (delta > 0 && (!spatialStepConfirmed || !spatialAnchor)) return;
+    if (delta > 0 && (!spatialStepConfirmed || !hasSpatialCueForCurrentStep())) return;
     const nextIndex = Math.max(0, Math.min(spatialGuidanceSteps.length - 1, spatialStepIndex + delta));
     if (nextIndex === spatialStepIndex) return;
     clearCurrentSpatialAnchorForStepChange();
@@ -1583,7 +1765,7 @@
   }
 
   function confirmSpatialGuidanceStep() {
-    if (!spatialSession || !spatialAnchor || spatialSequenceFinished || spatialStepConfirmed) return;
+    if (!spatialSession || !hasSpatialCueForCurrentStep() || spatialSequenceFinished || spatialStepConfirmed) return;
     spatialStepConfirmed = true;
     syncSpatialSequenceControls();
     setSpatialStatus("Step " + (spatialStepIndex + 1) + " confirmed by you. Check the visible result before advancing.", "anchored");
@@ -1601,6 +1783,7 @@
     clearSpatialAnchorButton.disabled = !spatialAnchor;
     const aimDisabled = !spatialSession || !spatialOffsetRaySupported || Boolean(spatialAnchor) || spatialPlacing || spatialPendingPlacement || spatialHitSourcePending;
     Object.values(spatialAimButtons).forEach((button) => { button.disabled = aimDisabled; });
+    syncSpatialSceneControls();
   }
 
   function createSpatialOffsetRay() {
@@ -1754,6 +1937,7 @@
       await rebuildSpatialHitTestSource(session);
       spatialRenderer = createSpatialRenderer(gl);
       spatialAnchor = null;
+      spatialSceneAnchors = [];
       spatialPlacedGuidance = null;
       spatialLatestHit = null;
       spatialPendingPlacement = false;
@@ -1800,6 +1984,7 @@
       spatialViewerSpace = null;
       spatialReferenceSpace = null;
       spatialAnchor = null;
+      spatialSceneAnchors = [];
       spatialLatestHit = null;
       spatialPendingPlacement = false;
       spatialPlacing = false;
@@ -1896,9 +2081,16 @@
           setSpatialStatus("Tracking recovered. Move slowly and check that the ring still lines up with the intended target.", "anchored");
         }
       }
-    } else {
+    } else if (!spatialSceneAnchors.length) {
       spatialAnchorPoseLostAt = 0;
       spatialAnchorPoseWarningShown = false;
+    }
+
+    const pinnedPoses = [];
+    for (const item of spatialSceneAnchors) {
+      let pose = null;
+      try { pose = frame.getPose(item.anchor.anchorSpace, spatialReferenceSpace); } catch (_) {}
+      if (pose) pinnedPoses.push({ item, pose });
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
@@ -1915,11 +2107,17 @@
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.disable(gl.SCISSOR_TEST);
 
+      for (const pinned of pinnedPoses) {
+        drawSpatialRing(gl, view, pinned.pose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
+      }
       if (spatialAnchor) {
         if (currentAnchorPose) {
           drawSpatialRing(gl, view, currentAnchorPose.transform.matrix, spatialRenderer.anchorRing, [0.32, 1.0, 0.77, 0.98]);
           drawSpatialTag(gl, view, currentAnchorPose.transform.matrix);
         }
+      } else if (pinnedPoses.length) {
+        const latestPinned = pinnedPoses[pinnedPoses.length - 1];
+        drawSpatialTag(gl, view, latestPinned.pose.transform.matrix);
       } else if (spatialLatestHit) {
         const hitPose = spatialLatestHit.getPose(spatialReferenceSpace);
         if (hitPose) drawSpatialRing(gl, view, hitPose.transform.matrix, spatialRenderer.previewRing, [1.0, 1.0, 1.0, 0.95]);
@@ -1947,6 +2145,7 @@
     // Ignore duplicate calls once the session and GL resources are released.
     if (!spatialSession && !spatialGl && !spatialRenderer) return;
     const oldAnchor = spatialAnchor;
+    const oldSceneAnchors = spatialSceneAnchors.slice();
     const oldHitSource = spatialHitSource;
     spatialSession = null;
     spatialHitSource = null;
@@ -1954,6 +2153,7 @@
     spatialViewerSpace = null;
     spatialReferenceSpace = null;
     spatialAnchor = null;
+    spatialSceneAnchors = [];
     spatialLatestHit = null;
     spatialPendingPlacement = false;
     spatialPlacing = false;
@@ -1972,9 +2172,13 @@
     spatialStepIndex = 0;
     spatialStepConfirmed = false;
     spatialSequenceFinished = false;
-    if (oldAnchor) {
+    if (oldAnchor && !oldSceneAnchors.some((item) => item.anchor === oldAnchor)) {
       try { oldAnchor.delete(); } catch (_) {}
     }
+    for (const item of oldSceneAnchors) {
+      try { item.anchor.delete(); } catch (_) {}
+    }
+    spatialSceneAnchors = [];
 
     // WebXR leaves the XR layer framebuffer bound to the context after the
     // immersive session. Restore the ordinary/default framebuffer before
@@ -1993,6 +2197,7 @@
     spatialHud.hidden = true;
     spatialHud.classList.remove("is-preparing");
     spatialArButton.disabled = !spatialFeatureSupported;
+    syncSpatialSceneControls();
     if (active && setupReady && socket && socket.readyState === WebSocket.OPEN && cameraSuspendedForSpatialAr) {
       void resumeCameraAfterSpatialAr("Spatial AR ended");
     } else {
@@ -2047,8 +2252,17 @@
       spatialAnchorPoseWarningShown = false;
       setSpatialStatus("Anchor cleared. Aim at a surface and place a new marker.", "searching");
       syncSpatialButtons();
+      syncSpatialSequenceControls();
+      syncSpatialSceneControls();
     }
   });
+
+  spatialScenePinButton.addEventListener("click", pinCurrentSpatialCue);
+  spatialSceneSaveButton.addEventListener("click", saveCurrentSpatialScene);
+  spatialSceneLoadButton.addEventListener("click", loadSavedSpatialScene);
+  spatialSceneClearButton.addEventListener("click", clearPinnedSpatialCues);
+  spatialSceneName.addEventListener("input", syncSpatialSceneControls);
+  spatialSceneSelect.addEventListener("change", syncSpatialSceneControls);
 
   async function requestSpatialArExit() {
     const session = spatialSession;
