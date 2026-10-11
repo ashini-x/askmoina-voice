@@ -1768,9 +1768,9 @@
   function syncSpatialGuidance() {
     const guidance = activeSpatialGuidance();
     if (!guidance) {
-      spatialTargetLabel.textContent = "No recent visual target";
-      spatialTargetInstruction.textContent = "Start Co-Pilot and ask Moina to highlight a target before opening Spatial AR.";
-      spatialTargetHint.textContent = "The surface marker can still be placed without a recent cue.";
+      spatialTargetLabel.textContent = "Ready when you are";
+      spatialTargetInstruction.textContent = "Ask Moina what you want help with. I'll guide you one step at a time.";
+      spatialTargetHint.textContent = "Move slowly until the ring rests on the surface you want.";
     } else {
       spatialTargetLabel.textContent = guidance.label;
       spatialTargetInstruction.textContent = guidance.instruction || "No next-step instruction was provided.";
