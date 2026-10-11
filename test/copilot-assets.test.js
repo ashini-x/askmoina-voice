@@ -141,7 +141,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("for (const pinned of pinnedPoses)");
     expect(script).toContain("clearPinnedSpatialCues()");
     expect(html).toContain("Scenes save cue descriptions on this device, not physical anchor positions");
-    expect(test).not.toContain("requestPersistentHandle");
+    expect(script).not.toContain("requestPersistentHandle");
     expect(css).toContain(".spatial-scene-panel");
   });
 
