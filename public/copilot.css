@@ -92,3 +92,19 @@
 .spatial-scene-actions select{flex:1}
 .spatial-scene-panel small{display:block;margin-top:8px;color:#b6bdc8;font-size:.58rem;line-height:1.4}
 @media(max-width:430px){.spatial-scene-panel{padding:8px 9px;margin-bottom:8px}.spatial-scene-actions{gap:4px}.spatial-scene-actions button{padding:0 7px;font-size:.59rem}.spatial-scene-panel input,.spatial-scene-panel select{font-size:.64rem}}
+
+
+/* Milestone 9: progressive disclosure for a calm, guided AR default. */
+.spatial-advanced{margin:0 0 11px;border-top:1px solid #ffffff1c}
+.spatial-advanced>summary{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:8px 3px;color:#d7eee7;font-size:.74rem;font-weight:650;cursor:pointer;list-style:none}
+.spatial-advanced>summary::-webkit-details-marker{display:none}
+.spatial-advanced>summary::after{content:"+";font-size:1.1rem;color:#bde9dc}
+.spatial-advanced[open]>summary::after{content:"−"}
+.spatial-advanced-content{padding-top:4px}
+.spatial-advanced-content .spatial-scene-panel{margin-top:3px}
+.spatial-step-actions #spatialStepPrevious,
+.spatial-step-actions #spatialStepConfirm,
+.spatial-step-actions #spatialStepFinish{display:none}
+.spatial-step-actions #spatialStepNext{width:100%;min-height:40px;background:#dcfff3;color:#071b15;border-color:#dcfff3;font-size:.78rem}
+.spatial-step-panel>p{font-size:.75rem;line-height:1.45}
+.spatial-note-short{margin:10px 0 0;color:#c2cbd3;font-size:.61rem;line-height:1.4;text-align:center}
