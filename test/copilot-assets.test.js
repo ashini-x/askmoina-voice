@@ -66,6 +66,19 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("the target is not automatically recognized");
   });
 
+  it("recovers cleanly from brief surface loss and reports anchor tracking reacquisition", () => {
+    expect(script).toContain("spatialPendingPlacementAt && time - spatialPendingPlacementAt > 1800");
+    expect(script).toContain("Surface detection was lost before placement");
+    expect(script).toContain("spatialAnchorPoseWarningShown");
+    expect(script).toContain("Spatial tracking is reacquiring this anchor");
+    expect(script).toContain("Tracking recovered. Move slowly");
+    expect(script).toContain("oldHitSource.cancel()");
+    expect(script).toContain('addEventListener("visibilitychange"');
+    expect(script).toContain("The graphics context was lost");
+    expect(script).toContain('spatialStatus.dataset.kind = mode || "normal"');
+    expect(css).toContain('#spatialStatus[data-kind="warning"]');
+  });
+
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
     expect(script).toContain("function startLocalTracking(clientX, clientY)");
     expect(script).toContain("function updateLocalTracking()");
