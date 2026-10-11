@@ -1,20 +1,20 @@
 # AskMoina product roadmap
-Last updated: 2026-10-11 (M12 production deployment)
+Last updated: 2026-10-11 (M13 production deployment)
 
 ## Product vision
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
 
 ## Shipped foundation
-Milestones 1–12 are deployed on the production Worker. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. These cues are not general object recognition or verified real-world understanding.
+Milestones 1–13 are deployed on the production Worker. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. These cues are not general object recognition or verified real-world understanding.
 
 ## Remaining roadmap
 
 ### Phase 1 — Effortless JARVIS experience
 - **M11 — Camera-first visual reset (deployed):** live camera dominance, restrained focus overlays, secondary controls under More, and captions on demand. Real-device acceptance was confirmed by the product owner.
-- **M12 — Natural voice copilot (deployed 2026-10-11):** merge overlapping transcription fragments, suppress stale audio after an interruption, strengthen follow-up and topic-switch behavior, and show an explicit Try again action after unexpected disconnects. Automated validation and post-deploy smoke tests passed. Hands-on voice interruption, follow-up quality, and reconnect recovery still require real-browser/device acceptance.
+- **M12 — Natural voice copilot (deployed 2026-10-11):** merge overlapping transcription fragments, suppress stale audio after an interruption, strengthen follow-up and topic-switch behavior, and show an explicit Try again action after unexpected disconnects. Automated validation and post-deploy smoke tests passed. Hands-on voice interruption, follow-up quality, and reconnect recovery still require real-browser/device acceptance.\n- **M13 — Conditional web grounding (deployed 2026-10-11):** regular voice can use native Google Search grounding when current information materially helps; Co-Pilot can call a worker-executed grounded lookup for model-specific manuals, compatibility, recalls, and troubleshooting. Co-Pilot lookups are limited to two attempts per session, use an eight-second cooldown and 12-second timeout, clip queries to 240 characters, and return verifiable source URLs. Web results remain untrusted evidence and do not prove visual component identification. Release validation and production smoke tests passed; real-session search usefulness, relevance, and latency still require hands-on acceptance.
 
 ### Phase 2 — Visual awareness
-- **M13 — Conditional web grounding:** integrate on-demand search and equipment documentation where it improves answers; avoid needless searches. Current candidate: PR #52, not yet merged at this roadmap snapshot.
+- **M13 — Conditional web grounding (deployed 2026-10-11):** use native search grounding for current facts in normal voice and an explicit, bounded grounded-search tool in Co-Pilot for equipment documentation or changing troubleshooting guidance. Avoid needless searches; source URLs and uncertainty must be surfaced, and search results must never be treated as visual recognition evidence.
 - **M14 — Scene understanding:** identify candidate objects, components, labels, visible text, and relationships; distinguish observation from assumption.
 - **M15 — Automatic target selection:** resolve spoken references to a visible region; ask or allow a simple tap when ambiguous.
 - **M16 — Persistent visual tracking:** track the selected region through camera motion, reacquire after obstruction, and hide/fade when confidence is lost.
