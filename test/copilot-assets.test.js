@@ -46,12 +46,24 @@ describe("Live Co-Pilot browser assets", () => {
   it("hands the latest AI visual cue into spatial placement without claiming object recognition", () => {
     expect(html).toContain('id="spatialGuidance"');
     expect(html).toContain('id="spatialTargetLabel"');
-    expect(html).toContain("you must align the marker yourself");
+    expect(html).toContain("Aim the ring at the target yourself");
     expect(script).toContain("let latestVisualGuidance = null;");
     expect(script).toContain("function syncSpatialGuidance()");
     expect(script).toContain("spatialPlacedGuidance = latestVisualGuidance ? { ...latestVisualGuidance } : null;");
     expect(script).toContain("Surface marker placed for");
     expect(script).toContain("The cue stays in this panel");
+  });
+
+  it("renders the selected cue as a world-anchored 3D tag after surface placement", () => {
+    expect(html).toContain("a floating 3D cue card stays at a fixed world position");
+    expect(script).toContain("const tagVs = compileSpatialShader");
+    expect(script).toContain("function updateSpatialTagTexture(guidance)");
+    expect(script).toContain("function drawSpatialTag(gl,view,anchorMatrix)");
+    expect(script).toContain("raisedAnchor[13]+=0.22;");
+    expect(script).toContain("gl.drawArrays(gl.TRIANGLE_STRIP,0,4);");
+    expect(script).toContain("drawSpatialTag(gl, view, anchorPose.transform.matrix)");
+    expect(script).toContain("updateSpatialTagTexture(spatialPlacedGuidance);");
+    expect(html).toContain("the target is not automatically recognized");
   });
 
   it("supports tap-to-track local image patches without claiming world-locked AR", () => {
