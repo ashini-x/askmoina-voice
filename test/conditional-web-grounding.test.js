@@ -4,16 +4,17 @@ import { describe, expect, it } from "vitest";
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 describe("Milestone 13 conditional web grounding", () => {
-  it("keeps native Google Search grounding conditional on usefulness", () => {
-    expect(workerSource).toContain("Use Google Search grounding only when current information");
-    expect(workerSource).toContain("Do not search for ordinary conversation, stable general knowledge, or every turn");
-    expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ googleSearch: {} }]');
+  it("exposes an explicit server-executed grounded search tool to normal voice and Co-Pilot", () => {
+    expect(workerSource).toContain("LIVE WEB SEARCH IS AVAILABLE");
+    expect(workerSource).toContain("you MUST call search_current_web before answering");
+    expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }]');
+    expect(workerSource).toContain("tools: [{ googleSearch: {} }]");
   });
 
-  it("uses an explicit on-demand search function for Co-Pilot with separate Live tool configuration", () => {
+  it("handles search tool calls from both standard voice and Co-Pilot", () => {
     expect(workerSource).toContain('name: "search_current_web"');
-    expect(workerSource).toContain("Keep Live API tool types separate");
-    expect(workerSource).toContain("frameText.includes(");
+    expect(workerSource).toContain('if (frameText.includes(\'"toolCall"\') || frameText.includes(\'"tool_call"\'))');
+    expect(workerSource).not.toContain('if (copilotMode && (frameText.includes');
   });
 
   it("bounds on-demand searches, latency, and query size per Co-Pilot session", () => {
