@@ -1,11 +1,11 @@
 # AskMoina product roadmap
-Last updated: 2026-10-11 (tracking-anchor hardening deployed; real-device tracking acceptance pending)
+Last updated: 2026-10-11 (M18 problem-understanding instructions deployed; real-task acceptance pending)
 
 ## Product vision
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
 
 ## Shipped foundation
-Milestones 1–17 are deployed on the production Worker; a follow-up tracking-anchor reliability fix prevents untracked model-generated highlights from appearing at a guessed screen position. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. M14 adds evidence-first scene instructions and was smoke-tested by the product owner; this is not proof of general object-recognition accuracy. Existing cues remain approximate and are not semantic object segmentation.
+Milestones 1–18 are deployed on the production Worker; a follow-up tracking-anchor reliability fix prevents untracked model-generated highlights from appearing at a guessed screen position. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. M14 adds evidence-first scene instructions and was smoke-tested by the product owner; this is not proof of general object-recognition accuracy. Existing cues remain approximate and are not semantic object segmentation.
 
 ## Remaining roadmap
 
@@ -22,6 +22,7 @@ Milestones 1–17 are deployed on the production Worker; a follow-up tracking-an
 
 ### Phase 3 — Problem solving
 - **M18 — Understand the user's problem:** infer the task goal, known facts, relevant objects, missing information, and risk.
+- **M18 — Understand the user's problem (deployed 2026-10-11; real-task acceptance pending):** before proposing action, infer the desired outcome or symptom, relevant visible/user-provided context, known facts versus hypotheses, the one missing fact that could change the next step, and the consequence if wrong. Keep this assessment internal and conversational; ask one high-value clarification only when needed, otherwise start with a low-risk observation/check. Do not confuse a symptom with a cause or assume the visible object is the problem.
 - **M19 — Dynamic task planning:** generate an appropriate plan for the specific situation rather than force every task into fixed templates.
 - **M20 — Adaptive step-by-step guidance:** provide one useful action at a time and adjust using user feedback and new visual evidence.
 - **M21 — Observe, verify, recover:** compare visible states before/after actions, ask the user to confirm facts the camera cannot see, and revise failed steps.
