@@ -993,7 +993,7 @@
     if (showStatus && microphoneStream) setStatus("Local tracking stopped. Tap a visible object to track it again.");
   }
 
-  function startLocalTracking(clientX, clientY, allowStaticSelection = false) {
+  function startLocalTracking(clientX, clientY) {
     if (!active || !setupReady || !microphoneStream || !trackingContext) {
       setStatus("Start the Co-Pilot first, then tap a visible object to track it.", "warning");
       return null;
@@ -1014,7 +1014,7 @@
     const gray = pixelsToGray(trackingPixels);
     const template = extractTemplate(gray, point.x, point.y);
     if (!template) {
-      if (!allowStaticSelection) {
+      if (!awaitingTargetSelection) {
         setStatus("Move a little closer to the target and tap its center again.", "warning");
         return null;
       }
