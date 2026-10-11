@@ -797,12 +797,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     // Handle Co-Pilot web searches only when Gemini explicitly requests one. Search calls
     // are bounded per session so normal turns do not incur lookup latency or grounding charges.
-    if (copilotMode && frameText.includes('"toolCall"')) {
+    if (copilotMode && (frameText.includes('"toolCall"') || frameText.includes('"tool_call"'))) {
       try {
         const toolFrame = JSON.parse(frameText) as {
           toolCall?: { functionCalls?: Array<{ id?: unknown; name?: unknown; args?: unknown }> };
+          tool_call?: { function_calls?: Array<{ id?: unknown; name?: unknown; args?: unknown }> };
         };
-        const calls = toolFrame.toolCall?.functionCalls;
+        const calls = toolFrame.toolCall?.functionCalls || toolFrame.tool_call?.function_calls;
         if (Array.isArray(calls)) {
           const responses: Array<{ id: string; name: string; response: { result: string } }> = [];
           for (const call of calls) {
