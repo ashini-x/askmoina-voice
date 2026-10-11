@@ -47,7 +47,7 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
     if (
       !text ||
       text.length > 1_500 ||
-      /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(text)
+      /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)
     ) return null;
     return { kind: "text_input", text };
   }
