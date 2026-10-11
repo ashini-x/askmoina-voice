@@ -145,7 +145,7 @@
     const value = guidance && typeof guidance.hint === "string" && guidance.hint.trim()
       ? guidance.hint
       : guidance && typeof guidance.label === "string" ? guidance.label : "";
-    return value.trim().toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+    return value.trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   }
 
   function requestTargetSelection(guidance, message) {
