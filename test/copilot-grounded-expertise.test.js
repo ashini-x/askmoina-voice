@@ -1,30 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
+import { assessGroundedSource, normalizeGroundedDeviceContext } from "../src/grounded-expertise";
+
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
-
-function extractFunction(source, functionName) {
-  const marker = "function " + functionName + "(";
-  const start = source.indexOf(marker);
-  if (start < 0) throw new Error("Missing grounded-expertise helper: " + functionName);
-  const brace = source.indexOf("{", start + marker.length);
-  let depth = 0;
-  for (let i = brace; i < source.length; i += 1) {
-    if (source[i] === "{") depth += 1;
-    if (source[i] === "}") {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, i + 1);
-    }
-  }
-  throw new Error("Unclosed function body: " + functionName);
-}
-
-const normalizeGroundedDeviceContext = new Function(
-  extractFunction(workerSource, "normalizeGroundedDeviceContext") + "; return normalizeGroundedDeviceContext;"
-)();
-const assessGroundedSource = new Function(
-  extractFunction(workerSource, "assessGroundedSource") + "; return assessGroundedSource;"
-)();
 
 describe("M30 model-aware grounded expertise", () => {
   it("bounds and sanitizes device context without inventing missing model identifiers", () => {
