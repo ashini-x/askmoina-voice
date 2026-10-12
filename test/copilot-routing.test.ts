@@ -31,37 +31,24 @@ function setup() {
 }
 
 describe("public Live Co-Pilot routing", () => {
-  it("serves the clean /copilot route with camera permissions and security headers", async () => {
-    const mock = setup();
-    const response = await worker.fetch(new Request("https://askmoina.test/copilot"), mock.env, ctx);
-    expect(response.status).toBe(200);
-    const page = await response.text();
-    expect(page).toContain("Live Co-Pilot");
-    expect(page).toContain('id="videoPreview"');
-    expect(mock.requestedPath()).toBe("");
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(response.headers.get("Permissions-Policy")).toContain("camera=(self)");
-    expect(response.headers.get("Content-Security-Policy")).toContain("connect-src 'self' wss:");
-    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+  it("redirects guest page requests to sign-in without resolving a static asset", async () => {
+    for (const path of ["/copilot", "/copilot.html"]) {
+      const mock = setup();
+      const response = await worker.fetch(new Request("https://askmoina.test" + path), mock.env, ctx);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
+      expect(mock.requestedPath()).toBe("");
+    }
   });
 
-  it("normalizes /copilot.html to the clean asset path", async () => {
-    const mock = setup();
-    const response = await worker.fetch(new Request("https://askmoina.test/copilot.html"), mock.env, ctx);
-    expect(response.status).toBe(200);
-    expect(mock.requestedPath()).toBe("");
-  });
-
-  it("serves JavaScript and CSS directly from the Worker without depending on a new asset manifest", async () => {
-    const mock = setup();
-    const script = await worker.fetch(new Request("https://askmoina.test/copilot.js"), mock.env, ctx);
-    expect(script.status).toBe(200);
-    expect(script.headers.get("Content-Type")).toContain("text/javascript");
-    expect(await script.text()).toContain("copilot_mode: true");
-    const css = await worker.fetch(new Request("https://askmoina.test/copilot.css"), mock.env, ctx);
-    expect(css.status).toBe(200);
-    expect(css.headers.get("Content-Type")).toContain("text/css");
-    expect(await css.text()).toContain(".focus-marker");
+  it("denies guest access to camera scripts and styles", async () => {
+    for (const path of ["/copilot.js", "/copilot.css"]) {
+      const mock = setup();
+      const response = await worker.fetch(new Request("https://askmoina.test" + path), mock.env, ctx);
+      expect(response.status).toBe(401);
+      expect(await response.json()).toMatchObject({ error: "authentication_required" });
+      expect(mock.requestedPath()).toBe("");
+    }
   });
 
 });

@@ -1234,8 +1234,7 @@ export default {
 
 
     const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname.startsWith("/api/auth/");
-    const isVoiceLabPath = url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html";
-    if (!isAuthPublicPath && !isVoiceLabPath && !url.pathname.startsWith("/admin")) {
+    if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = await isAdmin(request, env);
       if (!accountId && !adminAccess) {

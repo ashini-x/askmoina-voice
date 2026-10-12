@@ -184,13 +184,11 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('stage.addEventListener("click"');
   });
 
-  it("retries a just-ended session reservation before reporting a second active voice session", () => {
-    expect(script).toContain("async function refreshAvailabilityAfterRelease()");
-    expect(script).toContain("options.quietActiveLock === true");
-    expect(script).toContain("lastSessionEndedAt = Date.now()");
-    expect(script).toContain("result.reason !== \"already_active\"");
-    expect(script).toContain("const preflight = await refreshAvailabilityAfterRelease();");
-    expect(script).toContain("Always retry a brief already-active response");
+  it("does not block a signed-in session on an app-owned browser lock", () => {
+    expect(script).not.toContain("options.quietActiveLock === true");
+    expect(script).not.toContain('result.reason === "already_active"');
+    expect(script).not.toContain("A previous connection is still clearing");
+    expect(workerSource).not.toContain('closeBoth(1008, "Audio input rate limit exceeded")');
   });
 
   it("styles region-specific focus markers for narrow screens", () => {

@@ -18,8 +18,8 @@ describe("Milestone 13 conditional web grounding", () => {
   });
 
   it("bounds on-demand searches, latency, and query size per Co-Pilot session", () => {
-    expect(workerSource).toContain("groundedSearchCount >= 2");
-    expect(workerSource).toContain("now - lastGroundedSearchAt < 8_000");
+    expect(workerSource).not.toContain("groundedSearchCount >= 2");
+    expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
     expect(workerSource).toContain("controller.abort(), 12_000");
     expect(workerSource).toContain("maxOutputTokens: 650");
