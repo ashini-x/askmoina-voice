@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { handleContinuityRequest } from "../src/continuity";
+import { buildPersonalizedSystemInstruction } from "../src/sessions/memory-context";
 import type { Env } from "../src/config/env";
 
 function mockEnv() {
@@ -28,7 +28,7 @@ describe("M36 permission-based memory continuity", () => {
     expect(html).toContain("cannot retract notes already sent to a connected conversation");
   });
 
-  it("makes saved notes editable and deletable without treating the vault as plaintext", async () => {
+  it("makes saved notes editable and deletable", async () => {
     const response = await handleContinuityRequest(new Request("https://askmoina.test/vault.js"), mockEnv(), ctx);
     const script = await response!.text();
     expect(script).toContain('edit.textContent="Edit memory"');
@@ -47,8 +47,9 @@ describe("M36 permission-based memory continuity", () => {
     expect(script).toContain('window.addEventListener("storage"');
   });
 
-  it("keeps ordinary sessions useful without any memory context", async () => {
-    const memorySource = readFileSync(new URL("../src/sessions/memory-context.ts", import.meta.url), "utf8");
-    expect(memorySource).toContain('if (!memoryContext) return baseInstruction;');
+  it("keeps ordinary sessions useful without any memory context", () => {
+    const base = "base instruction";
+    expect(buildPersonalizedSystemInstruction(base, "")).toBe(base);
+    expect(buildPersonalizedSystemInstruction(base, null)).toBe(base);
   });
 });
