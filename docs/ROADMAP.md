@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M29–M30 synthetic CI passed: 37 test files and 227 tests; Cloudflare active Worker bundle contains both milestones' markers; live-model, source-content matching, direct HTTP-route, and physical-device acceptance pending)
+Last updated: 2026-10-12 (M31–M32 implementation staged for synthetic CI; active deployment and live HTTP smoke pending)
 
 ## Product vision
 
@@ -41,8 +41,8 @@ These milestones supersede the earlier numbering for the work that had not shipp
 ### Phase 2 — Grounded expertise, safety, and one continuous reality loop
 
 - **M30 — Grounded expertise (implemented; synthetic CI and active Worker bundle checks passed; exact source-content matching, live retrieval-quality, direct HTTP-route, and real-device acceptance pending):** pass explicit manufacturer/model/variant/part context into on-demand grounded search; prefer official manuals, diagrams, recalls, and safety notices; annotate whether identifiers appear in source titles/URLs; flag unknown model match and never transfer a neighbouring model's procedure. A title/URL check is not page-content or domain-ownership verification. See [M30 acceptance](acceptance/m30-grounded-expertise.md).
-- **M31 — Safety and uncertainty engine:** account for consequence and reversibility, pause when safety-critical facts are ambiguous, and prevent persuasive overlays from masking uncertainty or directing hazardous actions.
-- **M32 — One continuous reality loop:** coordinate voice, camera frames, local tracking, and WebXR so a mode transition does not silently stop the observation needed to guide and verify the task.
+- **M31 — Safety and uncertainty engine (implemented; synthetic checks pending):** use consequence/reversibility assessment plus a deterministic client-side hazard gate; block procedural overlays for high-consequence hazards, clear stale camera marks, show an explicit safety pause, and feed the gate result back to the live model. The gate is not a substitute for expert/safety certification. See [M31 acceptance](acceptance/m31-safety-uncertainty.md).
+- **M32 — One continuous reality loop (implemented; synthetic checks pending):** track camera/voice/AR observation modes, pause local camera tracking across immersive AR and background transitions, report when fresh camera evidence is unavailable, and hold camera-dependent overlays/verification until a new frame is sent. WebXR pose/hit-test is explicitly not new camera imagery. See [M32 acceptance](acceptance/m32-continuous-reality-loop.md).
 
 ### Phase 3 — General-purpose, effortless, efficient, and accessible
 

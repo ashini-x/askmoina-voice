@@ -39,6 +39,12 @@ jobs:
           grep -R -q 'assessGroundedSource' dist/
           grep -R -q 'MODEL MATCH NOT ESTABLISHED' dist/
           grep -R -q 'task_world_state' dist/
+      - name: Verify M31/M32 Worker bundle contracts
+        run: |
+          grep -R -q 'assessSafetyAndUncertainty' dist/
+          grep -R -q 'transitionRealityLoopState' dist/
+          grep -R -q 'SAFETY AND UNCERTAINTY ENGINE' dist/
+          grep -R -q 'ONE CONTINUOUS REALITY LOOP' dist/
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
@@ -117,11 +123,17 @@ jobs:
           grep -q 'function createTaskWorldModel' /tmp/moina-copilot.js
           grep -q 'function mergeTaskWorldModel' /tmp/moina-copilot.js
           grep -q 'function formatTaskWorldModelSummary' /tmp/moina-copilot.js
+          grep -q 'function assessSafetyAndUncertainty' /tmp/moina-copilot.js
+          grep -q 'function transitionRealityLoopState' /tmp/moina-copilot.js
+          grep -q 'M31: local safety gate' /tmp/moina-copilot.js
+          grep -q 'M32: explicit state machine' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
           echo "Live Co-Pilot client and session-release retry: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
           echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
           echo "M29 deployed client bundle: session-local task world model and guarded outcome continuity OK"
+          echo "M31 deployed client bundle: consequence-aware safety gate and hazardous-overlay suppression OK"
+          echo "M32 deployed client bundle: AR/camera handoff state machine and fresh-frame gate OK"
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"
