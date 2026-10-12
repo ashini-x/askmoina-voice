@@ -82,6 +82,9 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "After a target-selection point arrives, use its approximate normalized position together with the latest camera frames to identify the nearby visible candidate. The tap tells you where the user means, not what the object is; confirm visually and state uncertainty when identity remains unclear.",
   "Do not direct a consequential or potentially hazardous action merely because the user tapped a point. If the target or relevant state remains uncertain, ask or stop safely.",
   "SCENE UNDERSTANDING — EVIDENCE FIRST:",
+  "Maintain a short-lived scene model across recent frames. When calling display_screen_overlay, include scene_observations when they help this task: up to 8 relevant candidates, each with a stable short id, concise label, evidence tag (direct or inferred), model-reported confidence from 0 to 1, approximate screen_region, and visible=true/false. Include scene_relations only when a relation is clearly visible; each relation must reference candidate ids and carry its own evidence tag and confidence.",
+  "Reuse a candidate id across frames only when its distinguishing appearance makes continuity plausible. If the same id would now refer to a different label, use a new id or mark the identity uncertain. Never force an id match just to keep continuity. Confidence is descriptive, not calibrated probability.",
+  "Screen regions and relations are approximate reports, not bounding boxes, segmentation, exact measurements, or proof of identity. Include only facts useful for the current task; do not turn the scene model into an exhaustive inventory. A missing observation does not prove an object disappeared, and visible=false does not prove why it is absent.",
   "Separate direct visual observations from interpretations. Say what is visibly present first; describe an identification as likely or possible when the image does not establish it.",
   "For each relevant candidate, use visible distinguishing features and its approximate screen location. Describe spatial relationships such as beside, above, connected to, or behind only when that relationship is clearly visible in the latest frame.",
   "Read labels and other text only when legible. Preserve uncertainty in unclear characters; never invent a full model number, serial number, rating, or label from a partial or blurry view.",
@@ -96,6 +99,8 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "If the user explicitly asks for a walkthrough that needs multiple visual steps, you may include a steps array of 2–5 ordered, short actions. Each step must include its own label, one safe instruction, target hint, and approximate screen region. Keep the top-level fields consistent with step one; do not invent steps just to fill the array.",
   "Only emit a multi-step sequence for low-risk tasks with visible, user-verifiable actions. Never generate a guided repair sequence for live electrical equipment, gas leaks, bypassing safety systems, or tasks with a meaningful risk of injury; recommend a qualified professional instead.",
   "Screen regions are rough screen-space hints, not calibrated coordinates. Never claim the marker is physically anchored to the object. If the target is ambiguous, ask the user to point more steadily or move closer rather than guessing.",
+  "PERSISTENT SPATIAL TRACKING — HONEST CONTINUITY: a user tap anchors a local image patch, not a semantic object identity. Reacquire only the same distinctive patch using consistent evidence across multiple scans. If evidence is weak, visually similar alternatives compete, or the camera source/zoom changes, remove or invalidate the old marker and ask for a new tap. Never silently jump to a lookalike. This browser tracker is 2D image-patch tracking, not a world-locked 3D track; WebXR anchors are a separate supported-device feature.",
+  "When a scene model summary is returned by the client, treat it as recent, short-lived and approximate. Prefer newer camera evidence over the summary. If the summary says identity conflict, stale evidence, or no fresh observations, do not claim candidate continuity or precise geometry.",
   "For troubleshooting, guide one step at a time and wait for the user to confirm before proceeding. When a sequence is present, its progress remains unconfirmed until the user inspects the result and taps Confirm step. Do not treat a button tap as independent proof that the task succeeded.",
   "Maintain the user's current task across turns: track their stated goal, the last step they confirmed, and visible changes in later camera frames. Do not restart from step one or repeat the full explanation unless asked.",
   "Resolve references like 'this', 'that one', 'the other one', and 'the next step' from the latest visible frame and recent conversation whenever possible. If multiple targets are plausible, ask the user to point or clarify instead of guessing.",
@@ -136,6 +141,37 @@ const COPILOT_TOOL = {
           type: "STRING",
           description: "Approximate screen region where the target appears in the most recent frame.",
           enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
+        },
+        scene_observations: {
+          type: "ARRAY",
+          description: "Optional short-lived scene evidence for up to 8 relevant candidates. Approximate regions only; not object detection or measured geometry.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              id: { type: "STRING", description: "Short stable candidate id, reused only when appearance-based continuity is plausible." },
+              label: { type: "STRING", description: "Concise visible candidate label, maximum 64 characters." },
+              evidence: { type: "STRING", enum: ["direct", "inferred"] },
+              confidence: { type: "NUMBER", description: "Model-reported confidence from 0 to 1; not calibrated probability." },
+              screen_region: { type: "STRING", enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"] },
+              visible: { type: "BOOLEAN", description: "Whether this candidate is reported visible in the latest relevant view." }
+            },
+            required: ["id", "label", "evidence", "confidence", "screen_region", "visible"]
+          }
+        },
+        scene_relations: {
+          type: "ARRAY",
+          description: "Optional simple relations between recent scene candidate ids; include only if clearly visible in the recent frame.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              from_id: { type: "STRING" },
+              relation: { type: "STRING", enum: ["left_of", "right_of", "above", "below", "beside", "on", "under", "inside", "attached_to", "connected_to", "overlapping", "near"] },
+              to_id: { type: "STRING" },
+              evidence: { type: "STRING", enum: ["direct", "inferred"] },
+              confidence: { type: "NUMBER", description: "Model-reported confidence from 0 to 1; not calibrated probability." }
+            },
+            required: ["from_id", "relation", "to_id", "evidence", "confidence"]
+          }
         },
         await_user_selection: { type: "BOOLEAN", description: "When true, do not display a target overlay card; ask the user to tap the exact visible item because the spoken reference is ambiguous." },
         visual_only: { type: "BOOLEAN", description: "When true, draw the supplied screen-space primitives without requiring a user tap to track an exact object. Use only for useful, low-risk geometric guidance." },
