@@ -2,6 +2,7 @@ export type ParsedLiveClientInput =
   | { kind: "audio"; data: string }
   | { kind: "video"; data: string }
   | { kind: "text_input"; text: string }
+  | { kind: "initial_greeting" }
   | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
   | { kind: "tool_response"; responses: Array<{ id: string; result: string }> };
@@ -21,6 +22,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseLiveClientInput(value: unknown, copilotMode: boolean): ParsedLiveClientInput | null {
   if (!isRecord(value)) return null;
   const keys = Object.keys(value);
+
+  if (keys.length === 1 && value.initial_greeting === true) {
+    return copilotMode ? { kind: "initial_greeting" } : null;
+  }
 
   if (keys.length === 1 && isRecord(value.tool_response)) {
     if (!copilotMode) return null;
