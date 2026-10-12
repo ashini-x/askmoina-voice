@@ -87,6 +87,7 @@
     try {
       const response = await fetch("/api/voice/status", { cache: "no-store", headers: { Accept: "application/json" } });
       const result = await response.json();
+      if (response.status === 401) { location.href = "/login"; return null; }
       if (!response.ok || !result || typeof result.available !== "boolean") {
         throw new Error("Voice availability could not be checked.");
       }
@@ -94,28 +95,9 @@
       if (requestId !== availabilityCheckSequence) return result;
 
       if (result.available) {
-        const sessionMinutes = Math.max(1, Math.ceil((Number(result.maxSessionSeconds) || 540) / 60));
-        if (result.adminDailyQuotaBypassed === true) {
-          setAvailability(
-            "Admin testing access · daily app quotas bypassed · up to " + sessionMinutes +
-              " min per conversation · rate and concurrency safeguards remain active.",
-            "normal",
-          );
-        } else {
-          const remainingSeconds = Number(result.dailyRemainingSeconds);
-          let allowance = "";
-          if (Number.isFinite(remainingSeconds)) {
-            const remainingMinutes = Math.floor((remainingSeconds + 30) / 60);
-            allowance = remainingMinutes > 0
-              ? " · about " + remainingMinutes + " min of voice time may remain today on this network"
-              : " · less than a minute of daily voice time may remain";
-          }
-          setAvailability(
-            "Limits allow voice · up to " + sessionMinutes + " min per conversation" + allowance + " · no fixed question-count cap.",
-            "normal",
-          );
-        }
+        setAvailability(result.message || "Voice is ready. Provider limits may apply.", "normal");
       } else {
+        setAvailability("Voice unavailable right now. See the status above for the reason.", "error");      } else {
         setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
         if (result.message) setStatus(result.message, "error");
       }
@@ -255,6 +237,8 @@
 
   function sendMicrophoneChunk(input) {
     if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady) return;
+    // Avoid queueing stale microphone audio during a network stall; resume when drained.
+    if (socket.bufferedAmount > 96 * 1024) return;
     const downsampled = downsampleTo16k(input, audioContext.sampleRate);
     if (!downsampled.length) return;
     const pcmBytes = floatToPcm16(downsampled);

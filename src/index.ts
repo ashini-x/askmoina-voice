@@ -1,9 +1,10 @@
 import type { Env } from "./config/env";
+import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
-import { handleContinuityRequest, ensureVisitor, visitorIdFromRequest, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
+import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
@@ -521,123 +522,20 @@ interface VoiceReservation {
 }
 
 async function reserveVoiceSession(
-  request: Request,
-  env: Env,
-  adminDailyQuotaBypassed = false,
+  _request: Request,
+  _env: Env,
+  _adminDailyQuotaBypassed = false,
 ): Promise<VoiceReservation | null> {
-  const ip = request.headers.get("CF-Connecting-IP");
-  if (!ip) return null;
-
-  const ipHash = await sha256(ip);
-  const visitorId = adminDailyQuotaBypassed ? null : await visitorIdFromRequest(request);
-  const userObjectName = adminDailyQuotaBypassed
-    ? `voice-admin-ip:v2:${ipHash}`
-    : `voice-visitor:v2:${visitorId ?? `ip:${ipHash}`}`;
-  const rateObjectName = `voice-ip-rate:v1:${ipHash}`;
-  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
-  const sessionId = crypto.randomUUID();
-  const now = Date.now();
-  const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
-
-  let userResult: { ok: boolean; allowed?: boolean; reservedSeconds?: number };
-  if (adminDailyQuotaBypassed) {
-    // Keep the admin audition path isolated from public limits and usage.
-    userResult = await callGuard(env, userObjectName, "/session/acquire", {
-      sessionId,
-      now,
-      maxSessionSeconds,
-      maxDailySeconds: positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800),
-      maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
-      enforceRateLimit: true,
-      enforceDailyLimit: false,
-    });
-  } else {
-    // Protect against rapid connection attempts from one IP without treating a
-    // school, hostel, or family Wi-Fi as a single person for daily voice usage.
-    const rateResult = await callGuard(env, rateObjectName, "/session/acquire", {
-      sessionId,
-      now,
-      maxSessionSeconds,
-      maxDailySeconds: positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800),
-      maxConcurrentSessions: 1,
-      enforceRateLimit: true,
-      enforceDailyLimit: false,
-      rateLimitOnly: true,
-    });
-    if (!rateResult.ok || !rateResult.allowed) return null;
-
-    userResult = await callGuard(env, userObjectName, "/session/acquire", {
-      sessionId,
-      now,
-      maxSessionSeconds,
-      maxDailySeconds: positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800),
-      maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
-      enforceRateLimit: false,
-      enforceDailyLimit: true,
-    });
-  }
-
-  if (!userResult.ok || !userResult.allowed) return null;
-
-  const globalResult = await callGuard(env, globalObjectName, "/session/acquire", {
-    sessionId,
-    now,
-    maxSessionSeconds,
-    maxDailySeconds: positiveInt(env.MAX_GLOBAL_DAILY_SESSION_SECONDS, 36_000, 36_000),
-    maxConcurrentSessions: positiveInt(env.MAX_GLOBAL_CONCURRENT_SESSIONS, 25, 100),
-    enforceRateLimit: false,
-    enforceDailyLimit: !adminDailyQuotaBypassed,
-  });
-
-  if (!globalResult.ok || !globalResult.allowed) {
-    await callGuard(env, userObjectName, "/session/release", { sessionId, now: Date.now() });
-    return null;
-  }
-
-  const maxDurationSeconds = Math.max(
-    1,
-    Math.min(
-      maxSessionSeconds,
-      userResult.reservedSeconds ?? maxSessionSeconds,
-      globalResult.reservedSeconds ?? maxSessionSeconds,
-    ),
-  );
-  return { sessionId, userObjectName, globalObjectName, maxDurationSeconds };
+  return { sessionId: crypto.randomUUID(), userObjectName: "unlimited-app-quota-disabled", globalObjectName: "unlimited-app-quota-disabled", maxDurationSeconds: 0 };
 }
 
-async function releaseVoiceSession(
-  env: Env,
-  reservation: VoiceReservation,
-): Promise<void> {
-  await Promise.all([
-    callGuard(env, reservation.userObjectName, "/session/release", {
-      sessionId: reservation.sessionId,
-      now: Date.now(),
-    }),
-    callGuard(env, reservation.globalObjectName, "/session/release", {
-      sessionId: reservation.sessionId,
-      now: Date.now(),
-    }),
-  ]);
+async function releaseVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<void> {
+  // App-level daily and concurrency reservations are deliberately disabled.
 }
 
-async function heartbeatVoiceSession(
-  env: Env,
-  reservation: VoiceReservation,
-): Promise<{ leaseLost: boolean }> {
-  const results = await Promise.all([
-    callGuard(env, reservation.userObjectName, "/session/heartbeat", {
-      sessionId: reservation.sessionId,
-      now: Date.now(),
-    }),
-    callGuard(env, reservation.globalObjectName, "/session/heartbeat", {
-      sessionId: reservation.sessionId,
-      now: Date.now(),
-    }),
-  ]);
-  // A successful HTTP response that says "not found" means this relay no longer
-  // owns the reservation. A transport failure is retried on the next incoming frame.
-  return { leaseLost: results.some((result) => result.ok && result.allowed === false) };
+async function heartbeatVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
+  // Do not stale-lock a good conversation on an app-owned heartbeat lease.
+  return { leaseLost: false };
 }
 
 
@@ -696,120 +594,11 @@ async function readGuardStatus(
 
 async function handleVoiceStatus(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
-
-  if (!hasVertexCredentials(env)) {
-    return json({
-      available: false,
-      reason: "not_configured",
-      message: "Voice is temporarily unavailable. Please try again later.",
-      maxSessionSeconds: 0,
-      dailyRemainingSeconds: null,
-    });
-  }
-
-  const ip = request.headers.get("CF-Connecting-IP");
-  if (!ip) {
-    return json({
-      available: false,
-      reason: "status_unavailable",
-      message: "Could not check voice availability right now. Please try again shortly.",
-      maxSessionSeconds: 0,
-      dailyRemainingSeconds: null,
-    });
-  }
-
-  const now = Date.now();
-  const adminDailyQuotaBypassed = await hasAdminDailyQuotaBypass(request, env);
-  let publicVisitorId: string | null = null;
-  let responseHeaders: HeadersInit | undefined;
-  if (!adminDailyQuotaBypassed) {
-    publicVisitorId = await visitorIdFromRequest(request);
-    if (!publicVisitorId) {
-      const visitor = await ensureVisitor(request, env);
-      publicVisitorId = visitor.visitorId;
-      if (visitor.cookie) {
-        responseHeaders = { "Set-Cookie": visitor.cookie };
-        await visitor.touch;
-      }
-    }
-  }
-  const ipHash = await sha256(ip);
-  const ipObjectName = `${adminDailyQuotaBypassed ? "voice-admin-ip:v2:" : "voice-ip-rate:v1:"}${ipHash}`;
-  const userObjectName = adminDailyQuotaBypassed
-    ? ipObjectName
-    : `voice-visitor:v2:${publicVisitorId ?? `ip:${ipHash}`}`;
-  const globalObjectName = adminDailyQuotaBypassed ? "voice-admin-global-budget:v2" : "voice-global-budget";
-  const maxSessionSeconds = positiveInt(env.MAX_LIVE_SESSION_SECONDS, 540, 540);
-  const maxDailySeconds = positiveInt(env.MAX_DAILY_SESSION_SECONDS, 1_800, 1_800);
-  const maxGlobalDailySeconds = positiveInt(env.MAX_GLOBAL_DAILY_SESSION_SECONDS, 36_000, 36_000);
-
-  const identityStatus = await readGuardStatus(env, userObjectName, {
-    now,
-    maxDailySeconds,
-    maxConcurrentSessions: positiveInt(env.MAX_CONCURRENT_SESSIONS_PER_USER, 1, 1),
-    enforceRateLimit: adminDailyQuotaBypassed,
-    enforceDailyLimit: !adminDailyQuotaBypassed,
-  });
-  const rateStatus = adminDailyQuotaBypassed ? identityStatus : await readGuardStatus(env, ipObjectName, {
-    now,
-    maxDailySeconds,
-    maxConcurrentSessions: 1,
-    enforceRateLimit: true,
-    enforceDailyLimit: false,
-  });
-  const globalStatus = await readGuardStatus(env, globalObjectName, {
-    now,
-    maxDailySeconds: maxGlobalDailySeconds,
-    maxConcurrentSessions: positiveInt(env.MAX_GLOBAL_CONCURRENT_SESSIONS, 25, 100),
-    enforceRateLimit: false,
-    enforceDailyLimit: !adminDailyQuotaBypassed,
-  });
-
-  if (!identityStatus || !rateStatus || !globalStatus) {
-    return json({
-      available: false,
-      reason: "status_unavailable",
-      message: "Could not check voice availability right now. Please try again shortly.",
-      maxSessionSeconds: 0,
-      dailyRemainingSeconds: null,
-    }, 503, responseHeaders);
-  }
-
-  let reason = "available";
-  let message = "Current limits allow a new voice conversation.";
-  if (rateStatus.rateLimited) {
-    reason = "rate_limited";
-    message = "Too many connection attempts from this network just now. Please wait about " +
-      Math.max(1, rateStatus.retryAfterSeconds) + " seconds before trying again.";
-  } else if (identityStatus.concurrencyLimited) {
-    reason = "already_active";
-    message = "A voice conversation is already active for this browser. End it in the other tab before starting a new one.";
-  } else if (!adminDailyQuotaBypassed && identityStatus.dailyLimitReached) {
-    reason = "daily_limit";
-    message = "Today's voice allowance for this browser has been used. It resets at midnight India time.";
-  } else if (globalStatus.concurrencyLimited) {
-    reason = "app_busy";
-    message = "AskMoina is busy right now. Please wait a little and try again.";
-  } else if (!adminDailyQuotaBypassed && globalStatus.dailyLimitReached) {
-    reason = "app_daily_limit";
-    message = "AskMoina has reached its overall voice allowance for today. Please try again after midnight India time.";
-  }
-
-  const dailyRemainingSeconds = Math.min(
-    identityStatus.dailySecondsRemaining,
-    globalStatus.dailySecondsRemaining,
-  );
-  const allowedDurationSeconds = adminDailyQuotaBypassed
-    ? maxSessionSeconds
-    : Math.max(0, Math.min(maxSessionSeconds, identityStatus.dailySecondsRemaining, globalStatus.dailySecondsRemaining));
-  return json({
-    available: reason === "available",
-    reason,
-    message,
-    maxSessionSeconds: allowedDurationSeconds,
-    dailyRemainingSeconds: adminDailyQuotaBypassed || identityStatus.activeSessions > 0 ? null : dailyRemainingSeconds,
-    adminDailyQuotaBypassed,
-  }, 200, responseHeaders);
+  const accountId = await getAuthenticatedUserId(request, env);
+  const admin = await isAdmin(request, env);
+  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
+  if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
+  return json({ available: true, reason: "available", message: "Voice is ready. AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
 async function handleVoiceSocket(
@@ -839,8 +628,9 @@ async function handleVoiceSocket(
   }
   if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
 
-  const adminDailyQuotaBypassed = await hasAdminDailyQuotaBypass(request, env);
-  const reservation = await reserveVoiceSession(request, env, adminDailyQuotaBypassed);
+  const sessionUserId = await getAuthenticatedUserId(request, env);
+  if (!sessionUserId && !await isAdmin(request, env)) return json({ error: "authentication_required" }, 401);
+  const reservation = await reserveVoiceSession(request, env);
   if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
 
   const analyticsStartedAt = Date.now();
@@ -916,6 +706,7 @@ async function handleVoiceSocket(
   let videoFramesForwarded = 0;
   let videoFramesThrottled = 0;
   let audioFramesForwarded = 0;
+  let audioFramesThrottled = 0;
   let forwardedMediaBytes = 0;
   let setupForwarded = false;
   let setupInitializing = false;
@@ -937,10 +728,9 @@ async function handleVoiceSocket(
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
-  const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
-  // Network and browser audio callbacks can arrive in short bursts. Keep the
-  // sustained-rate guard, but allow up to two seconds of buffered audio data.
-  const INPUT_RATE_BURST_SECONDS = 2;
+  const MAX_INPUT_CHARS_PER_SECOND = 96 * 1024;
+  // Smooth brief network stalls; shed excess media packets instead of closing calls.
+  const INPUT_RATE_BURST_SECONDS = 3;
   const inputFrameBucket = new TokenBucket(MAX_AUDIO_FRAMES_PER_SECOND, INPUT_RATE_BURST_SECONDS);
   const inputByteBucket = new TokenBucket(MAX_INPUT_CHARS_PER_SECOND, INPUT_RATE_BURST_SECONDS);
 
@@ -967,6 +757,7 @@ async function handleVoiceSocket(
       videoFramesForwarded,
       videoFramesThrottled,
       audioFramesForwarded,
+      audioFramesThrottled,
       forwardedMediaBytes,
       groundedSearchCount,
       providerUsageFrameCount,
@@ -1111,10 +902,6 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (parsed.kind === "target_selection") {
-        if (targetSelectionCount >= 12) {
-          closeBoth(1008, "Target selection limit reached");
-          return;
-        }
         targetSelectionCount += 1;
         const xPercent = Math.round(parsed.x * 100);
         const yPercent = Math.round(parsed.y * 100);
@@ -1164,17 +951,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       const frameRateAllowed = inputFrameBucket.consume(1, now);
       const byteRateAllowed = inputByteBucket.consume(event.data.length, now);
       if (!frameRateAllowed || !byteRateAllowed) {
-        console.warn("[AskMoina] Live media input sustained rate limit exceeded", JSON.stringify({
-          frameRateAllowed,
-          byteRateAllowed,
-          inputFrameCount,
-          inputBytesInWindow,
-          isVideo,
-          frameBudgetRemaining: Math.round(inputFrameBucket.remaining),
-          byteBudgetRemaining: Math.round(inputByteBucket.remaining),
-          lifetimeMs: now - upstreamStartedAt,
-        }));
-        closeBoth(1008, "Audio input rate limit exceeded");
+        if (isVideo) videoFramesThrottled += 1;
+        else audioFramesThrottled += 1;
+        // Drop the excess packet only. Client-side backpressure normally avoids this path.
         return;
       }
 
@@ -1333,10 +1112,6 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             const now = Date.now();
             if (!query) {
               result = "No search query was supplied. Ask the user for the exact device model or clarify what current information is needed.";
-            } else if (groundedSearchCount >= 2) {
-              result = "The Co-Pilot session search limit has been reached. Continue with known information only, or ask the user to start a new session if another web lookup is essential.";
-            } else if (now - lastGroundedSearchAt < 8_000) {
-              result = "A web lookup was just performed. Reuse that information for now unless the user provides a materially different question.";
             } else {
               groundedSearchCount += 1;
               lastGroundedSearchAt = now;
@@ -1393,15 +1168,6 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     closeBoth(1011, "Voice provider socket error");
   });
 
-  setTimeout(() => {
-    console.warn("[AskMoina] Voice session duration limit reached", JSON.stringify({
-      maxDurationSeconds: reservation.maxDurationSeconds,
-      setupCompleteReceived,
-      lifetimeMs: Date.now() - upstreamStartedAt,
-    }));
-    closeBoth(1000, "Session time limit reached");
-  }, reservation.maxDurationSeconds * 1_000);
-
   return new Response(null, { status: 101, webSocket: clientSocket });
 }
 
@@ -1409,11 +1175,20 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    const continuityResponse = await handleContinuityRequest(request, env, ctx);
-    if (continuityResponse) return continuityResponse;
+    const authResponse = await handleAuthRequest(request, env);
+    if (authResponse) return authResponse;
+    if (url.pathname.startsWith("/admin")) {
+      const adminResponse = await handleContinuityRequest(request, env, ctx);
+      if (adminResponse) return adminResponse;
+    }
 
     if (url.pathname === "/copilot" || url.pathname === "/copilot.html" ||
         url.pathname === "/copilot.js" || url.pathname === "/copilot.css") {
+      const accountId = await getAuthenticatedUserId(request, env);
+      if (!accountId && !await isAdmin(request, env)) {
+        if (url.pathname === "/copilot" || url.pathname === "/copilot.html") return Response.redirect(new URL("/login", request.url).toString(), 302);
+        return json({ error: "authentication_required", message: "Sign up or log in to load the Co-Pilot." }, 401);
+      }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
       const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
@@ -1456,6 +1231,21 @@ export default {
         headers,
       });
     }
+
+
+    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname.startsWith("/api/auth/");
+    const isVoiceLabPath = url.pathname === "/voice-lab" || url.pathname === "/voice-lab.html";
+    if (!isAuthPublicPath && !isVoiceLabPath && !url.pathname.startsWith("/admin")) {
+      const accountId = await getAuthenticatedUserId(request, env);
+      const adminAccess = await isAdmin(request, env);
+      if (!accountId && !adminAccess) {
+        if (url.pathname.startsWith("/api/")) return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
+        if (request.method === "GET" || request.method === "HEAD") return Response.redirect(new URL("/login", request.url).toString(), 302);
+        return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
+      }
+    }
+    const continuityResponse = await handleContinuityRequest(request, env, ctx);
+    if (continuityResponse) return continuityResponse;
 
     if (url.pathname === "/api/health") {
       return json({

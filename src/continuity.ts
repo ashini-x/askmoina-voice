@@ -1,8 +1,8 @@
 import type { Env } from "./config/env";
+import { getAuthenticatedUserId, isAuthenticatedAccountAdmin, createAdminAccountSessionCookie } from "./auth/accounts";
 
 const VAULT_ITERATIONS = 600_000;
 const MAX_BACKUP_BYTES = 750_000;
-const VISITOR_COOKIE = "moina_visitor";
 const ADMIN_COOKIE = "moina_admin_session";
 const ADMIN_SESSION_SECONDS = 12 * 60 * 60;
 
@@ -42,14 +42,8 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-function visitorCookieHeader(token: string): string {
-  return VISITOR_COOKIE + "=" + token + "; Max-Age=31536000; Path=/; Secure; HttpOnly; SameSite=Strict";
-}
-
-export async function visitorIdFromRequest(request: Request): Promise<string | null> {
-  const token = readCookie(request, VISITOR_COOKIE);
-  if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
-  return sha256Hex(token);
+export async function visitorIdFromRequest(request: Request, env: Env): Promise<string | null> {
+  return getAuthenticatedUserId(request, env);
 }
 
 async function touchVisitor(env: Env, visitorId: string): Promise<void> {
@@ -61,18 +55,15 @@ async function touchVisitor(env: Env, visitorId: string): Promise<void> {
 }
 
 export async function ensureVisitor(request: Request, env: Env): Promise<VisitorContext> {
-  const existing = readCookie(request, VISITOR_COOKIE);
-  const valid = Boolean(existing && /^[A-Za-z0-9_-]{43}$/.test(existing));
-  const token = valid ? existing! : randomBase64Url(32);
-  const visitorId = await sha256Hex(token);
-  const touch = touchVisitor(env, visitorId).catch(() => undefined);
-  return { visitorId, cookie: valid ? undefined : visitorCookieHeader(token), touch };
+  const userId = await getAuthenticatedUserId(request, env);
+  if (!userId) return { visitorId: "", touch: Promise.resolve() };
+  return { visitorId: userId, touch: touchVisitor(env, userId).catch(() => undefined) };
 }
 
 export async function recordSessionStart(
   env: Env, request: Request, sessionId: string, model: string, location: string, startedAt: number,
 ): Promise<string | null> {
-  const visitorId = await visitorIdFromRequest(request);
+  const visitorId = await visitorIdFromRequest(request, env);
   const stamp = new Date(startedAt).toISOString();
   if (visitorId) await touchVisitor(env, visitorId).catch(() => undefined);
   await env.DB.prepare(
@@ -408,6 +399,7 @@ async function adminSessionCookie(env: Env): Promise<string> {
 }
 
 export async function isAdmin(request: Request, env: Env): Promise<boolean> {
+  if (await isAuthenticatedAccountAdmin(request, env)) return true;
   if (!env.ADMIN_SESSION_SECRET) return false;
   const value = readCookie(request, ADMIN_COOKIE);
   if (!value) return false;
@@ -519,7 +511,10 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
     }
     await resetLogin(env, throttle.hash);
     await audit(env, "admin_login");
-    return json({ ok:true }, 200, { "Set-Cookie": await adminSessionCookie(env) });
+    const cookies = new Headers();
+    cookies.append("Set-Cookie", await adminSessionCookie(env));
+    cookies.append("Set-Cookie", await createAdminAccountSessionCookie(env));
+    return json({ ok:true }, 200, cookies);
   }
   if (url.pathname === "/admin/logout" && request.method === "POST") {
     if (!sameOrigin(request) || !await isAdmin(request,env)) return json({ error:"unauthorized" },401);
@@ -568,13 +563,13 @@ export async function handleContinuityRequest(request: Request, env: Env, ctx: E
   const url = new URL(request.url);
   if (url.pathname === "/api/identity" && request.method === "GET") {
     const visitor = await ensureVisitor(request,env); ctx.waitUntil(visitor.touch);
-    return json({ok:true,continuity:"anonymous-profile-cookie"},200,visitor.cookie?{"Set-Cookie":visitor.cookie}:undefined);
+    return json({ok:true,userId:visitor.visitorId,continuity:"authenticated-account"},200);
   }
   if (url.pathname === "/api/vault" || url.pathname.startsWith("/api/vault/")) return url.pathname==="/api/vault"?json({error:"not_found"},404):handleVaultApi(request,env,url);
   if (url.pathname === "/vault" || url.pathname === "/vault/") {
     if (request.method !== "GET") return json({error:"method_not_allowed"},405);
     const visitor=await ensureVisitor(request,env);ctx.waitUntil(visitor.touch);
-    return htmlResponse(vaultPage(),200,visitor.cookie);
+    return htmlResponse(vaultPage(),200);
   }
   if (url.pathname === "/vault.js" && request.method === "GET") return scriptResponse(VAULT_JS);
   if (url.pathname === "/continuity.js" && request.method === "GET") return scriptResponse(CONTINUITY_JS);
