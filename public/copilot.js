@@ -59,6 +59,8 @@
   let persistentSpatialTrack = null;
   let sceneModel = { viewGeneration: 0, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
   let taskWorldModel = createTaskWorldModel();
+  let realityLoopState = createRealityLoopState();
+  let safetyPauseNode = null;
   let microphoneMuted = false;
   let zoomLevel = 1;
   let zoomMin = 1;
@@ -95,6 +97,264 @@
   let lastSessionEndedAt = 0;
   let latestVisualGuidance = null;
   let awaitingTargetSelection = false;
+
+
+  // M31: local safety gate for consequential or hard-to-reverse physical actions.
+  // A model estimate can raise risk, but cannot lower deterministic hazard matches.
+  function assessSafetyAndUncertainty(input) {
+    const data = input && typeof input === "object" ? input : {};
+    const clean = (value, max = 240) => typeof value === "string"
+      ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max)
+      : "";
+    const fields = [
+      data.taskGoal, data.goal, data.currentState, data.instruction,
+      data.label, data.targetHint, data.uncertainty
+    ].map((value) => clean(value)).filter(Boolean);
+    const corpus = fields.join(" | ");
+    const rules = [
+      { level: "critical", code: "immediate_danger",
+        pattern: /\b(smoke|flames?|sparking|sparks|electric shock|gas leak|leaking gas|smell(?:ing)? gas|burning smell|fire hazard)\b/i,
+        reversibility: "unknown",
+        notice: "Safety pause: move away from the hazard. Do not touch or continue the task; contact local emergency help or a qualified professional as appropriate." },
+      { level: "critical", code: "damaged_battery",
+        pattern: /\b(swollen|puffed|punctured|leaking|smoking|overheating)\b.{0,45}\b(lithium|battery|cell)\b|\b(lithium|battery|cell)\b.{0,45}\b(swollen|puffed|punctured|leaking|smoking|overheating)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: do not charge, press, puncture, or disassemble that battery. Keep clear, especially if it is hot or smoking, and get qualified battery service." },
+      { level: "high", code: "mains_electrical",
+        pattern: /\b(live wire|exposed wire|mains voltage|mains wiring|household wiring|house wiring|breaker panel|electrical panel|wall outlet wiring|power outlet wiring|rewire|replace (?:a )?fuse while live)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: this may involve dangerous mains electricity. Do not touch exposed parts; stop and use a qualified electrician. I will not draw a procedural guide for this step." },
+      { level: "high", code: "gas_or_pressure",
+        pattern: /\b(gas line|gas pipe|gas valve|gas cylinder valve|pressure vessel|high[- ]pressure cylinder|refrigerant line)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: stop before adjusting gas or pressurised equipment. Keep clear of leaks and use qualified service; do not follow a visual repair cue here." },
+      { level: "high", code: "vehicle_critical_system",
+        pattern: /\b(brake (?:line|system|caliper|hose)|airbag|steering rack|high[- ]voltage (?:battery|pack|system)|ev battery pack)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: this is a safety-critical vehicle system. Do not act on a camera overlay; confirm the exact system and use the manufacturer procedure or a qualified technician." },
+      { level: "high", code: "internal_battery_handling",
+        pattern: /\b(laptop|phone|tablet|smartphone|power bank)\b.{0,55}\b(open|disassemble|pry|remove|replace|disconnect)\b.{0,40}\b(battery|cell)\b|\b(battery|cell)\b.{0,40}\b(puncture|pry|remove|replace)\b.{0,35}\b(laptop|phone|tablet|smartphone|power bank)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: internal battery handling can cause fire or injury. Do not pry or puncture anything; verify the exact model and official safety procedure before proceeding." },
+      { level: "high", code: "hazardous_chemical_mixing",
+        pattern: /\b(mix|mixing|combine)\b.{0,35}\b(bleach|ammonia|acid|drain cleaner)\b|\b(bleach|ammonia|acid|drain cleaner)\b.{0,35}\b(with|and)\b.{0,20}\b(bleach|ammonia|acid|drain cleaner)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: do not mix cleaning chemicals. Move away from fumes, ventilate only if safe, and follow product emergency guidance or contact local poison/emergency services." },
+      { level: "high", code: "medical_dose_change",
+        pattern: /\b(change|adjust|increase|decrease|double|skip)\b.{0,30}\b(dose|dosage)\b.{0,30}\b(insulin|medicine|medication|prescription)\b|\b(insulin|prescription medication)\b.{0,30}\b(dose|dosage)\b/i,
+        reversibility: "hard_to_reverse",
+        notice: "Safety pause: do not change a medicine dose based on camera guidance. Confirm with the prescribing clinician or pharmacist." },
+      { level: "caution", code: "tools_heat_or_cutting",
+        pattern: /\b(solder|soldering|drill|drilling|cutting|utility knife|sharp blade|hot surface|open flame|solvent|ladder|roof edge)\b/i,
+        reversibility: "reversible",
+        notice: "Use suitable protection and keep hands clear. Continue only with a stable setup and the correct tool." }
+    ];
+    const rank = { low: 0, caution: 1, moderate: 1, high: 2, critical: 3 };
+    let level = "low";
+    let reversibility = "reversible";
+    let notice = "";
+    const codes = [];
+    for (const rule of rules) {
+      if (!rule.pattern.test(corpus)) continue;
+      codes.push(rule.code);
+      if ((rank[rule.level] || 0) > (rank[level] || 0)) {
+        level = rule.level;
+        reversibility = rule.reversibility;
+        notice = rule.notice;
+      }
+    }
+    const supplied = data.safetyAssessment && typeof data.safetyAssessment === "object"
+      ? data.safetyAssessment
+      : (data.safety_assessment && typeof data.safety_assessment === "object" ? data.safety_assessment : {});
+    const statedLevel = clean(supplied.consequence, 24).toLowerCase();
+    if (["critical", "high", "moderate", "caution"].includes(statedLevel) &&
+        (rank[statedLevel] || 0) > (rank[level] || 0)) {
+      level = statedLevel === "moderate" ? "caution" : statedLevel;
+      codes.push("model_consequence_assessment");
+      notice = clean(supplied.uncertainty, 190) || "Safety pause: the consequence of this step may be high. Let's confirm the important facts before acting.";
+    }
+    const statedReversibility = clean(supplied.reversibility, 32).toLowerCase();
+    if (statedReversibility === "irreversible") {
+      codes.push("hard_to_reverse_action");
+      if ((rank[level] || 0) < rank.high) {
+        level = "high";
+        notice = clean(supplied.uncertainty, 190) || "Safety pause: this action may be difficult to reverse. Confirm the exact situation before proceeding.";
+      }
+      reversibility = "irreversible";
+    } else if (statedReversibility === "hard_to_reverse") {
+      reversibility = "hard_to_reverse";
+      if (level === "low") level = "caution";
+    } else if (statedReversibility === "unknown" && level === "low") {
+      reversibility = "unknown";
+    }
+    const requiresPause = supplied.requires_pause === true;
+    if (requiresPause && (rank[level] || 0) < rank.high) {
+      level = "high";
+      codes.push("explicit_pause_required");
+      notice = clean(supplied.uncertainty, 190) || "Safety pause: an important safety fact is unresolved. Do not act yet; let's verify it first.";
+    }
+    if (!notice && level === "caution") notice = rules.find((rule) => codes.includes(rule.code))?.notice || "Use suitable protection and keep the work area stable.";
+    const blocksVisuals = level === "high" || level === "critical" || requiresPause;
+    if (blocksVisuals && !notice) notice = "Safety pause: do not act on a visual cue until the safety-critical facts are confirmed.";
+    const uncertainty = clean(supplied.uncertainty, 190);
+    return {
+      level, codes: Array.from(new Set(codes)).slice(0, 6),
+      reversibility, requiresPause: blocksVisuals, blocksVisuals,
+      notice: clean(notice, 240), uncertainty
+    };
+  }
+
+  function formatSafetyAssessmentSummary(assessment) {
+    const value = assessment && typeof assessment === "object" ? assessment : { level: "unknown", codes: [], blocksVisuals: true };
+    const codes = Array.isArray(value.codes) ? value.codes.slice(0, 6).join(", ") : "";
+    return [
+      "M31 safety gate: consequence=" + String(value.level || "unknown") +
+        "; reversibility=" + String(value.reversibility || "unknown") +
+        "; visual guidance " + (value.blocksVisuals ? "BLOCKED" : "permitted with ordinary caution") + ".",
+      codes ? "Safety flags: " + codes + "." : "",
+      value.uncertainty ? "Unresolved safety uncertainty: " + value.uncertainty : "",
+      value.blocksVisuals ? ("Required next response: stop procedural guidance, explain the safety pause plainly, and ask only the most important clarifying question or recommend qualified help. " + (value.notice || "")) : ""
+    ].filter(Boolean).join("\n");
+  }
+
+  // M32: explicit state machine for the currently valid source of reality evidence.
+  function createRealityLoopState() {
+    return {
+      mode: "idle", camera: "idle", voice: "idle", spatialAr: "inactive",
+      observationSource: "none", tracking: "inactive", awaitingFreshFrame: false,
+      frameSequence: 0, viewGeneration: 0, lastFreshFrameAt: 0,
+      lastTransitionAt: 0, lastReason: "initial", revision: 0
+    };
+  }
+
+  function transitionRealityLoopState(previous, event, now) {
+    const prior = previous && typeof previous === "object" ? previous : createRealityLoopState();
+    const next = { ...createRealityLoopState(), ...prior };
+    const action = event && typeof event.type === "string" ? event.type : "";
+    const at = Number.isFinite(now) ? now : Date.now();
+    const reason = event && typeof event.reason === "string" ? event.reason.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 100) : action;
+    switch (action) {
+      case "session_starting":
+        next.mode = "starting"; next.camera = "requesting"; next.voice = "connecting";
+        next.spatialAr = "inactive"; next.observationSource = "none"; next.tracking = "inactive";
+        next.awaitingFreshFrame = true; next.frameSequence = 0; next.lastFreshFrameAt = 0; next.viewGeneration += 1;
+        break;
+      case "camera_ready":
+        next.camera = "live"; next.observationSource = "none"; next.tracking = "reacquiring";
+        next.awaitingFreshFrame = true; next.mode = "awaiting_frame";
+        break;
+      case "voice_ready":
+        next.voice = "live"; next.mode = next.camera === "live" ? "awaiting_frame" : "voice_only";
+        next.observationSource = "none"; next.awaitingFreshFrame = next.camera === "live";
+        break;
+      case "frame_sent":
+        if (prior.camera !== "live" || prior.spatialAr === "active" || prior.mode === "background_paused") return prior;
+        next.frameSequence = (Number.isFinite(prior.frameSequence) ? prior.frameSequence : 0) + 1;
+        next.lastFreshFrameAt = at; next.observationSource = "camera"; next.awaitingFreshFrame = false;
+        next.mode = next.voice === "live" ? "camera_live" : "camera_ready";
+        next.tracking = event && event.trackingActive === true ? "active" : "available";
+        break;
+      case "spatial_ar_start":
+        next.mode = "spatial_ar"; next.camera = "suspended"; next.spatialAr = "active";
+        next.observationSource = "xr_pose"; next.tracking = "paused"; next.awaitingFreshFrame = true; next.viewGeneration += 1;
+        break;
+      case "spatial_ar_ended":
+        next.mode = "resuming_camera"; next.camera = "resuming"; next.spatialAr = "inactive";
+        next.observationSource = "none"; next.tracking = "reacquiring"; next.awaitingFreshFrame = true;
+        break;
+      case "camera_resumed":
+        next.mode = "awaiting_frame"; next.camera = "live"; next.spatialAr = "inactive";
+        next.observationSource = "none"; next.tracking = "reacquiring"; next.awaitingFreshFrame = true; next.viewGeneration += 1;
+        break;
+      case "camera_error":
+        next.camera = "unavailable"; next.observationSource = "none"; next.tracking = "paused"; next.awaitingFreshFrame = true;
+        next.mode = next.voice === "live" ? "voice_only" : "degraded";
+        break;
+      case "visibility_hidden":
+        next.mode = "background_paused"; next.observationSource = "none"; next.tracking = "paused";
+        next.awaitingFreshFrame = true; next.viewGeneration += 1;
+        break;
+      case "visibility_visible":
+        next.observationSource = next.spatialAr === "active" ? "xr_pose" : "none";
+        next.tracking = "reacquiring"; next.awaitingFreshFrame = true;
+        next.mode = next.spatialAr === "active" ? "spatial_ar" : (next.camera === "live" ? "awaiting_frame" : (next.voice === "live" ? "voice_only" : "degraded"));
+        next.viewGeneration += 1;
+        break;
+      case "session_stopped":
+        return { ...createRealityLoopState(), lastTransitionAt: at, lastReason: reason || "session_stopped", revision: (prior.revision || 0) + 1 };
+      default:
+        return prior;
+    }
+    next.lastTransitionAt = at; next.lastReason = reason || action;
+    next.revision = (Number.isFinite(prior.revision) ? prior.revision : 0) + 1;
+    return next;
+  }
+
+  function realityLoopBlocksVisualUpdate(state) {
+    const value = state && typeof state === "object" ? state : createRealityLoopState();
+    return value.spatialAr === "active" || value.camera !== "live" ||
+      value.awaitingFreshFrame === true ||
+      ["starting", "awaiting_frame", "resuming_camera", "background_paused", "voice_only", "degraded", "idle"].includes(value.mode);
+  }
+
+  function formatRealityLoopSummary(state) {
+    const value = state && typeof state === "object" ? state : createRealityLoopState();
+    const lines = [
+      "M32 reality loop: mode=" + String(value.mode || "unknown") +
+        "; voice=" + String(value.voice || "unknown") +
+        "; camera=" + String(value.camera || "unknown") +
+        "; spatialAR=" + String(value.spatialAr || "unknown") +
+        "; observation=" + String(value.observationSource || "none") +
+        "; localTracking=" + String(value.tracking || "unknown") +
+        "; freshFrameRequired=" + String(value.awaitingFreshFrame === true) +
+        "; frameSequence=" + String(Number.isFinite(value.frameSequence) ? value.frameSequence : 0) + "."
+    ];
+    if (value.spatialAr === "active") {
+      lines.push("During immersive Spatial AR, Moina receives no new camera images; XR pose/hit-test state is local only. Do not claim fresh camera observation or visual verification until the Co-Pilot camera resumes and a new frame is sent.");
+    } else if (value.awaitingFreshFrame === true) {
+      lines.push("The previous camera evidence is stale for new instructions. Hold camera-dependent overlays and verification until a fresh frame reaches the live model.");
+    }
+    return lines.join("\n");
+  }
+
+  function recordRealityLoopEvent(type, details) {
+    realityLoopState = transitionRealityLoopState(realityLoopState, { ...(details || {}), type }, Date.now());
+    return realityLoopState;
+  }
+
+  function hideStaleCameraOverlays() {
+    clearVisualGuide();
+    if (typeof stopLocalTracking === "function") stopLocalTracking(false);
+    focusMarker.hidden = true; approxTag.hidden = true; clearMarkerButton.disabled = true;
+    focusMarker.style.left = ""; focusMarker.style.top = "";
+    delete focusMarker.dataset.tracking;
+  }
+
+  function showSafetyPauseNotice(assessment) {
+    if (!stage) return;
+    if (!safetyPauseNode) {
+      safetyPauseNode = document.createElement("section");
+      safetyPauseNode.className = "safety-pause-notice";
+      safetyPauseNode.setAttribute("role", "status");
+      safetyPauseNode.setAttribute("aria-live", "polite");
+      const heading = document.createElement("strong");
+      heading.className = "safety-pause-title"; heading.textContent = "PAUSE FOR SAFETY";
+      const body = document.createElement("p");
+      body.className = "safety-pause-copy";
+      safetyPauseNode.append(heading, body); stage.appendChild(safetyPauseNode);
+    }
+    const body = safetyPauseNode.querySelector(".safety-pause-copy");
+    const heading = safetyPauseNode.querySelector(".safety-pause-title");
+    const value = assessment && typeof assessment === "object" ? assessment : {};
+    heading.textContent = value.level === "critical" ? "SAFETY ALERT" : "PAUSE FOR SAFETY";
+    body.textContent = String(value.notice || "Do not act on a visual cue until the safety-critical facts are confirmed.").slice(0, 240);
+    safetyPauseNode.dataset.level = value.level === "critical" ? "critical" : "high";
+    safetyPauseNode.hidden = false;
+  }
+
+  function hideSafetyPauseNotice() {
+    if (safetyPauseNode) safetyPauseNode.hidden = true;
+  }
 
   function setStatus(message, kind) {
     statusNode.textContent = message;
@@ -364,6 +624,7 @@
   }
 
   function clearOverlay() {
+    hideSafetyPauseNotice();
     clearVisualGuide();
     awaitingTargetSelection = false;
     pendingTrackingTargetKey = "";
@@ -386,7 +647,18 @@
   }
   video.addEventListener("resize", () => invalidateSceneEvidence("video-frame-resize"));
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) invalidateSceneEvidence("tab-hidden");
+    if (document.hidden) {
+      recordRealityLoopEvent("visibility_hidden");
+      invalidateSceneEvidence("tab-hidden");
+      hideStaleCameraOverlays();
+    } else if (active) {
+      recordRealityLoopEvent("visibility_visible");
+      invalidateSceneEvidence("tab-visible");
+      if (!cameraSuspendedForSpatialAr && microphoneStream && microphoneStream.getVideoTracks().some((track) => track.readyState === "live")) {
+        startVideoFrames();
+        setStatus("Camera returned. Re-checking the scene with a fresh frame before drawing guidance.");
+      }
+    }
   });
 
 
@@ -850,6 +1122,7 @@
   }
 
   function showOverlay(args) {
+    hideSafetyPauseNotice();
     const spatialElements = normalizeSpatialCues(args && args.spatial_cues);
     const explicitElements = args && Array.isArray(args.visual_elements) ? args.visual_elements : [];
     const visualElements = spatialElements.concat(explicitElements).slice(0, 8);
@@ -1168,6 +1441,7 @@
         realtime_input: { video: { data, mime_type: "image/jpeg" } }
       }));
       lastVideoSentAt = Date.now();
+      recordRealityLoopEvent("frame_sent", { trackingActive: localTrackingActive });
       lastSentCameraFrameSequence += 1;
       lastSentCameraViewGeneration = cameraViewGeneration;
       setCameraState("Live · frames ~1/sec", "live");
@@ -1202,6 +1476,8 @@
     video.srcObject = null;
     stage.classList.remove("has-camera");
     cameraSuspendedForSpatialAr = true;
+    hideStaleCameraOverlays();
+    recordRealityLoopEvent("spatial_ar_start");
     setCameraState("Camera released to Spatial AR", "xr");
     setControls(active ? "End Co-Pilot" : "Start Co-Pilot", false);
     return true;
@@ -1214,6 +1490,7 @@
       return;
     }
 
+    recordRealityLoopEvent("spatial_ar_ended");
     cameraResumeInProgress = true;
     setStatus(reason + ". Restoring camera frames while live voice stays connected…");
     let cameraOnlyStream = null;
@@ -1254,6 +1531,7 @@
       video.srcObject = microphoneStream;
       await video.play();
       cameraSuspendedForSpatialAr = false;
+      recordRealityLoopEvent("camera_resumed");
       invalidateSceneEvidence("spatial-ar-camera-resume");
       initializeZoom();
       stage.classList.add("has-camera");
@@ -1263,6 +1541,8 @@
       setStatus(reason + ". Live voice and camera frames are back.");
     } catch (error) {
       if (cameraOnlyStream) cameraOnlyStream.getTracks().forEach((track) => track.stop());
+      recordRealityLoopEvent("camera_error");
+      hideStaleCameraOverlays();
       setCameraState("Camera paused", "idle");
       setStatus(reason + ". Voice is still connected, but the camera could not resume. End Co-Pilot and restart to restore live vision.", "warning");
     } finally {
@@ -1280,6 +1560,8 @@
   }
 
   function cleanupMedia() {
+    recordRealityLoopEvent("session_stopped");
+    hideSafetyPauseNotice();
     setupReady = false;
     clearTimers();
     stopPlayback();
@@ -1355,22 +1637,54 @@
     for (const call of getToolCalls(message)) {
       if (!call || typeof call !== "object" || call.name !== "display_screen_overlay") continue;
       const args = call.args && typeof call.args === "object" ? call.args : {};
+      const rawTaskState = args.task_world_state && typeof args.task_world_state === "object" ? args.task_world_state : {};
+      const safety = assessSafetyAndUncertainty({
+        taskGoal: rawTaskState.task_goal || taskWorldModel.goal,
+        currentState: rawTaskState.current_state,
+        instruction: args.instruction,
+        label: args.text_to_display,
+        targetHint: args.target_hint,
+        uncertainty: Array.isArray(rawTaskState.uncertainties) ? rawTaskState.uncertainties.join("; ") : "",
+        safetyAssessment: args.safety_assessment
+      });
+      const loopBlocksVisuals = realityLoopBlocksVisualUpdate(realityLoopState);
       const beforeSceneModel = sceneModel;
-      showOverlay(args);
-      const verification = classifyVisualVerification(args.visual_verification, beforeSceneModel, sceneModel, Date.now());
+      if (safety.blocksVisuals) {
+        clearOverlay();
+        invalidateSceneEvidence("m31-safety-pause");
+        showSafetyPauseNotice(safety);
+        setStatus(safety.notice || "Safety pause: confirm the important facts before acting.", "warning");
+      } else if (loopBlocksVisuals) {
+        hideStaleCameraOverlays();
+        hideSafetyPauseNotice();
+        setStatus(realityLoopState.spatialAr === "active"
+          ? "Camera analysis is paused in Spatial AR. Exit AR before asking Moina to inspect the live scene."
+          : "Waiting for a fresh camera frame before drawing guidance.", "warning");
+      } else {
+        showOverlay(args);
+      }
+      const verification = safety.blocksVisuals || loopBlocksVisuals
+        ? null
+        : classifyVisualVerification(args.visual_verification, beforeSceneModel, sceneModel, Date.now());
       taskWorldModel = mergeTaskWorldModel(taskWorldModel, args.task_world_state, verification, sceneModel, Date.now());
       const id = typeof call.id === "string" ? call.id : "";
       if (id) {
         const sceneSummary = formatSceneModelSummary(sceneModel, Date.now());
         const verificationSummary = formatVisualVerificationSummary(verification);
         const taskSummary = formatTaskWorldModelSummary(taskWorldModel, sceneModel, Date.now());
+        const safetySummary = formatSafetyAssessmentSummary(safety);
+        const realitySummary = formatRealityLoopSummary(realityLoopState);
         responses.push({
           id,
           name: "display_screen_overlay",
           response: {
-            result: "The on-screen target prompt or approximate overlay was handled by the client.\n\n" + sceneSummary +
+            result: (safety.blocksVisuals
+              ? "M31 safety gate blocked the on-screen drawing and cleared stale overlays. No hazardous physical action was executed.\n\n"
+              : (loopBlocksVisuals
+                ? "M32 reality-loop gate withheld camera-dependent overlays because the current view is stale or unavailable.\n\n"
+                : "The on-screen target prompt or approximate overlay was handled by the client.\n\n")) + sceneSummary +
               (verificationSummary ? "\n\n" + verificationSummary : "") +
-              "\n\n" + taskSummary
+              "\n\n" + taskSummary + "\n\n" + safetySummary + "\n\n" + realitySummary
           }
         });
       }
@@ -1404,6 +1718,7 @@
     if (message.setup_complete || message.setupComplete) {
       setupReady = true;
       active = true;
+      recordRealityLoopEvent("voice_ready");
       starting = false;
       if (setupTimer) window.clearTimeout(setupTimer);
       setupTimer = null;
@@ -1473,6 +1788,7 @@
     }
     starting = true;
     stopping = false;
+    recordRealityLoopEvent("session_starting");
     clearOverlay();
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
@@ -1513,6 +1829,7 @@
       });
       video.srcObject = microphoneStream;
       await video.play();
+      recordRealityLoopEvent("camera_ready");
       initializeZoom();
       stage.classList.add("has-camera");
       setCameraState("Camera ready", "live");
