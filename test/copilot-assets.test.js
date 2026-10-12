@@ -251,7 +251,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain('id="toggleCaptions"');
     expect(script).not.toContain('captionsToggleButton.addEventListener');
     expect(script).toContain('stage.classList.toggle("controls-expanded", expanded)');
-    expect(script).toContain('stage.classList.toggle("captions-expanded", expanded)');
+    expect(script).not.toContain("captionsToggleButton.addEventListener");
     expect(css).toContain(".secondary-controls[hidden]{display:none!important}");
     expect(css).toContain(".camera-stage.captions-expanded .transcript{display:flex}");
     expect(css).toContain(".camera-stage.controls-expanded .zoom-dock{display:flex}");

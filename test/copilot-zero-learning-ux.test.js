@@ -25,7 +25,7 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).not.toContain("Set this up");
     expect(html).not.toContain("Compare these");
     expect(html).not.toContain("Explain this");
-    expect(html).toContain('id="toggleCaptions"');
+    expect(html).not.toContain('id="toggleCaptions"');
     expect(html).toContain('aria-label="Mute microphone"');
     expect(html).toContain('aria-label="Start call"');
     expect(css).toContain(".presence-orb");
