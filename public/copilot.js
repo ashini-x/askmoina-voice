@@ -200,15 +200,58 @@
     renderVisualGuide(latestVisualGuideElements.slice());
   }
 
+  // M28: translate task-level spatial language into a small, validated set of screen-space primitives.
+  function normalizeSpatialCues(rawCues) {
+    if (!Array.isArray(rawCues)) return [];
+    const kinds = new Set(["alignment", "motion_path", "placement_region", "target_point", "orientation", "label"]);
+    const tones = new Set(["mint", "white", "amber"]);
+    const output = [];
+    for (const raw of rawCues.slice(0, 5)) {
+      if (!raw || typeof raw !== "object" || !kinds.has(raw.kind) ||
+          !Array.isArray(raw.points) || raw.points.length > 8) continue;
+      const points = raw.points.map((point) => ({
+        x: visualCoord(point && point.x),
+        y: visualCoord(point && point.y)
+      }));
+      if (points.some((point) => point.x === null || point.y === null)) continue;
+      const color = tones.has(raw.color) ? raw.color : "mint";
+      const label = typeof raw.label === "string"
+        ? raw.label.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48)
+        : "";
+      const first = points[0];
+      const last = points[points.length - 1];
+      if (raw.kind === "alignment" && points.length >= 2) {
+        output.push({ type: "line", x1: first.x, y1: first.y, x2: last.x, y2: last.y, color });
+      } else if (raw.kind === "motion_path" && points.length >= 2) {
+        output.push({ type: "polyline", points, directional: true, color });
+      } else if (raw.kind === "placement_region" && points.length >= 3) {
+        output.push({ type: "polygon", points, color });
+      } else if (raw.kind === "target_point" && points.length === 1) {
+        output.push({ type: "circle", x: first.x, y: first.y, radius: 20, color });
+      } else if (raw.kind === "orientation" && points.length >= 2) {
+        output.push({ type: "arrow", x1: first.x, y1: first.y, x2: last.x, y2: last.y, color });
+      } else if (raw.kind === "label" && points.length >= 1 && label) {
+        output.push({ type: "label", x: first.x, y: first.y, text: label, color });
+      }
+    }
+    return output.slice(0, 5);
+  }
+
   function renderVisualGuide(elements) {
     clearVisualGuide();
     if (!Array.isArray(elements) || !elements.length) return false;
 
-    const allowedTypes = new Set(["line", "arrow", "circle", "rect", "tick", "label"]);
+    const allowedTypes = new Set(["line", "arrow", "circle", "rect", "tick", "label", "polyline", "polygon"]);
     const allowedTones = new Set(["mint", "white", "amber"]);
     const accepted = elements.slice(0, 8).filter((element) => {
       if (!element || typeof element !== "object" || !allowedTypes.has(element.type)) return false;
       const n = visualCoord;
+      if (element.type === "polyline" || element.type === "polygon") {
+        const points = Array.isArray(element.points) ? element.points : [];
+        const minimum = element.type === "polygon" ? 3 : 2;
+        return points.length >= minimum && points.length <= 8 &&
+          points.every((point) => point && n(point.x) !== null && n(point.y) !== null);
+      }
       if (element.type === "line" || element.type === "arrow") {
         return n(element.x1) !== null && n(element.y1) !== null && n(element.x2) !== null &&
           n(element.y2) !== null && (element.x1 !== element.x2 || element.y1 !== element.y2);
@@ -285,6 +328,15 @@
         shape.setAttribute("width", String(rectWidth));
         shape.setAttribute("height", String(Math.max(1, sizeAt(element.height))));
         shape.setAttribute("rx", "8");
+      } else if (element.type === "polyline" || element.type === "polygon") {
+        shape = document.createElementNS(visualGuideSvgNS, element.type);
+        shape.setAttribute("points", element.points.map((point) =>
+          String(xAt(point.x)) + "," + String(yAt(point.y))
+        ).join(" "));
+        if (element.type === "polygon") shape.classList.add("ai-guide-region");
+        if (element.type === "polyline" && element.directional === true) {
+          shape.setAttribute("marker-end", "url(#moina-guide-arrow-" + tone + ")");
+        }
       } else if (element.type === "tick") {
         const x = xAt(element.x);
         const y = yAt(element.y);
@@ -471,6 +523,97 @@
     ].join("\n").slice(0, 2_600);
   }
 
+  // M27: compare one matching scene candidate across two fresh frames before accepting a visible result.
+  function classifyVisualVerification(rawReport, beforeModel, afterModel, now) {
+    if (!rawReport || typeof rawReport !== "object") return null;
+    const ambiguous = (reason, extra = {}) => ({
+      status: "ambiguous",
+      reason,
+      targetId: typeof rawReport.target_id === "string" ? rawReport.target_id.slice(0, 28) : "",
+      criterion: typeof rawReport.criterion === "string" ? rawReport.criterion.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 140) : "",
+      ...extra
+    });
+    const targetId = typeof rawReport.target_id === "string" ? rawReport.target_id.trim() : "";
+    const criterion = typeof rawReport.criterion === "string"
+      ? rawReport.criterion.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 140)
+      : "";
+    const consequence = ["low", "moderate", "high"].includes(rawReport.consequence) ? rawReport.consequence : "";
+    const evidence = rawReport.evidence === "direct" || rawReport.evidence === "inferred" ? rawReport.evidence : "unknown";
+    const confidence = typeof rawReport.confidence === "number" && Number.isFinite(rawReport.confidence)
+      ? rawReport.confidence : -1;
+    if (!/^[A-Za-z0-9._-]{1,28}$/.test(targetId) || criterion.length < 4 || !consequence) {
+      return ambiguous("The verification report is incomplete or malformed.");
+    }
+    if (rawReport.criterion_status === "unclear" || rawReport.change_observed === "unclear") {
+      return ambiguous("The latest view does not clearly establish the requested condition.");
+    }
+    if (!beforeModel || !afterModel ||
+        beforeModel.viewGeneration !== afterModel.viewGeneration ||
+        !Number.isFinite(beforeModel.frameSequence) ||
+        !Number.isFinite(afterModel.frameSequence) ||
+        afterModel.frameSequence <= beforeModel.frameSequence) {
+      return ambiguous("There is no fresh before/after frame pair from the same camera view.");
+    }
+    const priorList = Array.isArray(beforeModel.observations) ? beforeModel.observations : [];
+    const currentList = Array.isArray(afterModel.observations) ? afterModel.observations : [];
+    const prior = priorList.find((item) => item && item.id === targetId);
+    const current = currentList.find((item) => item && item.id === targetId);
+    const isFresh = (item, limit) => Boolean(item && Number.isFinite(item.observedAt) &&
+      now >= item.observedAt && now - item.observedAt <= limit &&
+      item.viewGeneration === afterModel.viewGeneration && item.visible === true && !item.identityConflict);
+    if (!isFresh(prior, 7_000) || !isFresh(current, 5_000) ||
+        !Number.isFinite(prior.frameSequence) || !Number.isFinite(current.frameSequence) ||
+        current.frameSequence <= prior.frameSequence || current.frameSequence !== afterModel.frameSequence) {
+      return ambiguous("The same target was not observed clearly in both a recent baseline and the latest frame.");
+    }
+    const normalizeLabel = (value) => String(value || "").normalize("NFKC")
+      .toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!prior.label || normalizeLabel(prior.label) !== normalizeLabel(current.label)) {
+      return ambiguous("The target label changed between frames, so identity continuity is uncertain.");
+    }
+    if (evidence !== "direct" || confidence < 0 || confidence > 1) {
+      return ambiguous("Only direct, bounded visual evidence can support an automatic result.");
+    }
+    if (consequence === "high") {
+      return ambiguous("A consequential outcome needs stronger independent confirmation than this camera comparison provides.", {
+        confidence, evidence, consequence, beforeFrameSequence: prior.frameSequence, afterFrameSequence: current.frameSequence
+      });
+    }
+    const threshold = consequence === "moderate" ? 0.93 : 0.82;
+    if (confidence < threshold) {
+      return ambiguous("The reported visual confidence is below the threshold for this consequence level.", {
+        confidence, evidence, consequence, beforeFrameSequence: prior.frameSequence, afterFrameSequence: current.frameSequence
+      });
+    }
+    if (rawReport.change_observed === "changed" && rawReport.criterion_status === "met") {
+      return {
+        status: "supported_success",
+        reason: "Fresh matching frames support that the stated visible criterion was met after an observed change.",
+        targetId, criterion, confidence, evidence, consequence,
+        beforeFrameSequence: prior.frameSequence, afterFrameSequence: current.frameSequence
+      };
+    }
+    if (rawReport.change_observed === "no_change" && rawReport.criterion_status === "not_met") {
+      return {
+        status: "supported_failure_or_no_change",
+        reason: "Fresh matching frames support that the stated visible criterion remains unmet and no relevant change was observed.",
+        targetId, criterion, confidence, evidence, consequence,
+        beforeFrameSequence: prior.frameSequence, afterFrameSequence: current.frameSequence
+      };
+    }
+    return ambiguous("The reported criterion and before/after change do not form a consistent, decisive result.", {
+      confidence, evidence, consequence, beforeFrameSequence: prior.frameSequence, afterFrameSequence: current.frameSequence
+    });
+  }
+
+  function formatVisualVerificationSummary(result) {
+    if (!result || typeof result !== "object") return "";
+    const summary = "Visual verification: " + result.status + ". " + result.reason +
+      (result.criterion ? " Criterion: " + result.criterion + "." : "");
+    return (summary + " This is a guarded model-reported camera comparison, not independent sensor proof or verification of hidden conditions.")
+      .slice(0, 900);
+  }
+
   // M26: explicit identity record for a user-tapped local image patch. This follows
   // the same patch in camera pixels only; it is not semantic identity or 3D tracking.
   function createPersistentSpatialTrack(trackId, targetKey, point, context, now) {
@@ -573,8 +716,11 @@
   }
 
   function showOverlay(args) {
+    const spatialElements = normalizeSpatialCues(args && args.spatial_cues);
+    const explicitElements = args && Array.isArray(args.visual_elements) ? args.visual_elements : [];
+    const visualElements = spatialElements.concat(explicitElements).slice(0, 8);
     updateSceneModel(args && args.scene_observations, args && args.scene_relations);
-    const hasVisualGuide = renderVisualGuide(args && args.visual_elements);
+    const hasVisualGuide = renderVisualGuide(visualElements);
     if (args && args.await_user_selection === true) {
       clearOverlay();
       const requested = {
@@ -1075,14 +1221,20 @@
     for (const call of getToolCalls(message)) {
       if (!call || typeof call !== "object" || call.name !== "display_screen_overlay") continue;
       const args = call.args && typeof call.args === "object" ? call.args : {};
+      const beforeSceneModel = sceneModel;
       showOverlay(args);
+      const verification = classifyVisualVerification(args.visual_verification, beforeSceneModel, sceneModel, Date.now());
       const id = typeof call.id === "string" ? call.id : "";
       if (id) {
         const sceneSummary = formatSceneModelSummary(sceneModel, Date.now());
+        const verificationSummary = formatVisualVerificationSummary(verification);
         responses.push({
           id,
           name: "display_screen_overlay",
-          response: { result: "The on-screen target prompt or approximate overlay was handled by the client.\n\n" + sceneSummary }
+          response: {
+            result: "The on-screen target prompt or approximate overlay was handled by the client.\n\n" + sceneSummary +
+              (verificationSummary ? "\n\n" + verificationSummary : "")
+          }
         });
       }
     }
