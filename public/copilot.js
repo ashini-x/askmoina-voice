@@ -1972,7 +1972,7 @@
         let message = "The live session ended unexpectedly. Start the Co-Pilot again to continue.";
         if (reason === "Session time limit reached") message = "This conversation reached its time limit. Start again when you're ready.";
         else if (reason === "Invalid copilot video frame") message = "The camera frame format was rejected. Refresh and try again.";
-        else if (reason === "Audio input rate limit exceeded") message = "Audio and camera data exceeded the live input limit. Restart with a steadier connection.";
+        else if (reason === "Audio input rate limit exceeded") message = "The live relay received media packets in a short burst. Microphone pacing has been adjusted; close older AskMoina tabs, reload once, and reconnect. This is not a question-count limit.";
         cleanupMedia();
         active = false;
         starting = false;

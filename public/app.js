@@ -601,7 +601,7 @@
           } else if (reason === "Invalid PCM audio frame") {
             closeMessage = "AskMoina could not read an incoming microphone audio packet. Check your selected microphone or refresh the page, then try again. This is not a question-count limit.";
           } else if (reason === "Audio input rate limit exceeded") {
-            closeMessage = "Audio packets arrived faster than AskMoina can accept them. This is not a question-count limit. Refresh and start a new conversation.";
+            closeMessage = "Audio packets arrived faster than the live relay can process them during a short burst. AskMoina now paces microphone packets more conservatively. Close older AskMoina tabs, reload once, and reconnect. This is not a question-count limit.";
           } else if (reason === "Invalid or oversized client frame") {
             closeMessage = "The browser sent an unsupported voice packet. Refresh AskMoina and start a new conversation.";
           } else if (
