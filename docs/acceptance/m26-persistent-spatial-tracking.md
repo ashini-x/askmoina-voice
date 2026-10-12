@@ -14,11 +14,13 @@ Keep a locally selected image patch associated across camera movement and cautio
 
 ## Synthetic acceptance
 
-CI is pending for this branch. Tests cover:
-- explicit user-tap anchored track creation;
-- stable track ID across a valid match, a miss, and a confirmed reacquisition;
-- declining confidence during loss and invalidation on camera-view generation changes;
-- two-scan reacquisition threshold, stale-marker expiry, camera-change invalidation, and public/embedded asset synchronization.
+- [x] A local track record is created from a user-selected patch without claiming semantic identity or world lock.
+- [x] Stable track ID, match confidence, miss/loss state, and confirmed reacquisition are covered by helper tests.
+- [x] A camera-view generation change invalidates the track instead of reprojecting stale geometry.
+- [x] Regression tests confirm two-scan reacquisition, stale-marker expiry, camera-view invalidation, and public/embedded asset synchronization.
+- [x] TypeScript, client syntax, and all tests passed in [Release validation run 38230026015](https://github.com/ashini-x/askmoina-voice/actions/runs/38230026015): 33 test files and 203 tests.
+- [x] Production smoke inspected the live `/copilot.js` response and confirmed the M26 track helpers and invalidation paths were deployed.
+- [ ] Real-world target continuity and lookalike rejection still require phone testing. The separate live-model integration steps were skipped; these checks are not inferred from unit tests.
 
 ## Real-device acceptance — still required
 
