@@ -662,3 +662,15 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 @media (prefers-reduced-motion: reduce) {
   .edge-glow:before, .edge-glow:after, .connection-notice-symbol:before, .connection-notice-progress span { animation: none !important; }
 }
+
+/* Keep the primary camera action hidden under a blocking notice, and keep hang-up native and quiet. */
+.camera-stage.has-notice .show-problem-button {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate(-50%, 9px) scale(.97) !important;
+}
+.stop-button.is-live {
+  background: #ff3b30;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.stop-button.is-live .icon-end { transform: rotate(-45deg); }
