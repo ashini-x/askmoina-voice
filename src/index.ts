@@ -17,6 +17,9 @@ import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded
 
 export { UserState } from "./sessions/user-state";
 
+
+const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"register\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Available device passkeys</p>\n    <div class=\"entry-mode-icons\" role=\"group\" aria-label=\"Account access\">\n      <button type=\"button\" class=\"entry-mode-icon\" id=\"modeCreate\" aria-label=\"Create account\" title=\"Create account\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20a6.5 6.5 0 0 1 13 0M18 8v7M14.5 11.5h7\"/></svg></button>\n      <button type=\"button\" class=\"entry-mode-icon\" id=\"modeSignin\" aria-label=\"Sign in\" title=\"Sign in\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"3.5\"/><path d=\"M4.5 20a7.5 7.5 0 0 1 15 0M16.5 14.5l2 2 3-3\"/></svg></button>\n    </div>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>";
+const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n  <button type=\"button\" class=\"entry-signout\" data-logout aria-label=\"Sign out\" title=\"Sign out\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg></button>\n  <div class=\"entry-product-panel\">\n    <h1 class=\"sr-only\">Choose an experience</h1>\n    <div class=\"entry-products\">\n      <a class=\"entry-product-card\" href=\"/copilot?product=0.4.0\" aria-label=\"Open Vision, version 0.4.0\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"3\" y=\"6\" width=\"18\" height=\"13\" rx=\"3\"/><path d=\"M8 6l1.5-2h5L16 6\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/><circle cx=\"18\" cy=\"9\" r=\".5\"/></svg></span>\n        <span><span class=\"entry-product-name\">Vision</span><span class=\"entry-product-meta\">0.4.0</span></span>\n        <span class=\"entry-product-arrow\" aria-hidden=\"true\">↗</span>\n      </a>\n      <div class=\"entry-product-card is-disabled\" role=\"img\" aria-disabled=\"true\" aria-label=\"Hardware, in development\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"6\" y=\"2.5\" width=\"12\" height=\"19\" rx=\"2.6\"/><path d=\"M9 5.5h6M10 18.5h4\"/></svg></span>\n        <span><span class=\"entry-product-name\">Hardware</span><span class=\"entry-product-meta\">In development</span></span>\n      </div>\n    </div>\n  </div>\n</section>";
 const providerFrameDecoder = new TextDecoder();
 
 function configuredTokenRate(value?: string): number | null {
@@ -1188,11 +1191,47 @@ export default {
       if (adminResponse) return adminResponse;
     }
 
+    if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
+      const accountId = await getAuthenticatedUserId(request, env);
+      const adminAccess = accountId ? false : await isAdmin(request, env);
+      let html = COPILOT_HTML
+        .replace('<script src="/transcript-merge.js" defer></script>', "")
+        .replace('<script src="/copilot.js" defer></script>', "");
+      if (accountId || adminAccess) {
+        html = html.replace("<body>", '<body data-page="entry" data-entry-state="products">');
+        html = html.replace("</body>", ENTRY_PRODUCTS_OVERLAY + "</body>");
+      } else {
+        html = html.replace('<script src="/session-ui.js" defer></script>', "");
+        html = html.replace("<body>", '<body data-page="login" data-entry-state="login">');
+        html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js" defer></script></body>');
+      }
+      const headers = new Headers({
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()",
+        "Cross-Origin-Resource-Policy": "same-origin",
+      });
+      return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
+    }
+
+    if (url.pathname === "/copilot.css") {
+      return new Response(COPILOT_CSS, { headers: {
+        "Content-Type": "text/css; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "same-origin",
+      } });
+    }
+
     if (url.pathname === "/copilot" || url.pathname === "/copilot.html" ||
         url.pathname === "/copilot.js" || url.pathname === "/copilot.css") {
       const accountId = await getAuthenticatedUserId(request, env);
       if (!accountId && !await isAdmin(request, env)) {
-        if (url.pathname === "/copilot" || url.pathname === "/copilot.html") return Response.redirect(new URL("/login", request.url).toString(), 302);
+        if (url.pathname === "/copilot" || url.pathname === "/copilot.html") return Response.redirect(new URL("/", request.url).toString(), 302);
         return json({ error: "authentication_required", message: "Sign up or log in to load the Co-Pilot." }, 401);
       }
       const isScript = url.pathname === "/copilot.js";
