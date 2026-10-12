@@ -156,6 +156,43 @@
       ? value : null;
   }
 
+  // Model coordinates belong to the latest source frame sent to Gemini. Keep this
+  // projection in one pure function so fit/crop and mirroring rules can be regression-tested.
+  function visualGuideProjection(stageWidth, stageHeight, frameWidth, frameHeight, mirrored) {
+    const width = Math.max(1, Number(stageWidth) || 1);
+    const height = Math.max(1, Number(stageHeight) || 1);
+    const sourceWidth = Math.max(1, Number(frameWidth) || 1);
+    const sourceHeight = Math.max(1, Number(frameHeight) || 1);
+    const coverScale = Math.max(width / sourceWidth, height / sourceHeight);
+    const coverWidth = sourceWidth * coverScale;
+    const coverHeight = sourceHeight * coverScale;
+    const offsetX = (width - coverWidth) / 2;
+    const offsetY = (height - coverHeight) / 2;
+    const xAt = (x) => {
+      const projected = (Number(x) / 1000) * coverWidth + offsetX;
+      return mirrored ? width - projected : projected;
+    };
+    const yAt = (y) => (Number(y) / 1000) * coverHeight + offsetY;
+    const sizeAt = (value) => (Number(value) * Math.min(sourceWidth, sourceHeight) / 1000) * coverScale;
+    return { width, height, coverScale, coverWidth, coverHeight, offsetX, offsetY, xAt, yAt, sizeAt };
+  }
+
+  function isCameraPreviewMirrored() {
+    return facingMode === "user";
+  }
+
+  function updatePreviewTransform() {
+    const transforms = [];
+    if (isCameraPreviewMirrored()) transforms.push("scaleX(-1)");
+    if (!nativeZoomSupported && zoomLevel > 1) transforms.push("scale(" + zoomLevel + ")");
+    video.style.transform = transforms.join(" ");
+  }
+
+  function redrawVisualGuide() {
+    if (!visualGuideSvg || !latestVisualGuideElements.length) return;
+    renderVisualGuide(latestVisualGuideElements.slice());
+  }
+
   function renderVisualGuide(elements) {
     clearVisualGuide();
     if (!Array.isArray(elements) || !elements.length) return false;
@@ -189,16 +226,12 @@
     const svg = getVisualGuideLayer();
     svg.replaceChildren();
     const bounds = stage.getBoundingClientRect();
-    const width = Math.max(1, bounds.width);
-    const height = Math.max(1, bounds.height);
-    const frameWidth = Math.max(1, video.videoWidth || width);
-    const frameHeight = Math.max(1, video.videoHeight || height);
-    const scale = Math.max(width / frameWidth, height / frameHeight);
-    const offsetX = (width - frameWidth * scale) / 2;
-    const offsetY = (height - frameHeight * scale) / 2;
-    const xAt = (x) => x * frameWidth / 1000 * scale + offsetX;
-    const yAt = (y) => y * frameHeight / 1000 * scale + offsetY;
-    const sizeAt = (value) => value * Math.min(frameWidth, frameHeight) / 1000 * scale;
+    const frameWidth = Math.max(1, video.videoWidth || bounds.width);
+    const frameHeight = Math.max(1, video.videoHeight || bounds.height);
+    const projection = visualGuideProjection(
+      bounds.width, bounds.height, frameWidth, frameHeight, isCameraPreviewMirrored()
+    );
+    const { width, height, xAt, yAt, sizeAt } = projection;
 
     const defs = document.createElementNS(visualGuideSvgNS, "defs");
     for (const tone of ["mint", "white", "amber"]) {
@@ -238,9 +271,11 @@
         shape.setAttribute("r", String(Math.max(3, sizeAt(element.radius))));
       } else if (element.type === "rect") {
         shape = document.createElementNS(visualGuideSvgNS, "rect");
-        shape.setAttribute("x", String(xAt(element.x)));
+        const projectedX = xAt(element.x);
+        const rectWidth = Math.max(1, sizeAt(element.width));
+        shape.setAttribute("x", String(isCameraPreviewMirrored() ? projectedX - rectWidth : projectedX));
         shape.setAttribute("y", String(yAt(element.y)));
-        shape.setAttribute("width", String(Math.max(1, sizeAt(element.width))));
+        shape.setAttribute("width", String(rectWidth));
         shape.setAttribute("height", String(Math.max(1, sizeAt(element.height))));
         shape.setAttribute("rx", "8");
       } else if (element.type === "tick") {
@@ -281,6 +316,18 @@
     focusMarker.style.top = "";
     delete focusMarker.dataset.tracking;
   }
+
+  // Recompute normalized guides for viewport changes; camera-frame changes invalidate them.
+  if (typeof ResizeObserver !== "undefined") {
+    const visualGuideResizeObserver = new ResizeObserver(redrawVisualGuide);
+    visualGuideResizeObserver.observe(stage);
+  } else {
+    window.addEventListener("resize", redrawVisualGuide);
+  }
+  video.addEventListener("resize", () => clearOverlay());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) clearOverlay();
+  });
 
   function visualTargetKey(guidance) {
     const value = guidance && typeof guidance.hint === "string" && guidance.hint.trim()
@@ -1057,7 +1104,8 @@
     const digitalZoom = !nativeZoomSupported ? zoomLevel : 1;
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    const baseX = centerX + (clientX - centerX) / digitalZoom;
+    const displayedX = isCameraPreviewMirrored() ? rect.left + rect.width - (clientX - rect.left) : clientX;
+    const baseX = centerX + (displayedX - centerX) / digitalZoom;
     const baseY = centerY + (clientY - centerY) / digitalZoom;
     const sourceX = (baseX - (rect.left + (rect.width - coverWidth) / 2)) / coverScale;
     const sourceY = (baseY - (rect.top + (rect.height - coverHeight) / 2)) / coverScale;
@@ -1080,7 +1128,8 @@
     const digitalZoom = !nativeZoomSupported ? zoomLevel : 1;
     const baseX = rect.left + (rect.width - coverWidth) / 2 + sourceX * coverScale;
     const baseY = rect.top + (rect.height - coverHeight) / 2 + sourceY * coverScale;
-    const screenX = rect.left + rect.width / 2 + (baseX - (rect.left + rect.width / 2)) * digitalZoom;
+    const mirrorDirection = isCameraPreviewMirrored() ? -1 : 1;
+    const screenX = rect.left + rect.width / 2 + (baseX - (rect.left + rect.width / 2)) * digitalZoom * mirrorDirection;
     const screenY = rect.top + rect.height / 2 + (baseY - (rect.top + rect.height / 2)) * digitalZoom;
     focusMarker.style.left = ((screenX - rect.left) / rect.width * 100) + "%";
     focusMarker.style.top = ((screenY - rect.top) / rect.height * 100) + "%";
@@ -1452,13 +1501,16 @@
       focusMarker.dataset.tracking = "lost";
       setStatus("Zoom changed. Tap the target again to resume local tracking.", "warning");
     }
+    if (Math.abs(nextZoom - zoomLevel) > 0.05 && (latestVisualGuideElements.length || latestVisualGuidance)) {
+      clearOverlay();
+      setStatus("Camera zoom changed. Moina will redraw the guide using a fresh view.", "warning");
+    }
     zoomLevel = nextZoom;
     zoomSlider.value = String(zoomLevel);
     zoomLabel.textContent = (Math.abs(zoomLevel - Math.round(zoomLevel)) < 0.001 ? String(Math.round(zoomLevel)) : zoomLevel.toFixed(1)) + "×";
     if (nativeZoomSupported && track) {
       try {
         await track.applyConstraints({ advanced: [{ zoom: zoomLevel }] });
-        video.style.transform = "";
       } catch (_) {
         nativeZoomSupported = false;
         zoomMin = 1;
@@ -1467,12 +1519,11 @@
         zoomSlider.min = "1";
         zoomSlider.max = "3";
         zoomSlider.step = "0.1";
-        video.style.transform = "scale(" + zoomLevel + ")";
       }
-    } else {
-      // Digital crop fallback is applied to preview and model-bound camera frames.
-      video.style.transform = "scale(" + zoomLevel + ")";
     }
+    // Native zoom changes the camera frame itself; digital zoom transforms the preview.
+    // The model receives the same center crop, so normalized guide coordinates stay frame-relative.
+    updatePreviewTransform();
     zoomInButton.disabled = !microphoneStream || zoomLevel >= zoomMax;
     zoomOutButton.disabled = !microphoneStream || zoomLevel <= zoomMin;
     if (announce) setStatus("Camera zoom " + zoomLabel.textContent + ".");
@@ -1514,6 +1565,7 @@
   async function flipCamera() {
     if (!active || !microphoneStream) return;
     const nextFacingMode = facingMode === "environment" ? "user" : "environment";
+    clearOverlay();
     flipButton.disabled = true;
     try {
       const cameraOnly = await navigator.mediaDevices.getUserMedia({
@@ -1532,6 +1584,7 @@
       await video.play();
       initializeZoom();
       facingMode = nextFacingMode;
+      updatePreviewTransform();
       setStatus(facingMode === "environment" ? "Switched to the rear camera." : "Switched to the front camera.");
       setCameraState("Live · frames ~1/sec", "live");
     } catch (error) {
