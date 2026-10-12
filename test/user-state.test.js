@@ -156,7 +156,7 @@ describe("AskMoina voice session guard", () => {
     expect((await first.json()).reservedSeconds).toBe(300);
 
     const afterLease = await status(userState, {
-      now: TODAY + 90_001,
+      now: TODAY + 45_001,
       maxDailySeconds: 500,
       maxConcurrentSessions: 1,
       enforceRateLimit: false,
@@ -165,15 +165,15 @@ describe("AskMoina voice session guard", () => {
     expect(await afterLease.json()).toMatchObject({
       activeSessions: 0,
       concurrencyLimited: false,
-      dailySecondsRemaining: 409,
+      dailySecondsRemaining: 454,
     });
     // The old record is cleaned transactionally; elapsed time is charged but
     // the unused part of its reservation is returned to the daily budget.
-    expect(storage.values.get("voice-guard").dailySeconds).toBe(91);
+    expect(storage.values.get("voice-guard").dailySeconds).toBe(46);
 
     const second = await acquire(userState, {
       sessionId: "next-session",
-      now: TODAY + 90_002,
+      now: TODAY + 45_002,
       maxSessionSeconds: 300,
       maxDailySeconds: 500,
       maxConcurrentSessions: 1,
@@ -196,12 +196,12 @@ describe("AskMoina voice session guard", () => {
     });
     expect(first.status).toBe(200);
 
-    const renewed = await heartbeat(userState, "renewing", TODAY + 85_000);
+    const renewed = await heartbeat(userState, "renewing", TODAY + 40_000);
     expect(renewed.status).toBe(200);
     expect(await renewed.json()).toMatchObject({ ok: true, reason: "renewed" });
 
     const during = await status(userState, {
-      now: TODAY + 160_000,
+      now: TODAY + 80_000,
       maxDailySeconds: 1800,
       maxConcurrentSessions: 1,
       enforceRateLimit: false,
