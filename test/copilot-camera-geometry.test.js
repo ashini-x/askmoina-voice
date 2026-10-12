@@ -65,7 +65,9 @@ describe("M24 trustworthy camera geometry", () => {
     expect(COPILOT_JS).toContain("latestVisualGuideElements.length || latestVisualGuidance");
     expect(COPILOT_JS).toContain("Camera zoom changed. Moina will redraw the guide using a fresh view.");
     expect(COPILOT_JS).toContain('video.addEventListener("resize", () => invalidateSceneEvidence("video-frame-resize"))');
-    expect(COPILOT_JS).toContain('if (document.hidden) invalidateSceneEvidence("tab-hidden")');
+    expect(COPILOT_JS).toContain('if (document.hidden) {');
+    expect(COPILOT_JS).toContain('recordRealityLoopEvent("visibility_hidden")');
+    expect(COPILOT_JS).toContain('invalidateSceneEvidence("tab-hidden")');
     expect(COPILOT_JS).toContain("sceneModel = { viewGeneration: ++cameraViewGeneration");
   });
 
