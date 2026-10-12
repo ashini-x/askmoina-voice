@@ -1513,8 +1513,8 @@
     else assistantVoiceEnergy = normalized;
     const energy = Math.max(microphoneVoiceEnergy, assistantVoiceEnergy);
     stage.style.setProperty("--voice-energy", energy.toFixed(3));
-    stage.style.setProperty("--voice-edge-width", (2.2 + energy * 6.5).toFixed(2) + "px");
-    stage.style.setProperty("--voice-halo-width", (4 + energy * 12).toFixed(2) + "px");
+    stage.style.setProperty("--voice-edge-width", (1.8 + energy * 4.8).toFixed(2) + "px");
+    stage.style.setProperty("--voice-halo-width", (3.2 + energy * 8.2).toFixed(2) + "px");
     stage.style.setProperty("--voice-halo-opacity", (0.22 + energy * 0.62).toFixed(3));
     stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
   }
