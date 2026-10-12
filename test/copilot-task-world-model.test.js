@@ -84,7 +84,8 @@ describe("M29 session-local task world model", () => {
       task_goal: "Align two books", current_state: "One book is tilted", intended_action: "Straighten the left book"
     }, null, null, 4_000);
     const second = mergeTaskWorldModel(first, {
-      task_goal: "Set up the laptop", current_state: "Laptop is closed", intended_action: "Ask which setup outcome is wanted"
+      task_goal: "Set up the laptop", current_state: "Laptop is closed", intended_action: "Ask which setup outcome is wanted",
+      user_report: "says_done"
     }, null, null, 5_000);
     expect(second.goal).toBe("Set up the laptop");
     expect(second.lastOutcome.kind).toBe("reset_for_new_goal");
