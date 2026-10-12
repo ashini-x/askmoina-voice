@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import worker from "../src/index";
-import { visitorIdFromRequest } from "../src/continuity";
 import { UserState } from "../src/sessions/user-state";
 import type { Env } from "../src/config/env";
 
@@ -49,52 +48,30 @@ function testEnv(objectNames: string[]) {
   return env;
 }
 
-function statusRequest(token: string) {
-  return new Request("https://askmoina.test/api/voice/status", {
-    headers: {
-      "CF-Connecting-IP": "203.0.113.25",
-      Cookie: "moina_visitor=" + token,
-    },
-  });
-}
-
-describe("public voice pilot capacity", () => {
-  it("uses per-browser quota identities while retaining an IP-level burst guard", async () => {
-    const objectNames: string[] = [];
-    const env = testEnv(objectNames);
-    const tokenA = "A".repeat(43);
-    const tokenB = "B".repeat(43);
-
-    const responseA = await worker.fetch(statusRequest(tokenA), env, ctx);
-    const responseB = await worker.fetch(statusRequest(tokenB), env, ctx);
-    expect(responseA.status).toBe(200);
-    expect(responseB.status).toBe(200);
-    expect((await responseA.json() as { available: boolean }).available).toBe(true);
-    expect((await responseB.json() as { available: boolean }).available).toBe(true);
-
-    const idA = await visitorIdFromRequest(statusRequest(tokenA));
-    const idB = await visitorIdFromRequest(statusRequest(tokenB));
-    expect(idA).not.toBe(idB);
-    expect(objectNames).toContain("voice-visitor:v2:" + idA);
-    expect(objectNames).toContain("voice-visitor:v2:" + idB);
-    expect(objectNames.filter(name => name.startsWith("voice-ip-rate:v1:"))).toHaveLength(2);
-  });
-
-  it("issues a browser identity cookie when status is the first endpoint visited", async () => {
+describe("account-only voice access", () => {
+  it("rejects voice status for guests without minting a browser identity or acquiring app quota leases", async () => {
     const objectNames: string[] = [];
     const response = await worker.fetch(
       new Request("https://askmoina.test/api/voice/status", { headers: { "CF-Connecting-IP": "203.0.113.25" } }),
-      testEnv(objectNames),
-      ctx,
+      testEnv(objectNames), ctx,
     );
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Set-Cookie")).toMatch(/^moina_visitor=[A-Za-z0-9_-]{43};/);
-    expect(objectNames.some(name => name.startsWith("voice-visitor:v2:"))).toBe(true);
+    expect(response.status).toBe(401);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(await response.json()).toMatchObject({ error: "authentication_required" });
+    expect(objectNames).toHaveLength(0);
+  });
+
+  it("redirects guests from the home page and camera co-pilot", async () => {
+    for (const path of ["/", "/copilot"]) {
+      const response = await worker.fetch(new Request("https://askmoina.test" + path), testEnv([]), ctx);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
+    }
   });
 });
 
 
-describe("voice rate-limit-only reservations", () => {
+describe("voice rate-limit-only reservations",describe("voice rate-limit-only reservations", () => {
   it("counts IP connection attempts without reserving daily voice seconds or an active session", async () => {
     const records = new Map<string, unknown>();
     const storage = {

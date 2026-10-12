@@ -83,9 +83,7 @@ describe("admin voice capacity locks", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ available: true, adminDailyQuotaBypassed: true });
-    expect(mock.objectNames.some(name => name.startsWith("voice-admin-ip:v2:"))).toBe(true);
-    expect(mock.objectNames).toContain("voice-admin-global-budget:v2");
-    expect(mock.objectNames.some(name => name === "voice-admin-ip:" + name.split(":").pop())).toBe(false);
+    expect(await response.json()).toMatchObject({ available: true, maxSessionSeconds: null, dailyRemainingSeconds: null });
+    expect(mock.objectNames).toHaveLength(0);
   });
 });

@@ -18,17 +18,14 @@ function mockEnv() {
 const ctx = { waitUntil(_promise: Promise<unknown>) {} } as unknown as ExecutionContext;
 
 describe("AskMoina continuity identity", () => {
-  it("returns a stable one-way hash for the same browser cookie", async () => {
+  it("does not treat an anonymous browser cookie as account identity", async () => {
     const token = "A".repeat(43);
-    const a = await visitorIdFromRequest(new Request("https://askmoina.test/", { headers: { Cookie: "moina_visitor=" + token } }));
-    const b = await visitorIdFromRequest(new Request("https://askmoina.test/", { headers: { Cookie: "moina_visitor=" + token } }));
-    expect(a).toBe(b);
-    expect(a).toMatch(/^[a-f0-9]{64}$/);
-    expect(a).not.toBe(token);
+    const id = await visitorIdFromRequest(new Request("https://askmoina.test/", { headers: { Cookie: "moina_visitor=" + token } }), mockEnv());
+    expect(id).toBeNull();
   });
 
   it("does not accept malformed identity cookies as a visitor ID", async () => {
-    const id = await visitorIdFromRequest(new Request("https://askmoina.test/", { headers: { Cookie: "moina_visitor=not-a-valid-token" } }));
+    const id = await visitorIdFromRequest(new Request("https://askmoina.test/", { headers: { Cookie: "moina_visitor=not-a-valid-token" } }), mockEnv());
     expect(id).toBeNull();
   });
 });
@@ -155,7 +152,7 @@ describe("Encrypted vault API boundary", () => {
     expect(response?.headers.get("Cache-Control")).toBe("no-store");
     expect(response?.headers.get("X-Frame-Options")).toBe("DENY");
     expect(response?.headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
-    expect(response?.headers.get("Set-Cookie")).toContain("moina_visitor=");
+    expect(response?.headers.get("Set-Cookie")).toBeNull();
   });
 });
 

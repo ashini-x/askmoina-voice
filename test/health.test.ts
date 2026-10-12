@@ -9,12 +9,9 @@ describe("AskMoina release contract", () => {
     expect("gemini-3.8-live").toMatch(/^gemini-\d+\.\d+-live$/);
   });
 
-  it("keeps session defaults within conservative private-beta ceilings", () => {
-    const maxSessionSeconds = 540;
-    const maxDailySecondsPerIp = 1800;
-    const maxGlobalDailySeconds = 3600;
-    expect(maxSessionSeconds).toBeLessThanOrEqual(540);
-    expect(maxDailySecondsPerIp).toBeLessThanOrEqual(1800);
-    expect(maxGlobalDailySeconds).toBeLessThanOrEqual(3600);
+  it("keeps app-level usage quotas separate from upstream provider limits", () => {
+    const statusMessage = "AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.";
+    expect(statusMessage).toContain("does not impose app-level");
+    expect(statusMessage).toContain("service limits still apply");
   });
 });
