@@ -295,8 +295,11 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY.replace(");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
-    for (const route of ["/account", "/vault", "/about", "/developer", "/help", "/privacy"]) {
-      expect(workerSource).toContain('href="' + route + '"');
+    for (const label of ["Profile", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
+      expect(workerSource).toContain(label);
+    }
+    for (const route of ["/about", "/developer", "/help", "/privacy"]) {
+      expect(workerSource).toContain('"' + route + '":');
     }
     expect(workerSource).toContain('url.pathname === "/entry-menu.js"');
     expect(workerSource).toContain("renderSiteInfoPage(url.pathname)");
