@@ -65,7 +65,7 @@ export function assessGroundedSource(
   } else {
     note = "no exact model identifier was provided; model-specific applicability is unverified";
   }
-  if (hostBrandHint) note += "; hostname contains a manufacturer-name hint only, not verified domain ownership";
+  if (hostBrandHint) note += "; hostname match is a heuristic only; it does not verify domain ownership";
   return {
     modelTextMatch: allIdentifiersVisible ? "visible_in_title_or_url" : "not_established",
     manufacturerHostHint: hostBrandHint,
