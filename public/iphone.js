@@ -79,7 +79,7 @@
   }
   function updateTime() {
     const now = new Date();
-    const time = new Intl.DateTimeFormat(undefined,{hour:"numeric",minute:"2-digit",hour12: true}).format(now).replace(/\\s/g,"").toLowerCase();
+    const time = new Intl.DateTimeFormat(undefined,{hour:"numeric",minute:"2-digit",hour12: true}).format(now).replace(/\s/g,"").toLowerCase();
     $$("[data-time]").forEach(node => node.textContent = time);
     const weekday = $("#phoneWeekday");
     const phoneDate = $("#phoneDate");
@@ -321,7 +321,7 @@
     if (!raw) return;
     let url;
     try {
-      if (/^https?:\\/\\//i.test(raw)) url = new URL(raw);
+      if (/^https?:\/\//i.test(raw)) url = new URL(raw);
       else if (/^[a-z0-9.-]+\\.[a-z]{2,}([/:?#].*)?$/i.test(raw) && !/\\s/.test(raw)) url = new URL("https://" + raw);
       else url = new URL("https://www.google.com/search?q=" + encodeURIComponent(raw));
       if (!["http:","https:"].includes(url.protocol)) throw new Error("Invalid URL");
@@ -407,6 +407,7 @@
       else if(name==="close-panel") closePanels();
       else if(name==="close-search") { searchPanel.hidden=true; searchActive=false; }
       else if(name==="close-app") closeApp();
+      else if(name==="hide-photo"){ const preview=$("#photoPreview"); if(preview){preview.hidden=true;preview.innerHTML="";} }
       else if(name==="home") goHome();
       else if(name==="clear-note") { save("moina.demo.notes",""); appContent.innerHTML=renderNotes(); }
       else if(name==="camera-start") startCamera();
