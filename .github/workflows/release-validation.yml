@@ -128,8 +128,14 @@ jobs:
           test "$status" = "401"
           echo "Anonymous voice status denied: OK"
           status="$(fetch_status / /tmp/moina-home.html)"
-          test "$status" = "302"
-          echo "Anonymous home access denied: OK"
+          test "$status" = "200"
+          grep -q 'Continue with Face ID or Touch ID' /tmp/moina-home.html
+          grep -q 'OR USE YOUR PHONE' /tmp/moina-home.html
+          if grep -Eq 'modeCreate|modeSignin|Signup or login' /tmp/moina-home.html; then
+            echo "Login entry still exposes the removed account-mode switch." >&2
+            exit 1
+          fi
+          echo "Anonymous home serves the no-guest sign-in entry: OK"
           status="$(fetch_status /copilot /tmp/moina-copilot.html)"
           test "$status" = "302"
           echo "Anonymous Co-Pilot access denied: OK"

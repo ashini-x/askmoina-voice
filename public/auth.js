@@ -227,7 +227,13 @@
     } catch (error) {
       hideSheet();
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey sign-in failed", error.name || "Error", error.code || "");
-      say(explainPasskeyError(error, "login"), "error");
+      if (error && error.code === "passkey_not_found") {
+        const createAlternative = $("#createPasskeyAlternative");
+        if (createAlternative) createAlternative.hidden = false;
+        say("No passkey is registered yet. Set one up on this device, or use your phone number.", "normal");
+      } else {
+        say(explainPasskeyError(error, "login"), "error");
+      }
     } finally {
       activeCredentialAbort = null;
       setBusy(false);
@@ -343,7 +349,7 @@
       })
       .catch(() => say("Could not load your account. Please refresh the page.", "error"));
   } else {
-    setMode("create");
+    setMode("signin");
     if (new URLSearchParams(window.location.search).get("reason") === "signed-out") say("You have signed out securely.", "success");
   }
 })();

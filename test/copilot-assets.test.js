@@ -24,6 +24,14 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("processed by Google Cloud Vertex AI");
   });
 
+  it("keeps Vision orb-free, adds Back, and uses a pulse-style edge without a visible Spatial AR page", () => {
+    expect(html).not.toContain('class="camera-placeholder-icon presence-orb"');
+    expect(html).toContain('id="backButton"');
+    expect(css).toContain("@keyframes intelligence-pulse");
+    expect(css).toContain("#spatialArButton{display:none!important}");
+    expect(css).toContain("#spatialHud{display:none!important}");
+  });
+
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
     expect(() => new Function(script)).not.toThrow();
     expect(script).toContain("copilot_mode: true");
