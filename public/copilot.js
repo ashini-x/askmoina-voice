@@ -602,7 +602,7 @@
       }
     } else {
       const userReport = ["says_done", "says_failed", "unsure"].includes(raw.user_report) ? raw.user_report : "";
-      if (userReport) {
+      if (userReport && !goalChanged) {
         const reportMap = {
           says_done: { kind: "user_reports_done", detail: "The user reports completion; camera verification is separate.", source: "user_report" },
           says_failed: { kind: "user_reports_failure", detail: "The user reports that the action did not work.", source: "user_report" },
