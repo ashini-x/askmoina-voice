@@ -28,8 +28,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain('class="camera-placeholder-icon presence-orb"');
     expect(html).toContain('id="backButton"');
     expect(css).toContain("@keyframes intelligence-pulse");
-    expect(css).toContain("#spatialArButton{display:none!important}");
-    expect(css).toContain("#spatialHud{display:none!important}");
+    expect(css).toContain("#spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}");
+    expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {

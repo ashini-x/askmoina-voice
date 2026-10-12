@@ -11,9 +11,10 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
   it("makes the first action obvious without adding a tutorial or mode selector", () => {
     expect(html).not.toContain("Point. Ask. Follow.");
     expect(html).not.toContain("Tap Start, then tell Moina what you want to do.");
-    expect(html).toContain("presence-orb");
+    expect(html).not.toContain("presence-orb");
     expect(html).toContain("id=\"toggleCopilot\"");
     expect(html).toContain("id=\"showProblemButton\"");
+    expect(html).toContain("id=\"backButton\"");
     expect(html).toContain("SHOW ME YOUR PROBLEM");
     expect(html).toContain("id=\"secondaryControls\" hidden");
     expect(html).toContain("id=\"toggleMoreControls\"");
