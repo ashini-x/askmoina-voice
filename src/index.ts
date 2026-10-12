@@ -723,8 +723,8 @@ async function handleVoiceSocket(
   let lastClientMessageAt = Date.now();
   let guardHeartbeatInFlight = false;
   let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
-  const GUARD_HEARTBEAT_INTERVAL_MS = 20_000;
-  const CLIENT_IDLE_TIMEOUT_MS = 60_000;
+  const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
+  const CLIENT_IDLE_TIMEOUT_MS = 30_000;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
@@ -790,7 +790,7 @@ async function handleVoiceSocket(
     if (!closed && Date.now() - lastClientMessageAt > CLIENT_IDLE_TIMEOUT_MS) {
       closeBoth(1000, "Client input timed out");
     }
-  }, 15_000);
+  }, 10_000);
 
   workerSocket.addEventListener("message", async (event: MessageEvent) => {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
