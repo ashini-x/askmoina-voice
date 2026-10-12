@@ -35,6 +35,28 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(css).toContain(".presence-orb");
   });
 
+  it("pins crisp slide arrows, gives Vault a lock at far left, and uses a native camera-flip icon", () => {
+    expect(html.indexOf('id="vaultButton"')).toBeLessThan(html.indexOf('id="muteMic"'));
+    expect(html).toContain('<path d="M7 10V7.5a5 5 0 0 1 10 0V10"/>');
+    expect(html).toContain('<circle cx="12" cy="12" r="2.1"/>');
+    expect(css).toContain(".vision-slide-chevron{");
+    expect(css).toContain("position:absolute;right:13px;top:50%");
+    expect(css).toContain("filter:none;text-shadow:none");
+  });
+
+  it("matches edge pulse intensity to live microphone and assistant playback audio", () => {
+    expect(html).toContain('<p id="connectionNoticeMessage">Just a moment</p>');
+    expect(script).toContain('showConnectionNotice("Connecting securely", "Just a moment", "connecting")');
+    expect(script).not.toContain('showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting")');
+    expect(script).toContain("function applyVoiceEdgeEnergy(level, source)");
+    expect(script).toContain("function getPlaybackAnalyser()");
+    expect(script).toContain("playbackAnalyser.getByteTimeDomainData(playbackAnalyserData)");
+    expect(script).toContain('applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "microphone")');
+    expect(css).toContain("padding:var(--voice-edge-width,3.3px)");
+    expect(css).toContain("opacity:var(--voice-halo-opacity,.45)");
+    expect(css).toContain('font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"');
+  });
+
   it("keeps the post-connection cue conversational and avoids expert-only instructions", () => {
     expect(script).toContain("initial_greeting: true");
     expect(script).toContain("playConnectionChime");

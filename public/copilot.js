@@ -128,6 +128,11 @@
   let firstVideoTimer = null;
   let nextPlaybackTime = 0;
   const playbackNodes = new Set();
+  let playbackAnalyser = null;
+  let playbackAnalyserData = null;
+  let playbackPulseFrame = 0;
+  let microphoneVoiceEnergy = 0;
+  let assistantVoiceEnergy = 0;
   let currentTranscriptNodes = { user: null, assistant: null };
   let transcriptStarted = false;
   let voiceAvailability = null;
@@ -1460,6 +1465,9 @@
       let sumSquares = 0;
       for (let i = 0; i < samples.length; i += 1) sumSquares += samples[i] * samples[i];
       const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
+      const rawVoiceLevel = Math.min(1, Math.max(0, (rms - 0.005) / 0.075));
+      const decayedVoiceLevel = microphoneVoiceEnergy * (rms > 0.012 ? 0.5 : 0.62);
+      applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "microphone");
       const now = performance.now();
       if (rms > 0.012) {
         lastMicVoiceAt = now;
@@ -1491,8 +1499,65 @@
       try { node.disconnect(); } catch (_) {}
     }
     playbackNodes.clear();
+    if (playbackPulseFrame) window.cancelAnimationFrame(playbackPulseFrame);
+    playbackPulseFrame = 0;
+    assistantVoiceEnergy = 0;
+    applyVoiceEdgeEnergy(0, "assistant");
     nextPlaybackTime = audioContext ? audioContext.currentTime : 0;
     stage.classList.remove("is-speaking");
+  }
+
+  function applyVoiceEdgeEnergy(level, source) {
+    const normalized = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0));
+    if (source === "microphone") microphoneVoiceEnergy = normalized;
+    else assistantVoiceEnergy = normalized;
+    const energy = Math.max(microphoneVoiceEnergy, assistantVoiceEnergy);
+    stage.style.setProperty("--voice-energy", energy.toFixed(3));
+    stage.style.setProperty("--voice-edge-width", (2.2 + energy * 6.5).toFixed(2) + "px");
+    stage.style.setProperty("--voice-halo-width", (4 + energy * 12).toFixed(2) + "px");
+    stage.style.setProperty("--voice-halo-opacity", (0.22 + energy * 0.62).toFixed(3));
+    stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
+  }
+
+  function getPlaybackAnalyser() {
+    if (!audioContext) return null;
+    if (playbackAnalyser && playbackAnalyser.context !== audioContext) {
+      try { playbackAnalyser.disconnect(); } catch (_) {}
+      playbackAnalyser = null;
+      playbackAnalyserData = null;
+    }
+    if (!playbackAnalyser) {
+      playbackAnalyser = audioContext.createAnalyser();
+      playbackAnalyser.fftSize = 256;
+      playbackAnalyser.smoothingTimeConstant = 0.16;
+      playbackAnalyserData = new Uint8Array(playbackAnalyser.fftSize);
+      playbackAnalyser.connect(audioContext.destination);
+    }
+    return playbackAnalyser;
+  }
+
+  function updatePlaybackPulse() {
+    playbackPulseFrame = 0;
+    if (!playbackAnalyser || !playbackAnalyserData || !audioContext || playbackNodes.size === 0) {
+      assistantVoiceEnergy = 0;
+      applyVoiceEdgeEnergy(0, "assistant");
+      return;
+    }
+    playbackAnalyser.getByteTimeDomainData(playbackAnalyserData);
+    let sumSquares = 0;
+    for (let i = 0; i < playbackAnalyserData.length; i += 1) {
+      const sample = (playbackAnalyserData[i] - 128) / 128;
+      sumSquares += sample * sample;
+    }
+    const rms = Math.sqrt(sumSquares / Math.max(1, playbackAnalyserData.length));
+    const rawVoiceLevel = Math.min(1, Math.max(0, (rms - 0.012) / 0.12));
+    const decayedVoiceLevel = assistantVoiceEnergy * 0.48;
+    applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "assistant");
+    playbackPulseFrame = window.requestAnimationFrame(updatePlaybackPulse);
+  }
+
+  function startPlaybackPulse() {
+    if (!playbackPulseFrame) playbackPulseFrame = window.requestAnimationFrame(updatePlaybackPulse);
   }
 
   function playPcmAudio(base64, mimeType) {
@@ -1505,17 +1570,24 @@
     buffer.copyToChannel(samples, 0);
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioContext.destination);
+    source.connect(getPlaybackAnalyser());
     const startAt = Math.max(audioContext.currentTime + 0.015, nextPlaybackTime);
     source.start(startAt);
     nextPlaybackTime = startAt + buffer.duration;
     playbackNodes.add(source);
     stage.classList.add("is-speaking");
+    startPlaybackPulse();
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
       try { source.disconnect(); } catch (_) {}
       if (audioContext && audioContext.currentTime >= nextPlaybackTime - 0.035) {
         stage.classList.remove("is-speaking");
+      }
+      if (playbackNodes.size === 0) {
+        if (playbackPulseFrame) window.cancelAnimationFrame(playbackPulseFrame);
+        playbackPulseFrame = 0;
+        assistantVoiceEnergy = 0;
+        applyVoiceEdgeEnergy(0, "assistant");
       }
     });
   }
@@ -1762,6 +1834,14 @@
     stage.classList.remove("is-listening", "is-speaking");
     lastMicVoiceAt = 0;
     stopPlayback();
+    microphoneVoiceEnergy = 0;
+    assistantVoiceEnergy = 0;
+    applyVoiceEdgeEnergy(0, "microphone");
+    if (playbackAnalyser) {
+      try { playbackAnalyser.disconnect(); } catch (_) {}
+      playbackAnalyser = null;
+      playbackAnalyserData = null;
+    }
     if (processor) {
       processor.onaudioprocess = null;
       try { processor.disconnect(); } catch (_) {}
@@ -2146,8 +2226,8 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     if (connectionNoticeAction) connectionNoticeAction.disabled = true;
-    setStatus("Checking availability and requesting camera + microphone access…");
-    showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting");
+    setStatus("Just a moment");
+    showConnectionNotice("Connecting securely", "Just a moment", "connecting");
     const preflight = await refreshAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;

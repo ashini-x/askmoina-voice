@@ -827,3 +827,72 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 
 .camera-stage.is-returning{opacity:0;transition:opacity .18s ease}
 @media(prefers-reduced-motion:reduce){.camera-stage.is-returning{transition:none}}
+
+
+/* Native system styling for the short connection interstitial. */
+.connection-notice{
+  width:min(306px,calc(100% - 38px));
+  padding:25px 24px 22px;
+  gap:10px;
+  border:1px solid rgba(255,255,255,.17);
+  border-radius:24px;
+  background:rgba(24,25,30,.78);
+  box-shadow:0 18px 54px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.09);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  -webkit-backdrop-filter:blur(42px) saturate(155%);
+  backdrop-filter:blur(42px) saturate(155%);
+}
+.connection-notice-symbol{
+  width:28px;height:28px;border:0;border-radius:50%;background:transparent;
+}
+.connection-notice-symbol:before{
+  inset:1px;border:1.7px solid rgba(255,255,255,.24);
+  border-top-color:rgba(255,255,255,.96);border-right-color:rgba(255,255,255,.68);
+}
+.connection-notice-copy{gap:6px}
+.connection-notice-copy strong{
+  font-size:17px;font-weight:600;line-height:1.25;letter-spacing:-.015em;
+}
+.connection-notice-copy p{
+  font-size:14px;font-weight:400;line-height:1.42;letter-spacing:-.005em;
+  color:rgba(255,255,255,.72);
+}
+
+/* The slide arrows stay crisp and pinned to the far right of the track. */
+.vision-slide-copy{position:static;overflow:visible;max-width:100%}
+.vision-slide-chevron{
+  position:absolute;right:13px;top:50%;z-index:3;
+  display:inline-flex;align-items:center;justify-content:center;
+  margin:0;padding:0 .12em 0 0;
+  transform:translateY(-50%);
+  font-size:1.2rem;font-weight:650;line-height:1;letter-spacing:-.2em;
+  color:#4f5561;opacity:1;filter:none;text-shadow:none;
+  -webkit-filter:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+  animation:vision-chevron-crisp-nudge 1.25s ease-in-out infinite;
+}
+@keyframes vision-chevron-crisp-nudge{
+  0%,100%{translate:0 0;opacity:1}
+  50%{translate:3px 0;opacity:1}
+}
+
+/* Voice pulse intensity is driven by live audio levels, not a guessed CSS rhythm. */
+.camera-stage.is-listening .edge-glow:before,
+.camera-stage.is-speaking .edge-glow:before{
+  padding:var(--voice-edge-width,3.3px);
+  animation:edge-spectrum 4.5s linear infinite;
+  filter:brightness(var(--voice-brightness,1));
+}
+.camera-stage.is-listening .edge-glow:after,
+.camera-stage.is-speaking .edge-glow:after{
+  padding:var(--voice-halo-width,5px);
+  opacity:var(--voice-halo-opacity,.45);
+  animation:edge-spectrum 4.5s linear infinite;
+  filter:blur(18px) brightness(var(--voice-brightness,1));
+}
+@media(prefers-reduced-motion:reduce){
+  .vision-slide-chevron{animation:none!important}
+  .camera-stage.is-listening .edge-glow:before,
+  .camera-stage.is-speaking .edge-glow:before,
+  .camera-stage.is-listening .edge-glow:after,
+  .camera-stage.is-speaking .edge-glow:after{animation:none!important}
+}
