@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f5f3"><meta name="description" content="AskMoina Live Co-Pilot — real-time voice guidance with a full-screen camera view.">
+<meta name="theme-color" content="#08090c"><meta name="description" content="Live visual guidance.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
-<title>Camera</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script><script src="/session-ui.js" defer></script></head>
-<body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage" id="cameraStage" aria-label="Live camera view">
+<title>Vision 0.4.0</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script><script src="/session-ui.js" defer></script></head>
+<body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage pre-start" id="cameraStage" aria-label="Live camera view">
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
-<div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-placeholder-icon presence-orb" aria-hidden="true"><span class="presence-core"></span><span class="presence-ribbon ribbon-one"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div><strong class="sr-only">Ready</strong><span class="sr-only">Start the camera and conversation using the call control.</span></div><div class="voice-glow" aria-hidden="true"><span></span><span></span><span></span></div>
+<button type="button" id="showProblemButton" class="show-problem-button" aria-label="Show me your problem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.4-2h4.2l1.4 2h2A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.5"/><path d="M7 9h.01"/></svg><span>SHOW ME YOUR PROBLEM</span></button>
+<div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-placeholder-icon presence-orb" aria-hidden="true"><span class="presence-core"></span><span class="presence-ribbon ribbon-one"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div><strong class="sr-only">Ready</strong><span class="sr-only">Start the camera and conversation using the call control.</span></div><div class="voice-glow" aria-hidden="true"><span></span><span></span><span></span></div><div class="edge-glow" aria-hidden="true"></div>
 <header class="floating-top"><span aria-hidden="true"></span><div class="top-actions"><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
 <div class="camera-top-badge sr-only" id="frameBadge"><span class="live-dot"></span> WAITING FOR CAMERA</div><span class="camera-state sr-only" id="cameraState"><span class="state-dot"></span> Camera paused</span>
 <div class="focus-marker" id="focusMarker" data-region="center" hidden><div class="focus-brackets" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="focus-card"><span class="focus-eyebrow">MOINA'S FOCUS</span><strong id="focusLabel">Target</strong><span class="focus-hint" id="focusHint"></span><p id="focusInstruction"></p></div><button type="button" id="clearMarker" class="clear-marker" aria-label="Clear focus marker">×</button></div>
@@ -113,4 +114,4 @@
     </div>
   </section>
 </div>
-<p class="privacy-hint sr-only">Camera and microphone start only when you tap Start. Live audio and selected camera frames are processed by Google Cloud Vertex AI; AskMoina does not save raw recordings by default.</p></section></main></body></html>
+<p class="privacy-hint sr-only">A camera preview is shown in Vision. Live microphone audio and selected camera frames are processed by Google Cloud Vertex AI after you begin. Raw recordings are not saved by default.</p></section></main></body></html>
