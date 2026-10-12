@@ -1362,6 +1362,8 @@
 
   function sendAudioChunk(input) {
     if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady || !audioContext) return;
+    // Shed stale microphone callbacks while the socket is congested; never queue seconds of old audio.
+    if (socket.bufferedAmount > 96 * 1024) return;
     const downsampled = downsampleTo16k(input, audioContext.sampleRate);
     if (!downsampled.length) return;
     const pcmBytes = floatToPcm16(downsampled);
@@ -1530,6 +1532,12 @@
       }
       if (!data || data.length > 12_000) {
         setStatus("This camera frame is too large to send safely. Move back from detail or try another camera.");
+        return;
+      }
+      // A stale camera frame is replaceable evidence. Skip it under backpressure rather than queueing old scenery.
+      if (socket.bufferedAmount > 96 * 1024) {
+        frameEfficiencyStats.skipped += 1;
+        setCameraState("Live · waiting for connection", "warning");
         return;
       }
       socket.send(JSON.stringify({

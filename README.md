@@ -2,6 +2,13 @@
 
 AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers and Google Cloud Vertex AI Gemini Live.
 
+## Account access and identity
+
+- AskMoina has no guest mode. Signup/sign-in is required before the home app, Co-Pilot, Memory Vault, or voice endpoints can be used.
+- Each account has a stable `uid_...` identifier in D1. Passkeys invoke native WebAuthn; the operating system handles Face ID, Touch ID, fingerprint, Windows Hello, or its configured fallback. AskMoina never receives biometric images.
+- Phone OTP uses Twilio Verify. Configure Cloudflare Worker Secrets `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_VERIFY_SERVICE_SID` to enable SMS. Until configured, this path clearly reports unavailable rather than pretending an OTP was sent. AskMoina stores a keyed digest, not the readable phone number or OTP code.
+- Application-level daily/per-browser/concurrent voice quotas are disabled. Gemini/Vertex and Cloudflare infrastructure limits still apply. During network backpressure, AskMoina drops stale/excess microphone packets instead of closing the whole conversation.
+
 ## Current capabilities
 
 - Browser-based live voice with microphone permission, 16 kHz PCM input and streamed audio replies.

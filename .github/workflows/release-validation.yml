@@ -18,6 +18,7 @@ jobs:
       - run: npm run check
       - run: node --check public/app.js
       - run: node --check public/copilot.js
+      - run: node --check public/auth.js
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
@@ -76,6 +77,13 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      - name: Apply account-auth database schema
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute askmoina-prod --remote --file=migrations/0005_account_auth.sql
+
       - name: Deploy to Cloudflare Workers
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
@@ -98,104 +106,38 @@ jobs:
           grep -q '"app":"askmoina-voice"' /tmp/moina-health.json
           echo "Health endpoint: OK"
 
-          status="$(fetch_status /api/voice/status /tmp/moina-voice-status.json)"
+          status="$(fetch_status /login.html /tmp/moina-login.html)"
+          test "$status" = "200"
+          grep -q 'Face ID' /tmp/moina-login.html
+          grep -q 'Touch ID' /tmp/moina-login.html
+          grep -q 'Phone number + OTP' /tmp/moina-login.html
+          status="$(fetch_status /auth.js /tmp/moina-auth.js)"
+          test "$status" = "200"
+          grep -q 'navigator.credentials.create' /tmp/moina-auth.js
+          grep -q 'navigator.credentials.get' /tmp/moina-auth.js
+          node --check /tmp/moina-auth.js
+          echo "Passkey client and three-method login page: OK"
+
+          status="$(fetch_status /api/auth/me /tmp/moina-auth-me.json)"
           test "$status" = "200"
           node --input-type=module <<'NODE'
           import { readFileSync } from "node:fs";
-          const status = JSON.parse(readFileSync("/tmp/moina-voice-status.json", "utf8"));
-          if (status.reason === "not_configured") {
-            throw new Error("Production voice credentials are missing from the deployed Worker");
-          }
-          if (typeof status.reason !== "string") {
-            throw new Error("Voice status response is missing its reason field");
-          }
-          console.log("Voice backend configuration: OK (" + status.reason + ")");
+          const me = JSON.parse(readFileSync("/tmp/moina-auth-me.json", "utf8"));
+          if (me.authenticated !== false) throw new Error("Anonymous request unexpectedly resolved to an account.");
+          console.log("No-guest identity endpoint: OK");
           NODE
-
-          status="$(fetch_status /vault /tmp/moina-vault.html)"
-          test "$status" = "200"
-          grep -q 'Your memories' /tmp/moina-vault.html
-          grep -q 'recovery code' /tmp/moina-vault.html
-          echo "Memory Vault page: OK"
-
-          status="$(fetch_status /vault.js /tmp/moina-vault.js)"
-          test "$status" = "200"
-          grep -q 'PBKDF2-SHA-256' /tmp/moina-vault.js
-          grep -q 'Edit memory' /tmp/moina-vault.js
-          grep -q 'Save changes' /tmp/moina-vault.js
-          grep -q 'askmoina.memory.consent.v1' /tmp/moina-vault.js
-          grep -q 'voiceContextPreview' /tmp/moina-vault.html
-          node --check /tmp/moina-vault.js
-          echo "Memory Vault crypto, edit controls, and explicit consent: OK"
-
+          status="$(fetch_status /api/voice/status /tmp/moina-voice-status.json)"
+          test "$status" = "401"
+          echo "Anonymous voice status denied: OK"
+          status="$(fetch_status / /tmp/moina-home.html)"
+          test "$status" = "302"
+          echo "Anonymous home access denied: OK"
           status="$(fetch_status /copilot /tmp/moina-copilot.html)"
-          test "$status" = "200"
-          grep -q 'Live Co-Pilot' /tmp/moina-copilot.html
-          grep -q 'not world-locked AR' /tmp/moina-copilot.html
-          grep -q 'Tell Moina your goal in your own words.' /tmp/moina-copilot.html
-          grep -q 'Compare these' /tmp/moina-copilot.html
-          echo "Live Co-Pilot page and M34 first-use guidance: OK"
-
-          status="$(fetch_status /copilot.js /tmp/moina-copilot.js)"
-          test "$status" = "200"
-          grep -q 'copilot_mode: true' /tmp/moina-copilot.js
-          grep -q 'refreshAvailabilityAfterRelease' /tmp/moina-copilot.js
-          grep -q 'function mergeSceneModel' /tmp/moina-copilot.js
-          grep -q 'function formatSceneModelSummary' /tmp/moina-copilot.js
-          grep -q 'function createPersistentSpatialTrack' /tmp/moina-copilot.js
-          grep -q 'function updatePersistentSpatialTrack' /tmp/moina-copilot.js
-          grep -q 'invalidateSceneEvidence("zoom-change")' /tmp/moina-copilot.js
-          grep -q 'invalidateSceneEvidence("camera-switch")' /tmp/moina-copilot.js
-          grep -q 'not world-locked AR' /tmp/moina-copilot.js
-          grep -q 'function classifyVisualVerification' /tmp/moina-copilot.js
-          grep -q 'function formatVisualVerificationSummary' /tmp/moina-copilot.js
-          grep -q 'function normalizeSpatialCues' /tmp/moina-copilot.js
-          grep -q 'ai-guide-region' /tmp/moina-copilot.js
-          grep -q 'function createTaskWorldModel' /tmp/moina-copilot.js
-          grep -q 'function mergeTaskWorldModel' /tmp/moina-copilot.js
-          grep -q 'function formatTaskWorldModelSummary' /tmp/moina-copilot.js
-          grep -q 'function assessSafetyAndUncertainty' /tmp/moina-copilot.js
-          grep -q 'function transitionRealityLoopState' /tmp/moina-copilot.js
-          grep -q 'M31: local safety gate' /tmp/moina-copilot.js
-          grep -q 'M32: explicit state machine' /tmp/moina-copilot.js
-          grep -q 'Connected. Tell Moina what you want to do in your own words.' /tmp/moina-copilot.js
-          grep -q 'Try: “Set this up” · “Compare these” · “Explain this”' /tmp/moina-copilot.js
-          grep -q 'shouldSuppressStableFrame' /tmp/moina-copilot.js
-          grep -q 'Adaptive camera sampling' /tmp/moina-copilot.js
-          grep -q 'askmoina.memory.consent.v1' /tmp/moina-copilot.js
-          node --check /tmp/moina-copilot.js
-          echo "Live Co-Pilot client, M34 onboarding, M35 adaptive sampling, and M36 consent gate: OK"
-          echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
-          echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
-          echo "M29 deployed client bundle: session-local task world model and guarded outcome continuity OK"
-          echo "M31 deployed client bundle: consequence-aware safety gate and hazardous-overlay suppression OK"
-          echo "M32 deployed client bundle: AR/camera handoff state machine and fresh-frame gate OK"
-          echo "M33/M34 deployed Worker bundle: universal task instruction and zero-learning UX contract OK"
-          echo "M35/M36 deployed Worker bundle: adaptive sampling, provider usage telemetry, and permission-based memory continuity OK"
-
-          status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
-          test "$status" = "200"
-          grep -q '.focus-marker' /tmp/moina-copilot.css
-          echo "Live Co-Pilot styles: OK"
-
-          status="$(fetch_status /app.js /tmp/moina-app.js)"
-          test "$status" = "200"
-          grep -q 'readOptedInMemoryContext' /tmp/moina-app.js
-          grep -q 'askmoina.memory.consent.v1' /tmp/moina-app.js
-          node --check /tmp/moina-app.js
-          echo "Regular voice explicit memory-consent gate: OK"
-
-          status="$(fetch_status /continuity.js /tmp/moina-continuity.js)"
-          test "$status" = "200"
-          grep -q 'askmoina.memory.consent.v1' /tmp/moina-continuity.js
-          node --check /tmp/moina-continuity.js
-          echo "Cross-tab stale memory cache revocation: OK"
-
-          status="$(fetch_status /transcript-merge.js /tmp/moina-transcript-merge.js)"
-          test "$status" = "200"
-          grep -q 'root.AskMoinaTranscript = Object.freeze({ merge })' /tmp/moina-transcript-merge.js
-          node --check /tmp/moina-transcript-merge.js
-          echo "Shared transcript merge helper: OK"
+          test "$status" = "302"
+          echo "Anonymous Co-Pilot access denied: OK"
+          status="$(fetch_status /vault /tmp/moina-vault.html)"
+          test "$status" = "302"
+          echo "Anonymous Memory Vault access denied: OK"
 
           status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
           test "$status" = "200"

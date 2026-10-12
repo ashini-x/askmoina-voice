@@ -50,3 +50,11 @@
 - Browser XSS/malware can read data while the vault is unlocked or access same-origin operations. CSP and dependency discipline help but do not eliminate this class of risk.
 - IP-based controls can affect shared networks and can be evaded with VPNs/proxies.
 - Before a public launch, complete real-device browser/audio acceptance, independent cryptographic review, privacy/legal review, provider data retention verification and abuse testing.
+
+
+## Account identity
+
+- Protected product routes require an opaque HttpOnly account session and D1 `uid_...` identity; an anonymous visitor cookie is no longer accepted as identity.
+- WebAuthn passkeys leave biometric processing to the operating system/browser. AskMoina stores public credentials/counters, never face images or fingerprints.
+- Phone identities use HMAC-SHA-256 keyed by `AUTH_IDENTITY_PEPPER` (or the admin session secret if not set). Twilio Verify performs OTP delivery and verification; AskMoina does not save raw phone numbers or OTP codes.
+- WebAuthn challenges expire after five minutes; account sessions expire after 30 days. OTP includes a per-number resend cooldown; it remains unavailable until the SMS provider secrets are configured.

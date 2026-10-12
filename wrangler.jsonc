@@ -7,9 +7,36 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/index.html", "/api/*", "/voice-lab", "/voice-lab.html", "/copilot", "/copilot.html", "/copilot.js", "/copilot.css", "/transcript-merge.js"]
+    "run_worker_first": [
+      "/",
+      "/index.html",
+      "/api/*",
+      "/voice-lab",
+      "/voice-lab.html",
+      "/copilot",
+      "/copilot.html",
+      "/copilot.js",
+      "/copilot.css",
+      "/transcript-merge.js",
+      "/login",
+      "/login.html",
+      "/account",
+      "/account.html",
+      "/auth.js",
+      "/admin",
+      "/admin/*",
+      "/admin.js",
+      "/admin-login.js",
+      "/vault",
+      "/vault/",
+      "/vault.js",
+      "/continuity.js",
+      "/app.js"
+    ]
   },
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
   "vars": {
     "APP_VERSION": "0.4.11",
     "ENVIRONMENT": "production",
@@ -35,12 +62,24 @@
     ]
   },
   "triggers": {
-    "crons": ["17 * * * *"]
+    "crons": [
+      "17 * * * *"
+    ]
   },
   "durable_objects": {
-    "bindings": [{ "name": "USER_STATE", "class_name": "UserState" }]
+    "bindings": [
+      {
+        "name": "USER_STATE",
+        "class_name": "UserState"
+      }
+    ]
   },
-  "exports": { "UserState": { "type": "durable-object", "storage": "sqlite" } },
+  "exports": {
+    "UserState": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -49,7 +88,12 @@
     }
   ],
   "queues": {
-    "producers": [{ "binding": "BACKGROUND_QUEUE", "queue": "askmoina-background-prod" }],
+    "producers": [
+      {
+        "binding": "BACKGROUND_QUEUE",
+        "queue": "askmoina-background-prod"
+      }
+    ],
     "consumers": [
       {
         "queue": "askmoina-background-prod",

@@ -9,3 +9,11 @@
 - Queues handle asynchronous tasks only; live audio frames never go through a Queue.
 - Raw audio is not stored by default.
 - Current implementation includes the OAuth token helper and live WebSocket proxy. The browser now has initial microphone capture, PCM audio streaming/playback, transcription display, and interruption queue clearing. This remains a prototype until verified on real devices. Reliable reconnection/session resumption, stronger user identity, human verification, and full abuse/cost controls remain outstanding.
+
+
+## Account identity and passkeys
+
+- A D1 `uid_...` is the stable product identity. There is no anonymous browser identity for access; protected pages, voice status, and voice WebSocket require an account session.
+- Device authentication uses WebAuthn platform passkeys. The operating system handles biometric checks; AskMoina does not collect or store raw biometric samples. D1 stores credential public keys/counters and credential IDs.
+- Phone login uses Twilio Verify. D1 stores an HMAC digest of the normalized phone number, not the raw number or OTP value. SMS is disabled until the corresponding Worker Secrets are configured.
+- Application usage/concurrency reservations and its app-owned session timer have been removed. Cloudflare resource limits and Gemini/Vertex provider limits remain authoritative.
