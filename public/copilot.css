@@ -546,3 +546,5 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 @keyframes entry-fade{from{opacity:0}to{opacity:1}}@keyframes entry-arrive{from{opacity:0;transform:translateY(11px) scale(.992)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:520px){.entry-overlay{padding-left:12px;padding-right:12px}.entry-auth-panel{border-radius:25px;padding:23px 17px 20px}.entry-products{grid-template-columns:1fr;gap:11px}.entry-product-panel{padding:0;width:min(100%,400px)}.entry-product-card{min-height:clamp(135px,22vh,190px);border-radius:23px;padding:20px}.entry-product-icon{width:46px;height:46px;border-radius:16px}.entry-product-arrow{right:20px;bottom:20px}.entry-mode-icons{margin-bottom:17px}.entry-divider{margin-top:22px}.show-problem-button{min-height:56px;padding:0 17px;font-size:.73rem;gap:9px}}
 @media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.show-problem-button,.edge-glow:before,.edge-glow:after{animation:none!important;transition:none!important}}
+
+.entry-auth-sheet[hidden],.entry-otp-section[hidden]{display:none!important}
