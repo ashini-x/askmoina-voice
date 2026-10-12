@@ -20,7 +20,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="videoPreview"');
     expect(html).toContain('id="toggleCopilot"');
     expect(html).toContain("not world-locked AR");
-    expect(html).toContain("Camera and microphone start only when you tap Start.");
+    expect(html).toContain("A camera preview is shown in Vision.");
     expect(html).toContain("processed by Google Cloud Vertex AI");
   });
 
