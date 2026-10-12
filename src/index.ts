@@ -288,7 +288,7 @@ async function sha256(value: string): Promise<string> {
 async function callGuard(
   env: Env,
   objectName: string,
-  path: "/session/acquire" | "/session/release",
+  path: "/session/acquire" | "/session/release" | "/session/heartbeat",
   body: Record<string, unknown>,
 ): Promise<{ ok: boolean; allowed?: boolean; reservedSeconds?: number }> {
   try {
@@ -300,7 +300,10 @@ async function callGuard(
       body: JSON.stringify(body),
     });
     if (path === "/session/release") return { ok: response.ok };
-    const result = (await response.json()) as { allowed?: boolean; reservedSeconds?: number };
+    const result = (await response.json()) as { ok?: boolean; allowed?: boolean; reservedSeconds?: number };
+    if (path === "/session/heartbeat") {
+      return { ok: response.ok, allowed: result.ok === true };
+    }
     return {
       ok: response.ok,
       allowed: result.allowed === true,
@@ -417,6 +420,25 @@ async function releaseVoiceSession(
       now: Date.now(),
     }),
   ]);
+}
+
+async function heartbeatVoiceSession(
+  env: Env,
+  reservation: VoiceReservation,
+): Promise<{ leaseLost: boolean }> {
+  const results = await Promise.all([
+    callGuard(env, reservation.userObjectName, "/session/heartbeat", {
+      sessionId: reservation.sessionId,
+      now: Date.now(),
+    }),
+    callGuard(env, reservation.globalObjectName, "/session/heartbeat", {
+      sessionId: reservation.sessionId,
+      now: Date.now(),
+    }),
+  ]);
+  // A successful HTTP response that says "not found" means this relay no longer
+  // owns the reservation. A transport failure is retried on the next incoming frame.
+  return { leaseLost: results.some((result) => result.ok && result.allowed === false) };
 }
 
 
@@ -697,6 +719,12 @@ async function handleVoiceSocket(
   let inputWindowStart = Date.now();
   let inputFrameCount = 0;
   let inputBytesInWindow = 0;
+  let lastGuardHeartbeatAt = Date.now();
+  let lastClientMessageAt = Date.now();
+  let guardHeartbeatInFlight = false;
+  let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
+  const GUARD_HEARTBEAT_INTERVAL_MS = 20_000;
+  const CLIENT_IDLE_TIMEOUT_MS = 60_000;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 64 * 1024;
@@ -709,6 +737,10 @@ async function handleVoiceSocket(
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
     closed = true;
+    if (clientIdleWatchdog !== null) {
+      clearInterval(clientIdleWatchdog);
+      clientIdleWatchdog = null;
+    }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
     const analyticsOutcome = reason === "Session time limit reached" ? "session_timeout" :
@@ -752,8 +784,29 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
+  // A silent/disconnected browser must not leave a relay and its reservation hanging.
+  // Normal live sessions continuously send microphone frames, even during pauses in speech.
+  clientIdleWatchdog = setInterval(() => {
+    if (!closed && Date.now() - lastClientMessageAt > CLIENT_IDLE_TIMEOUT_MS) {
+      closeBoth(1000, "Client input timed out");
+    }
+  }, 15_000);
+
   workerSocket.addEventListener("message", async (event: MessageEvent) => {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
+    lastClientMessageAt = Date.now();
+    if (!guardHeartbeatInFlight && lastClientMessageAt - lastGuardHeartbeatAt >= GUARD_HEARTBEAT_INTERVAL_MS) {
+      lastGuardHeartbeatAt = lastClientMessageAt;
+      guardHeartbeatInFlight = true;
+      ctx.waitUntil(
+        heartbeatVoiceSession(env, reservation)
+          .then((result) => {
+            if (result.leaseLost) closeBoth(1011, "Session lease expired");
+          })
+          .catch(() => undefined)
+          .finally(() => { guardHeartbeatInFlight = false; }),
+      );
+    }
 
     // This browser proxy accepts small JSON frames only. Raw/binary frames and arbitrary
     // client messages are not needed for the current audio-only UI and are rejected.
