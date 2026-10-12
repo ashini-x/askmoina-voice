@@ -94,7 +94,7 @@ describe("M27 guarded automatic visual verification", () => {
     expect(classifyVisualVerification(report(), null, p.after, p.now).status).toBe("ambiguous");
     const stale = {
       ...p.before,
-      observations: p.before.observations.map(item => ({ ...item, observedAt: 1 }))
+      observations: p.before.observations.map(item => ({ ...item, observedAt: -10_000 }))
     };
     expect(classifyVisualVerification(report(), stale, p.after, p.now).status).toBe("ambiguous");
     const hidden = {
