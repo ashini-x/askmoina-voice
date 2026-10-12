@@ -20,8 +20,8 @@ A visual guide uses the same camera-frame coordinate system as the image Gemini 
 - [x] Viewport-change test confirms the mapping is recomputed for new dimensions.
 - [x] Regression assertions cover zoom/video-size/visibility invalidation, mirrored target taps, marker placement, and viewport redraw.
 - [x] Public `copilot.js` is byte-for-byte equal to the Worker-embedded browser script and parses successfully.
-- [ ] CI type-check, full test suite, public script syntax, and Wrangler dry-run pass.
-- [ ] Production health smoke passes; deployed Worker bundle includes the M24 implementation.
+- [x] CI type-check, full test suite (31 files, 190 tests), public script syntax, and Wrangler dry-run passed in Release validation run 38223321514.
+- [x] Production health smoke passed in run 38223321718. The live Worker bundle returned HTTP 200 and included every M24 projection, cover-crop, mirrored-preview/tap/marker, resize redraw, and stale-guide invalidation check; latest verified production deployment was 100% rolled out.
 
 ## Real-device acceptance — still required
 
@@ -34,3 +34,8 @@ On a phone, start Co-Pilot and test with a distinctive object near one side of t
 5. Switch back to the rear camera and ensure no front-camera guide or marker remains visible.
 
 Pass only if overlays remain aligned, stale camera-dependent guidance is cleared, and a target tap/marker does not jump to the opposite side. This milestone does not provide world-locked tracking or prove semantic target identity.
+
+
+## Build-system note
+
+The separate optional Cloudflare feature-branch build check ran the same type-check and 190-test suite successfully, but its configured `npx wrangler preview` deploy command stopped because the project has no `previews` block. The production release path uses `wrangler deploy`, passed its dry-run and production smoke checks, and deployed successfully. No production preview placeholders were added.
