@@ -58,6 +58,7 @@
   let spatialTrackSequence = 0;
   let persistentSpatialTrack = null;
   let sceneModel = { viewGeneration: 0, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
+  let taskWorldModel = createTaskWorldModel();
   let microphoneMuted = false;
   let zoomLevel = 1;
   let zoomMin = 1;
@@ -521,6 +522,139 @@
       ...lines,
       "Use only if it still matches the newest view. Confidence is the model's estimate, not calibrated probability. If target identity or relation is ambiguous, ask or request a tap."
     ].join("\n").slice(0, 2_600);
+  }
+
+  // M29: compact, session-local task state. Model notes are not themselves proof of task completion.
+  function createTaskWorldModel() {
+    return {
+      goal: "",
+      currentState: "",
+      intendedAction: "",
+      expectedEvidence: "",
+      constraints: [],
+      uncertainties: [],
+      lastOutcome: { kind: "unknown", detail: "No result has been confirmed.", source: "none", at: 0 },
+      events: [],
+      updatedAt: 0,
+      revision: 0
+    };
+  }
+
+  function mergeTaskWorldModel(previous, rawState, verification, sceneEvidence, now) {
+    const prior = previous && typeof previous === "object" ? previous : createTaskWorldModel();
+    const raw = rawState && typeof rawState === "object" && !Array.isArray(rawState) ? rawState : {};
+    const clean = (value, max = 180) => typeof value === "string"
+      ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max)
+      : "";
+    const cleanList = (value, maxItems = 5) => Array.isArray(value)
+      ? value.slice(0, maxItems).map((item) => clean(item, 140)).filter(Boolean)
+      : [];
+    const normalize = (value) => clean(value, 220).toLocaleLowerCase().replace(/\s+/g, " ");
+    const next = {
+      goal: clean(prior.goal, 220),
+      currentState: clean(prior.currentState),
+      intendedAction: clean(prior.intendedAction),
+      expectedEvidence: clean(prior.expectedEvidence),
+      constraints: Array.isArray(prior.constraints) ? prior.constraints.slice(0, 5).map((v) => clean(v, 140)).filter(Boolean) : [],
+      uncertainties: Array.isArray(prior.uncertainties) ? prior.uncertainties.slice(0, 5).map((v) => clean(v, 140)).filter(Boolean) : [],
+      lastOutcome: prior.lastOutcome && typeof prior.lastOutcome === "object" ? { ...prior.lastOutcome } : { kind: "unknown", detail: "No result has been confirmed.", source: "none", at: 0 },
+      events: Array.isArray(prior.events) ? prior.events.slice(-5) : [],
+      updatedAt: Number.isFinite(prior.updatedAt) ? prior.updatedAt : 0,
+      revision: Number.isFinite(prior.revision) ? prior.revision : 0
+    };
+    const newGoal = clean(raw.task_goal, 220);
+    const goalChanged = Boolean(newGoal && next.goal && normalize(newGoal) !== normalize(next.goal));
+    const events = next.events.slice();
+    const eventAt = Number.isFinite(now) ? now : Date.now();
+    if (newGoal && (!next.goal || goalChanged)) {
+      events.push({
+        kind: goalChanged ? "goal_changed" : "goal_started",
+        detail: newGoal,
+        at: eventAt
+      });
+      next.goal = newGoal;
+      next.currentState = clean(raw.current_state) || (goalChanged ? "New goal; prior task-specific assumptions were reset." : next.currentState);
+      next.intendedAction = clean(raw.intended_action);
+      next.expectedEvidence = clean(raw.expected_evidence);
+      next.constraints = cleanList(raw.constraints);
+      next.uncertainties = cleanList(raw.uncertainties);
+      if (goalChanged) next.lastOutcome = { kind: "reset_for_new_goal", detail: "Earlier task outcome does not establish progress on the new goal.", source: "client", at: eventAt };
+    } else {
+      if (clean(raw.current_state)) next.currentState = clean(raw.current_state);
+      if (clean(raw.intended_action)) next.intendedAction = clean(raw.intended_action);
+      if (clean(raw.expected_evidence)) next.expectedEvidence = clean(raw.expected_evidence);
+      if (Array.isArray(raw.constraints)) next.constraints = cleanList(raw.constraints);
+      if (Array.isArray(raw.uncertainties)) next.uncertainties = cleanList(raw.uncertainties);
+    }
+    const reason = clean(raw.update_reason, 160);
+    if (reason) events.push({ kind: "plan_revision", detail: reason, at: eventAt });
+
+    // Only the guarded M27 result can create a visual-support status.
+    if (verification && typeof verification === "object" && typeof verification.status === "string") {
+      const outcomeMap = {
+        supported_success: { kind: "visually_supported_success", detail: clean(verification.reason, 180), source: "m27_visual_gate" },
+        supported_failure_or_no_change: { kind: "visually_supported_failure_or_no_change", detail: clean(verification.reason, 180), source: "m27_visual_gate" },
+        ambiguous: { kind: "ambiguous_visual_evidence", detail: clean(verification.reason, 180), source: "m27_visual_gate" }
+      };
+      if (outcomeMap[verification.status]) {
+        next.lastOutcome = { ...outcomeMap[verification.status], at: eventAt };
+        events.push({ kind: outcomeMap[verification.status].kind, detail: outcomeMap[verification.status].detail, at: eventAt });
+      }
+    } else {
+      const userReport = ["says_done", "says_failed", "unsure"].includes(raw.user_report) ? raw.user_report : "";
+      if (userReport) {
+        const reportMap = {
+          says_done: { kind: "user_reports_done", detail: "The user reports completion; camera verification is separate.", source: "user_report" },
+          says_failed: { kind: "user_reports_failure", detail: "The user reports that the action did not work.", source: "user_report" },
+          unsure: { kind: "user_reports_uncertainty", detail: "The user is unsure about the result.", source: "user_report" }
+        };
+        next.lastOutcome = { ...reportMap[userReport], at: eventAt };
+        events.push({ kind: reportMap[userReport].kind, detail: reportMap[userReport].detail, at: eventAt });
+      }
+    }
+    const visibleScene = sceneEvidence && Array.isArray(sceneEvidence.observations)
+      ? sceneEvidence.observations.filter((item) => item && item.visible === true && !item.identityConflict).slice(0, 4)
+      : [];
+    if (visibleScene.length) {
+      events.push({
+        kind: "scene_evidence",
+        detail: visibleScene.map((item) => clean(item.label, 60) + " [" + clean(item.id, 28) + "]").join("; ").slice(0, 180),
+        at: eventAt
+      });
+    }
+    next.events = events.filter((event) => event && typeof event.kind === "string" && typeof event.detail === "string").slice(-6);
+    next.updatedAt = eventAt;
+    next.revision += 1;
+    return next;
+  }
+
+  function formatTaskWorldModelSummary(model, sceneEvidence, now) {
+    const state = model && typeof model === "object" ? model : createTaskWorldModel();
+    const clean = (value, max = 180) => typeof value === "string"
+      ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max)
+      : "";
+    const lines = [
+      "Task world model (session-local planning continuity; model notes are not proof):",
+      "Goal: " + (clean(state.goal, 220) || "not established"),
+      "Current state: " + (clean(state.currentState) || "unknown"),
+      "Next intended action: " + (clean(state.intendedAction) || "not selected"),
+      "Expected evidence: " + (clean(state.expectedEvidence) || "not specified"),
+      "Constraints: " + ((Array.isArray(state.constraints) ? state.constraints : []).slice(0, 5).map((v) => clean(v, 140)).filter(Boolean).join("; ") || "none recorded"),
+      "Uncertainties: " + ((Array.isArray(state.uncertainties) ? state.uncertainties : []).slice(0, 5).map((v) => clean(v, 140)).filter(Boolean).join("; ") || "none recorded"),
+      "Last outcome: " + clean(state.lastOutcome && state.lastOutcome.kind, 64) + " — " + clean(state.lastOutcome && state.lastOutcome.detail, 200) +
+        (state.lastOutcome && state.lastOutcome.source === "user_report" ? " (user report, not visual verification)" : "")
+    ];
+    const events = Array.isArray(state.events) ? state.events.slice(-4) : [];
+    if (events.length) lines.push("Recent events: " + events.map((event) => clean(event.kind, 48) + ": " + clean(event.detail, 140)).join(" | "));
+    if (sceneEvidence && Array.isArray(sceneEvidence.observations)) {
+      const live = sceneEvidence.observations.filter((item) => item && item.visible === true && !item.identityConflict &&
+        Number.isFinite(item.observedAt) && Number.isFinite(now) && now >= item.observedAt && now - item.observedAt <= 5_000).slice(0, 4);
+      if (live.length) lines.push("Fresh scene candidates (model-reported, approximate): " + live.map((item) =>
+        clean(item.id, 28) + "=" + clean(item.label, 64) + " (" + clean(item.evidence, 16) + ")"
+      ).join("; "));
+    }
+    lines.push("Keep the goal and constraints stable unless evidence or the user's words change. Never silently promote a planned action to completion. Distinguish user report, observed change, guarded visual support, and unknown.");
+    return lines.join("\n").slice(0, 3_400);
   }
 
   // M27: compare one matching scene candidate across two fresh frames before accepting a visible result.
@@ -1224,16 +1358,19 @@
       const beforeSceneModel = sceneModel;
       showOverlay(args);
       const verification = classifyVisualVerification(args.visual_verification, beforeSceneModel, sceneModel, Date.now());
+      taskWorldModel = mergeTaskWorldModel(taskWorldModel, args.task_world_state, verification, sceneModel, Date.now());
       const id = typeof call.id === "string" ? call.id : "";
       if (id) {
         const sceneSummary = formatSceneModelSummary(sceneModel, Date.now());
         const verificationSummary = formatVisualVerificationSummary(verification);
+        const taskSummary = formatTaskWorldModelSummary(taskWorldModel, sceneModel, Date.now());
         responses.push({
           id,
           name: "display_screen_overlay",
           response: {
             result: "The on-screen target prompt or approximate overlay was handled by the client.\n\n" + sceneSummary +
-              (verificationSummary ? "\n\n" + verificationSummary : "")
+              (verificationSummary ? "\n\n" + verificationSummary : "") +
+              "\n\n" + taskSummary
           }
         });
       }
