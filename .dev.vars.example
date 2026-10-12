@@ -4,3 +4,13 @@ GCP_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"replace-with-pr
 ADMIN_DASHBOARD_USER=admin
 ADMIN_DASHBOARD_PASSWORD=replace-with-local-password
 ADMIN_SESSION_SECRET=replace-with-random-development-secret
+
+# Optional passkey overrides; otherwise derive RP ID/origin from the request.
+# WEBAUTHN_RP_ID=askmoina-voice.thenewtongs.workers.dev
+# WEBAUTHN_ORIGIN=https://askmoina-voice.thenewtongs.workers.dev
+# Optional separate pepper for HMAC-hashing phone identities.
+# AUTH_IDENTITY_PEPPER=replace-with-a-random-secret
+# Required for SMS OTP using Twilio Verify; keep these in Cloudflare Worker Secrets.
+# TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# TWILIO_AUTH_TOKEN=replace-with-twilio-auth-token
+# TWILIO_VERIFY_SERVICE_SID=VAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const PATHS={speech:resolve(ROOT,"docs/benchmarks/assamese-speech-v1.json"),reality:resolve(ROOT,"docs/benchmarks/reality-benchmark-v1.json")};
-const VALID_ID=/^[a-z][a-z0-9_-]{2,63}$/;
+const VALID_ID=/^[a-z][a-z0-9-]{2,63}$/;
 export function loadSuite(kind){if(!PATHS[kind])throw Error("Use speech or reality.");return JSON.parse(readFileSync(PATHS[kind],"utf8"));}
 export function validateSuite(s){
  const e=[];if(!s||typeof s!=="object")return["suite must be an object"];

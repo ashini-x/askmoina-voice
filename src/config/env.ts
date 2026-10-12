@@ -26,6 +26,12 @@ export interface Env {
   ADMIN_DASHBOARD_USER?: string;
   ADMIN_DASHBOARD_PASSWORD?: string;
   ADMIN_SESSION_SECRET?: string;
+  WEBAUTHN_RP_ID?: string;
+  WEBAUTHN_ORIGIN?: string;
+  AUTH_IDENTITY_PEPPER?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_VERIFY_SERVICE_SID?: string;
   ADMIN_VOICE_DAILY_QUOTA_BYPASS?: string;
   // Optional model-specific prices in USD per million provider-reported tokens. Never guessed.
   LIVE_INPUT_USD_PER_MILLION_TOKENS?: string;
