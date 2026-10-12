@@ -2,6 +2,7 @@ import type { Env } from "../config/env";
 
 interface VoiceSession {
   startedAt: number;
+  lastHeartbeatAt?: number;
   reservedSeconds: number;
   usageDate: string;
 }
@@ -21,6 +22,7 @@ const MAX_SUPPORTED_SESSION_SECONDS = 540;
 const MAX_SUPPORTED_DAILY_SECONDS = 36_000;
 const MAX_SUPPORTED_CONCURRENT_SESSIONS = 100;
 const STALE_SESSION_GRACE_MS = 60_000;
+const SESSION_LEASE_TIMEOUT_MS = 90_000;
 
 function indiaDate(now: number): string {
   return new Date(now + 330 * 60_000).toISOString().slice(0, 10);
@@ -41,12 +43,29 @@ function newRecord(now: number): GuardRecord {
   };
 }
 
+function isSessionStale(session: VoiceSession, now: number): boolean {
+  const hardExpiry = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
+  // Sessions written before the lease field existed are treated as having
+  // last checked in when they started, so old orphaned locks self-heal.
+  const lastHeartbeatAt = Number.isFinite(session.lastHeartbeatAt)
+    ? Number(session.lastHeartbeatAt)
+    : session.startedAt;
+  return now > hardExpiry || now - lastHeartbeatAt > SESSION_LEASE_TIMEOUT_MS;
+}
+
 function cleanStaleSessions(record: GuardRecord, now: number): void {
   for (const [sessionId, session] of Object.entries(record.sessions)) {
-    const staleAt = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
-    if (now > staleAt) {
-      // Keep the reserved daily seconds charged if a session disappears without a release.
-      delete record.sessions[sessionId];
+    if (!isSessionStale(session, now)) continue;
+
+    delete record.sessions[sessionId];
+    // Refund unused reserved time for abandoned sessions; retain elapsed time
+    // so a lost connection cannot repeatedly obtain free voice usage.
+    if (record.usageDate === session.usageDate) {
+      const elapsed = Math.min(
+        session.reservedSeconds,
+        Math.max(0, Math.ceil((now - session.startedAt) / 1_000)),
+      );
+      record.dailySeconds = Math.max(0, record.dailySeconds - session.reservedSeconds + elapsed);
     }
   }
 }
@@ -78,15 +97,22 @@ export class UserState {
         1,
         MAX_SUPPORTED_CONCURRENT_SESSIONS,
       );
-      const record = await this.state.storage.get<GuardRecord>(STORAGE_KEY) ?? newRecord(now);
+      const record = await this.state.storage.transaction(async (transaction) => {
+        const stored = await transaction.get<GuardRecord>(STORAGE_KEY);
+        if (!stored) return newRecord(now);
+        const current = stored;
+        const sessionCountBefore = Object.keys(current.sessions).length;
+        cleanStaleSessions(current, now);
+        if (Object.keys(current.sessions).length !== sessionCountBefore) {
+          await transaction.put(STORAGE_KEY, current);
+        }
+        return current;
+      });
       const currentDate = indiaDate(now);
       const sameDay = record.usageDate === currentDate;
       const rateWindowActive = now >= record.windowStart && now - record.windowStart < RATE_WINDOW_MS;
       const currentRequestCount = rateWindowActive ? record.requestCount : 0;
-      const activeSessions = Object.values(record.sessions).filter((session) => {
-        const staleAt = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
-        return now <= staleAt;
-      }).length;
+      const activeSessions = Object.values(record.sessions).filter((session) => !isSessionStale(session, now)).length;
       const enforceDailyLimit = input.enforceDailyLimit !== false;
       const dailySecondsRemaining = enforceDailyLimit
         ? Math.max(0, maxDailySeconds - (sameDay ? record.dailySeconds : 0))
@@ -195,6 +221,7 @@ export class UserState {
           : Math.min(maxSessionSeconds, maxDailySeconds - record.dailySeconds);
         record.sessions[sessionId] = {
           startedAt: now,
+          lastHeartbeatAt: now,
           reservedSeconds,
           usageDate: currentDate,
         };
@@ -207,6 +234,44 @@ export class UserState {
         status: result.allowed ? 200 : 429,
         headers: { "Cache-Control": "no-store" },
       });
+    }
+
+    if (request.method === "POST" && url.pathname === "/session/heartbeat") {
+      let input: { sessionId?: string; now?: number };
+      try {
+        input = (await request.json()) as typeof input;
+      } catch {
+        return Response.json({ ok: false, reason: "invalid_request" }, { status: 400 });
+      }
+      if (!input.sessionId || input.sessionId.length > 100) {
+        return Response.json({ ok: false, reason: "invalid_request" }, { status: 400 });
+      }
+      const now = Number.isFinite(input.now) ? Number(input.now) : Date.now();
+
+      const renewed = await this.state.storage.transaction(async (transaction) => {
+        const record = await transaction.get<GuardRecord>(STORAGE_KEY);
+        if (!record) return false;
+        cleanStaleSessions(record, now);
+        const session = record.sessions[input.sessionId!];
+        if (!session) {
+          await transaction.put(STORAGE_KEY, record);
+          return false;
+        }
+        const hardExpiry = session.startedAt + session.reservedSeconds * 1_000 + STALE_SESSION_GRACE_MS;
+        if (now > hardExpiry) {
+          cleanStaleSessions(record, now);
+          await transaction.put(STORAGE_KEY, record);
+          return false;
+        }
+        session.lastHeartbeatAt = now;
+        await transaction.put(STORAGE_KEY, record);
+        return true;
+      });
+
+      return Response.json(
+        { ok: renewed, reason: renewed ? "renewed" : "session_not_found" },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     }
 
     if (request.method === "POST" && url.pathname === "/session/release") {
