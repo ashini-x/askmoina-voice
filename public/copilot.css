@@ -354,3 +354,13 @@
 
 /* M28 — lightly fill explicitly proposed placement regions without hiding the scene. */
 .ai-guide-region{fill:currentColor;fill-opacity:.12}
+
+
+/* M31 — a compact but unmistakable safety pause, shown only when procedural overlays are blocked. */
+.safety-pause-notice{position:absolute;z-index:15;top:clamp(88px,18vh,170px);left:50%;transform:translateX(-50%);width:min(350px,calc(100% - 28px));padding:13px 15px;border:1px solid #ffd08a9c;border-radius:14px;background:#241709f2;color:#fff6e8;box-shadow:0 10px 30px #0007;pointer-events:none;backdrop-filter:blur(14px)}
+.safety-pause-notice[hidden]{display:none!important}
+.safety-pause-notice[data-level="critical"]{border-color:#ff9393d4;background:#2a0d10f5;color:#fff0f0;box-shadow:0 8px 34px #0008,0 0 24px #f44a4a1c}
+.safety-pause-title{display:block;margin:0 0 6px;color:#ffd08a;font-size:.62rem;font-weight:900;letter-spacing:.16em}
+.safety-pause-notice[data-level="critical"] .safety-pause-title{color:#ffaaaa}
+.safety-pause-copy{margin:0;font-size:.78rem;line-height:1.42;font-weight:620}
+@media(max-width:430px){.safety-pause-notice{top:clamp(82px,15vh,125px);padding:11px 12px}.safety-pause-copy{font-size:.72rem}}
