@@ -347,8 +347,14 @@ function hasVertexCredentials(env: Env): boolean {
   return Boolean(env.GCP_PROJECT_ID?.trim() && (hasJson || hasSplitSecrets));
 }
 
+/**
+ * @param {any} raw
+ * @returns {{manufacturer: string, model_id: string, variant: string, part_number: string, requested_material: string}}
+ */
 function normalizeGroundedDeviceContext(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const empty = { manufacturer: "", model_id: "", variant: "", part_number: "", requested_material: "" };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
+  /** @param {any} value @param {number} [limit] @returns {string} */
   const clean = (value, limit = 100) => typeof value === "string"
     ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, limit)
     : "";
@@ -363,7 +369,13 @@ function normalizeGroundedDeviceContext(raw) {
   };
 }
 
+/**
+ * @param {string} title
+ * @param {string} uri
+ * @param {any} context
+ */
 function assessGroundedSource(title, uri, context) {
+  /** @param {any} value @returns {string} */
   const clean = (value) => String(value || "").normalize("NFKD").toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, " ").trim();
   const text = clean(String(title || "") + " " + String(uri || ""));
