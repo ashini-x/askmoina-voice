@@ -64,5 +64,7 @@ describe("M30 model-aware grounded expertise", () => {
     expect(workerSource).toContain("Prefer the manufacturer's official manual");
     expect(workerSource).toContain("A source or web search is not proof that the camera identified the physical device");
     expect(workerSource).toContain("M30 — MODEL-AWARE GROUNDING:");
+    expect(workerSource).toContain("M30 — GROUNDED EXPERTISE AND MODEL MATCH:");
+    expect(workerSource).toContain("Populate device_context with manufacturer, exact model ID, variant/revision, and part number");
   });
 });
