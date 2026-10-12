@@ -22,7 +22,7 @@ Milestones 1–22 are deployed on the production Worker. The foundation includes
 - **M19 — Dynamic task planning:** select and resize the approach to the real task rather than forcing every request into a template.
 - **M20 — Adaptive step-by-step guidance:** provide one manageable move, then adapt to the user's response and new evidence.
 - **M21 — Observe, verify, recover:** compare before/after evidence carefully, preserve failed checks, and do not claim unverified success.
-- **M22 — AI-directed visual primitives:** bounded lines, arrows, circles, outlines, ticks, and labels can be rendered as approximate screen-space drawings. They are not object detections or world anchors.
+- **M22 — AI-directed visual primitives:** bounded lines, arrows, circles, outlines, ticks, and labels can be rendered as approximate screen-space drawings. They are not object detections or world anchors; dependable automatic progress verification remains future work.
 
 ## The legacy roadmap — Milestones 23–40
 
