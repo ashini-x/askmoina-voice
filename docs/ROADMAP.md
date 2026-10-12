@@ -1,52 +1,71 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M22 AI-directed visual guide primitives deployed; real-task acceptance pending)
+Last updated: 2026-10-12 (M23 visual-guide brain implemented; synthetic checks and physical-task acceptance tracked separately)
 
 ## Product vision
-AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
 
-## Shipped foundation
-Milestones 1–22 are deployed on the production Worker; a follow-up tracking-anchor reliability fix prevents untracked model-generated highlights from appearing at a guessed screen position. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, AI-selected 2D visual-guide primitives, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. M14 adds evidence-first scene instructions and was smoke-tested by the product owner; this is not proof of general object-recognition accuracy. Existing cues remain approximate and are not semantic object segmentation.
+AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A person points a phone camera at a situation, explains the goal naturally, and gets adaptive help that combines speech with useful visual instructions. The core loop is: see the world, understand the goal and current state, invent the next useful guide, observe the result, verify what changed, and adapt or recover. Repair is one use case, not the product boundary.
 
-## Remaining roadmap
+The ambition is not simply to add voice to a camera or decorate the view with AR. The long-term differentiator is a reusable system that chooses the right kind of help for an unfamiliar real task, grounds every instruction in current evidence, keeps guidance aligned with the world where technically possible, checks outcomes honestly, and gracefully admits when it cannot know.
 
-### Phase 1 — Effortless JARVIS experience
-- **M11 — Camera-first visual reset (deployed):** live camera dominance, restrained focus overlays, secondary controls under More, and captions on demand. Real-device acceptance was confirmed by the product owner.
-- **M12 — Natural voice copilot (deployed 2026-10-11):** merge overlapping transcription fragments, suppress stale audio after an interruption, strengthen follow-up and topic-switch behavior, and show an explicit Try again action after unexpected disconnects. Automated validation and post-deploy smoke tests passed. Hands-on voice interruption, follow-up quality, and reconnect recovery still require real-browser/device acceptance.
+## Shipped foundation — Milestones 1–22
 
-### Phase 2 — Visual awareness
-- **M13 — Conditional web grounding (deployed 2026-10-11):** use native Search grounding for current facts in normal voice and a bounded grounded-search tool in Co-Pilot for equipment documentation or changing troubleshooting guidance. Avoid needless searches; source URLs and uncertainty must be surfaced, and search results must never be treated as visual recognition evidence. The grounded lookup uses Gemini 3.8 Flash on Vertex's global endpoint, independent of the Live session region. Real-session search usefulness, relevance, and latency still require hands-on acceptance.
-- **M14 — Scene understanding (deployed and smoke-tested 2026-10-11):** use an explicit evidence-first protocol for candidate objects, components, visible text, and visible relationships; distinguish direct observations from plausible interpretations; preserve uncertainty for ambiguous or unreadable details. The owner confirmed the implementation was working; that does not prove broad visual accuracy.
-- **M15 — Spoken-reference target selection (deployed and owner-tested 2026-10-11):** resolve “this one” and “that part” against recent camera evidence when one candidate is clear; when ambiguous, ask one short question or request a tap. A tap is sent as a normalized camera-frame point and treated as user intent, not proof of object identity. The existing camera-first UI stays in place; no large new control panel or claim of semantic segmentation is introduced. Main-branch CI, automated tests, Worker dry-run, deployment, and production smoke checks passed.
-- **M16 — Persistent visual tracking (deployed; follow-up hardening 2026-10-11):** retain a tapped local image patch during camera movement; suppress guessed markers until the user anchors an exact point, reject nearly uniform patches, require two consistent wider-frame matches for reacquisition, and hide stale markers after loss. This remains local image-patch matching, not semantic identity tracking. Automated checks, Worker dry-run, deployment, and production smoke tests passed; acceptance on physical devices remains pending.
-- **M17 — Minimal target overlays (deployed 2026-10-11; phone layout acceptance pending):** reduce target brackets, add a small center-point indicator, shrink labels and one-line instruction previews, and keep visual guidance compact over a camera-first scene. A follow-up tracking-anchor fix additionally suppresses untracked, guessed markers. Cues remain approximate screen-space hints; they are not semantic object boundaries or world-locked AR.
+Milestones 1–22 are deployed on the production Worker. The foundation includes live voice, the camera-first Co-Pilot, Assamese-English conversation support, memory/continuity controls, conditional web grounding, evidence-first scene instructions, local image-patch tracking, compact approximate focus overlays, a WebXR guide prototype, and bounded 2D visual primitives. The owner has smoke-tested portions of the foundation, but real-world behavior remains unproven outside the scenarios actually tested.
 
-### Phase 3 — Problem solving
-- **M18 — Understand the user's problem (deployed 2026-10-11; real-task acceptance pending):** before proposing action, infer the desired outcome or symptom, relevant visible/user-provided context, known facts versus hypotheses, the one missing fact that could change the next step, and the consequence if wrong. Keep this assessment internal and conversational; ask one high-value clarification only when needed, otherwise start with a low-risk observation/check. Do not confuse a symptom with a cause or assume the visible object is the problem.
-- **M19 — Dynamic task planning (deployed 2026-10-11; real-task acceptance pending):** select the lightest useful approach for the real goal and context rather than forcing a fixed template; size the plan to the task; define the next action and what evidence will guide the next branch; adapt to feedback and constraints; avoid long checklists and padded steps. Real-task quality still requires hands-on acceptance.
-- **M20 — Adaptive step-by-step guidance (deployed 2026-10-11; real-task acceptance pending):** deliver one concrete action at a time; define a useful observable result; wait for confirmation or evidence; recover from failed or confusing steps; preserve task continuity and adapt to changed evidence without dumping the full procedure.
-- **M21 — Observe, verify, recover (deployed 2026-10-12; real-task acceptance pending):** establish a useful baseline and an observable expected result for each action; distinguish camera-supported changes from user-reported outcomes; compare frames only when target/view clarity supports it; branch safely on confirmed, absent, unclear, or contradictory results; preserve failed checks and uncertainty; and do not declare the whole task complete based on one changed symptom.
-- **M22 — AI-directed visual guidance (deployed foundation; real-task acceptance pending):** Moina can choose bounded screen-space primitives—lines, arrows, circles, placement outlines, ticks and labels—and render them over the live camera without requiring a separate button or target tap for every geometric guide. The drawings are approximate viewport overlays, not semantic detections or world anchors; dependable automatic progress verification remains future work.
-- **M23 — Evidence-grounded guidance:** match model numbers and labels to reliable manuals/schematics; surface sources and uncertainty.
-- **M24 — Safety and uncertainty engine:** escalate caution for high-consequence tasks; never infer hidden or hazardous physical states from appearance alone.
+- **M11 — Camera-first visual reset:** keep the live camera dominant and move advanced controls out of the main path.
+- **M12 — Natural voice co-pilot:** improve transcript merging, interruption handling, and reconnection affordances.
+- **M13 — Conditional web grounding:** search when current or model-specific evidence matters, not for every turn.
+- **M14 — Evidence-first scene understanding:** distinguish visible facts from guesses and preserve uncertainty.
+- **M15 — Spoken-reference target selection:** resolve spoken references only when one candidate is clear; otherwise ask or request a tap.
+- **M16 — Local patch tracking:** follow a user-anchored image patch with loss/reacquisition safeguards. This is not semantic identity tracking.
+- **M17 — Minimal overlays:** keep approximate on-screen hints compact and never treat them as object segmentation or world-locked anchors.
+- **M18 — Understand the actual problem:** separate the user's goal/symptom from suspected causes and ask only material clarifying questions.
+- **M19 — Dynamic task planning:** select and resize the approach to the real task rather than forcing every request into a template.
+- **M20 — Adaptive step-by-step guidance:** provide one manageable move, then adapt to the user's response and new evidence.
+- **M21 — Observe, verify, recover:** compare before/after evidence carefully, preserve failed checks, and do not claim unverified success.
+- **M22 — AI-directed visual primitives:** bounded lines, arrows, circles, outlines, ticks, and labels can be rendered as approximate screen-space drawings. They are not object detections or world anchors.
 
-### Phase 4 — General-purpose coverage
-- **M25 — Reusable task engine:** share scene, target, reasoning, planning, guidance and recovery primitives across categories.
-- **M26 — Cross-scenario evaluation:** test repairs, setup, assembly, troubleshooting and unfamiliar objects, including cases not explicitly scripted.
+## The legacy roadmap — Milestones 23–40
 
-### Phase 5 — Reliability and readiness
-- **M27 — Device and environment reliability:** test low light, glare, camera movement, occlusion, poor network, disconnects and recovery.
-- **M28 — Voice, privacy and security acceptance:** evaluate Upper Assam speech quality, consent, memory opt-in/out, data retention, authentication, and abuse protection.
-- **M29 — Latency, cost and capacity engineering:** measure p50/p95 first-audio latency, vision/search budgets, session recovery and defined target concurrency. Prove capacity by load testing; do not infer it from successful deploys.
-  
-### Phase 6 — Release
-- **M30 — Closed real-world pilot:** invite a small group, observe genuine tasks, collect structured feedback, fix blockers, and repeat acceptance tests.
-- **M31 — Public beta and progressive scaling:** launch gradually with monitoring, support, spend safeguards, feedback and rollback. Expand categories only when each is sufficiently reliable and safe.
-- **Final destination — General-purpose visual copilot:** a user can show Moina a real-world problem, converse naturally, receive evidence-grounded guidance, see AI-selected visual guides and relevant targets, and have the guidance adapt as the situation changes.
+These milestones supersede the earlier numbering for the work that had not shipped. They are the working strategic roadmap and should be kept versioned as implementation progresses. Milestones may be refined based on measured failures, but don't silently narrow the product to a single task category.
+
+### Phase 1 — Make the visual loop trustworthy
+
+- **M23 — Visual-guide brain (implemented; deployed foundation; real-task acceptance pending):** the model proactively decides when a visual instruction will materially help, chooses the smallest useful primitive set, draws tap-free geometric references when object identity is not required, and avoids invented geometry or false success marks. Automated prompt/tool-contract tests are not proof of live-model reliability. See [M23 acceptance](acceptance/m23-visual-guide-brain.md).
+- **M24 — Trustworthy camera geometry:** validate the mapping from source camera frame to on-screen drawing under portrait/landscape, crop, resize, mirrored preview, and zoom. Clear stale guidance when coordinates cease to be valid.
+- **M25 — Live scene model:** maintain evidence-tagged objects/parts, surfaces, relations, candidate identities, and confidence across recent frames; make uncertainty explicit when candidate identity or geometry is not established.
+- **M26 — Persistent spatial tracking:** keep the intended target or guide associated across camera movement, occlusion, and reacquisition without silently switching objects. Avoid presenting approximate screen hints as world-locked tracking.
+- **M27 — Automatic visual verification:** compare the relevant before/after state and classify it as supported success, supported failure/no change, or ambiguous; use stronger evidence for consequential outcomes.
+- **M28 — Generative spatial language:** generate task-specific overlays such as alignment references, placement regions, motion paths, and spatial cues from reusable primitives instead of hand-coding a separate guide for every task.
+- **M29 — Task world model:** track the user's goal, current state, intended action, expected evidence, confirmed/failed checks, constraints, and remaining uncertainty; revise the plan when observations contradict it.
+
+### Phase 2 — Grounded expertise, safety, and one continuous reality loop
+
+- **M30 — Grounded expertise:** retrieve and match relevant manuals, diagrams, model identifiers, and sources; never apply a procedure from the wrong model or treat web results as proof of camera identification.
+- **M31 — Safety and uncertainty engine:** account for consequence and reversibility, pause when safety-critical facts are ambiguous, and prevent persuasive overlays from masking uncertainty or directing hazardous actions.
+- **M32 — One continuous reality loop:** coordinate voice, camera frames, local tracking, and WebXR so a mode transition does not silently stop the observation needed to guide and verify the task.
+
+### Phase 3 — General-purpose, effortless, efficient, and accessible
+
+- **M33 — Universal task engine:** reuse the same observe/understand/plan/guide/verify/recover capabilities across organization, comparison, setup, assembly, repair, troubleshooting, and learning; validate on held-out tasks rather than only curated demos.
+- **M34 — Zero-learning camera-first UX:** after permission and Start, make the next action obvious and keep mode switches, panels, and expert controls out of the main interaction unless they are genuinely needed.
+- **M35 — Efficient intelligence:** measure latency and inference cost; use fast local techniques for suitable low-latency work and higher-capability reasoning for difficult cases, with explicit fallback behavior.
+- **M36 — Permission-based continuity:** make saved memory optional, inspectable, correctable, exportable, and deletable; keep the core copilot useful without saved memory.
+- **M37 — Assam-first, world-ready speech:** evaluate real Upper Assam speakers and natural Assamese-English code-switching, then broaden language and accent coverage through measured test suites rather than intuition.
+
+### Phase 4 — Evidence, pilot, and scale
+
+- **M38 — Moina Reality Benchmark:** create repeatable real-task evaluations for task completion, target mistakes, false completion, unsafe instructions, recovery, latency, and cost; retain failures as regression cases.
+- **M39 — Closed real-world pilot:** work with a small opt-in group, test varied genuine tasks, gather structured feedback with consent, fix blockers, and rerun the same acceptance suite.
+- **M40 — Public beta and capability platform:** stage the launch, monitor reliability and spend, test defined concurrency, keep rollback/support ready, and expose trusted extension points only after the core loop is dependable.
+
+## Release and evidence discipline
+
+A successful deployment or healthy endpoint proves that a service is reachable; it does not prove that Moina selected the correct visual guide or helped complete a physical task. Automated validation, synthetic service checks, live-model checks, and real-device acceptance are distinct evidence levels and must be reported separately.
+
+Every milestone should have explicit pass/fail criteria, regression tests, and an acceptance record. Never claim semantic object recognition, reliable world tracking, wiring verification, physical task completion, dialect quality, or scale without an appropriate evaluation. Treat failures as product data: reproduce them, identify the earliest failed link in the reality loop, fix that link, and rerun the same case.
 
 ## Product loop
+
 See → Understand → Select → Plan a visual guide → Render → Track → Guide → Verify → Recover.
 
-Every milestone should strengthen this loop. UI effects and 3D cues are secondary to reliable target selection, context, problem solving, and safe adaptation.
-
-## Release discipline
-A successful deployment/health endpoint is not a complete acceptance test. Preserve a versioned roadmap; use feature branches, automated checks, post-deploy smoke tests, and real device/user acceptance for behavior that automation cannot establish. Never claim general object recognition, wiring verification, task completion, dialect quality, or scale without an appropriate evaluation.
+The order matters: a beautiful 3D arrow is not a breakthrough if it points at the wrong part, drifts when the camera moves, or claims success without evidence.
