@@ -54,6 +54,16 @@ async function release(userState, sessionId, now) {
   );
 }
 
+async function heartbeat(userState, sessionId, now) {
+  return userState.fetch(
+    new Request("https://user-state/session/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, now }),
+    }),
+  );
+}
+
 const TODAY = Date.UTC(2026, 9, 9, 1, 0, 0);
 
 describe("AskMoina voice session guard", () => {
@@ -129,6 +139,84 @@ describe("AskMoina voice session guard", () => {
     });
     const during = await status(userState, limits);
     expect(await during.json()).toMatchObject({ activeSessions: 1, concurrencyLimited: true });
+  });
+
+  it("automatically releases an abandoned session lease and refunds unused reserved time", async () => {
+    const { userState, storage } = makeState();
+    const first = await acquire(userState, {
+      sessionId: "abandoned",
+      now: TODAY,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+      enforceDailyLimit: true,
+    });
+    expect(first.status).toBe(200);
+    expect((await first.json()).reservedSeconds).toBe(300);
+
+    const afterLease = await status(userState, {
+      now: TODAY + 90_001,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+      enforceDailyLimit: true,
+    });
+    expect(await afterLease.json()).toMatchObject({
+      activeSessions: 0,
+      concurrencyLimited: false,
+      dailySecondsRemaining: 409,
+    });
+    // The old record is cleaned transactionally; elapsed time is charged but
+    // the unused part of its reservation is returned to the daily budget.
+    expect(storage.values.get("voice-guard").dailySeconds).toBe(91);
+
+    const second = await acquire(userState, {
+      sessionId: "next-session",
+      now: TODAY + 90_002,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 500,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+      enforceDailyLimit: true,
+    });
+    expect(second.status).toBe(200);
+    expect((await second.json()).allowed).toBe(true);
+  });
+
+  it("renews a live lease with heartbeats but never beyond its hard session deadline", async () => {
+    const { userState } = makeState();
+    const first = await acquire(userState, {
+      sessionId: "renewing",
+      now: TODAY,
+      maxSessionSeconds: 300,
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+    });
+    expect(first.status).toBe(200);
+
+    const renewed = await heartbeat(userState, "renewing", TODAY + 85_000);
+    expect(renewed.status).toBe(200);
+    expect(await renewed.json()).toMatchObject({ ok: true, reason: "renewed" });
+
+    const during = await status(userState, {
+      now: TODAY + 160_000,
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+    });
+    expect(await during.json()).toMatchObject({ activeSessions: 1, concurrencyLimited: true });
+
+    const tooLate = await heartbeat(userState, "renewing", TODAY + 361_000);
+    expect(await tooLate.json()).toMatchObject({ ok: false, reason: "session_not_found" });
+    const afterExpiry = await status(userState, {
+      now: TODAY + 361_001,
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+    });
+    expect(await afterExpiry.json()).toMatchObject({ activeSessions: 0, concurrencyLimited: false });
   });
 
   it("explains how long until the connection-attempt limit resets", async () => {
