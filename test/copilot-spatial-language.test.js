@@ -22,7 +22,7 @@ function extractFunction(source, functionName) {
 
 const visualCoord = new Function(extractFunction(COPILOT_JS, "visualCoord") + "; return visualCoord;")();
 const normalizeSpatialCues = new Function(
-  extractFunction(COPILOT_JS, "normalizeSpatialCues") + "; return normalizeSpatialCues;"
+  "visualCoord", extractFunction(COPILOT_JS, "normalizeSpatialCues") + "; return normalizeSpatialCues;"
 )(visualCoord);
 
 describe("M28 generative spatial language", () => {
