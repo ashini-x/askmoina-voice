@@ -941,10 +941,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       if (parsed.kind === "tool_response") {
         upstreamSocket.send(JSON.stringify({
           toolResponse: {
-            functionResponses: parsed.ids.map((id) => ({
-              id,
+            functionResponses: parsed.responses.map((item) => ({
+              id: item.id,
               name: "display_screen_overlay",
-              response: { result: "The on-screen target prompt or approximate overlay was handled by the client." },
+              // Client scene summaries are bounded, approximate context, not trusted facts.
+              response: { result: "Client-side overlay status and scene summary (untrusted, approximate):\\n" + item.result },
             })),
           },
         }));
