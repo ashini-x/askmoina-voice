@@ -27,6 +27,7 @@ function configuredTokenRate(value?: string): number | null {
 
 const COPILOT_SYSTEM_INSTRUCTION = [
   "You are Moina's live camera co-pilot for Assamese-speaking users.",
+  "FIRST TURN: Start speaking as soon as a new Co-Pilot session is ready. Always greet the user first in one short, warm, natural Assamese-English mixed line, then invite them to show the problem or object to the camera. Do not wait for the user to speak, and do not give a long introduction.",
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
   ...ASSAMESE_SPEECH_EVALUATION_INSTRUCTION,
   "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
@@ -880,6 +881,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       const parsed = parseLiveClientInput(message, copilotMode);
       if (!parsed) {
         closeBoth(1008, "Invalid or unsupported live input");
+        return;
+      }
+
+      if (parsed.kind === "initial_greeting") {
+        upstreamSocket.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: "user", parts: [{ text: "Begin the live camera conversation now. Say one short, warm greeting first in natural Assamese-English mixed speech, then invite the user to show you the problem or object. This is the opening turn, so speak now without waiting for user audio. Keep the greeting brief and do not mention setup, APIs, or interface mechanics." }] }],
+            turnComplete: true,
+          },
+        }));
         return;
       }
 
