@@ -19,6 +19,7 @@ jobs:
       - run: node --check public/app.js
       - run: node --check public/copilot.js
       - run: node --check public/auth.js
+      - run: node --check public/iphone.js
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
@@ -110,6 +111,12 @@ jobs:
           grep -q 'navigator.credentials.get' /tmp/moina-auth.js
           node --check /tmp/moina-auth.js
           echo "Passkey client and three-method login page: OK"
+
+          status="$(fetch_status /iphone.css /tmp/moina-iphone.css)"
+          test "$status" = "302"
+          status="$(fetch_status /iphone.js /tmp/moina-iphone.js)"
+          test "$status" = "302"
+          echo "Unauthenticated simulator assets denied: OK"
 
           status="$(fetch_status /api/auth/me /tmp/moina-auth-me.json)"
           test "$status" = "200"
