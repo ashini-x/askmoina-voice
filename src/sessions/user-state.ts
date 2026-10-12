@@ -22,7 +22,7 @@ const MAX_SUPPORTED_SESSION_SECONDS = 540;
 const MAX_SUPPORTED_DAILY_SECONDS = 36_000;
 const MAX_SUPPORTED_CONCURRENT_SESSIONS = 100;
 const STALE_SESSION_GRACE_MS = 60_000;
-const SESSION_LEASE_TIMEOUT_MS = 90_000;
+const SESSION_LEASE_TIMEOUT_MS = 45_000;
 
 function indiaDate(now: number): string {
   return new Date(now + 330 * 60_000).toISOString().slice(0, 10);
