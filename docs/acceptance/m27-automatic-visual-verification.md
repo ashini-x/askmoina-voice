@@ -12,15 +12,16 @@ Compare a task-relevant visible condition before and after an action, and classi
 - A supported success requires a direct report that the criterion was met after an observed change. Supported failure/no change requires direct evidence that the criterion remains unmet with no relevant change. Contradictory or uncertain reports remain ambiguous.
 - A concise, caveated status is included in the tool response for the model's next turn. It explicitly remains a model-reported camera comparison, not independent sensor proof or hidden-state verification.
 
-## Synthetic acceptance — pending release validation
+## Synthetic acceptance — CI passed; active Worker bundle content verified
 
-- [ ] Matching target IDs/labels and fresh before/after frames allow a supported low-consequence success.
-- [ ] A fresh, direct no-change report with the criterion still unmet yields supported failure/no change.
-- [ ] Missing or stale baselines, view-generation changes, hidden targets, identity conflicts, inferred evidence, low confidence, and inconsistent reports remain ambiguous.
-- [ ] A candidate observation newer than the declared before-frame cannot be used as its baseline.
-- [ ] High-consequence outcomes remain ambiguous even at model-reported confidence 1.0.
-- [ ] Worker schema/prompt contract, client syntax, embedded asset parity, and production smoke markers pass.
-- [ ] CI and the deployed /copilot.js bundle are verified before marking synthetic acceptance complete.
+- [x] Matching target IDs/labels and fresh before/after frames allow a supported low-consequence success.
+- [x] A fresh, direct no-change report with the criterion still unmet yields supported failure/no change.
+- [x] Missing or stale baselines, view-generation changes, hidden targets, identity conflicts, inferred evidence, low confidence, and inconsistent reports remain ambiguous.
+- [x] A candidate observation newer than the declared before-frame cannot be used as its baseline.
+- [x] High-consequence outcomes remain ambiguous even at model-reported confidence 1.0.
+- [x] Worker schema/prompt contract, client syntax, embedded asset parity, and synthetic production-bundle marker assertions pass.
+- [x] Release validation passed in [CI run 38234991554](https://github.com/ashini-x/askmoina-voice/actions/runs/38234991554): 35 test files, 216 tests, TypeScript, client syntax, and Wrangler dry-run.
+- [x] Cloudflare reports an active Worker deployment at 100% traffic; the deployed Worker content includes the M27 verification and summary helpers (bundle-content check, not an HTTP route-level smoke test).
 
 ## Real-model and real-device acceptance — still required
 
