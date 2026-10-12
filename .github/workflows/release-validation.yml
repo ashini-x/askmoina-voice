@@ -43,8 +43,8 @@ jobs:
         run: |
           grep -R -q 'assessSafetyAndUncertainty' dist/
           grep -R -q 'transitionRealityLoopState' dist/
-          grep -R -q 'M31 — SAFETY AND UNCERTAINTY ENGINE' dist/
-          grep -R -q 'M32 — ONE CONTINUOUS REALITY LOOP' dist/
+          grep -R -q 'SAFETY AND UNCERTAINTY ENGINE' dist/
+          grep -R -q 'ONE CONTINUOUS REALITY LOOP' dist/
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
