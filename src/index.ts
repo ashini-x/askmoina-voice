@@ -55,6 +55,13 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "After a failed check, preserve that result in the working conversation context. Do not repeat the same check unchanged unless new evidence or a changed condition makes it reasonable. Change one meaningful variable at a time and briefly explain the next check.",
   "Before declaring success, compare the user's goal with the evidence needed to establish it. If the decisive result is not visible, ask the user to confirm it and distinguish user-confirmed completion from visual verification. For consequential actions, require stronger evidence and stop if the safe conclusion remains uncertain.",
   "Keep this verification logic internal; tell the user only what the result means for the next step. Preserve the last confirmed state, failed checks, and remaining uncertainty through follow-up turns.",
+  "M27 — AUTOMATIC VISUAL VERIFICATION:",
+  "After a user has attempted a low- or moderate-consequence action, use visual_verification only if a prior scene observation and the latest frame show the same stable candidate ID and unchanged label in the same camera view. Include a short visible criterion, criterion_status (met/not_met/unclear), change_observed (changed/no_change/unclear), evidence (direct/inferred), model-reported confidence from 0 to 1, and consequence (low/moderate/high).",
+  "Never invent a prior baseline. If the target was not observed in both frames, the camera view changed, the label/identity conflicts, or the criterion/change is unclear, omit a definitive claim and ask for a clearer view or user confirmation. The client returns an automatic status only when its freshness, identity, evidence, confidence, and consequence gates pass.",
+  "A supported_success is limited to a clear, direct, visible low/moderate-consequence criterion after an observed change. A supported_failure_or_no_change means direct fresh evidence indicates the visible criterion remains unmet with no relevant change. In all other cases keep the result ambiguous. High-consequence outcomes always need stronger independent confirmation; a camera cue or model confidence is never proof of hidden safety or root-cause repair.",
+  "M28 — GENERATIVE SPATIAL LANGUAGE:",
+  "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
+  "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
   "AI-DIRECTED VISUAL GUIDANCE — SHOW, DO NOT JUST TELL:",
   "When a low-risk physical task is easier to understand visually than through speech alone, proactively choose a compact on-screen guide using display_screen_overlay. The user should not need to press another button just to see the guide.",
   "Choose the drawing primitives that fit the actual goal: a line for alignment, an arrow for direction, a small outline for a placement region, a circle for a point, a tick for a position that the latest frame supports as correct, or a short label when it adds clarity. Keep the guide minimal and leave the real scene visible.",
@@ -177,11 +184,11 @@ const COPILOT_TOOL = {
         visual_only: { type: "BOOLEAN", description: "When true, draw the supplied screen-space primitives without requiring a user tap to track an exact object. Use only for useful, low-risk geometric guidance." },
         visual_elements: {
           type: "ARRAY",
-          description: "Optional compact screen-space drawing for the latest camera frame, maximum 8 elements. Coordinates x/y are normalized 0–1000 over the whole camera frame from top-left. Use line/arrow x1,y1,x2,y2; circle x,y,radius; rect x,y,width,height; tick x,y; label x,y,text. These are approximate 2D overlays, not world-anchored AR or object detections.",
+          description: "Optional compact screen-space drawing for the latest camera frame, maximum 8 elements. Coordinates x/y are normalized 0–1000 over the whole camera frame from top-left. Use line/arrow x1,y1,x2,y2; circle x,y,radius; rect x,y,width,height; tick x,y; label x,y,text; polyline/polygon use 2–8 points {x,y}; directional=true adds an arrowhead to a polyline. Approximate 2D only.",
           items: {
             type: "OBJECT",
             properties: {
-              type: { type: "STRING", enum: ["line", "arrow", "circle", "rect", "tick", "label"] },
+              type: { type: "STRING", enum: ["line", "arrow", "circle", "rect", "tick", "label", "polyline", "polygon"] },
               x: { type: "NUMBER", description: "Normalized horizontal coordinate 0–1000." },
               y: { type: "NUMBER", description: "Normalized vertical coordinate 0–1000." },
               x1: { type: "NUMBER", description: "Normalized line start horizontal coordinate 0–1000." },
@@ -191,11 +198,63 @@ const COPILOT_TOOL = {
               radius: { type: "NUMBER", description: "Circle radius in normalized frame units, 4–250." },
               width: { type: "NUMBER", description: "Rectangle width in normalized frame units, 1–1000." },
               height: { type: "NUMBER", description: "Rectangle height in normalized frame units, 1–1000." },
+              points: {
+                type: "ARRAY",
+                description: "For polyline/polygon, 2–8 normalized points, each with x and y from 0 to 1000.",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    x: { type: "NUMBER", description: "Normalized horizontal coordinate 0–1000." },
+                    y: { type: "NUMBER", description: "Normalized vertical coordinate 0–1000." }
+                  },
+                  required: ["x", "y"]
+                }
+              },
+              directional: { type: "BOOLEAN", description: "For polylines, optionally show a directional arrowhead at the final point." },
               text: { type: "STRING", description: "Short label text, maximum 48 characters." },
               color: { type: "STRING", enum: ["mint", "white", "amber"] }
             },
             required: ["type"]
           }
+        },
+        spatial_cues: {
+          type: "ARRAY",
+          description: "Optional semantic spatial cues, maximum 5. Each cue is composed from normalized 0–1000 camera-frame points: alignment (2+), motion_path (2–8), placement_region (3–8), target_point (1), orientation (2+), or label (1 plus label). These are approximate screen-space drawings, not detected boundaries or world anchors.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              kind: { type: "STRING", enum: ["alignment", "motion_path", "placement_region", "target_point", "orientation", "label"] },
+              points: {
+                type: "ARRAY",
+                description: "Normalized camera-frame points, each with x and y from 0 to 1000; maximum 8 points.",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    x: { type: "NUMBER", description: "Normalized horizontal coordinate 0–1000." },
+                    y: { type: "NUMBER", description: "Normalized vertical coordinate 0–1000." }
+                  },
+                  required: ["x", "y"]
+                }
+              },
+              label: { type: "STRING", description: "Optional short label, maximum 48 characters." },
+              color: { type: "STRING", enum: ["mint", "white", "amber"] }
+            },
+            required: ["kind", "points"]
+          }
+        },
+        visual_verification: {
+          type: "OBJECT",
+          description: "Optional structured before/after check after a user action. Client policy-gates this model report against fresh matching observations for the same candidate ID and camera view; it is not independent sensor proof. Omit it if no valid prior baseline exists.",
+          properties: {
+            target_id: { type: "STRING", description: "Stable scene candidate ID observed in both the prior and current frames." },
+            criterion: { type: "STRING", description: "One concise, directly visible condition being checked." },
+            criterion_status: { type: "STRING", enum: ["met", "not_met", "unclear"] },
+            change_observed: { type: "STRING", enum: ["changed", "no_change", "unclear"] },
+            evidence: { type: "STRING", enum: ["direct", "inferred"] },
+            confidence: { type: "NUMBER", description: "Model-reported confidence, from 0 to 1; descriptive, not calibrated." },
+            consequence: { type: "STRING", enum: ["low", "moderate", "high"] }
+          },
+          required: ["target_id", "criterion", "criterion_status", "change_observed", "evidence", "confidence", "consequence"]
         },
         steps: {
           type: "ARRAY",

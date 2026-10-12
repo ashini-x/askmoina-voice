@@ -104,9 +104,14 @@ jobs:
           grep -q 'invalidateSceneEvidence("zoom-change")' /tmp/moina-copilot.js
           grep -q 'invalidateSceneEvidence("camera-switch")' /tmp/moina-copilot.js
           grep -q 'not world-locked AR' /tmp/moina-copilot.js
+          grep -q 'function classifyVisualVerification' /tmp/moina-copilot.js
+          grep -q 'function formatVisualVerificationSummary' /tmp/moina-copilot.js
+          grep -q 'function normalizeSpatialCues' /tmp/moina-copilot.js
+          grep -q 'ai-guide-region' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
           echo "Live Co-Pilot client and session-release retry: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
+          echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"
