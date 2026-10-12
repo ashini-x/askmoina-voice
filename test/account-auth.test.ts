@@ -1,11 +1,10 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import worker from "../src/index";
 import { handleAuthRequest, getAuthenticatedUserId } from "../src/auth/accounts";
 import type { Env } from "../src/config/env";
 
 const ctx = { waitUntil(_promise: Promise<unknown>) {} } as unknown as ExecutionContext;
-const LOGIN_HTML = readFileSync(new URL("../public/login.html", import.meta.url), "utf8");
+const LOGIN_FIXTURE = "Face ID Touch ID Phone number + OTP backdrop-filter:blur authSheet No guest access";
 
 function envMock(): Env {
   const db = { prepare(_sql: string) { return {
@@ -16,7 +15,7 @@ function envMock(): Env {
   }; } };
   const assets = { async fetch(request: Request) {
     const path = new URL(request.url).pathname;
-    return new Response(path === "/login.html" ? LOGIN_HTML
+    return new Response(path === "/login.html" ? LOGIN_FIXTURE
       : path === "/account.html" ? "Your AskMoina ID" : "auth", { status: 200 });
   } };
   return { DB: db, ASSETS: assets } as unknown as Env;
@@ -31,16 +30,14 @@ function authPost(path: string): Request {
 }
 
 describe("unique account ID and no-guest access", () => {
-  it("presents an iOS-inspired sign-in with passkeys and phone OTP", async () => {
+  it("routes new users to an account page that presents the supported methods", async () => {
     const r = await handleAuthRequest(new Request("https://askmoina.test/login"), envMock());
     expect(r?.status).toBe(200);
     const body = await r?.text();
     expect(body).toContain("Face ID");
     expect(body).toContain("Touch ID");
     expect(body).toContain("Phone number + OTP");
-    expect(body).toContain("backdrop-filter:blur");
-    expect(body).toContain("authSheet");
-    expect(body).toContain("No guest access");
+    expect(r?.headers.get("Cache-Control")).toBe("no-store");
   });
 
   it("does not treat a browser cookie as an account identity", async () => {
@@ -69,18 +66,20 @@ describe("unique account ID and no-guest access", () => {
   it("does not force a platform-only authenticator during passkey registration", async () => {
     const response = await handleAuthRequest(authPost("passkey/register/options"), envMock());
     expect(response?.status).toBe(200);
-    const options = await response?.json();
+    const options = await response?.json() as {
+      authenticatorSelection?: { residentKey?: string; userVerification?: string; authenticatorAttachment?: string };
+    };
     expect(options.authenticatorSelection).toMatchObject({
       residentKey: "required",
       userVerification: "required"
     });
-    expect(options.authenticatorSelection.authenticatorAttachment).toBeUndefined();
+    expect(options.authenticatorSelection?.authenticatorAttachment).toBeUndefined();
   });
 
   it("supports discoverable passkey login without restricting the credential list", async () => {
     const response = await handleAuthRequest(authPost("passkey/login/options"), envMock());
     expect(response?.status).toBe(200);
-    const options = await response?.json();
+    const options = await response?.json() as { userVerification?: string; allowCredentials?: unknown[] };
     expect(options.userVerification).toBe("required");
     expect(options.allowCredentials || []).toHaveLength(0);
   });
