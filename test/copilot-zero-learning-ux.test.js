@@ -52,7 +52,14 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(script).toContain("function getPlaybackAnalyser()");
     expect(script).toContain("playbackAnalyser.getByteTimeDomainData(playbackAnalyserData)");
     expect(script).toContain('applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "microphone")');
-    expect(css).toContain("padding:var(--voice-edge-width,3.3px)");
+    expect(css).toContain("padding:var(--voice-edge-width,2.5px)");
+    expect(css).toContain("padding:var(--voice-halo-width,4px)");
+    expect(css).toContain("filter:blur(15px) brightness(var(--voice-brightness,1))");
+    expect(css).toContain("#81caff 0deg");
+    expect(css).toContain("#ac9eff 72deg");
+    expect(css).toContain("#efb7db 144deg");
+    expect(css).toContain("#90e8dc 216deg");
+    expect(css).toContain("#a4b8ff 288deg");
     expect(css).toContain("opacity:var(--voice-halo-opacity,.45)");
     expect(css).toContain('font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"');
   });
