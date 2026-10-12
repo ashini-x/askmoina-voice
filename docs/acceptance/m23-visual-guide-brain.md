@@ -15,11 +15,11 @@ Moina should proactively decide whether an on-screen guide materially clarifies 
 
 The following are machine-checkable contract checks. They show that the deployed code contains the rules and can safely accept the guide vocabulary; they do not demonstrate that a generative live model will always follow the rules.
 
-1. [ ] TypeScript type-check passes.
-2. [ ] The full Vitest suite passes, including M22 primitive-contract and M23 decision-policy tests.
-3. [ ] Browser script syntax and Wrangler dry-run checks pass in CI.
-4. [ ] Production health endpoint responds successfully.
-5. [ ] The deployed Worker source bundle contains the M23 decision policy and updated tool description.
+1. [x] TypeScript type-check passes (Release validation run 38221293632; `npm run check` passed).
+2. [x] The full Vitest suite passes, including M22 primitive-contract and M23 decision-policy tests (30 files, 182 tests passed in run 38221293632).
+3. [x] Browser script syntax and Wrangler dry-run checks pass in CI (run 38221293632).
+4. [x] Production health endpoint responds successfully; production smoke test also confirmed voice status was `available`, Co-Pilot/Vault/assets returned expected responses, and unauthenticated admin routes were protected (run 38221293632, successful retry).
+5. [x] The deployed Worker source bundle contains the M23 decision policy and updated tool description; synthetic bundle inspection confirmed proactive drawing, cup-alignment example, minimal primitive rule, tap-free geometric guides, stale-guide clearing, false-completion guard, and model-tool description.
 
 ## Real-device acceptance — still required
 
