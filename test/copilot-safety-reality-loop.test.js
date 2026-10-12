@@ -80,7 +80,7 @@ describe("M31 safety and uncertainty engine", () => {
     expect(workerSource).toContain('enum: ["low", "moderate", "high", "critical", "unknown"]');
     expect(workerSource).toContain("M31 — SAFETY AND UNCERTAINTY ENGINE");
     expect(workerSource).toContain("M32 — ONE CONTINUOUS REALITY LOOP");
-    expect(workerSource).toContain("do not claim fresh camera observation or visual verification");
+    expect(workerSource).toContain("do not claim new visual observation or verification while in AR");
     expect(COPILOT_JS).toContain("if (safety.blocksVisuals)");
     expect(COPILOT_JS).toContain('invalidateSceneEvidence("m31-safety-pause")');
   });
