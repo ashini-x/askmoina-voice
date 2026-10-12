@@ -14,7 +14,7 @@ function readStringConstant(source, name) {
   for (; end < source.length; end += 1) {
     const char = source[end];
     if (!escaped && char === '"') break;
-    if (!escaped && char === "\\\\") escaped = true;
+    if (!escaped && char.charCodeAt(0) === 92) escaped = true;
     else escaped = false;
   }
   return JSON.parse(source.slice(quote, end + 1));
