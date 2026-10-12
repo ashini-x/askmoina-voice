@@ -411,6 +411,9 @@
     buttonLabel.textContent = label;
     toggleButton.disabled = Boolean(disabled);
     toggleButton.classList.toggle("is-live", active);
+    stage.classList.toggle("voice-active", active);
+    toggleButton.setAttribute("aria-label", active ? "End call" : "Start call");
+    toggleButton.title = active ? "End call" : "Start call";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     const cameraAvailable = Boolean(microphoneStream && !cameraSuspendedForSpatialAr &&
       microphoneStream.getVideoTracks().some((track) => track.readyState === "live"));
@@ -421,8 +424,9 @@
     zoomSlider.disabled = !cameraAvailable;
     zoomInButton.disabled = !cameraAvailable || zoomLevel >= zoomMax;
     zoomOutButton.disabled = !cameraAvailable || zoomLevel <= zoomMin;
-    muteButton.innerHTML = microphoneMuted ? '<span aria-hidden="true">♩</span> Unmute' : '<span aria-hidden="true">♩</span> Mute';
+    muteButton.innerHTML = microphoneMuted ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8M3 3l18 18"/></svg><span class="sr-only">Unmute microphone</span>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span>';
     muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
+    muteButton.setAttribute("aria-label", microphoneMuted ? "Unmute microphone" : "Mute microphone");
     clearMarkerButton.disabled = focusMarker.hidden;
   }
 
@@ -2509,7 +2513,7 @@
     if (!microphoneStream) return;
     microphoneMuted = !microphoneMuted;
     microphoneStream.getAudioTracks().forEach((track) => { track.enabled = !microphoneMuted; });
-    muteButton.innerHTML = microphoneMuted ? '<span aria-hidden="true">♩</span> Unmute' : '<span aria-hidden="true">♩</span> Mute';
+    muteButton.innerHTML = microphoneMuted ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8M3 3l18 18"/></svg><span class="sr-only">Unmute microphone</span>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span>';
     muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
     setStatus(microphoneMuted ? "Microphone muted. Tap Unmute when you're ready to speak." : "Microphone is on.");
   }
@@ -2582,8 +2586,9 @@
     const expanded = !stage.classList.contains("captions-expanded");
     stage.classList.toggle("captions-expanded", expanded);
     captionsToggleButton.setAttribute("aria-expanded", String(expanded));
+    captionsToggleButton.title = expanded ? "Hide captions" : "Show captions";
     captionsToggleButton.setAttribute("aria-label", expanded ? "Hide conversation captions" : "Show conversation captions");
-    captionsToggleButton.textContent = expanded ? "×" : "CC";
+    captionsToggleButton.innerHTML = expanded ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.5a3 3 0 1 0 0 5M17 9.5a3 3 0 1 0 0 5"/></svg>';
   });
   moreControlsButton.addEventListener("click", () => {
     const expanded = !stage.classList.contains("controls-expanded");
@@ -2591,7 +2596,8 @@
     secondaryControls.hidden = !expanded;
     moreControlsButton.setAttribute("aria-expanded", String(expanded));
     moreControlsButton.setAttribute("aria-label", expanded ? "Hide more controls" : "More controls");
-    moreControlsButton.textContent = expanded ? "×" : "•••";
+    moreControlsButton.querySelector(".more-icon").style.display = expanded ? "none" : "";
+    moreControlsButton.querySelector(".close-icon").style.display = expanded ? "" : "none";
   });
   window.addEventListener("pagehide", () => {
     if (active || starting || socket) stopCopilot(false);

@@ -3,37 +3,33 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f5f5f3"><meta name="description" content="AskMoina Live Co-Pilot — real-time voice guidance with a full-screen camera view.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
-<title>Live Co-Pilot · AskMoina</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script><script src="/session-ui.js" defer></script></head>
-<body><main class="camera-app" aria-label="AskMoina live camera co-pilot"><section class="camera-stage" id="cameraStage" aria-label="Live camera view">
+<title>Camera</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script><script src="/session-ui.js" defer></script></head>
+<body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage" id="cameraStage" aria-label="Live camera view">
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
-<div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-placeholder-icon" aria-hidden="true"><svg viewBox="0 0 48 48" role="presentation"><rect x="5" y="12" width="28" height="24" rx="5"></rect><path d="M33 20l10-6v20l-10-6z"></path><circle cx="19" cy="24" r="6"></circle></svg></div><strong>Point. Ask. Follow.</strong><span>Tap Start, then tell Moina what you want to do.</span></div>
-<header class="floating-top"><a class="brand" href="/" aria-label="AskMoina home"><span class="brand-wordmark">AskMoina</span></a><span class="vision-pill">Live camera</span><button type="button" class="logout-control" data-logout>Sign out</button></header>
-<div class="camera-top-badge" id="frameBadge"><span class="live-dot"></span> WAITING FOR CAMERA</div><span class="camera-state" id="cameraState"><span class="state-dot"></span> Camera paused</span>
+<div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-placeholder-icon presence-orb" aria-hidden="true"><span class="presence-core"></span><span class="presence-ribbon ribbon-one"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div><strong class="sr-only">Ready</strong><span class="sr-only">Start the camera and conversation using the call control.</span></div><div class="voice-glow" aria-hidden="true"><span></span><span></span><span></span></div>
+<header class="floating-top"><span aria-hidden="true"></span><div class="top-actions"><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
+<div class="camera-top-badge sr-only" id="frameBadge"><span class="live-dot"></span> WAITING FOR CAMERA</div><span class="camera-state sr-only" id="cameraState"><span class="state-dot"></span> Camera paused</span>
 <div class="focus-marker" id="focusMarker" data-region="center" hidden><div class="focus-brackets" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="focus-card"><span class="focus-eyebrow">MOINA'S FOCUS</span><strong id="focusLabel">Target</strong><span class="focus-hint" id="focusHint"></span><p id="focusInstruction"></p></div><button type="button" id="clearMarker" class="clear-marker" aria-label="Clear focus marker">×</button></div>
-<div class="approx-tag" id="approxTag" hidden>Approximate focus · not world-locked AR</div>
+<div class="approx-tag sr-only" id="approxTag" hidden>Approximate focus · not world-locked AR</div>
 <div class="zoom-dock" aria-label="Camera zoom controls"><button type="button" id="zoomOut" aria-label="Zoom out" disabled>−</button><label class="sr-only" for="zoomSlider">Camera zoom</label><input id="zoomSlider" type="range" min="1" max="3" step="0.1" value="1" aria-label="Camera zoom" disabled><output id="zoomLabel" for="zoomSlider">1×</output><button type="button" id="zoomIn" aria-label="Zoom in" disabled>+</button></div>
-<section class="caption-dock" aria-label="Live conversation"><div class="status-line"><span class="assistant-orb" aria-hidden="true">m</span><div class="status-copy"><strong id="connectionPill" data-state="ready">READY</strong><p id="status" role="status" aria-live="polite">Checking the voice service…</p></div><button type="button" id="toggleCaptions" class="caption-toggle" aria-label="Show conversation captions" aria-controls="transcript" aria-expanded="false">CC</button><span id="availability" class="availability" role="status" aria-live="polite">Checking capacity…</span></div><div class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text"><div class="empty-state" id="emptyTranscript"><p>Tell Moina your goal in your own words.</p><small class="empty-examples">Try: “Set this up” · “Compare these” · “Explain this”</small></div></div><button type="button" id="clearTranscript" class="clear-captions">Clear captions</button></section>
-<nav class="camera-controls" aria-label="Camera and voice controls">
+<section class="caption-dock" aria-label="Conversation captions"><div class="status-line sr-only"><span class="assistant-orb" aria-hidden="true"></span><div class="status-copy"><strong id="connectionPill" data-state="ready">READY</strong><p id="status" role="status" aria-live="polite"> </p></div><span id="availability" class="availability" role="status" aria-live="polite"> </span></div><div class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text"><div class="empty-state sr-only" id="emptyTranscript"></div></div><button type="button" id="clearTranscript" class="clear-captions" aria-label="Clear captions" title="Clear captions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v7M14 11v7M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></section>
+<nav class="camera-controls" aria-label="Call controls">
   <div class="secondary-controls" id="secondaryControls" hidden>
-    <button type="button" id="flipCamera" class="control-pill" disabled><span aria-hidden="true">↻</span> Flip camera</button>
-    <button type="button" id="muteMic" class="control-pill" disabled><span aria-hidden="true">♩</span> Mute</button>
-    <button type="button" id="spatialArButton" class="control-pill spatial-ar-button" hidden disabled title="Open the guided AR view on supported devices"><span aria-hidden="true">◎</span> AR Guide</button>
-    <a class="control-pill secondary-link" href="/vault" aria-label="Open Memory Vault">Memory Vault</a>
+    <button type="button" id="spatialArButton" class="control-icon spatial-ar-button" hidden disabled title="Spatial guide" aria-label="Spatial guide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.5 7.5 4.3 7.5-4.3M12 12v8.5"/></svg></button>
+    <a class="control-icon secondary-link" href="/vault" aria-label="Memories" title="Memories"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></a>
   </div>
   <div class="primary-control-row">
-    <button type="button" id="toggleMoreControls" class="control-pill more-control" aria-label="More controls" aria-controls="secondaryControls" aria-expanded="false">•••</button>
-    <button type="button" id="toggleCopilot" class="control-pill stop-button" disabled aria-pressed="false"><span class="button-symbol" aria-hidden="true">●</span><span id="buttonLabel">Checking voice…</span></button>
+    <button type="button" id="toggleMoreControls" class="control-icon more-control" aria-label="More controls" title="More" aria-controls="secondaryControls" aria-expanded="false"><svg class="more-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg><svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    <button type="button" id="flipCamera" class="control-icon" disabled aria-label="Switch camera" title="Switch camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.5-2L20 9M4 15l2.9 2.5A7 7 0 0 0 18.4 15"/></svg></button>
+    <button type="button" id="muteMic" class="control-icon" disabled aria-label="Mute microphone" title="Mute microphone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span></button>
+    <button type="button" id="toggleCaptions" class="control-icon" aria-label="Show captions" title="Captions" aria-controls="transcript" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.5a3 3 0 1 0 0 5M17 9.5a3 3 0 1 0 0 5"/></svg></button>
+    <button type="button" id="toggleCopilot" class="control-icon stop-button" disabled aria-pressed="false" aria-label="Start call" title="Start call"><svg class="icon-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 14.5c4.5-4 10.5-4 15 0l-2.2 3.1a1.5 1.5 0 0 1-1.7.5l-2.6-1a1.5 1.5 0 0 1-.9-1.4v-.3a8 8 0 0 0-2.2 0v.3a1.5 1.5 0 0 1-.9 1.4l-2.6 1a1.5 1.5 0 0 1-1.7-.5Z"/></svg><svg class="icon-end" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 14.5c4.5-4 10.5-4 15 0l-2.2 3.1a1.5 1.5 0 0 1-1.7.5l-2.6-1a1.5 1.5 0 0 1-.9-1.4v-.3a8 8 0 0 0-2.2 0v.3a1.5 1.5 0 0 1-.9 1.4l-2.6 1a1.5 1.5 0 0 1-1.7-.5Z" transform="rotate(180 12 12)"/></svg><span id="buttonLabel" class="sr-only">Checking voice</span></button>
   </div>
 </nav>
 <div class="spatial-hud spatial-hud-jarvis" id="spatialHud" hidden aria-label="Moina visual guide">
   <section class="spatial-card">
     <header class="spatial-topbar">
-      <div class="spatial-brand">
-        <span class="brand-mark" aria-hidden="true">m</span>
-        <span class="spatial-brand-copy"><strong>Moina</strong><small>VISUAL GUIDE</small></span>
-        <span class="spatial-live-dot" aria-hidden="true"></span>
-        <span class="spatial-live-label">LIVE</span>
-      </div>
+      <div class="spatial-brand"><span class="spatial-live-dot" aria-hidden="true"></span></div>
       <button type="button" id="exitSpatialAr" class="spatial-close" aria-label="Done and return to Co-Pilot">×</button>
     </header>
 
@@ -117,4 +113,4 @@
     </div>
   </section>
 </div>
-<p class="privacy-hint">Camera and microphone start only when you tap Start. Live audio and selected camera frames are processed by Google Cloud Vertex AI; AskMoina does not save raw recordings by default.</p><a class="home-link" href="/">AskMoina</a></section></main></body></html>
+<p class="privacy-hint sr-only">Camera and microphone start when you begin a call. Live audio and selected camera frames are processed by Google Cloud Vertex AI; raw recordings are not saved by default.</p></section></main></body></html>
