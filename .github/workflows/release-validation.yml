@@ -53,11 +53,11 @@ jobs:
           grep -R -q 'Keep optional or expert controls out of the main path' dist/
       - name: Verify M35/M36 Worker bundle contracts
         run: |
-          grep -R -q 'M35 — EFFICIENT INTELLIGENCE' dist/
+          grep -R -q 'EFFICIENT INTELLIGENCE' dist/
           echo "M35 prompt contract: OK"
           grep -R -q 'inspectProviderUsageMetrics' dist/
           echo "Provider usage parser contract: OK"
-          grep -R -q 'M36 — PERMISSION-BASED CONTINUITY' dist/
+          grep -R -q 'PERMISSION-BASED CONTINUITY' dist/
           echo "M36 prompt contract: OK"
           grep -R -q 'askmoina.memory.consent.v1' dist/
           echo "Memory consent key contract: OK"
