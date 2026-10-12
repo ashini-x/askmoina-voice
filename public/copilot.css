@@ -364,3 +364,7 @@
 .safety-pause-notice[data-level="critical"] .safety-pause-title{color:#ffaaaa}
 .safety-pause-copy{margin:0;font-size:.78rem;line-height:1.42;font-weight:620}
 @media(max-width:430px){.safety-pause-notice{top:clamp(82px,15vh,125px);padding:11px 12px}.safety-pause-copy{font-size:.72rem}}
+
+/* M34 — concise, glanceable examples beneath the first-turn invitation. */
+.empty-examples{display:block;margin-top:5px;color:#c2d0d5;font-size:.65rem;line-height:1.4;overflow-wrap:anywhere}
+@media(max-width:430px){.empty-examples{font-size:.61rem}}

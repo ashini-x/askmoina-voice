@@ -1251,12 +1251,12 @@
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.id = "emptyTranscript";
-    const orb = document.createElement("span");
-    orb.className = "empty-orb";
-    orb.setAttribute("aria-hidden", "true");
     const p = document.createElement("p");
-    p.textContent = "Your conversation will appear here. Start the Co-Pilot, point the camera, and ask Moina what you want to understand.";
-    empty.append(orb, p);
+    p.textContent = "Tell Moina your goal in your own words.";
+    const examples = document.createElement("small");
+    examples.className = "empty-examples";
+    examples.textContent = "Try: “Set this up” · “Compare these” · “Explain this”";
+    empty.append(p, examples);
     transcriptNode.appendChild(empty);
   }
 
@@ -1724,7 +1724,7 @@
       setupTimer = null;
       setControls("End Co-Pilot", false);
       setConnectionState("LIVE", "live");
-      setStatus("Connected. Ask Moina naturally in Assamese; tap a visible object to track it locally.");
+      setStatus("Connected. Tell Moina what you want to do in your own words.");
       setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
       startAudioCapture();

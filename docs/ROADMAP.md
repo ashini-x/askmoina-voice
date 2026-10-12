@@ -46,8 +46,8 @@ These milestones supersede the earlier numbering for the work that had not shipp
 
 ### Phase 3 — General-purpose, effortless, efficient, and accessible
 
-- **M33 — Universal task engine:** reuse the same observe/understand/plan/guide/verify/recover capabilities across organization, comparison, setup, assembly, repair, troubleshooting, and learning; validate on held-out tasks rather than only curated demos.
-- **M34 — Zero-learning camera-first UX:** after permission and Start, make the next action obvious and keep mode switches, panels, and expert controls out of the main interaction unless they are genuinely needed.
+- **M33 — Universal task engine (implemented; synthetic prompt-contract checks added; live-model/held-out-task acceptance pending):** extend the same observe/understand/act-or-explain/check/adapt loop across organization, comparison, setup/configuration, assembly, repair, troubleshooting, learning, inspection, planning, creative work, and unfamiliar tasks without forcing a task mode, physical action, or overlay. See [M33 acceptance](acceptance/m33-universal-task-engine.md).
+- **M34 — Zero-learning camera-first UX (implemented; asset/prompt contract checks added; real-device usability acceptance pending):** retain the full camera and single Start action, invite natural-language goals with a few optional examples, explain one next move at a time, and keep technical controls tucked away. See [M34 acceptance](acceptance/m34-zero-learning-camera-ux.md).
 - **M35 — Efficient intelligence:** measure latency and inference cost; use fast local techniques for suitable low-latency work and higher-capability reasoning for difficult cases, with explicit fallback behavior.
 - **M36 — Permission-based continuity:** make saved memory optional, inspectable, correctable, exportable, and deletable; keep the core copilot useful without saved memory.
 - **M37 — Assam-first, world-ready speech:** evaluate real Upper Assam speakers and natural Assamese-English code-switching, then broaden language and accent coverage through measured test suites rather than intuition.
