@@ -26,7 +26,7 @@ describe("M22 AI-directed visual guide contract", () => {
   it("gives the model a bounded visual primitive vocabulary and coordinates", () => {
     expect(workerSource).toContain("AI-DIRECTED VISUAL GUIDANCE — SHOW, DO NOT JUST TELL:");
     expect(workerSource).toContain("visual_elements");
-    expect(workerSource).toContain('["line", "arrow", "circle", "rect", "tick", "label"]');
+    expect(workerSource).toContain('["line", "arrow", "circle", "rect", "tick", "label", "polyline", "polygon"]');
     expect(workerSource).toContain("normalized 0–1000");
   });
 
