@@ -2,6 +2,14 @@
   "use strict";
 
   const $ = (selector) => document.querySelector(selector);
+  const backButton = $("#backButton");
+  if (backButton) backButton.addEventListener("click", () => {
+    const referrer = document.referrer;
+    let sameOriginReferrer = false;
+    try { sameOriginReferrer = Boolean(referrer) && new URL(referrer).origin === location.origin; } catch (_) {}
+    if (sameOriginReferrer && history.length > 1) history.back();
+    else location.assign("/");
+  });
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
   const connectionNotice = $("#connectionNotice");
