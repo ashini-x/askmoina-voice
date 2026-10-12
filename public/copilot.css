@@ -478,3 +478,5 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 @media(max-width:520px){.logout-control{width:38px;height:38px}.control-icon{width:46px;height:46px;min-height:46px}.stop-button{width:56px;height:56px;min-height:56px}.primary-control-row{gap:clamp(8px,2.7vw,14px);padding:0 12px}.camera-controls{bottom:calc(max(20px,env(safe-area-inset-bottom) + 12px))}.caption-dock{bottom:calc(100px + env(safe-area-inset-bottom))}.presence-orb{max-width:39svh!important;max-height:39svh!important}}
 @media(max-width:360px){.primary-control-row{gap:7px;padding:0 9px}.control-icon{width:42px;height:42px;min-height:42px}.stop-button{width:53px;height:53px;min-height:53px}}
 @media(prefers-reduced-motion:reduce){.presence-orb *, .presence-orb:before,.presence-orb:after,.voice-glow span{animation:none!important}.control-icon,.logout-control{transition:none!important}}
+
+.focus-eyebrow{display:none!important}
