@@ -423,14 +423,17 @@
     connectionNotice.setAttribute("role", (isError || stillRecovering) ? "alertdialog" : "status");
     connectionNotice.setAttribute("aria-live", (isError || stillRecovering) ? "assertive" : "polite");
     connectionNoticeProgress.hidden = isError;
-    connectionNoticeAction.hidden = !isError;
+    const canRetryNow = isError || kind === "slow" || stillRecovering;
+    connectionNoticeAction.hidden = !canRetryNow;
+    connectionNoticeAction.textContent = isError ? "Try again" : "Reconnect now";
+    if (isError || kind === "slow") connectionNoticeAction.disabled = false;
     connectionNotice.hidden = false;
     stage.classList.add("has-notice");
   }
 
   function hideConnectionNotice(resolved = false) {
     if (persistentConnectionIssue && !resolved) return;
-    if (resolved) persistentConnectionIssue = null;
+    if (resolved) { persistentConnectionIssue = null; if (connectionNoticeAction) connectionNoticeAction.disabled = false; }
     if (connectionNotice) connectionNotice.hidden = true;
     stage.classList.remove("has-notice");
   }
@@ -451,7 +454,7 @@
     stage.classList.add("is-connecting");
     setConnectionState("RECONNECTING", "connecting");
     setStatus(message || "The network is taking longer than usual. Reconnecting…", "warning");
-    showConnectionNotice("Network is slow", "The connection was interrupted. Checking the network and reconnecting…", "connecting");
+    showConnectionNotice("Network is slow", "The connection was interrupted. Checking the network and reconnecting…", "slow");
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null;
       if (active || starting) return;
@@ -2050,24 +2053,29 @@
   function playConnectionChime() {
     if (!audioContext || audioContext.state !== "running") return;
     const baseTime = audioContext.currentTime + 0.018;
-    // Original bright glass tones with a clearer attack and more audible level.
+    // Original airy, glass-like "bloom" cue: fast rising notes with a soft high shimmer.
+    // It evokes a polished spatial assistant without copying Apple's proprietary sound.
     const notes = [
-      { frequency: 659.25, offset: 0, duration: 0.20 },
-      { frequency: 830.61, offset: 0.075, duration: 0.25 },
-      { frequency: 1046.5, offset: 0.15, duration: 0.31 }
+      { frequency: 493.88, offset: 0, duration: 0.25, peak: 0.054, type: "sine" },
+      { frequency: 659.25, offset: 0.045, duration: 0.31, peak: 0.049, type: "sine" },
+      { frequency: 987.77, offset: 0.105, duration: 0.37, peak: 0.039, type: "sine" },
+      { frequency: 1481.0, offset: 0.145, duration: 0.24, peak: 0.012, type: "triangle" }
     ];
     for (const note of notes) {
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, baseTime + note.offset);
-      gain.gain.setValueAtTime(0.0001, baseTime + note.offset);
-      gain.gain.exponentialRampToValueAtTime(0.095, baseTime + note.offset + 0.016);
-      gain.gain.exponentialRampToValueAtTime(0.0001, baseTime + note.offset + note.duration);
+      const at = baseTime + note.offset;
+      oscillator.type = note.type;
+      oscillator.frequency.setValueAtTime(note.frequency, at);
+      oscillator.detune.setValueAtTime(-2, at);
+      oscillator.detune.linearRampToValueAtTime(2, at + note.duration * 0.72);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(note.peak, at + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + note.duration);
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
-      oscillator.start(baseTime + note.offset);
-      oscillator.stop(baseTime + note.offset + note.duration + 0.02);
+      oscillator.start(at);
+      oscillator.stop(at + note.duration + 0.025);
     }
   }
 
@@ -2075,24 +2083,25 @@
     if (!audioContext || audioContext.state !== "running") return;
     const baseTime = audioContext.currentTime + 0.012;
     disconnectToneUntil = performance.now() + 520;
-    // A distinct original downward glass tone marks an ended session.
+    // Different, warmer descending two-step release tone for leaving a live session.
     const notes = [
-      { frequency: 880, offset: 0, duration: 0.14, peak: 0.075 },
-      { frequency: 659.25, offset: 0.085, duration: 0.20, peak: 0.09 },
-      { frequency: 523.25, offset: 0.17, duration: 0.25, peak: 0.07 }
+      { frequency: 587.33, offset: 0, duration: 0.15, peak: 0.038, type: "sine" },
+      { frequency: 440.0, offset: 0.075, duration: 0.21, peak: 0.043, type: "sine" },
+      { frequency: 349.23, offset: 0.17, duration: 0.26, peak: 0.031, type: "triangle" }
     ];
     for (const note of notes) {
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, baseTime + note.offset);
-      gain.gain.setValueAtTime(0.0001, baseTime + note.offset);
-      gain.gain.exponentialRampToValueAtTime(note.peak, baseTime + note.offset + 0.014);
-      gain.gain.exponentialRampToValueAtTime(0.0001, baseTime + note.offset + note.duration);
+      const at = baseTime + note.offset;
+      oscillator.type = note.type;
+      oscillator.frequency.setValueAtTime(note.frequency, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(note.peak, at + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + note.duration);
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
-      oscillator.start(baseTime + note.offset);
-      oscillator.stop(baseTime + note.offset + note.duration + 0.02);
+      oscillator.start(at);
+      oscillator.stop(at + note.duration + 0.025);
     }
   }
 
@@ -2136,6 +2145,7 @@
     clearOverlay();
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
+    if (connectionNoticeAction) connectionNoticeAction.disabled = Boolean(persistentConnectionIssue);
     setStatus("Checking availability and requesting camera + microphone access…");
     showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting");
     const preflight = await refreshAvailabilityAfterRelease();
@@ -2886,15 +2896,29 @@
   }
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {
+      if (connectionNoticeAction.disabled) return;
+      connectionNoticeAction.disabled = true;
       automaticReconnectAttempts = 0;
       isAutomaticRetry = false;
-      showConnectionNotice("Reconnecting…", "Retrying the camera, microphone, and voice connection…", "connecting");
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      if (active || starting) stopCopilot(false, null, null, true);
+      // Re-open the camera preview in parallel with the AJAX/WebSocket retry.
+      // startCopilot shares and awaits the pending preview request, so the camera appears first.
+      void prepareCameraPreview();
+      showConnectionNotice("Reconnecting…", "Reopening the camera and restoring your live connection…", "connecting");
       void startCopilot();
     });
   }
   toggleButton.addEventListener("click", () => {
-    if (active || starting) stopCopilot(true);
-    else void startCopilot();
+    if (active || starting) {
+      stopCopilot(true);
+      stage.classList.add("is-returning");
+      // Let the distinct end tone finish before returning to the Vision card chooser.
+      window.setTimeout(() => window.location.replace("/"), 455);
+    } else {
+      void startCopilot();
+    }
   });
   flipButton.addEventListener("click", () => { void flipCamera(); });
   muteButton.addEventListener("click", toggleMicrophoneMute);
