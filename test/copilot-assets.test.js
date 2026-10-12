@@ -261,7 +261,8 @@ describe("Live Co-Pilot browser assets", () => {
   });
 
   it("makes Vision feel responsive and keeps error recovery in place", () => {
-    expect(html).toContain('id="intelligenceIntro"');
+    expect(html).not.toContain('id="intelligenceIntro"');
+    expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).toContain('class="vision-slide-copy"');
     expect(html).toContain("Slide to show your problem");
