@@ -31,7 +31,9 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
   });
 
   it("keeps the post-connection cue conversational and avoids expert-only instructions", () => {
-    expect(script).toContain('setStatus("Connected. Tell Moina what you want to do in your own words.");');
+    expect(script).toContain("initial_greeting: true");
+    expect(script).toContain("playConnectionChime");
+    expect(script).toContain("function beginListeningAfterGreeting()");
     expect(workerSource).toContain("M34 — ZERO-LEARNING CAMERA-FIRST UX:");
     expect(workerSource).toContain("Do not narrate interface mechanics such as overlays, task categories, internal state, or function names unless the user asks.");
     expect(workerSource).toContain("Keep optional or expert controls out of the main path");
