@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M23 visual-guide brain implemented; synthetic checks and physical-task acceptance tracked separately)
+Last updated: 2026-10-12 (M24 trustworthy camera geometry implemented and synthetically verified; physical-device acceptance pending)
 
 ## Product vision
 
@@ -31,7 +31,7 @@ These milestones supersede the earlier numbering for the work that had not shipp
 ### Phase 1 — Make the visual loop trustworthy
 
 - **M23 — Visual-guide brain (implemented; deployed foundation; real-task acceptance pending):** the model proactively decides when a visual instruction will materially help, chooses the smallest useful primitive set, draws tap-free geometric references when object identity is not required, and avoids invented geometry or false success marks. Automated prompt/tool-contract tests are not proof of live-model reliability. See [M23 acceptance](acceptance/m23-visual-guide-brain.md).
-- **M24 — Trustworthy camera geometry:** validate the mapping from source camera frame to on-screen drawing under portrait/landscape, crop, resize, mirrored preview, and zoom. Clear stale guidance when coordinates cease to be valid.
+- **M24 — Trustworthy camera geometry (implemented; synthetic checks passed; real-device acceptance pending):** map normalized source-frame coordinates through object-fit cover and viewport crop, support a mirrored front-camera preview consistently for visual guides and local target tracking, recompute guide geometry after viewport resize, and clear camera-dependent guidance on zoom changes, intrinsic video resize, tab hiding, or camera flip. Model-bound digital zoom uses the same centered crop as the preview, so guides remain normalized to the currently visible frame; native zoom acts on the camera stream. See [M24 acceptance](acceptance/m24-trustworthy-camera-geometry.md).
 - **M25 — Live scene model:** maintain evidence-tagged objects/parts, surfaces, relations, candidate identities, and confidence across recent frames; make uncertainty explicit when candidate identity or geometry is not established.
 - **M26 — Persistent spatial tracking:** keep the intended target or guide associated across camera movement, occlusion, and reacquisition without silently switching objects. Avoid presenting approximate screen hints as world-locked tracking.
 - **M27 — Automatic visual verification:** compare the relevant before/after state and classify it as supported success, supported failure/no change, or ambiguous; use stronger evidence for consequential outcomes.
