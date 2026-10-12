@@ -954,10 +954,9 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     setStatus("Checking availability and requesting camera + microphone access…");
-    const endedRecently = Date.now() - lastSessionEndedAt < 15_000;
-    const preflight = endedRecently
-      ? await refreshAvailabilityAfterRelease()
-      : await refreshAvailability();
+    // Always retry a brief already-active response: it can be a stale lock
+    // left by a previous tab or a release that is still completing.
+    const preflight = await refreshAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
       setControls("Start Co-Pilot", false);
