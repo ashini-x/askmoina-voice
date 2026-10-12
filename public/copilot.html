@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#090b0f"><meta name="description" content="AskMoina Live Co-Pilot — real-time voice guidance with a full-screen camera view.">
+<meta name="theme-color" content="#f5f5f3"><meta name="description" content="AskMoina Live Co-Pilot — real-time voice guidance with a full-screen camera view.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
-<title>Live Co-Pilot · AskMoina</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script></head>
+<title>Live Co-Pilot · AskMoina</title><link rel="stylesheet" href="/copilot.css"><script src="/transcript-merge.js" defer></script><script src="/copilot.js" defer></script><script src="/session-ui.js" defer></script></head>
 <body><main class="camera-app" aria-label="AskMoina live camera co-pilot"><section class="camera-stage" id="cameraStage" aria-label="Live camera view">
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
 <div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-placeholder-icon" aria-hidden="true"><svg viewBox="0 0 48 48" role="presentation"><rect x="5" y="12" width="28" height="24" rx="5"></rect><path d="M33 20l10-6v20l-10-6z"></path><circle cx="19" cy="24" r="6"></circle></svg></div><strong>Point. Ask. Follow.</strong><span>Tap Start, then tell Moina what you want to do.</span></div>
-<header class="floating-top"><a class="brand" href="/" aria-label="AskMoina home"><span class="brand-mark" aria-hidden="true">m</span><span>Moina</span></a><span class="vision-pill"><span class="live-dot"></span> LIVE VISION</span></header>
+<header class="floating-top"><a class="brand" href="/" aria-label="AskMoina home"><span class="brand-wordmark">AskMoina</span></a><span class="vision-pill">Live camera</span><button type="button" class="logout-control" data-logout>Sign out</button></header>
 <div class="camera-top-badge" id="frameBadge"><span class="live-dot"></span> WAITING FOR CAMERA</div><span class="camera-state" id="cameraState"><span class="state-dot"></span> Camera paused</span>
 <div class="focus-marker" id="focusMarker" data-region="center" hidden><div class="focus-brackets" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="focus-card"><span class="focus-eyebrow">MOINA'S FOCUS</span><strong id="focusLabel">Target</strong><span class="focus-hint" id="focusHint"></span><p id="focusInstruction"></p></div><button type="button" id="clearMarker" class="clear-marker" aria-label="Clear focus marker">×</button></div>
 <div class="approx-tag" id="approxTag" hidden>Approximate focus · not world-locked AR</div>
