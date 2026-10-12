@@ -878,16 +878,16 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 /* Voice pulse intensity is driven by live audio levels, not a guessed CSS rhythm. */
 .camera-stage.is-listening .edge-glow:before,
 .camera-stage.is-speaking .edge-glow:before{
-  padding:var(--voice-edge-width,3.3px);
+  padding:var(--voice-edge-width,2.5px);
   animation:edge-spectrum 4.5s linear infinite;
   filter:brightness(var(--voice-brightness,1));
 }
 .camera-stage.is-listening .edge-glow:after,
 .camera-stage.is-speaking .edge-glow:after{
-  padding:var(--voice-halo-width,5px);
+  padding:var(--voice-halo-width,4px);
   opacity:var(--voice-halo-opacity,.45);
   animation:edge-spectrum 4.5s linear infinite;
-  filter:blur(18px) brightness(var(--voice-brightness,1));
+  filter:blur(15px) brightness(var(--voice-brightness,1));
 }
 @media(prefers-reduced-motion:reduce){
   .vision-slide-chevron{animation:none!important}
@@ -895,4 +895,28 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
   .camera-stage.is-speaking .edge-glow:before,
   .camera-stage.is-listening .edge-glow:after,
   .camera-stage.is-speaking .edge-glow:after{animation:none!important}
+}
+
+
+/* Match the live edge to the rotating AskMoina orb's signature spectrum. */
+.edge-glow:before,
+.edge-glow:after{
+  background:conic-gradient(
+    from var(--edge-angle,10deg),
+    #81caff 0deg,
+    #ac9eff 72deg,
+    #efb7db 144deg,
+    #90e8dc 216deg,
+    #a4b8ff 288deg,
+    #81caff 360deg
+  ) !important;
+}
+.camera-stage.is-listening .edge-glow:before,
+.camera-stage.is-speaking .edge-glow:before{
+  padding:var(--voice-edge-width,2.5px);
+}
+.camera-stage.is-listening .edge-glow:after,
+.camera-stage.is-speaking .edge-glow:after{
+  padding:var(--voice-halo-width,4px);
+  filter:blur(15px) brightness(var(--voice-brightness,1));
 }
