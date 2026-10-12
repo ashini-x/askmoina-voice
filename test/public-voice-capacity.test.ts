@@ -61,12 +61,22 @@ describe("account-only voice access", () => {
     expect(objectNames).toHaveLength(0);
   });
 
-  it("redirects guests from the home page and camera co-pilot", async () => {
-    for (const path of ["/", "/copilot"]) {
-      const response = await worker.fetch(new Request("https://askmoina.test" + path), testEnv([]), ctx);
-      expect(response.status).toBe(302);
-      expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
-    }
+  it("serves a sign-in overlay at root but does not permit guest camera sessions", async () => {
+    const objectNames: string[] = [];
+    const env = testEnv(objectNames);
+    const root = await worker.fetch(new Request("https://askmoina.test/"), env, ctx);
+    expect(root.status).toBe(200);
+    expect(root.headers.get("Set-Cookie")).toBeNull();
+    const html = await root.text();
+    expect(html).toContain('data-entry-state="login"');
+    expect(html).toContain('aria-label="Secure sign in"');
+    expect(html).not.toContain('<script src="/copilot.js"');
+    expect(objectNames).toHaveLength(0);
+
+    const copilot = await worker.fetch(new Request("https://askmoina.test/copilot"), env, ctx);
+    expect(copilot.status).toBe(302);
+    expect(copilot.headers.get("Location")).toBe("https://askmoina.test/");
+    expect(objectNames).toHaveLength(0);
   });
 });
 
