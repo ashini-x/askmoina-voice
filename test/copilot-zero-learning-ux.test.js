@@ -42,6 +42,8 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(workerSource).toContain("M34 — ZERO-LEARNING CAMERA-FIRST UX:");
     expect(workerSource).toContain("Do not narrate interface mechanics such as overlays, task categories, internal state, or function names unless the user asks.");
     expect(workerSource).toContain("Keep optional or expert controls out of the main path");
+    expect(workerSource).toContain("Under development");
+    expect(workerSource).not.toContain(">In development</span>");
   });
 
   it("keeps client assets syntactically valid and synchronized with the Worker bundle", () => {

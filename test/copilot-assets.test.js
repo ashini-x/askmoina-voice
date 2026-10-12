@@ -260,18 +260,29 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("min-width:61px!important;max-width:61px");
   });
 
-  it("makes Vision a swipe-to-start control and keeps real errors visible until successful recovery", () => {
+  it("makes Vision feel responsive and keeps error recovery in place", () => {
     expect(html).toContain('id="intelligenceIntro"');
     expect(html).toContain('id="visionSlideHandle"');
+    expect(html).toContain('class="vision-slide-copy"');
     expect(html).toContain("Slide to show your problem");
     expect(script).toContain('showProblemButton.addEventListener("pointermove"');
     expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
     expect(script).toContain("function hideConnectionNotice(resolved = false)");
     expect(script).toContain("hideConnectionNotice(true)");
+    expect(script).toContain('connectionNoticeAction.textContent = isError ? "Try again" : "Reconnect now"');
+    expect(script).toContain('showConnectionNotice("Network is slow"');
+    expect(script).toContain('"slow");');
+    expect(script).toContain("void prepareCameraPreview();");
+    expect(script).toContain('window.location.replace("/")');
+    expect(script).toContain("function playConnectionChime()");
+    expect(script).toContain("function playDisconnectSound()");
+    expect(script).toContain("airy, glass-like");
     expect(css).toContain("@keyframes intelligence-intro-arrive");
+    expect(css).toContain("@keyframes vision-text-shimmer");
+    expect(css).toContain(".vision-slide-copy{");
+    expect(css).toContain("brightness(1.32)");
     expect(css).toContain(".camera-stage.has-notice #videoPreview");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
-    expect(css).toContain("opacity:0!important;animation:none!important");
   });
 
 });
