@@ -13,6 +13,7 @@
   let reconnectTimer = null;
   let isAutomaticRetry = false;
   let lastMicVoiceAt = 0;
+  let disconnectToneUntil = 0;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
@@ -1446,7 +1447,7 @@
       for (let i = 0; i < samples.length; i += 1) sumSquares += samples[i] * samples[i];
       const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
       const now = performance.now();
-      if (rms > 0.018) {
+      if (rms > 0.012) {
         lastMicVoiceAt = now;
         stage.classList.add("is-listening");
       } else if (now - lastMicVoiceAt > 145) {
@@ -1781,7 +1782,13 @@
     if (audioContext) {
       const previous = audioContext;
       audioContext = null;
-      previous.close().catch(() => {});
+      const waitForDisconnectTone = Math.max(0, disconnectToneUntil - performance.now());
+      if (waitForDisconnectTone > 0) {
+        window.setTimeout(() => { previous.close().catch(() => {}); }, waitForDisconnectTone);
+        disconnectToneUntil = 0;
+      } else {
+        previous.close().catch(() => {});
+      }
     }
     const livePreviewTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
     if (livePreviewTrack) {
@@ -2056,6 +2063,7 @@
   function playDisconnectSound() {
     if (!audioContext || audioContext.state !== "running") return;
     const baseTime = audioContext.currentTime + 0.012;
+    disconnectToneUntil = performance.now() + 520;
     // A distinct original downward glass tone marks an ended session.
     const notes = [
       { frequency: 880, offset: 0, duration: 0.14, peak: 0.075 },
