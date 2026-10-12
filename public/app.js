@@ -87,7 +87,10 @@
     try {
       const response = await fetch("/api/voice/status", { cache: "no-store", headers: { Accept: "application/json" } });
       const result = await response.json();
-      if (response.status === 401) { location.href = "/login"; return null; }
+      if (response.status === 401) {
+        location.href = "/login";
+        return { available: false, reason: "authentication_required", message: "Your account session expired. Sign in again." };
+      }
       if (!response.ok || !result || typeof result.available !== "boolean") {
         throw new Error("Voice availability could not be checked.");
       }
@@ -97,7 +100,6 @@
       if (result.available) {
         setAvailability(result.message || "Voice is ready. Provider limits may apply.", "normal");
       } else {
-        setAvailability("Voice unavailable right now. See the status above for the reason.", "error");      } else {
         setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
         if (result.message) setStatus(result.message, "error");
       }
@@ -112,21 +114,8 @@
   }
 
   async function refreshVoiceAvailabilityAfterRelease() {
-    let result = null;
-    // A socket close and its server-side reservation release are asynchronous.
-    // Retry briefly before showing the stale-active message to the user.
-    for (let attempt = 0; attempt < 9; attempt += 1) {
-      result = await refreshVoiceAvailability();
-      if (!result || result.available || result.reason !== "already_active") break;
-      if (attempt < 8) {
-        setStatus("Finishing the previous connection…");
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
-      }
-    }
-    if (result && !result.available && result.reason === "already_active") {
-      setStatus("A previous connection is still clearing. Please try again shortly, or end the conversation in another tab if one is open.", "error");
-    }
-    return result;
+    // Application-side active-session reservations are disabled; only provider availability remains.
+    return refreshVoiceAvailability();
   }
 
   function setButton(label, disabled) {
@@ -513,9 +502,7 @@
       starting = false;
       setButton("Start talking", false);
       setStatus(
-        preflight.reason === "already_active"
-          ? "A previous connection is still clearing. Try again shortly, or end the conversation in another tab if one is open."
-          : preflight.message || "Voice is not available right now. Please try again later.",
+        preflight.message || "Voice is not available right now. Please try again later.",
         "error",
       );
       return;

@@ -8,6 +8,11 @@ describe("voice media backpressure without app usage caps", () => {
     expect(worker).not.toContain('closeBoth(1008, "Audio input rate limit exceeded")');
     expect(worker).toContain("audioFramesThrottled");
   });
+  it("does not show a browser-wide active conversation lock after app reservations were removed", () => {
+    expect(client).not.toContain("A previous connection is still clearing");
+    expect(copilot).not.toContain("A voice conversation is still active for this browser");
+    expect(copilot).not.toContain('result.reason === "already_active"');
+  });
   it("does not queue stale microphone audio during a network stall", () => {
     expect(client).toContain("socket.bufferedAmount > 96 * 1024");
     expect(copilot).toContain("socket.bufferedAmount > 96 * 1024");

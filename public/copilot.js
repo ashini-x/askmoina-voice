@@ -1233,18 +1233,20 @@
         headers: { Accept: "application/json" }
       });
       const result = await response.json();
+      if (response.status === 401) {
+        location.href = "/login";
+        return { available: false, reason: "authentication_required", message: "Your account session expired. Sign in again." };
+      }
       if (!response.ok || !result || typeof result.available !== "boolean") {
         throw new Error("Voice availability could not be checked.");
       }
       voiceAvailability = result;
       if (sequence !== availabilitySequence) return result;
       if (result.available) {
-        const minutes = Math.max(1, Math.ceil((Number(result.maxSessionSeconds) || 540) / 60));
-        setAvailability("Available · up to " + minutes + " minutes this conversation. Camera frames are reduced and sent about once per second.", "normal");
+        setAvailability("Available · no AskMoina usage quota; provider limits may apply. Camera frames are reduced and sent about once per second.", "normal");
       } else {
-        const pendingRelease = options.quietActiveLock === true && result.reason === "already_active";
-        setAvailability("Voice unavailable right now. See the status above for the reason.", pendingRelease ? "warning" : "error");
-        if (!pendingRelease) setStatus(result.message || "Voice is not available right now.", "error");
+        setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
+        if (result.message) setStatus(result.message, "error");
       }
       return result;
     } catch (_) {
@@ -1257,19 +1259,8 @@
   }
 
   async function refreshAvailabilityAfterRelease() {
-    let result = null;
-    // Closing a WebSocket and releasing its Durable Object reservation are asynchronous.
-    // Retry briefly to avoid presenting that tiny handoff window as a second live session.
-    for (let attempt = 0; attempt < 9; attempt += 1) {
-      result = await refreshAvailability({ quietActiveLock: true });
-      if (!result || result.available || result.reason !== "already_active") break;
-      if (attempt < 8) await new Promise((resolve) => window.setTimeout(resolve, 250));
-    }
-    if (result && !result.available && result.reason === "already_active") {
-      setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
-      setStatus(result.message || "A voice conversation is still active for this browser.", "error");
-    }
-    return result;
+    // No application-side concurrent-session reservation remains; do not retry a stale browser lock.
+    return refreshAvailability();
   }
 
   function resetTranscript() {
@@ -1905,17 +1896,13 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     setStatus("Checking availability and requesting camera + microphone access…");
-    // Always retry a brief already-active response: it can be a stale lock
-    // left by a previous tab or a release that is still completing.
     const preflight = await refreshAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
       setControls("Start Co-Pilot", false);
       setConnectionState("BUSY", "error");
       setStatus(
-        preflight.reason === "already_active"
-          ? "A previous connection is still clearing. Try again shortly, or end the conversation in another tab if one is open."
-          : preflight.message || "Voice isn't available right now.",
+        preflight.message || "Voice isn't available right now.",
         "error",
       );
       return;
