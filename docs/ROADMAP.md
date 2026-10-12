@@ -44,7 +44,7 @@ Milestones 1–22 are deployed on the production Worker; a follow-up tracking-an
 - **Final destination — General-purpose visual copilot:** a user can show Moina a real-world problem, converse naturally, receive evidence-grounded guidance, see AI-selected visual guides and relevant targets, and have the guidance adapt as the situation changes.
 
 ## Product loop
-See → Understand → Select → Track → Guide → Verify → Recover.
+See → Understand → Select → Plan a visual guide → Render → Track → Guide → Verify → Recover.
 
 Every milestone should strengthen this loop. UI effects and 3D cues are secondary to reliable target selection, context, problem solving, and safe adaptation.
 
