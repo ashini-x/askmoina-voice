@@ -57,4 +57,37 @@ describe("M22 AI-directed visual guide contract", () => {
     expect(workerSource).toContain("tick on screen is a model-provided visual judgement");
     expect(readFileSync(new URL("../docs/ROADMAP.md", import.meta.url), "utf8")).toContain("dependable automatic progress verification remains future work");
   });
+
+describe("M23 proactive visual-guide brain", () => {
+  it("instructs the model to draw useful low-risk spatial guides without waiting for an explicit drawing request", () => {
+    expect(workerSource).toContain("VISUAL-GUIDE BRAIN — DECIDE PROACTIVELY:");
+    expect(workerSource).toContain("Do not wait for the user to explicitly ask for a drawing");
+    expect(workerSource).toContain("alignment, direction, placement, matching, or relative position");
+    expect(workerSource).toContain("three cups are visible and the user wants them in a straight line");
+  });
+
+  it("prefers the minimum helpful primitives instead of decorative or overcomplicated graphics", () => {
+    expect(workerSource).toContain("Prefer one to three primitives");
+    expect(workerSource).toContain("Never decorate the scene or draw redundant graphics");
+    expect(workerSource).toContain("tool accepts at most eight primitives, which is a safety bound rather than a target");
+  });
+
+  it("permits tap-free geometric references while refusing to guess an ambiguous object identity", () => {
+    expect(workerSource).toContain("Set visual_only=true with visual_elements for geometric references");
+    expect(workerSource).toContain("A guide line or direction arrow alone is not a reason to request a user tap");
+    expect(workerSource).toContain("ask one brief question or request a tap to resolve identity");
+  });
+
+  it("requires fresh evidence, clears misleading guides, and refuses guessed success marks", () => {
+    expect(workerSource).toContain("call display_screen_overlay without visual_elements to clear it");
+    expect(workerSource).toContain("A persuasive but guessed overlay is worse than a clear question");
+    expect(workerSource).toContain("do not transform a guide into a false completion claim");
+  });
+
+  it("advertises proactive visual drawing through the actual model tool description", () => {
+    expect(workerSource).toContain("Proactively use this tool when a compact visual cue would clarify a low-risk physical action");
+    expect(workerSource).toContain("Set visual_only=true for geometric guides");
+  });
+});
+
 });
