@@ -45,7 +45,9 @@ describe("M30 model-aware grounded expertise", () => {
     expect(normalizeGroundedDeviceContext({ model_id: "unknown", requested_material: "make-up" })).toEqual({
       manufacturer: "", model_id: "unknown", variant: "", part_number: "", requested_material: ""
     });
-    expect(normalizeGroundedDeviceContext(null)).toEqual({});
+    expect(normalizeGroundedDeviceContext(null)).toEqual({
+      manufacturer: "", model_id: "", variant: "", part_number: "", requested_material: ""
+    });
   });
 
   it("only reports model text as present when all provided identifiers appear in title or URL", () => {
