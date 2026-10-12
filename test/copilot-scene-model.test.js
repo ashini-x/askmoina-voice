@@ -48,7 +48,7 @@ describe("M25 live evidence-tagged scene model", () => {
     expect(model.frameSequence).toBe(7);
     expect(model.viewGeneration).toBe(2);
     expect(model.observations).toHaveLength(2);
-    expect(model.observations[0]).toMatchObject({
+    expect(model.observations.find(item => item.id === "cup_a")).toMatchObject({
       id: "cup_a", label: "blue cup", evidence: "direct", confidence: 0.92,
       screenRegion: "upper-left", visible: true, frameSequence: 7, viewGeneration: 2
     });
