@@ -15,6 +15,13 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "f1", name: "display_screen_overlay" }] } }, false)).toBeNull();
   });
 
+  it("accepts the one-shot initial greeting signal only in Co-Pilot mode", () => {
+    expect(parseLiveClientInput({ initial_greeting: true }, true)).toEqual({ kind: "initial_greeting" });
+    expect(parseLiveClientInput({ initial_greeting: true }, false)).toBeNull();
+    expect(parseLiveClientInput({ initial_greeting: false }, true)).toBeNull();
+    expect(parseLiveClientInput({ initial_greeting: true, extra: true }, true)).toBeNull();
+  });
+
   it("accepts normalized target-selection points only in Co-Pilot mode", () => {
     expect(parseLiveClientInput({ target_selection: { x: 0.34, y: 0.72 } }, true)).toEqual({
       kind: "target_selection",
