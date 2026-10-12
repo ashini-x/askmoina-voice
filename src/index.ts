@@ -11,6 +11,7 @@ import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
+import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
 
 export { UserState } from "./sessions/user-state";
 
@@ -345,66 +346,6 @@ function hasVertexCredentials(env: Env): boolean {
   const hasJson = Boolean(env.GCP_SERVICE_ACCOUNT_JSON?.trim());
   const hasSplitSecrets = Boolean(env.GCP_CLIENT_EMAIL?.trim() && env.GCP_PRIVATE_KEY?.trim());
   return Boolean(env.GCP_PROJECT_ID?.trim() && (hasJson || hasSplitSecrets));
-}
-
-/**
- * @param {any} raw
- * @returns {{manufacturer: string, model_id: string, variant: string, part_number: string, requested_material: string}}
- */
-function normalizeGroundedDeviceContext(raw) {
-  const empty = { manufacturer: "", model_id: "", variant: "", part_number: "", requested_material: "" };
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
-  /** @param {any} value @param {number} [limit] @returns {string} */
-  const clean = (value, limit = 100) => typeof value === "string"
-    ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, limit)
-    : "";
-  const material = clean(raw.requested_material, 24);
-  return {
-    manufacturer: clean(raw.manufacturer, 80),
-    model_id: clean(raw.model_id, 80),
-    variant: clean(raw.variant, 80),
-    part_number: clean(raw.part_number, 80),
-    requested_material: ["manual", "diagram", "troubleshooting", "recall", "compatibility", "general"].includes(material)
-      ? material : ""
-  };
-}
-
-/**
- * @param {string} title
- * @param {string} uri
- * @param {any} context
- */
-function assessGroundedSource(title, uri, context) {
-  /** @param {any} value @returns {string} */
-  const clean = (value) => String(value || "").normalize("NFKD").toLocaleLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").trim();
-  const text = clean(String(title || "") + " " + String(uri || ""));
-  const contextValue = context && typeof context === "object" ? context : {};
-  const identifiers = [contextValue.model_id, contextValue.variant, contextValue.part_number]
-    .filter((value) => typeof value === "string" && value.trim().length >= 4)
-    .map(clean);
-  const allIdentifiersVisible = identifiers.length > 0 && identifiers.every((identifier) => identifier && text.includes(identifier));
-  const manufacturerTokens = clean(contextValue.manufacturer).split(" ").filter((token) => token.length >= 4);
-  let hostLabels = [];
-  try {
-    const url = new URL(uri);
-    if (url.protocol === "https:" || url.protocol === "http:") hostLabels = url.hostname.toLocaleLowerCase().split(".");
-  } catch {}
-  const hostBrandHint = manufacturerTokens.some((token) => hostLabels.includes(token));
-  let matchNote;
-  if (identifiers.length && allIdentifiersVisible) {
-    matchNote = "requested model/variant text appears in the source title or URL; the page content still requires inspection";
-  } else if (identifiers.length) {
-    matchNote = "exact model/variant match is not established by the source title or URL";
-  } else {
-    matchNote = "no exact model identifier was provided; model-specific applicability is unverified";
-  }
-  if (hostBrandHint) matchNote += "; hostname contains a manufacturer-name hint only, not verified domain ownership";
-  return {
-    modelTextMatch: allIdentifiersVisible ? "visible_in_title_or_url" : "not_established",
-    manufacturerHostHint: hostBrandHint,
-    note: matchNote
-  };
 }
 
 /**
