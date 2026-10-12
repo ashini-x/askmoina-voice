@@ -11,14 +11,15 @@ Keep the user's actual goal, current reported/observed state, intended next acti
 - Distinguish a user report of success/failure/uncertainty from the M27 guarded visual-verification result. The model's textual state update alone cannot mark visual success.
 - Return the summarized state and a small set of fresh scene candidates to the model through the existing tool response. It is browser-session continuity, not durable storage or a semantic/world-anchored scene graph.
 
-## Synthetic acceptance — pending release validation
+## Synthetic acceptance — CI passed; active Worker bundle content verified
 
-- [ ] Goals, state, intended action, expected evidence, constraints, and uncertainty are retained and summarized.
-- [ ] User-reported completion is distinct from guarded visual verification.
-- [ ] Only an M27 supported result can populate a visually-supported outcome.
-- [ ] Goal changes reset old task-specific result continuity.
-- [ ] History is bounded and state text is sanitized.
-- [ ] Public and embedded client assets match, and release CI, Worker dry-run, and production smoke markers pass.
+- [x] Goals, state, intended action, expected evidence, constraints, and uncertainty are retained and summarized.
+- [x] User-reported completion is distinct from guarded visual verification.
+- [x] Only an M27 supported result can populate a visually-supported outcome.
+- [x] Goal changes reset old task-specific result continuity.
+- [x] History is bounded and state text is sanitized.
+- [x] Public and embedded client assets match; TypeScript, client syntax, Worker dry-run, and the M29/M30 bundle-contract checks passed in [release validation run 38237325186](https://github.com/ashini-x/askmoina-voice/actions/runs/38237325186): 37 test files and 227 tests.
+- [x] Active Cloudflare Worker deployment `3ada4cfb-cef8-455f-964e-332aa992d813` is serving 100% of traffic; the deployed script content includes the M29 task-state schema, create/merge helpers, and world-model summary helper.
 
 ## Real-model and real-device acceptance — still required
 
