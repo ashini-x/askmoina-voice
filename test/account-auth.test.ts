@@ -50,7 +50,7 @@ describe("unique account ID and no-guest access", () => {
     const status = await worker.fetch(new Request("https://askmoina.test/api/voice/status"), env, ctx);
     expect(status.status).toBe(401);
     expect(await status.json()).toMatchObject({ error: "authentication_required" });
-    for (const path of ["/", "/copilot"]) {
+    for (const path of ["/", "/copilot", "/iphone.css", "/iphone.js"]) {
       const response = await worker.fetch(new Request("https://askmoina.test" + path), env, ctx);
       expect(response.status).toBe(302);
       expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
