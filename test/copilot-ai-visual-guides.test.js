@@ -56,7 +56,8 @@ describe("M22 AI-directed visual guide contract", () => {
     expect(workerSource).toContain("These are screen-space drawings, not world-anchored AR.");
     expect(workerSource).toContain("tick on screen is a model-provided visual judgement");
     expect(readFileSync(new URL("../docs/ROADMAP.md", import.meta.url), "utf8")).toContain("dependable automatic progress verification remains future work");
-  });
+  });});
+
 
 describe("M23 proactive visual-guide brain", () => {
   it("instructs the model to draw useful low-risk spatial guides without waiting for an explicit drawing request", () => {
@@ -90,4 +91,3 @@ describe("M23 proactive visual-guide brain", () => {
   });
 });
 
-});
