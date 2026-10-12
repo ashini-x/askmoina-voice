@@ -15,13 +15,14 @@ Maintain a small, evidence-tagged scene model across recent camera frames. Candi
 
 ## Synthetic acceptance
 
-CI is pending for this branch. Tests cover:
-- fresh frame-tagged observations, evidence tags, confidence, regions, visibility, and relations;
-- stale-frame and previous-camera-generation rejection;
-- short retention and expiry;
-- reused-ID / changed-label uncertainty rather than silent identity merge;
-- bounded record count and Worker tool/prompt contract;
-- public/embedded asset synchronization and JavaScript syntax.
+- [x] Fresh frame-tagged observations, evidence tags, confidence, approximate regions, visibility, and supported relations are covered by pure-helper tests.
+- [x] Stale-frame and previous-camera-generation evidence is rejected.
+- [x] Recent candidate retention and expiry are covered.
+- [x] Reused-ID / changed-label conflicts remain explicitly uncertain rather than silently replacing the earlier candidate.
+- [x] Bounded record counts and the Worker tool/prompt contract are checked.
+- [x] TypeScript, client syntax, and all tests passed in [Release validation run 38230026015](https://github.com/ashini-x/askmoina-voice/actions/runs/38230026015): 33 test files and 203 tests.
+- [x] Production smoke inspected the live `/copilot.js` response and confirmed the M25 scene-model implementation was deployed; the voice status endpoint returned `available`.
+- [ ] Live Gemini scene-tool round-trip has not yet been exercised end-to-end. The workflow’s separate live-model integration steps were skipped; these checks are not inferred from unit tests.
 
 ## Real-device acceptance — still required
 
