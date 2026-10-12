@@ -251,15 +251,17 @@
     if (intro) intro.textContent = create
       ? "One secure account for your conversations, preferences and memories. No guest access."
       : "Sign in securely to return to your conversations, preferences and saved memories.";
-    if (title) title.textContent = create ? "Continue with Face ID or Touch ID" : "Sign in with Face ID or Touch ID";
+    if (title) title.textContent = "Continue with Face ID or Touch ID";
     if (subtitle) subtitle.textContent = create ? "Create a passkey on this device or another one" : "Use a passkey already saved for AskMoina";
     say("");
   }
 
   async function sendOtp() {
     if (busy) return;
-    const phone = $("#phone")?.value.trim() || "";
-    if (!phone) {
+    const rawPhone = $("#phone")?.value.trim() || "";
+    const countryPrefix = $("#phoneCountry")?.textContent.trim();
+    const phone = countryPrefix ? countryPrefix + rawPhone.replace(/\D/g, "") : rawPhone;
+    if (!phone || (countryPrefix && rawPhone.replace(/\D/g, "").length < 8)) {
       say("Enter your phone number with country code, for example +91…", "error");
       $("#phone")?.focus();
       return;
