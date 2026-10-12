@@ -507,7 +507,12 @@
     if (preflight && !preflight.available) {
       starting = false;
       setButton("Start talking", false);
-      setStatus(preflight.message || "Voice is not available right now. Please try again later.", "error");
+      setStatus(
+        preflight.reason === "already_active"
+          ? "A previous connection is still clearing. Try again shortly, or end the conversation in another tab if one is open."
+          : preflight.message || "Voice is not available right now. Please try again later.",
+        "error",
+      );
       return;
     }
     setButton("Connecting…", true);
