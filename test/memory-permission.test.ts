@@ -22,7 +22,7 @@ describe("M36 permission-based memory continuity", () => {
   it("shows memory sharing off by default and previewable", async () => {
     const response = await handleContinuityRequest(new Request("https://askmoina.test/vault"), mockEnv(), ctx);
     const html = await response!.text();
-    expect(html).toContain('id="useInVoice"> Use all saved memories in new AskMoina conversations across this browser');
+    expect(html).toContain('id="useInVoice"> Use saved memories in new voice conversations on this browser');
     expect(html).toContain('id="voiceContextPreview"');
     expect(html).toContain("Off by default");
     expect(html).toContain("cannot retract notes already sent to a connected conversation");
