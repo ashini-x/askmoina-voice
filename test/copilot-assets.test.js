@@ -189,7 +189,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("options.quietActiveLock === true");
     expect(script).toContain("lastSessionEndedAt = Date.now()");
     expect(script).toContain("result.reason !== \"already_active\"");
-    expect(script).toContain("const endedRecently = Date.now() - lastSessionEndedAt < 15_000;");
+    expect(script).toContain("const preflight = await refreshAvailabilityAfterRelease();");
+    expect(script).toContain("Always retry a brief already-active response");
   });
 
   it("styles region-specific focus markers for narrow screens", () => {

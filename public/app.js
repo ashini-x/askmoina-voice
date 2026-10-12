@@ -108,6 +108,24 @@
     }
   }
 
+  async function refreshVoiceAvailabilityAfterRelease() {
+    let result = null;
+    // A socket close and its server-side reservation release are asynchronous.
+    // Retry briefly before showing the stale-active message to the user.
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      result = await refreshVoiceAvailability();
+      if (!result || result.available || result.reason !== "already_active") break;
+      if (attempt < 8) {
+        setStatus("Finishing the previous connection…");
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+      }
+    }
+    if (result && !result.available && result.reason === "already_active") {
+      setStatus("A previous connection is still clearing. Please try again shortly, or end the conversation in another tab if one is open.", "error");
+    }
+    return result;
+  }
+
   function setButton(label, disabled) {
     if (buttonLabel) buttonLabel.textContent = label;
     if (toggleButton) toggleButton.disabled = Boolean(disabled);
@@ -485,11 +503,16 @@
     setButton("Checking availability…", true);
     setStatus("Checking voice availability…");
     await visitorIdentityReady;
-    const preflight = await refreshVoiceAvailability();
+    const preflight = await refreshVoiceAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
       setButton("Start talking", false);
-      setStatus(preflight.message || "Voice is not available right now. Please try again later.", "error");
+      setStatus(
+        preflight.reason === "already_active"
+          ? "A previous connection is still clearing. Try again shortly, or end the conversation in another tab if one is open."
+          : preflight.message || "Voice is not available right now. Please try again later.",
+        "error",
+      );
       return;
     }
     setButton("Connecting…", true);
