@@ -1,0 +1,22 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const client = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+const copilot = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
+describe("voice media backpressure without app usage caps", () => {
+  it("drops excess media instead of terminating a call with the old rate-limit close", () => {
+    expect(worker).not.toContain('closeBoth(1008, "Audio input rate limit exceeded")');
+    expect(worker).toContain("audioFramesThrottled");
+  });
+  it("does not queue stale microphone audio during a network stall", () => {
+    expect(client).toContain("socket.bufferedAmount > 96 * 1024");
+    expect(copilot).toContain("socket.bufferedAmount > 96 * 1024");
+  });
+  it("does not impose the former app-owned session timeout", () => {
+    expect(worker).not.toContain("Voice session duration limit reached");
+  });
+  it("does not keep the old per-session search and target-selection caps", () => {
+    expect(worker).not.toContain("groundedSearchCount >= 2");
+    expect(worker).not.toContain("targetSelectionCount >= 12");
+  });
+});

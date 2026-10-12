@@ -71,7 +71,7 @@ describe("account-only voice access", () => {
 });
 
 
-describe("voice rate-limit-only reservations",describe("voice rate-limit-only reservations", () => {
+describe("voice rate-limit-only reservations", () => {
   it("counts IP connection attempts without reserving daily voice seconds or an active session", async () => {
     const records = new Map<string, unknown>();
     const storage = {
