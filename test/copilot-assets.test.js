@@ -6,6 +6,7 @@ const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "u
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
   it("serves the same browser assets as the checked-in public files", () => {
@@ -27,6 +28,9 @@ describe("Live Co-Pilot browser assets", () => {
   it("keeps Vision orb-free, adds Back, and uses a pulse-style edge without a visible Spatial AR page", () => {
     expect(html).not.toContain('class="camera-placeholder-icon presence-orb"');
     expect(html).toContain('id="backButton"');
+    expect(script).toContain("if (history.length > 1) history.back();");
+    expect(authScript).toContain('error.name === "NotAllowedError"');
+    expect(authScript).toContain("createAlternative.hidden = false");
     expect(css).toContain("@keyframes intelligence-pulse");
     expect(css).toContain("#spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}");
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");

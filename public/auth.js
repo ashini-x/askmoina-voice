@@ -108,7 +108,7 @@
     if (error && error.name === "NotAllowedError") {
       return action === "create"
         ? "Your device prompt was cancelled or timed out. Unlock your device and try again. Your browser may offer Windows Hello, Touch ID, Face ID or a passkey on your phone."
-        : "No passkey was selected, or the prompt was cancelled or timed out. Use a passkey already registered with AskMoina, or choose Create account if this is your first time.";
+        : "No passkey was used. Try again, set one up on this device, or use your phone number.";
     }
     if (error && error.name === "SecurityError") {
       return "This web address cannot use that passkey. Open AskMoina on its official HTTPS address and use the same address each time.";
@@ -227,10 +227,12 @@
     } catch (error) {
       hideSheet();
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey sign-in failed", error.name || "Error", error.code || "");
-      if (error && error.code === "passkey_not_found") {
+      if (error && (error.code === "passkey_not_found" || error.name === "NotAllowedError")) {
         const createAlternative = $("#createPasskeyAlternative");
         if (createAlternative) createAlternative.hidden = false;
-        say("No passkey is registered yet. Set one up on this device, or use your phone number.", "normal");
+        say(error.code === "passkey_not_found"
+          ? "No passkey is registered yet. Set one up on this device, or use your phone number."
+          : "Passkey sign-in was cancelled or no saved passkey was available. Try again, set one up on this device, or use your phone number.", "normal");
       } else {
         say(explainPasskeyError(error, "login"), "error");
       }
