@@ -12,14 +12,15 @@ Generate task-specific spatial guidance by composing a small set of reusable pri
 - The existing visual_elements interface remains compatible for older model responses. Generic geometric cues can render with visual_only=true without requesting a target tap.
 - Coordinates remain approximate normalized screen-space guidance. They are not detected object boundaries, measurement, semantic object recognition, world-locked tracking, or automatic physical-placement confirmation.
 
-## Synthetic acceptance — pending release validation
+## Synthetic acceptance — CI passed; active Worker bundle content verified
 
-- [ ] Alignment, motion path, placement region, target point, orientation, and labels normalize to expected bounded primitives.
-- [ ] Out-of-range, malformed, or underspecified geometry is rejected instead of being guessed.
-- [ ] Cue and point-count limits are enforced; arrow direction and subtle region fill are present.
-- [ ] The legacy visual_elements path remains compatible and embedded browser assets remain byte-identical to public assets.
-- [ ] Worker schema/prompt contract, client syntax, and production smoke markers pass.
-- [ ] CI and the deployed /copilot.js and /copilot.css assets are verified before marking synthetic acceptance complete.
+- [x] Alignment, motion path, placement region, target point, orientation, and labels normalize to expected bounded primitives.
+- [x] Out-of-range, malformed, or underspecified geometry is rejected instead of being guessed.
+- [x] Cue and point-count limits are enforced; arrow direction and subtle region fill are present.
+- [x] The legacy visual_elements path remains compatible and embedded browser assets remain byte-identical to public assets.
+- [x] Worker schema/prompt contract, client syntax, and synthetic production-bundle marker assertions pass.
+- [x] Release validation passed in [CI run 38234991554](https://github.com/ashini-x/askmoina-voice/actions/runs/38234991554): 35 test files, 216 tests, TypeScript, client syntax, and Wrangler dry-run.
+- [x] Cloudflare reports an active Worker deployment at 100% traffic; deployed Worker content includes the M28 cue normalizer and rendering/style markers (bundle-content check, not an HTTP route-level smoke test).
 
 ## Real-device acceptance — still required
 
