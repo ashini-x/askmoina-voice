@@ -125,8 +125,8 @@ jobs:
           grep -q 'function formatTaskWorldModelSummary' /tmp/moina-copilot.js
           grep -q 'function assessSafetyAndUncertainty' /tmp/moina-copilot.js
           grep -q 'function transitionRealityLoopState' /tmp/moina-copilot.js
-          grep -q 'M31 — SAFETY AND UNCERTAINTY ENGINE' /tmp/moina-copilot.js
-          grep -q 'M32 — ONE CONTINUOUS REALITY LOOP' /tmp/moina-copilot.js
+          grep -q 'M31: local safety gate' /tmp/moina-copilot.js
+          grep -q 'M32: explicit state machine' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
           echo "Live Co-Pilot client and session-release retry: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
