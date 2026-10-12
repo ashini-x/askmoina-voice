@@ -60,10 +60,24 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ realtime_input: { audio: { data: "AAAA", mime_type: "audio/pcm;rate=16000" }, video: { data: "AAAA", mime_type: "image/jpeg" } } }, true)).toBeNull();
   });
 
-  it("accepts only response IDs for the declared display-only tool", () => {
+  it("accepts only bounded result strings for the declared display-only tool", () => {
     const response = { tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay" }] } };
-    expect(parseLiveClientInput(response, true)).toEqual({ kind: "tool_response", ids: ["tool_call_1"] });
+    expect(parseLiveClientInput(response, true)).toEqual({
+      kind: "tool_response",
+      responses: [{ id: "tool_call_1", result: "The on-screen target prompt or approximate overlay was handled by the client." }]
+    });
+    expect(parseLiveClientInput({
+      tool_response: { function_responses: [{
+        id: "tool_call_1",
+        name: "display_screen_overlay",
+        response: { result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }
+      }] }
+    }, true)).toEqual({
+      kind: "tool_response",
+      responses: [{ id: "tool_call_1", result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }]
+    });
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { arbitrary: "data" } }] } }, true)).toBeNull();
+    expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { result: "x".repeat(3_001) } }] } }, true)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "external_purchase" }] } }, true)).toBeNull();
   });
 

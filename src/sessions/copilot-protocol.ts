@@ -4,7 +4,7 @@ export type ParsedLiveClientInput =
   | { kind: "text_input"; text: string }
   | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
-  | { kind: "tool_response"; ids: string[] };
+  | { kind: "tool_response"; responses: Array<{ id: string; result: string }> };
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const MAX_MEDIA_BASE64_CHARS = 12_000;
@@ -26,20 +26,31 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
     if (!copilotMode) return null;
     const rawResponses = value.tool_response.function_responses;
     if (!Array.isArray(rawResponses) || rawResponses.length < 1 || rawResponses.length > 4) return null;
-    const ids: string[] = [];
+    const responses: Array<{ id: string; result: string }> = [];
     for (const rawResponse of rawResponses) {
       if (!isRecord(rawResponse)) return null;
       if (
-        Object.keys(rawResponse).some((key) => key !== "id" && key !== "name") ||
+        Object.keys(rawResponse).some((key) => key !== "id" && key !== "name" && key !== "response") ||
         typeof rawResponse.id !== "string" ||
         rawResponse.id.length < 1 ||
         rawResponse.id.length > 128 ||
         /[\u0000-\u001f\u007f]/.test(rawResponse.id) ||
         rawResponse.name !== "display_screen_overlay"
       ) return null;
-      ids.push(rawResponse.id);
+      let result = "The on-screen target prompt or approximate overlay was handled by the client.";
+      if (rawResponse.response !== undefined) {
+        if (!isRecord(rawResponse.response) ||
+            Object.keys(rawResponse.response).some((key) => key !== "result") ||
+            typeof rawResponse.response.result !== "string") return null;
+        result = rawResponse.response.result;
+      }
+      if (
+        result.length > 3_000 ||
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result)
+      ) return null;
+      responses.push({ id: rawResponse.id, result });
     }
-    return { kind: "tool_response", ids };
+    return { kind: "tool_response", responses };
   }
 
   if (keys.length === 1 && isRecord(value.target_selection)) {
