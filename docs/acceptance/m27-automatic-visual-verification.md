@@ -17,6 +17,7 @@ Compare a task-relevant visible condition before and after an action, and classi
 - [ ] Matching target IDs/labels and fresh before/after frames allow a supported low-consequence success.
 - [ ] A fresh, direct no-change report with the criterion still unmet yields supported failure/no change.
 - [ ] Missing or stale baselines, view-generation changes, hidden targets, identity conflicts, inferred evidence, low confidence, and inconsistent reports remain ambiguous.
+- [ ] A candidate observation newer than the declared before-frame cannot be used as its baseline.
 - [ ] High-consequence outcomes remain ambiguous even at model-reported confidence 1.0.
 - [ ] Worker schema/prompt contract, client syntax, embedded asset parity, and production smoke markers pass.
 - [ ] CI and the deployed /copilot.js bundle are verified before marking synthetic acceptance complete.
