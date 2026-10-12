@@ -351,3 +351,6 @@
 .ai-guide-arrowhead.tone-white{color:#f5fffc}
 .ai-guide-arrowhead.tone-amber{color:#ffcf82}
 .ai-guide-label{fill:currentColor;color:#eafff9;font-weight:750;paint-order:stroke;stroke:#061016ed;stroke-width:4px;stroke-linejoin:round;filter:drop-shadow(0 1px 5px #00100db8)}
+
+/* M28 — lightly fill explicitly proposed placement regions without hiding the scene. */
+.ai-guide-region{fill:currentColor;fill-opacity:.12}
