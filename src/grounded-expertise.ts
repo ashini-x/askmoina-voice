@@ -37,7 +37,7 @@ export function normalizeGroundedDeviceContext(raw: unknown): GroundedDeviceCont
 export function assessGroundedSource(
   title: string,
   uri: string,
-  context: GroundedDeviceContext
+  context: Partial<GroundedDeviceContext>
 ): {
   modelTextMatch: "visible_in_title_or_url" | "not_established";
   manufacturerHostHint: boolean;
@@ -46,11 +46,11 @@ export function assessGroundedSource(
   const clean = (value: string): string => value.normalize("NFKD").toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, " ").trim();
   const text = clean(title + " " + uri);
-  const identifiers = [context.model_id, context.variant, context.part_number]
+  const identifiers = [context.model_id || "", context.variant || "", context.part_number || ""]
     .filter((value) => value.trim().length >= 4)
     .map(clean);
   const allIdentifiersVisible = identifiers.length > 0 && identifiers.every((identifier) => identifier && text.includes(identifier));
-  const manufacturerTokens = clean(context.manufacturer).split(" ").filter((token) => token.length >= 4);
+  const manufacturerTokens = clean(context.manufacturer || "").split(" ").filter((token) => token.length >= 4);
   let hostLabels: string[] = [];
   try {
     const url = new URL(uri);
