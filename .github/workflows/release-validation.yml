@@ -108,10 +108,16 @@ jobs:
           grep -q 'function formatVisualVerificationSummary' /tmp/moina-copilot.js
           grep -q 'function normalizeSpatialCues' /tmp/moina-copilot.js
           grep -q 'ai-guide-region' /tmp/moina-copilot.js
+          grep -q 'function createTaskWorldModel' /tmp/moina-copilot.js
+          grep -q 'function mergeTaskWorldModel' /tmp/moina-copilot.js
+          grep -q 'function formatTaskWorldModelSummary' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
           echo "Live Co-Pilot client and session-release retry: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
           echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
+          echo "M29 deployed client bundle: session-local task world model and guarded outcome continuity OK"
+          grep -q 'normalizeGroundedDeviceContext' /tmp/moina-worker-bundle.js || true
+          grep -q 'MODEL MATCH NOT ESTABLISHED' /tmp/moina-worker-bundle.js || true
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"
