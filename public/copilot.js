@@ -4,6 +4,15 @@
   const $ = (selector) => document.querySelector(selector);
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
+  const connectionNotice = $("#connectionNotice");
+  const connectionNoticeTitle = $("#connectionNoticeTitle");
+  const connectionNoticeMessage = $("#connectionNoticeMessage");
+  const connectionNoticeProgress = $("#connectionNoticeProgress");
+  const connectionNoticeAction = $("#connectionNoticeAction");
+  let automaticReconnectAttempts = 0;
+  let reconnectTimer = null;
+  let isAutomaticRetry = false;
+  let lastMicVoiceAt = 0;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
@@ -392,6 +401,51 @@
   function setStatus(message, kind) {
     statusNode.textContent = message;
     statusNode.dataset.kind = kind || "normal";
+    if (kind === "error" && message) showConnectionNotice("Something went wrong", message, "error");
+  }
+
+  function showConnectionNotice(title, message, kind) {
+    if (!connectionNotice) return;
+    connectionNoticeTitle.textContent = String(title || "Connection notice");
+    connectionNoticeMessage.textContent = String(message || "Please try again.");
+    connectionNotice.dataset.kind = kind || "connecting";
+    const isError = kind === "error";
+    connectionNotice.setAttribute("role", isError ? "alertdialog" : "status");
+    connectionNotice.setAttribute("aria-live", isError ? "assertive" : "polite");
+    connectionNoticeProgress.hidden = isError;
+    connectionNoticeAction.hidden = !isError;
+    connectionNotice.hidden = false;
+    stage.classList.add("has-notice");
+  }
+
+  function hideConnectionNotice() {
+    if (connectionNotice) connectionNotice.hidden = true;
+    stage.classList.remove("has-notice");
+  }
+
+  function retryConnection(message) {
+    if (automaticReconnectAttempts >= 2) {
+      automaticReconnectAttempts = 0;
+      stopCopilot(false, message || "The connection could not be restored. Check your network and try again.", "error", true);
+      setConnectionState("OFFLINE", "error");
+      return;
+    }
+    automaticReconnectAttempts += 1;
+    const wasConnected = active && setupReady;
+    if (wasConnected) playDisconnectSound();
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    stopCopilot(false, null, null, true);
+    stage.classList.add("is-connecting");
+    setConnectionState("RECONNECTING", "connecting");
+    setStatus(message || "The network is taking longer than usual. Reconnecting…", "warning");
+    showConnectionNotice("Network is slow", "The connection was interrupted. Checking the network and reconnecting…", "connecting");
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null;
+      if (active || starting) return;
+      isAutomaticRetry = true;
+      void startCopilot();
+    }, automaticReconnectAttempts === 1 ? 700 : 1350);
   }
 
   function setAvailability(message, kind) {
@@ -1387,7 +1441,18 @@
     silentGain.gain.value = 0;
     processor.onaudioprocess = (event) => {
       if (!active || !setupReady || stopping) return;
-      sendAudioChunk(event.inputBuffer.getChannelData(0));
+      const samples = event.inputBuffer.getChannelData(0);
+      let sumSquares = 0;
+      for (let i = 0; i < samples.length; i += 1) sumSquares += samples[i] * samples[i];
+      const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
+      const now = performance.now();
+      if (rms > 0.018) {
+        lastMicVoiceAt = now;
+        stage.classList.add("is-listening");
+      } else if (now - lastMicVoiceAt > 145) {
+        stage.classList.remove("is-listening");
+      }
+      sendAudioChunk(samples);
     };
     microphoneSource.connect(processor);
     processor.connect(silentGain);
@@ -1412,6 +1477,7 @@
     }
     playbackNodes.clear();
     nextPlaybackTime = audioContext ? audioContext.currentTime : 0;
+    stage.classList.remove("is-speaking");
   }
 
   function playPcmAudio(base64, mimeType) {
@@ -1429,9 +1495,13 @@
     source.start(startAt);
     nextPlaybackTime = startAt + buffer.duration;
     playbackNodes.add(source);
+    stage.classList.add("is-speaking");
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
       try { source.disconnect(); } catch (_) {}
+      if (audioContext && audioContext.currentTime >= nextPlaybackTime - 0.035) {
+        stage.classList.remove("is-speaking");
+      }
     });
   }
 
@@ -1674,6 +1744,8 @@
     hideSafetyPauseNotice();
     setupReady = false;
     clearTimers();
+    stage.classList.remove("is-listening", "is-speaking");
+    lastMicVoiceAt = 0;
     stopPlayback();
     if (processor) {
       processor.onaudioprocess = null;
@@ -1723,8 +1795,16 @@
     setCameraState(livePreviewTrack ? "Camera preview" : "Camera paused", livePreviewTrack ? "live" : "idle");
   }
 
-  function stopCopilot(userInitiated, statusMessage, statusKind) {
+  function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false) {
     lastSessionEndedAt = Date.now();
+    const wasConnected = active && setupReady;
+    if (wasConnected && !silentDisconnect) playDisconnectSound();
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (userInitiated) {
+      automaticReconnectAttempts = 0;
+      isAutomaticRetry = false;
+    }
     stopping = true;
     const oldSocket = socket;
     socket = null;
@@ -1738,9 +1818,12 @@
     active = false;
     stopping = false;
     stage.classList.add("pre-start");
+    stage.classList.remove("is-listening", "is-speaking", "is-connecting");
+    lastMicVoiceAt = 0;
     setControls(statusMessage && (statusKind === "error" || statusKind === "warning") ? "Try again" : "Start Co-Pilot", false);
     setConnectionState("READY", "ready");
     clearOverlay();
+    if (statusKind !== "error") hideConnectionNotice();
     if (statusMessage) setStatus(statusMessage, statusKind);
     else if (userInitiated) setStatus("Co-Pilot paused. Start again whenever you're ready.");
     void refreshAvailabilityAfterRelease();
@@ -1849,6 +1932,8 @@
       setStatus("Connected. Tell Moina what you want to do in your own words.");
       setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
+      hideConnectionNotice();
+      automaticReconnectAttempts = 0;
       playConnectionChime();
       greetingTurnPending = true;
       if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ initial_greeting: true }));
@@ -1946,12 +2031,12 @@
 
   function playConnectionChime() {
     if (!audioContext || audioContext.state !== "running") return;
-    const baseTime = audioContext.currentTime + 0.025;
-    // Original soft glass-like cue, not a recording of a proprietary sound.
+    const baseTime = audioContext.currentTime + 0.018;
+    // Original bright glass tones with a clearer attack and more audible level.
     const notes = [
-      { frequency: 587.33, offset: 0, duration: 0.26 },
-      { frequency: 739.99, offset: 0.11, duration: 0.31 },
-      { frequency: 880.00, offset: 0.22, duration: 0.38 }
+      { frequency: 659.25, offset: 0, duration: 0.20 },
+      { frequency: 830.61, offset: 0.075, duration: 0.25 },
+      { frequency: 1046.5, offset: 0.15, duration: 0.31 }
     ];
     for (const note of notes) {
       const oscillator = audioContext.createOscillator();
@@ -1959,7 +2044,31 @@
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(note.frequency, baseTime + note.offset);
       gain.gain.setValueAtTime(0.0001, baseTime + note.offset);
-      gain.gain.exponentialRampToValueAtTime(0.052, baseTime + note.offset + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.095, baseTime + note.offset + 0.016);
+      gain.gain.exponentialRampToValueAtTime(0.0001, baseTime + note.offset + note.duration);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(baseTime + note.offset);
+      oscillator.stop(baseTime + note.offset + note.duration + 0.02);
+    }
+  }
+
+  function playDisconnectSound() {
+    if (!audioContext || audioContext.state !== "running") return;
+    const baseTime = audioContext.currentTime + 0.012;
+    // A distinct original downward glass tone marks an ended session.
+    const notes = [
+      { frequency: 880, offset: 0, duration: 0.14, peak: 0.075 },
+      { frequency: 659.25, offset: 0.085, duration: 0.20, peak: 0.09 },
+      { frequency: 523.25, offset: 0.17, duration: 0.25, peak: 0.07 }
+    ];
+    for (const note of notes) {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, baseTime + note.offset);
+      gain.gain.setValueAtTime(0.0001, baseTime + note.offset);
+      gain.gain.exponentialRampToValueAtTime(note.peak, baseTime + note.offset + 0.014);
       gain.gain.exponentialRampToValueAtTime(0.0001, baseTime + note.offset + note.duration);
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
@@ -1993,6 +2102,11 @@
       if (active || starting) stopCopilot(true);
       return;
     }
+    const automaticRetry = isAutomaticRetry;
+    isAutomaticRetry = false;
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (!automaticRetry) automaticReconnectAttempts = 0;
     starting = true;
     stopping = false;
     greetingTurnPending = false;
@@ -2004,6 +2118,7 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     setStatus("Checking availability and requesting camera + microphone access…");
+    showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting");
     const preflight = await refreshAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
@@ -2075,7 +2190,7 @@
         setStatus("Camera ready. Connecting securely to Moina…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
-            stopCopilot(false, "Voice setup took too long. Check your connection and try again.", "error");
+            retryConnection("The connection is taking longer than usual. Checking the network and trying again…");
           }
         }, 15000);
       });
@@ -2083,7 +2198,7 @@
       sessionSocket.addEventListener("message", (event) => { void handleServerMessage(event.data, sessionSocket); });
       sessionSocket.addEventListener("error", () => {
         if (socket === sessionSocket) {
-          stopCopilot(false, "The live connection failed. Check the network and try again.", "error");
+          retryConnection("The live connection dropped. Checking the network and reconnecting…");
         }
       });
       sessionSocket.addEventListener("close", (event) => {
@@ -2092,16 +2207,16 @@
         lastSessionEndedAt = Date.now();
         if (stopping) return;
         const reason = String(event.reason || "").trim();
+        if (event.code === 1006 || event.code === 1011 || (!event.wasClean && !reason)) {
+          retryConnection("The network connection ended unexpectedly. Checking the network and reconnecting…");
+          return;
+        }
         let message = "The live session ended unexpectedly. Start the Co-Pilot again to continue.";
         if (reason === "Session time limit reached") message = "This conversation reached its time limit. Start again when you're ready.";
         else if (reason === "Invalid copilot video frame") message = "The camera frame format was rejected. Refresh and try again.";
         else if (reason === "Audio input rate limit exceeded") message = "The live relay received media packets in a short burst. Microphone pacing has been adjusted; close older AskMoina tabs, reload once, and reconnect. This is not a question-count limit.";
-        cleanupMedia();
-        active = false;
-        starting = false;
-        setControls("Try again", false);
+        stopCopilot(false, message, "error");
         setConnectionState("ENDED", "error");
-        setStatus(message, "error");
         setAvailability("The connection ended. Checking that the session has been released…", "warning");
         void refreshAvailabilityAfterRelease();
       });
@@ -2113,8 +2228,9 @@
       starting = false;
       active = false;
       socket = null;
-      setControls("Start Co-Pilot", false);
-      setConnectionState("READY", "ready");
+      stage.classList.add("pre-start");
+      setControls("Try again", false);
+      setConnectionState("READY", "error");
       setStatus(error && error.name === "NotAllowedError"
         ? "Camera or microphone permission was denied. Allow both permissions and try again."
         : (error && error.message ? error.message : "Couldn't start the Co-Pilot. Please try again."), "error");
@@ -2696,6 +2812,14 @@
   if (showProblemButton) showProblemButton.addEventListener("click", () => {
     if (!active && !starting) void startCopilot();
   });
+  if (connectionNoticeAction) {
+    connectionNoticeAction.addEventListener("click", () => {
+      hideConnectionNotice();
+      automaticReconnectAttempts = 0;
+      isAutomaticRetry = false;
+      void startCopilot();
+    });
+  }
   toggleButton.addEventListener("click", () => {
     if (active || starting) stopCopilot(true);
     else void startCopilot();
