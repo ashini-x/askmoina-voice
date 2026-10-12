@@ -18,9 +18,15 @@ describe("static client memory handoff", () => {
     expect(worker).toContain("outputAudioTranscription: {}");
   });
 
-  it("links to Memory Vault from the static homepage", () => {
+  it("retires the old static homepage in favor of the Worker-controlled Co-Pilot entry", () => {
     const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-    expect(html).toContain('href="/vault"');
+    const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+    expect(html).toContain("url=/");
+    expect(html).not.toContain('href="/vault"');
+    expect(worker).toContain("const ENTRY_AUTH_OVERLAY");
+    expect(worker).toContain("const ENTRY_PRODUCTS_OVERLAY");
+    expect(worker).toContain('data-entry-state="login"');
+    expect(worker).toContain('data-entry-state="products"');
   });
 
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {
