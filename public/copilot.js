@@ -51,6 +51,13 @@
   let trackingCanvasWidth = 0;
   let trackingCanvasHeight = 0;
   let trackingCrop = null;
+  let localFrameSequence = 0;
+  let lastSentCameraFrameSequence = 0;
+  let lastSentCameraViewGeneration = -1;
+  let cameraViewGeneration = 0;
+  let spatialTrackSequence = 0;
+  let persistentSpatialTrack = null;
+  let sceneModel = { viewGeneration: 0, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
   let microphoneMuted = false;
   let zoomLevel = 1;
   let zoomMin = 1;
@@ -324,10 +331,224 @@
   } else {
     window.addEventListener("resize", redrawVisualGuide);
   }
-  video.addEventListener("resize", () => clearOverlay());
+  video.addEventListener("resize", () => invalidateSceneEvidence("video-frame-resize"));
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) clearOverlay();
+    if (document.hidden) invalidateSceneEvidence("tab-hidden");
   });
+
+
+  // M25: rolling, evidence-tagged scene records. Screen regions are descriptive hints,
+  // not object detections or measurements. Stable IDs are kept only while labels agree.
+  function mergeSceneModel(previous, rawObservations, rawRelations, context, now) {
+    const ttlMs = 7_000;
+    const maxObservations = 8;
+    const maxRelations = 12;
+    const viewGeneration = Number.isFinite(context && context.viewGeneration) ? context.viewGeneration : 0;
+    const frameSequence = Number.isFinite(context && context.frameSequence) ? context.frameSequence : 0;
+    const sourceFrameAt = Number.isFinite(context && context.sourceFrameAt) ? context.sourceFrameAt : 0;
+    const frameViewGeneration = Number.isFinite(context && context.frameViewGeneration) ? context.frameViewGeneration : -1;
+    const sameView = Boolean(previous && previous.viewGeneration === viewGeneration);
+    const observations = sameView && Array.isArray(previous.observations)
+      ? previous.observations.filter((item) => item && now >= item.observedAt && now - item.observedAt <= ttlMs).slice(0, maxObservations)
+      : [];
+    const relations = sameView && Array.isArray(previous.relations)
+      ? previous.relations.filter((item) => item && now >= item.observedAt && now - item.observedAt <= ttlMs).slice(0, maxRelations)
+      : [];
+    const model = {
+      viewGeneration,
+      updatedAt: sameView && Number.isFinite(previous.updatedAt) ? previous.updatedAt : 0,
+      frameSequence: sameView && Number.isFinite(previous.frameSequence) ? previous.frameSequence : 0,
+      observations,
+      relations,
+      staleInputRejected: false
+    };
+    const incomingCount = (Array.isArray(rawObservations) ? rawObservations.length : 0) +
+      (Array.isArray(rawRelations) ? rawRelations.length : 0);
+    if (!incomingCount) return model;
+
+    // Late model tool calls must not refresh observations from a frame sent before
+    // a camera switch/zoom, or from a frame that is no longer recent.
+    const sourceIsFresh = frameSequence > 0 &&
+      sourceFrameAt > 0 &&
+      now >= sourceFrameAt &&
+      now - sourceFrameAt <= 5_000 &&
+      frameViewGeneration === viewGeneration;
+    if (!sourceIsFresh) {
+      model.staleInputRejected = true;
+      return model;
+    }
+
+    const regions = new Set(["center", "upper-left", "upper-right", "lower-left", "lower-right"]);
+    const evidenceKinds = new Set(["direct", "inferred"]);
+    const relationKinds = new Set(["left_of", "right_of", "above", "below", "beside", "on", "under", "inside", "attached_to", "connected_to", "overlapping", "near"]);
+    const incomingIdMap = new Map();
+    const incoming = [];
+    for (const raw of (Array.isArray(rawObservations) ? rawObservations.slice(0, maxObservations) : [])) {
+      if (!raw || typeof raw !== "object") continue;
+      const sourceId = typeof raw.id === "string" ? raw.id.trim().slice(0, 28) : "";
+      const label = typeof raw.label === "string" ? raw.label.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 64) : "";
+      if (!/^[A-Za-z0-9._-]{1,28}$/.test(sourceId) || !label) continue;
+      const evidence = evidenceKinds.has(raw.evidence) ? raw.evidence : "inferred";
+      const confidence = typeof raw.confidence === "number" && Number.isFinite(raw.confidence)
+        ? Math.max(0, Math.min(1, raw.confidence)) : 0.35;
+      const region = regions.has(raw.screen_region) ? raw.screen_region : "center";
+      const visible = typeof raw.visible === "boolean" ? raw.visible : true;
+      const old = observations.find((item) => item.id === sourceId);
+      const normalizedLabel = (value) => String(value || "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const labelConflict = Boolean(old && normalizedLabel(old.label) !== normalizedLabel(label));
+      const id = labelConflict ? (sourceId + "@" + frameSequence).slice(0, 40) : sourceId;
+      incomingIdMap.set(sourceId, id);
+      const record = {
+        id, label,
+        evidence: labelConflict ? "inferred" : evidence,
+        confidence: labelConflict ? Math.min(confidence, 0.35) : confidence,
+        screenRegion: region, visible, observedAt: now, sourceFrameAt, frameSequence, viewGeneration,
+        identityConflict: labelConflict,
+        identityNote: labelConflict ? "Identifier reused with a different label; identity is uncertain." : ""
+      };
+      incoming.push(record);
+      const existingIndex = observations.findIndex((item) => item.id === id);
+      if (existingIndex >= 0) observations[existingIndex] = record;
+      else observations.unshift(record);
+    }
+    model.observations = observations.slice(0, maxObservations);
+
+    const knownIds = new Set(model.observations.map((item) => item.id));
+    const freshRelations = [];
+    for (const raw of (Array.isArray(rawRelations) ? rawRelations.slice(0, maxRelations) : [])) {
+      if (!raw || typeof raw !== "object") continue;
+      const sourceFrom = typeof raw.from_id === "string" ? raw.from_id.trim().slice(0, 28) : "";
+      const sourceTo = typeof raw.to_id === "string" ? raw.to_id.trim().slice(0, 28) : "";
+      const fromId = incomingIdMap.get(sourceFrom) || sourceFrom;
+      const toId = incomingIdMap.get(sourceTo) || sourceTo;
+      if (!knownIds.has(fromId) || !knownIds.has(toId) || fromId === toId || !relationKinds.has(raw.relation)) continue;
+      const evidence = evidenceKinds.has(raw.evidence) ? raw.evidence : "inferred";
+      const confidence = typeof raw.confidence === "number" && Number.isFinite(raw.confidence)
+        ? Math.max(0, Math.min(1, raw.confidence)) : 0.35;
+      freshRelations.push({ fromId, toId, relation: raw.relation, evidence, confidence, observedAt: now, frameSequence, viewGeneration });
+    }
+    for (const fresh of freshRelations) {
+      const index = relations.findIndex((item) => item.fromId === fresh.fromId && item.toId === fresh.toId && item.relation === fresh.relation);
+      if (index >= 0) relations[index] = fresh;
+      else relations.unshift(fresh);
+    }
+    model.relations = relations.filter((item) => knownIds.has(item.fromId) && knownIds.has(item.toId)).slice(0, maxRelations);
+    if (incoming.length || freshRelations.length) {
+      model.updatedAt = now;
+      model.frameSequence = frameSequence;
+      model.staleInputRejected = false;
+    }
+    return model;
+  }
+
+  function formatSceneModelSummary(model, now) {
+    const ttlMs = 7_000;
+    const current = model && Array.isArray(model.observations)
+      ? model.observations.filter((item) => item && now >= item.observedAt && now - item.observedAt <= ttlMs).slice(0, 8)
+      : [];
+    const currentIds = new Set(current.map((item) => item.id));
+    const relationList = model && Array.isArray(model.relations)
+      ? model.relations.filter((item) => item && currentIds.has(item.fromId) && currentIds.has(item.toId) && now >= item.observedAt && now - item.observedAt <= ttlMs).slice(0, 8)
+      : [];
+    if (!current.length) return "Scene model: no fresh structured observations are available. Use the newest camera frame; do not infer object identity or geometry from stale scene notes.";
+    const lines = current.map((item) => {
+      const age = Math.max(0, (now - item.observedAt) / 1000).toFixed(1);
+      return "- " + item.id + ": " + item.label + "; evidence=" + item.evidence +
+        "; model-reported confidence=" + item.confidence.toFixed(2) +
+        "; last reported " + (item.visible ? "visible" : "not visible") +
+        "; approximate region=" + item.screenRegion +
+        "; age=" + age + "s" + (item.identityConflict ? "; ID/label conflict: treat identity as uncertain" : "");
+    });
+    if (relationList.length) {
+      lines.push("Recent visible relations (model-reported, not measured): " + relationList.map((item) =>
+        item.fromId + " " + item.relation + " " + item.toId + " (confidence " + item.confidence.toFixed(2) + ", " + item.evidence + ")"
+      ).join("; "));
+    }
+    return [
+      "Recent scene model evidence — short-lived, frame-tagged and approximate; not object detection, exact geometry, or world tracking:",
+      ...lines,
+      "Use only if it still matches the newest view. Confidence is the model's estimate, not calibrated probability. If target identity or relation is ambiguous, ask or request a tap."
+    ].join("\n").slice(0, 2_600);
+  }
+
+  // M26: explicit identity record for a user-tapped local image patch. This follows
+  // the same patch in camera pixels only; it is not semantic identity or 3D tracking.
+  function createPersistentSpatialTrack(trackId, targetKey, point, context, now) {
+    return {
+      trackId: String(trackId || "local-track").slice(0, 64),
+      targetKey: String(targetKey || "").slice(0, 120),
+      status: "anchored-by-user-tap",
+      anchorType: "local-image-patch",
+      identitySource: "user-tap",
+      semanticIdentityVerified: false,
+      worldLocked: false,
+      confidence: null,
+      evidenceFrames: 0,
+      missedFrames: 0,
+      reacquisitions: 0,
+      createdAt: now,
+      lastObservedAt: now,
+      lastPoint: { x: Number(point && point.x) || 0, y: Number(point && point.y) || 0 },
+      lastFrameSequence: Number.isFinite(context && context.frameSequence) ? context.frameSequence : 0,
+      viewGeneration: Number.isFinite(context && context.viewGeneration) ? context.viewGeneration : 0,
+      lostAt: 0
+    };
+  }
+
+  function updatePersistentSpatialTrack(track, evidence) {
+    if (!track || !evidence || typeof evidence !== "object") return track || null;
+    const now = Number.isFinite(evidence.now) ? evidence.now : Date.now();
+    const viewGeneration = Number.isFinite(evidence.viewGeneration) ? evidence.viewGeneration : track.viewGeneration;
+    if (viewGeneration !== track.viewGeneration) {
+      return { ...track, status: "invalidated", confidence: 0, lastObservedAt: now };
+    }
+    if (evidence.type === "match") {
+      const score = typeof evidence.score === "number" && Number.isFinite(evidence.score)
+        ? Math.max(0, Math.min(1, evidence.score)) : 0;
+      return {
+        ...track,
+        status: evidence.reacquired === true ? "reacquired" : "visible",
+        confidence: score,
+        evidenceFrames: track.evidenceFrames + 1,
+        missedFrames: 0,
+        reacquisitions: track.reacquisitions + (evidence.reacquired === true ? 1 : 0),
+        lastObservedAt: now,
+        lastPoint: { x: Number(evidence.point && evidence.point.x) || 0, y: Number(evidence.point && evidence.point.y) || 0 },
+        lastFrameSequence: Number.isFinite(evidence.frameSequence) ? evidence.frameSequence : track.lastFrameSequence,
+        lostAt: 0
+      };
+    }
+    if (evidence.type === "miss") {
+      return {
+        ...track,
+        status: "reacquiring",
+        confidence: typeof track.confidence === "number" ? Math.max(0, track.confidence * 0.7) : null,
+        missedFrames: track.missedFrames + 1,
+        lostAt: track.lostAt || now,
+        lastObservedAt: now
+      };
+    }
+    if (evidence.type === "lost") return { ...track, status: "lost", confidence: 0, lastObservedAt: now };
+    return track;
+  }
+
+  function invalidateSceneEvidence(reason) {
+    cameraViewGeneration += 1;
+    sceneModel = { viewGeneration: cameraViewGeneration, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
+    persistentSpatialTrack = null;
+    clearOverlay();
+    return reason || "camera-view-changed";
+  }
+
+  function updateSceneModel(rawObservations, rawRelations) {
+    sceneModel = mergeSceneModel(sceneModel, rawObservations, rawRelations, {
+      frameSequence: lastSentCameraFrameSequence,
+      sourceFrameAt: lastVideoSentAt,
+      frameViewGeneration: lastSentCameraViewGeneration,
+      viewGeneration: cameraViewGeneration
+    }, Date.now());
+    return formatSceneModelSummary(sceneModel, Date.now());
+  }
 
   function visualTargetKey(guidance) {
     const value = guidance && typeof guidance.hint === "string" && guidance.hint.trim()
@@ -352,6 +573,7 @@
   }
 
   function showOverlay(args) {
+    updateSceneModel(args && args.scene_observations, args && args.scene_relations);
     const hasVisualGuide = renderVisualGuide(args && args.visual_elements);
     if (args && args.await_user_selection === true) {
       clearOverlay();
@@ -666,6 +888,8 @@
         realtime_input: { video: { data, mime_type: "image/jpeg" } }
       }));
       lastVideoSentAt = Date.now();
+      lastSentCameraFrameSequence += 1;
+      lastSentCameraViewGeneration = cameraViewGeneration;
       setCameraState("Live · frames ~1/sec", "live");
     } catch (_) {
       setStatus("Couldn't process a camera frame. Keep the camera view steady and try again.", "warning");
@@ -690,7 +914,7 @@
     if (firstVideoTimer) window.clearTimeout(firstVideoTimer);
     videoTimer = null;
     firstVideoTimer = null;
-    stopLocalTracking(false);
+    invalidateSceneEvidence("spatial-ar-camera-handoff");
     microphoneStream.getVideoTracks().forEach((track) => {
       try { track.stop(); } catch (_) {}
     });
@@ -750,6 +974,7 @@
       video.srcObject = microphoneStream;
       await video.play();
       cameraSuspendedForSpatialAr = false;
+      invalidateSceneEvidence("spatial-ar-camera-resume");
       initializeZoom();
       stage.classList.add("has-camera");
       setCameraState("Live · frames ~1/sec", "live");
@@ -792,6 +1017,8 @@
       silentGain = null;
     }
     stopLocalTracking(false);
+    sceneModel = { viewGeneration: ++cameraViewGeneration, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
+    persistentSpatialTrack = null;
     if (microphoneStream) {
       microphoneStream.getTracks().forEach((track) => track.stop());
       microphoneStream = null;
@@ -850,7 +1077,14 @@
       const args = call.args && typeof call.args === "object" ? call.args : {};
       showOverlay(args);
       const id = typeof call.id === "string" ? call.id : "";
-      if (id) responses.push({ id, name: "display_screen_overlay" });
+      if (id) {
+        const sceneSummary = formatSceneModelSummary(sceneModel, Date.now());
+        responses.push({
+          id,
+          name: "display_screen_overlay",
+          response: { result: "The on-screen target prompt or approximate overlay was handled by the client.\n\n" + sceneSummary }
+        });
+      }
     }
     if (responses.length && socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ tool_response: { function_responses: responses } }));
@@ -1089,6 +1323,7 @@
       trackingContext.drawImage(video, 0, 0, width, height);
     }
     trackingPixels = trackingContext.getImageData(0, 0, width, height).data;
+    localFrameSequence += 1;
     return true;
   }
 
@@ -1268,7 +1503,12 @@
     trackedTargetKey = "";
     trackedPoint = null;
     trackingCrop = null;
-    if (focusMarker) delete focusMarker.dataset.tracking;
+    if (focusMarker) {
+      delete focusMarker.dataset.tracking;
+      delete focusMarker.dataset.trackId;
+      delete focusMarker.dataset.trackState;
+    }
+    persistentSpatialTrack = null;
     if (showStatus && microphoneStream) setStatus("Local tracking stopped. Tap a visible object to track it again.");
   }
 
@@ -1323,9 +1563,18 @@
     trackingReacquireCandidate = null;
     trackingReacquireCandidateFrames = 0;
     trackedTargetKey = pendingTrackingTargetKey || visualTargetKey(latestVisualGuidance);
+    persistentSpatialTrack = createPersistentSpatialTrack(
+      "local-patch-" + (++spatialTrackSequence),
+      trackedTargetKey,
+      point,
+      { frameSequence: localFrameSequence, viewGeneration: cameraViewGeneration },
+      Date.now()
+    );
     localTrackingActive = true;
     focusMarker.hidden = false;
     focusMarker.dataset.tracking = "true";
+    focusMarker.dataset.trackId = persistentSpatialTrack.trackId;
+    focusMarker.dataset.trackState = persistentSpatialTrack.status;
     focusMarker.dataset.region = "center";
     focusLabel.textContent = "Tracking selected target";
     focusHint.textContent = "Running locally on this device";
@@ -1358,6 +1607,12 @@
 
       if (!result) {
         if (!trackingLostAt) trackingLostAt = now;
+        if (persistentSpatialTrack) {
+          persistentSpatialTrack = updatePersistentSpatialTrack(persistentSpatialTrack, {
+            type: "miss", now, viewGeneration: cameraViewGeneration
+          });
+          focusMarker.dataset.trackState = persistentSpatialTrack.status;
+        }
         trackingLostFrames += 1;
 
         if (trackingLostFrames >= 3) {
@@ -1413,6 +1668,14 @@
       }
 
       const recovered = trackingReacquiring;
+      if (persistentSpatialTrack) {
+        persistentSpatialTrack = updatePersistentSpatialTrack(persistentSpatialTrack, {
+          type: "match", score: result.score, point: { x: result.x, y: result.y },
+          frameSequence: localFrameSequence, viewGeneration: cameraViewGeneration,
+          now, reacquired: recovered
+        });
+        focusMarker.dataset.trackState = persistentSpatialTrack.status;
+      }
       trackingLostFrames = 0;
       trackingLostAt = 0;
       trackingLastReacquireAt = 0;
@@ -1430,6 +1693,12 @@
       if (!trackingLostAt) trackingLostAt = now;
       trackingReacquiring = true;
       trackingLostFrames += 1;
+      if (persistentSpatialTrack) {
+        persistentSpatialTrack = updatePersistentSpatialTrack(persistentSpatialTrack, {
+          type: "miss", now, viewGeneration: cameraViewGeneration
+        });
+        focusMarker.dataset.trackState = persistentSpatialTrack.status;
+      }
       focusMarker.dataset.tracking = "reacquiring";
       if (now - trackingLostAt >= 1_300) {
         focusMarker.hidden = true;
@@ -1500,14 +1769,15 @@
     const requested = Number(value);
     if (!Number.isFinite(requested)) return;
     const nextZoom = Math.max(zoomMin, Math.min(zoomMax, requested));
-    if (localTrackingActive && Math.abs(nextZoom - zoomLevel) > 0.05) {
-      stopLocalTracking(false);
-      focusMarker.dataset.tracking = "lost";
-      setStatus("Zoom changed. Tap the target again to resume local tracking.", "warning");
-    }
-    if (Math.abs(nextZoom - zoomLevel) > 0.05 && (latestVisualGuideElements.length || latestVisualGuidance)) {
-      clearOverlay();
-      setStatus("Camera zoom changed. Moina will redraw the guide using a fresh view.", "warning");
+    const zoomChanged = Math.abs(nextZoom - zoomLevel) > 0.05;
+    const hadVisualGuidance = Boolean(latestVisualGuideElements.length || latestVisualGuidance || localTrackingActive);
+    if (zoomChanged) {
+      invalidateSceneEvidence("zoom-change");
+      if (hadVisualGuidance) {
+        setStatus("Camera zoom changed. Moina will redraw the guide using a fresh view.", "warning");
+      } else if (announce) {
+        setStatus("Zoom changed. Tap a target again if you want local tracking.", "warning");
+      }
     }
     zoomLevel = nextZoom;
     zoomSlider.value = String(zoomLevel);
@@ -1569,7 +1839,7 @@
   async function flipCamera() {
     if (!active || !microphoneStream) return;
     const nextFacingMode = facingMode === "environment" ? "user" : "environment";
-    clearOverlay();
+    invalidateSceneEvidence("camera-switch");
     flipButton.disabled = true;
     try {
       const cameraOnly = await navigator.mediaDevices.getUserMedia({
