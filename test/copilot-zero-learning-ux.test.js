@@ -16,8 +16,12 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).toContain("id=\"showProblemButton\"");
     expect(html).toContain("id=\"backButton\"");
     expect(html).toContain("SHOW ME YOUR PROBLEM");
-    expect(html).toContain("id=\"secondaryControls\" hidden");
-    expect(html).toContain("id=\"toggleMoreControls\"");
+    expect(html).toContain("Slide to show your problem");
+    expect(html).toContain('id="intelligenceIntro"');
+    expect(html).toContain('id="visionSlideHandle"');
+    expect(html).not.toContain('id="secondaryControls"');
+    expect(html).not.toContain('id="toggleMoreControls"');
+    expect(html).toContain('id="vaultButton" href="/vault"');
   });
 
   it("provides a compact natural-language invitation and optional examples", () => {
