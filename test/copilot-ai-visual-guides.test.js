@@ -55,6 +55,6 @@ describe("M22 AI-directed visual guide contract", () => {
   it("keeps screen drawings explicitly distinct from AR anchoring and object recognition", () => {
     expect(workerSource).toContain("These are screen-space drawings, not world-anchored AR.");
     expect(workerSource).toContain("tick on screen is a model-provided visual judgement");
-    expect(readFileSync(new URL("../docs/ROADMAP.md", import.meta.url), "utf8")).toContain("reliable automatic progress verification remains future work");
+    expect(readFileSync(new URL("../docs/ROADMAP.md", import.meta.url), "utf8")).toContain("dependable automatic progress verification remains future work");
   });
 });
