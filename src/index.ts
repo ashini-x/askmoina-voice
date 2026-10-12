@@ -55,6 +55,14 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "After a failed check, preserve that result in the working conversation context. Do not repeat the same check unchanged unless new evidence or a changed condition makes it reasonable. Change one meaningful variable at a time and briefly explain the next check.",
   "Before declaring success, compare the user's goal with the evidence needed to establish it. If the decisive result is not visible, ask the user to confirm it and distinguish user-confirmed completion from visual verification. For consequential actions, require stronger evidence and stop if the safe conclusion remains uncertain.",
   "Keep this verification logic internal; tell the user only what the result means for the next step. Preserve the last confirmed state, failed checks, and remaining uncertainty through follow-up turns.",
+  "AI-DIRECTED VISUAL GUIDANCE — SHOW, DO NOT JUST TELL:",
+  "When a low-risk physical task is easier to understand visually than through speech alone, proactively choose a compact on-screen guide using display_screen_overlay. The user should not need to press another button just to see the guide.",
+  "Choose the drawing primitives that fit the actual goal: a line for alignment, an arrow for direction, a small outline for a placement region, a circle for a point, a tick for a position that the latest frame supports as correct, or a short label when it adds clarity. Keep the guide minimal and leave the real scene visible.",
+  "For a useful geometric reference that does not require identifying or tracking one exact object, set visual_only=true and provide visual_elements. This draws the guide immediately without requesting a tap. Do not force a target tap merely to display a reference line or direction arrow.",
+  "Coordinates x/y are normalized from 0 to 1000 over the whole latest camera frame (origin top-left). Geometry is approximate. Use only positions and relationships the current image reasonably supports; do not invent precise object boundaries, hidden geometry, measurements, or a placement point when the scene is ambiguous.",
+  "These are screen-space drawings, not world-anchored AR. Do not claim a line or mark stays attached to an object while the phone moves. If the scene or camera angle changes, revise or clear the guide when you have fresh evidence; ask for a steadier/closer view rather than leaving a misleading stale guide.",
+  "Only show a completion tick when visible evidence supports the relevant condition. A tick on screen is a model-provided visual judgement, not an independent sensor measurement. If you cannot judge alignment or placement reliably from the frame, explain the uncertainty instead of showing a false success marker.",
+  "Use visual guidance for simple, low-risk tasks and familiar spatial goals. Never draw a confident action guide for hazardous or consequential work when target identity, orientation, or safety conditions remain uncertain. Prefer an empty guide plus a clear question over a persuasive but guessed drawing.",
   "TARGET SELECTION — RESOLVE OR ASK:",
   "When the user says this one, that one, the other one, or points verbally to a part, use the latest camera frame and recent context to resolve the reference only if one candidate is clearly more plausible than the others.",
   "When exactly one visible candidate fits the reference, answer about that candidate and, if useful, update the display_screen_overlay to identify it. Do not invent precise coordinates or a bounding box.",
@@ -121,6 +129,29 @@ const COPILOT_TOOL = {
           enum: ["center", "upper-left", "upper-right", "lower-left", "lower-right"]
         },
         await_user_selection: { type: "BOOLEAN", description: "When true, do not display a target overlay card; ask the user to tap the exact visible item because the spoken reference is ambiguous." },
+        visual_only: { type: "BOOLEAN", description: "When true, draw the supplied screen-space primitives without requiring a user tap to track an exact object. Use only for useful, low-risk geometric guidance." },
+        visual_elements: {
+          type: "ARRAY",
+          description: "Optional compact screen-space drawing for the latest camera frame, maximum 8 elements. Coordinates x/y are normalized 0–1000 over the whole camera frame from top-left. Use line/arrow x1,y1,x2,y2; circle x,y,radius; rect x,y,width,height; tick x,y; label x,y,text. These are approximate 2D overlays, not world-anchored AR or object detections.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              type: { type: "STRING", enum: ["line", "arrow", "circle", "rect", "tick", "label"] },
+              x: { type: "NUMBER", description: "Normalized horizontal coordinate 0–1000." },
+              y: { type: "NUMBER", description: "Normalized vertical coordinate 0–1000." },
+              x1: { type: "NUMBER", description: "Normalized line start horizontal coordinate 0–1000." },
+              y1: { type: "NUMBER", description: "Normalized line start vertical coordinate 0–1000." },
+              x2: { type: "NUMBER", description: "Normalized line end horizontal coordinate 0–1000." },
+              y2: { type: "NUMBER", description: "Normalized line end vertical coordinate 0–1000." },
+              radius: { type: "NUMBER", description: "Circle radius in normalized frame units, 4–250." },
+              width: { type: "NUMBER", description: "Rectangle width in normalized frame units, 1–1000." },
+              height: { type: "NUMBER", description: "Rectangle height in normalized frame units, 1–1000." },
+              text: { type: "STRING", description: "Short label text, maximum 48 characters." },
+              color: { type: "STRING", enum: ["mint", "white", "amber"] }
+            },
+            required: ["type"]
+          }
+        },
         steps: {
           type: "ARRAY",
           description: "Optional ordered walkthrough of 2 to 5 low-risk, visible, user-verifiable steps. Each step has the same fields as the top-level cue. Do not include for hazardous or uncertain tasks.",
