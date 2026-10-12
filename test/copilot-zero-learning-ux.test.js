@@ -13,6 +13,8 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).not.toContain("Tap Start, then tell Moina what you want to do.");
     expect(html).toContain("presence-orb");
     expect(html).toContain("id=\"toggleCopilot\"");
+    expect(html).toContain("id=\"showProblemButton\"");
+    expect(html).toContain("SHOW ME YOUR PROBLEM");
     expect(html).toContain("id=\"secondaryControls\" hidden");
     expect(html).toContain("id=\"toggleMoreControls\"");
   });
