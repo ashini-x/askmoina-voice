@@ -961,7 +961,12 @@
       starting = false;
       setControls("Start Co-Pilot", false);
       setConnectionState("BUSY", "error");
-      setStatus(preflight.message || "Voice isn't available right now.", "error");
+      setStatus(
+        preflight.reason === "already_active"
+          ? "A previous connection is still clearing. Try again shortly, or end the conversation in another tab if one is open."
+          : preflight.message || "Voice isn't available right now.",
+        "error",
+      );
       return;
     }
 
