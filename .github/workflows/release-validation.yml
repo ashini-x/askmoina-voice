@@ -54,10 +54,15 @@ jobs:
       - name: Verify M35/M36 Worker bundle contracts
         run: |
           grep -R -q 'M35 — EFFICIENT INTELLIGENCE' dist/
+          echo "M35 prompt contract: OK"
           grep -R -q 'inspectProviderUsageMetrics' dist/
+          echo "Provider usage parser contract: OK"
           grep -R -q 'M36 — PERMISSION-BASED CONTINUITY' dist/
+          echo "M36 prompt contract: OK"
           grep -R -q 'askmoina.memory.consent.v1' dist/
+          echo "Memory consent key contract: OK"
           grep -R -q 'Edit memory' dist/
+          echo "Vault edit capability contract: OK"
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
