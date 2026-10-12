@@ -4,6 +4,8 @@
   const $ = (selector) => document.querySelector(selector);
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
+  let visualGuideSvg = null;
+  let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
   const toggleButton = $("#toggleCopilot");
   const buttonLabel = $("#buttonLabel");
@@ -128,7 +130,146 @@
     clearMarkerButton.disabled = focusMarker.hidden;
   }
 
+  const visualGuideSvgNS = "http://www.w3.org/2000/svg";
+
+  function clearVisualGuide() {
+    latestVisualGuideElements = [];
+    if (visualGuideSvg) {
+      visualGuideSvg.replaceChildren();
+      visualGuideSvg.hidden = true;
+    }
+  }
+
+  function getVisualGuideLayer() {
+    if (visualGuideSvg && visualGuideSvg.isConnected) return visualGuideSvg;
+    visualGuideSvg = document.createElementNS(visualGuideSvgNS, "svg");
+    visualGuideSvg.classList.add("ai-visual-guide");
+    visualGuideSvg.setAttribute("aria-hidden", "true");
+    visualGuideSvg.setAttribute("preserveAspectRatio", "none");
+    visualGuideSvg.hidden = true;
+    stage.appendChild(visualGuideSvg);
+    return visualGuideSvg;
+  }
+
+  function visualCoord(value) {
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1000
+      ? value : null;
+  }
+
+  function renderVisualGuide(elements) {
+    clearVisualGuide();
+    if (!Array.isArray(elements) || !elements.length) return false;
+
+    const allowedTypes = new Set(["line", "arrow", "circle", "rect", "tick", "label"]);
+    const allowedTones = new Set(["mint", "white", "amber"]);
+    const accepted = elements.slice(0, 8).filter((element) => {
+      if (!element || typeof element !== "object" || !allowedTypes.has(element.type)) return false;
+      const n = visualCoord;
+      if (element.type === "line" || element.type === "arrow") {
+        return n(element.x1) !== null && n(element.y1) !== null && n(element.x2) !== null &&
+          n(element.y2) !== null && (element.x1 !== element.x2 || element.y1 !== element.y2);
+      }
+      if (element.type === "circle") {
+        return n(element.x) !== null && n(element.y) !== null &&
+          typeof element.radius === "number" && Number.isFinite(element.radius) &&
+          element.radius >= 4 && element.radius <= 250;
+      }
+      if (element.type === "rect") {
+        return n(element.x) !== null && n(element.y) !== null &&
+          typeof element.width === "number" && Number.isFinite(element.width) &&
+          typeof element.height === "number" && Number.isFinite(element.height) &&
+          element.width >= 1 && element.width <= 1000 && element.height >= 1 && element.height <= 1000;
+      }
+      if (element.type === "tick") return n(element.x) !== null && n(element.y) !== null;
+      return n(element.x) !== null && n(element.y) !== null &&
+        typeof element.text === "string" && element.text.trim().length > 0;
+    });
+    if (!accepted.length) return false;
+
+    const svg = getVisualGuideLayer();
+    svg.replaceChildren();
+    const bounds = stage.getBoundingClientRect();
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    const frameWidth = Math.max(1, video.videoWidth || width);
+    const frameHeight = Math.max(1, video.videoHeight || height);
+    const scale = Math.max(width / frameWidth, height / frameHeight);
+    const offsetX = (width - frameWidth * scale) / 2;
+    const offsetY = (height - frameHeight * scale) / 2;
+    const xAt = (x) => x * frameWidth / 1000 * scale + offsetX;
+    const yAt = (y) => y * frameHeight / 1000 * scale + offsetY;
+    const sizeAt = (value) => value * Math.min(frameWidth, frameHeight) / 1000 * scale;
+
+    const defs = document.createElementNS(visualGuideSvgNS, "defs");
+    for (const tone of ["mint", "white", "amber"]) {
+      const marker = document.createElementNS(visualGuideSvgNS, "marker");
+      marker.setAttribute("id", "moina-guide-arrow-" + tone);
+      marker.setAttribute("viewBox", "0 0 10 10");
+      marker.setAttribute("refX", "8");
+      marker.setAttribute("refY", "5");
+      marker.setAttribute("markerWidth", "7");
+      marker.setAttribute("markerHeight", "7");
+      marker.setAttribute("orient", "auto-start-reverse");
+      marker.setAttribute("markerUnits", "strokeWidth");
+      marker.classList.add("ai-guide-shape", "tone-" + tone);
+      const head = document.createElementNS(visualGuideSvgNS, "path");
+      head.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+      head.classList.add("ai-guide-arrowhead");
+      marker.appendChild(head);
+      defs.appendChild(marker);
+    }
+    svg.appendChild(defs);
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+    for (const element of accepted) {
+      const tone = allowedTones.has(element.color) ? element.color : "mint";
+      let shape = null;
+      if (element.type === "line" || element.type === "arrow") {
+        shape = document.createElementNS(visualGuideSvgNS, "line");
+        shape.setAttribute("x1", String(xAt(element.x1)));
+        shape.setAttribute("y1", String(yAt(element.y1)));
+        shape.setAttribute("x2", String(xAt(element.x2)));
+        shape.setAttribute("y2", String(yAt(element.y2)));
+        if (element.type === "arrow") shape.setAttribute("marker-end", "url(#moina-guide-arrow-" + tone + ")");
+      } else if (element.type === "circle") {
+        shape = document.createElementNS(visualGuideSvgNS, "circle");
+        shape.setAttribute("cx", String(xAt(element.x)));
+        shape.setAttribute("cy", String(yAt(element.y)));
+        shape.setAttribute("r", String(Math.max(3, sizeAt(element.radius))));
+      } else if (element.type === "rect") {
+        shape = document.createElementNS(visualGuideSvgNS, "rect");
+        shape.setAttribute("x", String(xAt(element.x)));
+        shape.setAttribute("y", String(yAt(element.y)));
+        shape.setAttribute("width", String(Math.max(1, sizeAt(element.width))));
+        shape.setAttribute("height", String(Math.max(1, sizeAt(element.height))));
+        shape.setAttribute("rx", "8");
+      } else if (element.type === "tick") {
+        const x = xAt(element.x);
+        const y = yAt(element.y);
+        const size = Math.max(8, Math.min(18, Math.min(width, height) * 0.024));
+        shape = document.createElementNS(visualGuideSvgNS, "path");
+        shape.setAttribute("d", "M " + (x - size) + " " + y + " L " + (x - size * 0.2) + " " + (y + size * 0.75) + " L " + (x + size) + " " + (y - size));
+      } else if (element.type === "label") {
+        shape = document.createElementNS(visualGuideSvgNS, "text");
+        shape.setAttribute("x", String(xAt(element.x)));
+        shape.setAttribute("y", String(yAt(element.y)));
+        shape.setAttribute("font-size", String(Math.max(12, Math.min(20, Math.min(width, height) * 0.032))));
+        shape.textContent = element.text.trim().slice(0, 48);
+        shape.classList.add("ai-guide-label");
+      }
+      if (!shape) continue;
+      if (element.type !== "label") shape.classList.add("ai-guide-shape");
+      shape.classList.add("tone-" + tone);
+      svg.appendChild(shape);
+    }
+
+    latestVisualGuideElements = accepted;
+    svg.hidden = false;
+    return true;
+  }
+
   function clearOverlay() {
+    clearVisualGuide();
     awaitingTargetSelection = false;
     pendingTrackingTargetKey = "";
     latestVisualGuidance = null;
@@ -164,6 +305,7 @@
   }
 
   function showOverlay(args) {
+    const hasVisualGuide = renderVisualGuide(args && args.visual_elements);
     if (args && args.await_user_selection === true) {
       clearOverlay();
       const requested = {
@@ -183,6 +325,20 @@
     const label = typeof args.text_to_display === "string" ? args.text_to_display.trim().slice(0, 72) : "";
     const hint = typeof args.target_hint === "string" ? args.target_hint.trim().slice(0, 120) : "";
     const instruction = typeof args.instruction === "string" ? args.instruction.trim().slice(0, 220) : "";
+    if (args.visual_only === true && hasVisualGuide) {
+      if (localTrackingActive) stopLocalTracking(false);
+      awaitingTargetSelection = false;
+      pendingTrackingTargetKey = "";
+      latestVisualGuidance = null;
+      focusMarker.hidden = true;
+      focusMarker.style.left = "";
+      focusMarker.style.top = "";
+      delete focusMarker.dataset.tracking;
+      approxTag.hidden = true;
+      clearMarkerButton.disabled = true;
+      setStatus(instruction || label || "Follow the on-screen guide.", "normal");
+      return;
+    }
     if (!label && !instruction) return;
 
     const primary = { label: label || "Moina's focus", hint, instruction, screenRegion: region };
