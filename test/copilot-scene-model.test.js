@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { COPILOT_JS } from "../src/copilot-assets";
+
+const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 function extractFunction(source, functionName) {
   const marker = "function " + functionName + "(";
@@ -108,5 +111,10 @@ describe("M25 live evidence-tagged scene model", () => {
     expect(COPILOT_JS).toContain("lastSentCameraFrameSequence += 1");
     expect(COPILOT_JS).toContain("identityConflict: labelConflict");
     expect(COPILOT_JS).toContain("model-reported, not measured");
+    expect(workerSource).toContain("scene_observations:");
+    expect(workerSource).toContain("scene_relations:");
+    expect(workerSource).toContain("Confidence is descriptive, not calibrated probability.");
+    expect(workerSource).toContain("Screen regions and relations are approximate reports");
+    expect(workerSource).toContain("PERSISTENT SPATIAL TRACKING — HONEST CONTINUITY:");
   });
 });
