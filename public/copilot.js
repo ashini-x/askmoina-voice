@@ -1526,11 +1526,7 @@
         return;
       }
       // A stale camera frame is replaceable evidence. Skip it under backpressure rather than queueing old scenery.
-      if (socket.bufferedAmount > 96 * 1024) {
-        frameEfficiencyStats.skipped += 1;
-        setCameraState("Live · waiting for connection", "warning");
-        return;
-      }
+      if (socket.bufferedAmount > 96 * 1024) return;
       socket.send(JSON.stringify({
         realtime_input: { video: { data, mime_type: "image/jpeg" } }
       }));
