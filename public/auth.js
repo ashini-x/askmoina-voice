@@ -185,7 +185,7 @@
         credential: registration(credential)
       });
       say("Your account is ready. Opening AskMoina…", "success");
-      location.assign(document.body.dataset.page === "account" ? "/account" : "/");
+      await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
     } catch (error) {
       hideSheet();
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey signup failed", error.name || "Error", error.code || "");
@@ -223,7 +223,7 @@
         credential: authentication(credential)
       });
       say("You’re signed in. Welcome back…", "success");
-      location.assign("/");
+      await navigateAfterAuth("/");
     } catch (error) {
       hideSheet();
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey sign-in failed", error.name || "Error", error.code || "");
@@ -240,6 +240,15 @@
       activeCredentialAbort = null;
       setBusy(false);
     }
+  }
+
+  async function navigateAfterAuth(destination) {
+    const launchScreen = $("#authLaunchScreen");
+    if (launchScreen) launchScreen.hidden = false;
+    document.body.classList.add("auth-transitioning");
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const next = destination === "/" && document.body.dataset.page !== "account" ? "/?launch=1" : destination;
+    window.location.replace(next);
   }
 
   function setMode(mode) {
@@ -309,7 +318,7 @@
       await post("phone/verify", { challengeId: pendingChallengeId, phone: pendingPhone, code });
       pendingChallengeId = null;
       say("Phone verified. Opening AskMoina…", "success");
-      location.assign(document.body.dataset.page === "account" ? "/account" : "/");
+      await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
     } catch (error) {
       say(explainPasskeyError(error, currentMode), "error");
     } finally {
@@ -338,7 +347,9 @@
     }
   });
 
-  if (document.body.dataset.page === "account") {
+  if (document.body.dataset.page === "launch") {
+    window.setTimeout(() => window.location.replace("/"), 720);
+  } else if (document.body.dataset.page === "account") {
     fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
       .then((response) => response.json())
       .then((data) => {

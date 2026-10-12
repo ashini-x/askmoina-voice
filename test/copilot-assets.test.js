@@ -36,6 +36,15 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
+  it("uses a camera-lens Vision mark, obvious authentication button, and wider live edge pulses", () => {
+    expect(html).not.toContain("toggleCaptions");
+    expect(html).toContain('<rect x="3.2" y="6.6" width="11.5" height="10.8" rx="2.2"/>');
+    expect(css).toContain("@keyframes edge-width-pulse");
+    expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
+    expect(css).toContain(".camera-stage.is-speaking .edge-glow:after");
+    expect(css).toContain(".entry-passkey-trailing");
+  });
+
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
     expect(() => new Function(script)).not.toThrow();
     expect(script).toContain("copilot_mode: true");
@@ -239,7 +248,8 @@ describe("Live Co-Pilot browser assets", () => {
   it("keeps the default Co-Pilot camera-first and reveals secondary controls only on request", () => {
     expect(html).toContain('id="toggleMoreControls"');
     expect(html).toContain('id="secondaryControls" hidden');
-    expect(html).toContain('id="toggleCaptions"');
+    expect(html).not.toContain('id="toggleCaptions"');
+    expect(script).not.toContain('captionsToggleButton.addEventListener');
     expect(script).toContain('stage.classList.toggle("controls-expanded", expanded)');
     expect(script).toContain('stage.classList.toggle("captions-expanded", expanded)');
     expect(css).toContain(".secondary-controls[hidden]{display:none!important}");

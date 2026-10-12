@@ -108,6 +108,24 @@
     .auth-sheet{background:#0005;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
     @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+
+    .passkey-action{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:13px;min-height:62px;width:100%;padding:9px 14px;border:1px solid #d2d2d7;border-radius:16px;background:#fff;color:#1d1d1f;box-shadow:0 2px 8px rgba(0,0,0,.035);text-align:left;cursor:pointer;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+    .passkey-action:hover:not(:disabled){background:#fafafa;border-color:#b7b7bd;box-shadow:0 5px 15px rgba(0,0,0,.06);filter:none;transform:translateY(-1px)}
+    .passkey-action:active:not(:disabled){background:#f0f0f2;transform:scale(.99)}
+    .passkey-symbol{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:0;border-radius:12px;background:#f2f2f7;color:#1d1d1f;box-shadow:none}
+    .passkey-symbol svg{width:25px;height:25px;stroke-width:1.45}
+    .passkey-copy{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+    .passkey-copy strong{font-size:.96rem;font-weight:620;letter-spacing:-.022em;line-height:1.25}
+    .passkey-copy>span{display:block;color:#6e6e73;font-size:.74rem;line-height:1.25}
+    .passkey-action .arrow{display:block;font-size:0;line-height:1;color:#8e8e93}
+    .passkey-action .arrow:after{content:"";display:block;width:8px;height:8px;border-top:1.7px solid currentColor;border-right:1.7px solid currentColor;transform:rotate(45deg);margin-right:4px}
+    .auth-launch-screen{position:fixed;z-index:500;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px;background:#f5f5f7;color:#1d1d1f}
+    .auth-launch-screen[hidden]{display:none!important}
+    .launch-spinner{width:24px;height:24px;border:2px solid #d2d2d7;border-top-color:#1d1d1f;border-radius:50%;animation:launch-spin .8s linear infinite}
+    .launch-title{font-size:.92rem;font-weight:560;letter-spacing:-.015em;color:#6e6e73}
+    @keyframes launch-spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){.launch-spinner{animation:none!important}}
+
 </style>
 </head>
 <body data-page="login">
@@ -148,6 +166,7 @@
       <button class="cancel-button" id="cancelAuth" type="button">Cancel</button>
     </section>
   </div>
+  <section class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening AskMoina</span></section>
   <script src="/auth.js" defer></script>
 </body>
 </html>

@@ -61,7 +61,6 @@
       try { sessionStorage.removeItem(MEMORY_CONTEXT_KEY); } catch (_) {}
     }
   });
-  const captionsToggleButton = $("#toggleCaptions");
   const moreControlsButton = $("#toggleMoreControls");
   const secondaryControls = $("#secondaryControls");
   const muteButton = $("#muteMic");
@@ -2841,14 +2840,6 @@
   muteButton.addEventListener("click", toggleMicrophoneMute);
   clearMarkerButton.addEventListener("click", clearOverlay);
   clearTranscriptButton.addEventListener("click", resetTranscript);
-  captionsToggleButton.addEventListener("click", () => {
-    const expanded = !stage.classList.contains("captions-expanded");
-    stage.classList.toggle("captions-expanded", expanded);
-    captionsToggleButton.setAttribute("aria-expanded", String(expanded));
-    captionsToggleButton.title = expanded ? "Hide captions" : "Show captions";
-    captionsToggleButton.setAttribute("aria-label", expanded ? "Hide conversation captions" : "Show conversation captions");
-    captionsToggleButton.innerHTML = expanded ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.5a3 3 0 1 0 0 5M17 9.5a3 3 0 1 0 0 5"/></svg>';
-  });
   moreControlsButton.addEventListener("click", () => {
     const expanded = !stage.classList.contains("controls-expanded");
     stage.classList.toggle("controls-expanded", expanded);

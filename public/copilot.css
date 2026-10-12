@@ -709,3 +709,49 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 .camera-stage.voice-active .edge-glow{opacity:.82}
 @keyframes intelligence-pulse{0%,100%{opacity:.55;transform:scale(1);filter:saturate(.94) brightness(.93)}48%{opacity:1;transform:scale(1.003);filter:saturate(1.22) brightness(1.22)}}
 @media(prefers-reduced-motion:reduce){.edge-glow:before,.edge-glow:after{animation:none!important;transform:none!important}}
+
+/* System-native access button, launch transition, Vision lens mark, and refined call affordance. */
+.entry-passkey{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:13px;width:100%;min-height:62px;padding:9px 14px;border:1px solid #d2d2d7;border-radius:16px;background:#fff;color:#1d1d1f;box-shadow:0 2px 10px rgba(0,0,0,.035);cursor:pointer;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.entry-passkey:hover:not(:disabled){background:#fafafa;border-color:#b7b7bd;box-shadow:0 5px 16px rgba(0,0,0,.07);transform:translateY(-1px)}
+.entry-passkey:active:not(:disabled){background:#f0f0f2;transform:scale(.99);box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.entry-passkey:focus-visible{outline:3px solid #007aff55;outline-offset:3px}
+.entry-passkey-icon{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#f2f2f7;color:#1d1d1f}
+.entry-passkey-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
+#passkeyTitle{flex:1;text-align:left;font-size:.96rem;font-weight:620;letter-spacing:-.022em}
+.entry-passkey-trailing{display:grid;place-items:center;flex:0 0 22px;color:#8e8e93}
+.entry-passkey-trailing svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease,color .18s ease}
+.entry-passkey:hover:not(:disabled) .entry-passkey-trailing svg{transform:translateX(2px);color:#1d1d1f}
+.entry-passkey .entry-hidden-copy{display:none!important}
+.entry-launch-screen,.auth-launch-screen{position:fixed;z-index:500;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px;background:#f5f5f7;color:#1d1d1f}
+.entry-launch-screen[hidden],.auth-launch-screen[hidden]{display:none!important}
+.launch-spinner{display:block;width:24px;height:24px;border:2px solid #d2d2d7;border-top-color:#1d1d1f;border-radius:50%;animation:launch-spin .8s linear infinite}
+.launch-title{font-size:.92rem;font-weight:560;letter-spacing:-.015em;color:#6e6e73}
+@keyframes launch-spin{to{transform:rotate(360deg)}}
+.entry-product-icon svg{fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+.entry-product-arrow{display:grid;place-items:center;right:24px;bottom:26px;color:#8e8e93;transition:color .2s ease,transform .2s ease}
+.entry-product-arrow svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.entry-product-card:not(.is-disabled):hover .entry-product-arrow{transform:translateX(3px);color:#1d1d1f}
+.back-control svg{width:20px;height:20px;stroke-width:1.75}
+.stop-button{width:59px;height:59px;min-height:59px;border:0;border-radius:50%;background:#30d158;color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.16);transition:transform .16s ease,background .2s ease,box-shadow .2s ease}
+.stop-button:hover:not(:disabled){background:#28c94f;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:scale(1.025)}
+.stop-button:active:not(:disabled){transform:scale(.96)}
+.stop-button .icon-start,.stop-button .icon-end{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.stop-button .icon-start{display:block}
+.stop-button .icon-end{display:none}
+.stop-button.is-live{background:#ff3b30;border:0;color:#fff;box-shadow:0 7px 22px rgba(0,0,0,.22)}
+.stop-button.is-live:hover:not(:disabled){background:#f52f25}
+.stop-button.is-live .icon-start{display:none}
+.stop-button.is-live .icon-end{display:block}
+.edge-glow:before,.edge-glow:after{background:conic-gradient(from 0deg,#7ca6ff 0deg,#9b9fff 95deg,#b7a2ff 185deg,#d9a8f0 265deg,#a6a9ff 320deg,#7ca6ff 360deg)}
+.edge-glow:before{padding:8px;animation:edge-orbit 7s linear infinite,edge-width-pulse 1.55s ease-in-out infinite}
+.edge-glow:after{padding:17px;filter:blur(24px);opacity:.85;animation:edge-halo-pulse 1.55s ease-in-out infinite}
+.camera-stage.is-connecting .edge-glow,.camera-stage.voice-active .edge-glow{opacity:1}
+.camera-stage.is-connecting .edge-glow:before{padding:10px;animation-duration:7s,1.15s}
+.camera-stage.is-connecting .edge-glow:after{padding:20px;filter:blur(28px);animation-duration:1.15s}
+.camera-stage.is-listening .edge-glow:before{padding:12px;animation-duration:7s,.82s}
+.camera-stage.is-listening .edge-glow:after{padding:24px;filter:blur(31px);opacity:1;animation-duration:.82s}
+.camera-stage.is-speaking .edge-glow:before{padding:13px;animation-duration:7s,.72s}
+.camera-stage.is-speaking .edge-glow:after{padding:26px;filter:blur(34px);opacity:1;animation-duration:.72s}
+@keyframes edge-width-pulse{0%,100%{padding:7px;opacity:.72;filter:saturate(1) brightness(.96)}50%{padding:12px;opacity:1;filter:saturate(1.24) brightness(1.18)}}
+@keyframes edge-halo-pulse{0%,100%{padding:15px;opacity:.58;filter:blur(22px)}50%{padding:27px;opacity:1;filter:blur(35px)}}
+@media(prefers-reduced-motion:reduce){.launch-spinner{animation:none!important}.edge-glow:before,.edge-glow:after,.entry-product-arrow svg{animation:none!important;transition:none!important}}
