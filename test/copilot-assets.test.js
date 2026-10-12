@@ -211,7 +211,8 @@ describe("Live Co-Pilot browser assets", () => {
   
   it("renders a JARVIS-style visual guidance HUD with a single contextual action", () => {
     expect(html).toContain('class="spatial-hud spatial-hud-jarvis"');
-    expect(html).toContain('> AR Guide</button>');
+    expect(html).toContain('aria-label="Spatial guide"');
+    expect(html).toContain('class="control-icon spatial-ar-button"');
     expect(html).toContain('id="spatialActionHint"');
     expect(html).toContain('id="spatialProgressTrack"');
     expect(html).toContain('id="placeSpatialAnchor" disabled>Finding surface…</button>');

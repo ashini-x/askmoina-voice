@@ -431,7 +431,7 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 .voice-glow span:nth-child(3){top:17%;opacity:.55;transform:scaleX(.56);animation-delay:-3.4s;animation-duration:8s}
 .camera-stage.voice-active .voice-glow{display:block}
 .camera-stage.has-camera .voice-glow{z-index:2}
-.camera-top-badge,.camera-state,.privacy-hint,.home-link{display:none!important}
+.camera-top-badge,.camera-state,.home-link{display:none!important}.privacy-hint.sr-only{display:block!important}
 .approx-tag{display:none!important}
 .caption-dock{display:none;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));width:min(480px,calc(100% - 28px));max-height:32svh;border:1px solid rgba(255,255,255,.17);border-radius:24px;background:rgba(19,20,25,.61);box-shadow:0 18px 54px rgba(0,0,0,.25);backdrop-filter:blur(35px) saturate(135%);-webkit-backdrop-filter:blur(35px) saturate(135%);padding:10px;gap:4px}
 .camera-stage.captions-expanded .caption-dock{display:flex;animation:caption-in .22s cubic-bezier(.2,.8,.2,1) both}

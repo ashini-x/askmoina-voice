@@ -9,21 +9,23 @@ const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "
 
 describe("Milestone 34 zero-learning camera-first UX", () => {
   it("makes the first action obvious without adding a tutorial or mode selector", () => {
-    expect(html).toContain("Point. Ask. Follow.");
-    expect(html).toContain("Tap Start, then tell Moina what you want to do.");
+    expect(html).not.toContain("Point. Ask. Follow.");
+    expect(html).not.toContain("Tap Start, then tell Moina what you want to do.");
+    expect(html).toContain("presence-orb");
     expect(html).toContain("id=\"toggleCopilot\"");
     expect(html).toContain("id=\"secondaryControls\" hidden");
     expect(html).toContain("id=\"toggleMoreControls\"");
   });
 
   it("provides a compact natural-language invitation and optional examples", () => {
-    expect(html).toContain("Tell Moina your goal in your own words.");
-    expect(html).toContain("Set this up");
-    expect(html).toContain("Compare these");
-    expect(html).toContain("Explain this");
-    expect(script).toContain("Tell Moina your goal in your own words.");
-    expect(script).toContain("Try: “Set this up” · “Compare these” · “Explain this”");
-    expect(css).toContain(".empty-examples");
+    expect(html).not.toContain("Tell Moina your goal in your own words.");
+    expect(html).not.toContain("Set this up");
+    expect(html).not.toContain("Compare these");
+    expect(html).not.toContain("Explain this");
+    expect(html).toContain('id="toggleCaptions"');
+    expect(html).toContain('aria-label="Mute microphone"');
+    expect(html).toContain('aria-label="Start call"');
+    expect(css).toContain(".presence-orb");
   });
 
   it("keeps the post-connection cue conversational and avoids expert-only instructions", () => {
