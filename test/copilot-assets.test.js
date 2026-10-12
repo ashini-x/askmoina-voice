@@ -245,16 +245,33 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".spatial-progress-segment.is-current");
   });
   
-  it("keeps the default Co-Pilot camera-first and reveals secondary controls only on request", () => {
-    expect(html).toContain('id="toggleMoreControls"');
-    expect(html).toContain('id="secondaryControls" hidden');
+  it("keeps the four core controls in one row and exposes pinch zoom without a scale bar", () => {
+    expect(html).not.toContain('id="toggleMoreControls"');
+    expect(html).not.toContain('id="secondaryControls"');
+    expect(html).toContain('id="vaultButton" href="/vault"');
+    expect(html).toContain('id="flipCamera"');
+    expect(html).toContain('id="muteMic"');
+    expect(html).toContain('id="toggleCopilot"');
+    expect(html).toContain('id="zoomDock" hidden aria-hidden="true"');
     expect(html).not.toContain('id="toggleCaptions"');
-    expect(script).not.toContain('captionsToggleButton.addEventListener');
-    expect(script).toContain('stage.classList.toggle("controls-expanded", expanded)');
-    expect(script).not.toContain("captionsToggleButton.addEventListener");
-    expect(css).toContain(".secondary-controls[hidden]{display:none!important}");
-    expect(css).toContain(".camera-stage.captions-expanded .transcript{display:flex}");
-    expect(css).toContain(".camera-stage.controls-expanded .zoom-dock{display:flex}");
+    expect(script).toContain('stage.addEventListener("touchmove"');
+    expect(script).not.toContain('stage.classList.toggle("controls-expanded", expanded)');
+    expect(css).toContain("#zoomDock,.zoom-dock[hidden]{display:none!important");
+    expect(css).toContain("min-width:61px!important;max-width:61px");
+  });
+
+  it("makes Vision a swipe-to-start control and keeps real errors visible until successful recovery", () => {
+    expect(html).toContain('id="intelligenceIntro"');
+    expect(html).toContain('id="visionSlideHandle"');
+    expect(html).toContain("Slide to show your problem");
+    expect(script).toContain('showProblemButton.addEventListener("pointermove"');
+    expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
+    expect(script).toContain("function hideConnectionNotice(resolved = false)");
+    expect(script).toContain("hideConnectionNotice(true)");
+    expect(css).toContain("@keyframes intelligence-intro-arrive");
+    expect(css).toContain(".camera-stage.has-notice #videoPreview");
+    expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
+    expect(css).toContain("opacity:0!important;animation:none!important");
   });
 
 });

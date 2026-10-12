@@ -755,3 +755,62 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 @keyframes edge-width-pulse{0%,100%{padding:7px;opacity:.72;filter:saturate(1) brightness(.96)}50%{padding:12px;opacity:1;filter:saturate(1.24) brightness(1.18)}}
 @keyframes edge-halo-pulse{0%,100%{padding:15px;opacity:.58;filter:blur(22px)}50%{padding:27px;opacity:1;filter:blur(35px)}}
 @media(prefers-reduced-motion:reduce){.launch-spinner{animation:none!important}.edge-glow:before,.edge-glow:after,.entry-product-arrow svg{animation:none!important;transition:none!important}}
+
+
+/* Apple-inspired refinement pass: compact welcome, slide-to-start, quiet voice halo, and balanced controls. */
+.intelligence-intro{position:absolute;z-index:9;left:50%;top:43%;width:150px;height:94px;transform:translate(-50%,-50%);display:grid;place-items:center;pointer-events:none;opacity:0}
+.camera-stage.initial-intro .intelligence-intro{animation:intelligence-intro-arrive 1.28s cubic-bezier(.2,.75,.2,1) both}
+.intro-ribbon{position:absolute;width:116px;height:39px;border:8px solid transparent;border-radius:50%;background:conic-gradient(from 10deg,#81caff,#ac9eff,#efb7db,#90e8dc,#a4b8ff,#81caff) border-box;mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);mask-composite:exclude;filter:blur(4px) saturate(1.18);mix-blend-mode:screen}
+.intro-ribbon-one{transform:rotate(-24deg) scaleX(1.05);animation:intro-ribbon-float 1.28s ease-in-out both}
+.intro-ribbon-two{transform:rotate(47deg) scaleX(.87);filter:blur(6px) saturate(1.25);animation:intro-ribbon-float 1.28s ease-in-out both reverse}
+.intro-ribbon-three{width:83px;height:27px;transform:rotate(96deg);filter:blur(7px);opacity:.7;animation:intro-ribbon-float 1.28s ease-in-out both}
+@keyframes intelligence-intro-arrive{0%{opacity:0;transform:translate(-50%,-46%) scale(.72);filter:blur(5px)}18%{opacity:.96;transform:translate(-50%,-50%) scale(1.03);filter:blur(0)}66%{opacity:.82;transform:translate(-50%,-50%) scale(1);filter:blur(0)}100%{opacity:0;transform:translate(-50%,-51%) scale(1.08);filter:blur(4px)}}
+@keyframes intro-ribbon-float{0%{rotate:-36deg;scale:.68}50%{scale:1.09}100%{rotate:36deg;scale:.87}}
+.show-problem-button{bottom:calc(23% + env(safe-area-inset-bottom)*.1);display:block;width:min(346px,calc(100% - 36px));height:68px;min-height:68px;padding:5px;border:1px solid rgba(255,255,255,.7);border-radius:23px;background:rgba(245,246,249,.94);color:#1c1c1e;box-shadow:0 10px 36px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.95);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.vision-slide-track{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 62px;border-radius:18px;overflow:hidden}
+.vision-slide-track:before{content:"";position:absolute;z-index:0;left:3px;top:3px;bottom:3px;width:calc(54px + var(--slide-distance,0px));max-width:calc(100% - 6px);border-radius:15px;background:linear-gradient(105deg,rgba(138,169,255,.26),rgba(177,157,244,.17),rgba(133,218,208,.19));transition:width .16s ease;pointer-events:none}
+.vision-slide-label{position:relative;z-index:1;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(.78rem,2.8vw,.91rem);font-weight:600;letter-spacing:-.018em;color:#222329;text-align:center;transition:opacity .15s ease}
+.vision-slide-chevron{position:absolute;z-index:1;right:13px;top:50%;transform:translateY(-50%);font-size:1.22rem;letter-spacing:-.14em;color:#727784;opacity:.62;animation:vision-slide-hint 1.2s ease-in-out infinite}
+.vision-slide-handle{position:absolute;z-index:2;left:5px;top:5px;width:48px;height:48px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.95);border-radius:50%;background:linear-gradient(145deg,#fff,#e8eaf0);color:#202126;box-shadow:0 2px 8px rgba(0,0,0,.15),inset 0 1px 0 #fff;transform:translateX(var(--slide-distance,0px));transition:transform .22s cubic-bezier(.2,.75,.25,1),box-shadow .2s ease}
+.vision-slide-handle svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.show-problem-button.is-sliding .vision-slide-handle{transition:none;box-shadow:0 3px 14px rgba(30,38,64,.24),inset 0 1px 0 #fff}
+.show-problem-button.is-sliding .vision-slide-chevron{opacity:.12;animation:none}
+.show-problem-button.is-complete{background:rgba(238,244,255,.98);border-color:#dce5ff;box-shadow:0 0 0 4px rgba(156,177,255,.15),0 8px 30px rgba(0,0,0,.18)}
+.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 6px);background:linear-gradient(105deg,rgba(124,165,255,.35),rgba(193,164,255,.27),rgba(115,222,210,.3))}
+@keyframes vision-slide-hint{0%,100%{opacity:.35;translate:0 -50%}50%{opacity:.85;translate:3px -50%}}
+/* A faint halo is the only voice signal. No solid ring, idle animation, or network-wait pulsing. */
+.edge-glow{opacity:0!important}
+.edge-glow:before{display:none!important;animation:none!important;opacity:0!important}
+.edge-glow:after{padding:9px!important;filter:blur(17px)!important;opacity:0!important;animation:none!important;background:conic-gradient(from 190deg,#82aaff 0deg,#aaa8ff 95deg,#d8b2f3 178deg,#b6e7e6 260deg,#82aaff 360deg)!important}
+.camera-stage.is-connecting .edge-glow,.camera-stage.voice-active .edge-glow,.camera-stage.has-notice .edge-glow{opacity:0!important}
+.camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.76!important}
+.camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{opacity:.28!important;animation:quiet-voice-halo 1.05s ease-in-out infinite alternate!important}
+@keyframes quiet-voice-halo{from{padding:8px!important;filter:blur(15px)!important;opacity:.19!important}to{padding:18px!important;filter:blur(25px)!important;opacity:.48!important}}
+/* Keep real connectivity errors visible and the preview defocused until a successful setup resolves them. */
+.camera-stage.has-notice #videoPreview{filter:blur(13px) saturate(.62) brightness(.52);transform:scale(1.06)}
+.connection-notice{width:min(354px,calc(100% - 34px));gap:13px;padding:25px 24px 22px;border-radius:25px;background:rgba(27,28,34,.84);border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 84px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.11);backdrop-filter:blur(42px) saturate(145%);-webkit-backdrop-filter:blur(42px) saturate(145%)}
+.connection-notice-copy strong{font-size:1.02rem;font-weight:650;letter-spacing:-.025em}
+.connection-notice-copy p{max-width:31ch;font-size:.87rem;line-height:1.5;color:rgba(246,246,250,.81);overflow-wrap:anywhere}
+.connection-notice[data-kind="error"]{border-color:rgba(255,105,97,.3);background:rgba(29,27,31,.9)}
+.connection-notice[data-kind="error"] .connection-notice-symbol{border-color:rgba(255,105,97,.32);background:rgba(255,69,58,.1)}
+.connection-notice[data-kind="error"] .connection-notice-symbol:before{content:"!";inset:0;border:0;border-radius:0;color:#ff6961;font-size:28px;font-weight:600;line-height:1;display:grid;place-items:center;animation:none}
+.connection-notice[data-kind="error"] .connection-notice-progress{display:none}
+/* Four symmetric, always-visible controls. The call control is circular, never an inherited oval. */
+.camera-controls{width:100%;max-width:100%;gap:10px}
+.primary-control-row{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:0 10px}
+.camera-controls .primary-control-row .control-icon:not(#toggleCopilot){width:53px;height:53px;min-width:53px;min-height:53px;border-radius:50%;flex:0 0 53px;background:rgba(22,24,30,.69);border:1px solid rgba(255,255,255,.24);color:rgba(250,250,252,.96);box-shadow:0 7px 24px rgba(0,0,0,.18);backdrop-filter:blur(26px) saturate(145%);-webkit-backdrop-filter:blur(26px) saturate(145%)}
+.camera-controls .primary-control-row .control-icon svg{width:25px;height:25px;stroke-width:1.75}
+.camera-controls .primary-control-row .vault-control{display:grid;place-items:center;text-decoration:none}
+.camera-controls .primary-control-row .vault-control:active{transform:scale(.93)}
+.camera-controls .primary-control-row #toggleCopilot.stop-button{display:grid;place-items:center;flex:0 0 61px;width:61px;height:61px;min-width:61px!important;max-width:61px;min-height:61px;padding:0;border:1px solid rgba(255,255,255,.28);border-radius:50%!important;background:rgba(247,248,250,.96);color:#1c1c1e;box-shadow:0 8px 28px rgba(0,0,0,.22);transform:none}
+#toggleCopilot .icon-start,#toggleCopilot .icon-end{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#toggleCopilot .icon-start{display:block}
+#toggleCopilot .icon-end{display:none}
+#toggleCopilot.is-live{background:#f0444d!important;border-color:rgba(255,255,255,.2)!important;color:#fff!important;box-shadow:0 8px 25px rgba(240,68,77,.28)!important}
+#toggleCopilot.is-live .icon-start{display:none}
+#toggleCopilot.is-live .icon-end{display:block}
+#toggleCopilot:disabled{opacity:.44}
+.vault-control:focus-visible,.camera-controls .control-icon:focus-visible{outline:3px solid rgba(205,219,255,.92);outline-offset:4px}
+#zoomDock,.zoom-dock[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
+@media(max-width:380px){.camera-controls .primary-control-row{gap:8px;padding:0 7px}.camera-controls .primary-control-row .control-icon:not(#toggleCopilot){width:50px;height:50px;min-width:50px;min-height:50px;flex-basis:50px}.camera-controls .primary-control-row #toggleCopilot.stop-button{flex-basis:58px;width:58px;height:58px;min-width:58px!important;max-width:58px;min-height:58px}.camera-controls .primary-control-row .control-icon svg{width:24px;height:24px}#toggleCopilot .icon-start,#toggleCopilot .icon-end{width:25px;height:25px}.vision-slide-label{font-size:.77rem}}
+@media(prefers-reduced-motion:reduce){.camera-stage.initial-intro .intelligence-intro,.intro-ribbon-one,.intro-ribbon-two,.intro-ribbon-three,.vision-slide-chevron{animation:none!important}.camera-stage.initial-intro .intelligence-intro{opacity:0!important}.edge-glow:after{animation:none!important}.vision-slide-handle,.vision-slide-track:before{transition:none!important}}

@@ -15,6 +15,7 @@
   const connectionNoticeProgress = $("#connectionNoticeProgress");
   const connectionNoticeAction = $("#connectionNoticeAction");
   let automaticReconnectAttempts = 0;
+  let persistentConnectionIssue = null;
   let reconnectTimer = null;
   let isAutomaticRetry = false;
   let lastMicVoiceAt = 0;
@@ -61,8 +62,6 @@
       try { sessionStorage.removeItem(MEMORY_CONTEXT_KEY); } catch (_) {}
     }
   });
-  const moreControlsButton = $("#toggleMoreControls");
-  const secondaryControls = $("#secondaryControls");
   const muteButton = $("#muteMic");
   const zoomSlider = $("#zoomSlider");
   const zoomLabel = $("#zoomLabel");
@@ -411,19 +410,27 @@
 
   function showConnectionNotice(title, message, kind) {
     if (!connectionNotice) return;
-    connectionNoticeTitle.textContent = String(title || "Connection notice");
-    connectionNoticeMessage.textContent = String(message || "Please try again.");
-    connectionNotice.dataset.kind = kind || "connecting";
+    const safeTitle = String(title || "Connection notice");
+    const safeMessage = String(message || "Please try again.");
     const isError = kind === "error";
-    connectionNotice.setAttribute("role", isError ? "alertdialog" : "status");
-    connectionNotice.setAttribute("aria-live", isError ? "assertive" : "polite");
+    if (isError) persistentConnectionIssue = { title: safeTitle, message: safeMessage };
+    const stillRecovering = !isError && Boolean(persistentConnectionIssue);
+    connectionNoticeTitle.textContent = stillRecovering ? "Reconnecting…" : safeTitle;
+    connectionNoticeMessage.textContent = stillRecovering
+      ? persistentConnectionIssue.message + " Recovery in progress: " + safeMessage
+      : safeMessage;
+    connectionNotice.dataset.kind = isError ? "error" : stillRecovering ? "connecting-after-error" : (kind || "connecting");
+    connectionNotice.setAttribute("role", (isError || stillRecovering) ? "alertdialog" : "status");
+    connectionNotice.setAttribute("aria-live", (isError || stillRecovering) ? "assertive" : "polite");
     connectionNoticeProgress.hidden = isError;
     connectionNoticeAction.hidden = !isError;
     connectionNotice.hidden = false;
     stage.classList.add("has-notice");
   }
 
-  function hideConnectionNotice() {
+  function hideConnectionNotice(resolved = false) {
+    if (persistentConnectionIssue && !resolved) return;
+    if (resolved) persistentConnectionIssue = null;
     if (connectionNotice) connectionNotice.hidden = true;
     stage.classList.remove("has-notice");
   }
@@ -1943,7 +1950,7 @@
       setStatus("Connected. Tell Moina what you want to do in your own words.");
       setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
-      hideConnectionNotice();
+      hideConnectionNotice(true);
       automaticReconnectAttempts = 0;
       playConnectionChime();
       greetingTurnPending = true;
@@ -2122,7 +2129,7 @@
     starting = true;
     stopping = false;
     greetingTurnPending = false;
-    stage.classList.remove("pre-start");
+    stage.classList.remove("pre-start", "initial-intro");
     stage.classList.add("is-connecting");
     if (previewPromise) { try { await previewPromise; } catch (_) {} }
     recordRealityLoopEvent("session_starting");
@@ -2821,14 +2828,67 @@
     }
   }
 
-  if (showProblemButton) showProblemButton.addEventListener("click", () => {
-    if (!active && !starting) void startCopilot();
-  });
+  if (showProblemButton) {
+    let slidePointerId = null;
+    let slideStartX = 0;
+    let slideStartProgress = 0;
+    const slideHandle = showProblemButton.querySelector(".vision-slide-handle");
+    const slideLabel = showProblemButton.querySelector("#visionSlideLabel");
+    const slideProgress = () => Math.max(0, Math.min(1, Number(showProblemButton.dataset.progress || 0)));
+    const resetSlide = () => {
+      showProblemButton.dataset.progress = "0";
+      showProblemButton.style.setProperty("--slide-distance", "0px");
+      showProblemButton.classList.remove("is-sliding", "is-complete");
+      if (slideLabel) slideLabel.textContent = "Slide to show your problem";
+    };
+    showProblemButton.addEventListener("pointerdown", (event) => {
+      if (active || starting || (event.pointerType === "mouse" && event.button !== 0)) return;
+      slidePointerId = event.pointerId;
+      slideStartX = event.clientX;
+      slideStartProgress = slideProgress();
+      showProblemButton.classList.add("is-sliding");
+      try { showProblemButton.setPointerCapture(event.pointerId); } catch (_) {}
+      event.preventDefault();
+    });
+    showProblemButton.addEventListener("pointermove", (event) => {
+      if (slidePointerId !== event.pointerId || !slideHandle) return;
+      const maxDistance = Math.max(1, showProblemButton.clientWidth - slideHandle.offsetWidth - 10);
+      const progress = Math.max(0, Math.min(1, slideStartProgress + (event.clientX - slideStartX) / maxDistance));
+      showProblemButton.dataset.progress = String(progress);
+      showProblemButton.style.setProperty("--slide-distance", (maxDistance * progress) + "px");
+      if (slideLabel) slideLabel.textContent = progress >= 0.82 ? "Release to begin" : "Slide to show your problem";
+    });
+    showProblemButton.addEventListener("pointerup", (event) => {
+      if (slidePointerId !== event.pointerId) return;
+      slidePointerId = null;
+      try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
+      showProblemButton.classList.remove("is-sliding");
+      if (slideProgress() >= 0.82) {
+        showProblemButton.dataset.progress = "1";
+        showProblemButton.classList.add("is-complete");
+        if (slideLabel) slideLabel.textContent = "Opening Vision…";
+        if (!active && !starting) void startCopilot();
+      } else {
+        resetSlide();
+      }
+    });
+    showProblemButton.addEventListener("pointercancel", (event) => {
+      if (slidePointerId !== event.pointerId) return;
+      slidePointerId = null;
+      try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
+      resetSlide();
+    });
+    showProblemButton.addEventListener("click", (event) => {
+      // Pointer users must complete the slide; keyboard activation remains an accessible alternative.
+      if (event.detail > 0) return;
+      if (!active && !starting) void startCopilot();
+    });
+  }
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {
-      hideConnectionNotice();
       automaticReconnectAttempts = 0;
       isAutomaticRetry = false;
+      showConnectionNotice("Reconnecting…", "Retrying the camera, microphone, and voice connection…", "connecting");
       void startCopilot();
     });
   }
@@ -2840,15 +2900,7 @@
   muteButton.addEventListener("click", toggleMicrophoneMute);
   clearMarkerButton.addEventListener("click", clearOverlay);
   clearTranscriptButton.addEventListener("click", resetTranscript);
-  moreControlsButton.addEventListener("click", () => {
-    const expanded = !stage.classList.contains("controls-expanded");
-    stage.classList.toggle("controls-expanded", expanded);
-    secondaryControls.hidden = !expanded;
-    moreControlsButton.setAttribute("aria-expanded", String(expanded));
-    moreControlsButton.setAttribute("aria-label", expanded ? "Hide more controls" : "More controls");
-    moreControlsButton.querySelector(".more-icon").style.display = expanded ? "none" : "";
-    moreControlsButton.querySelector(".close-icon").style.display = expanded ? "" : "none";
-  });
+
   window.addEventListener("pagehide", () => {
     if (active || starting || socket) stopCopilot(false);
     if (previewStream) {
