@@ -1,5 +1,5 @@
-Last updated: 2026-10-12 (M31–M34 implemented; release validation passed 40 test files / 246 tests; production smoke passed; active Worker deployment verified at 100%; live-model quality, held-out-task evaluation, and physical-device acceptance pending).
-Last updated: 2026-10-12 (M31–M32 merged; release validation passed 38 test files / 238 tests; production smoke passed; Cloudflare deployment 6ea141c3 has version 9c026f74 at 100%; live-model task quality and physical-device acceptance pending)
+# AskMoina product roadmap
+Last updated: 2026-10-12 (M31–M34 deployed; M35–M36 implementation with synthetic acceptance; live task quality, provider usage observations, and real-device acceptance remain separate gates).
 
 ## Product vision
 
@@ -48,8 +48,8 @@ These milestones supersede the earlier numbering for the work that had not shipp
 
 - **M33 — Universal task engine (implemented; synthetic prompt-contract checks added; live-model/held-out-task acceptance pending):** extend the same observe/understand/act-or-explain/check/adapt loop across organization, comparison, setup/configuration, assembly, repair, troubleshooting, learning, inspection, planning, creative work, and unfamiliar tasks without forcing a task mode, physical action, or overlay. See [M33 acceptance](acceptance/m33-universal-task-engine.md).
 - **M34 — Zero-learning camera-first UX (implemented; asset/prompt contract checks added; real-device usability acceptance pending):** retain the full camera and single Start action, invite natural-language goals with a few optional examples, explain one next move at a time, and keep technical controls tucked away. See [M34 acceptance](acceptance/m34-zero-learning-camera-ux.md).
-- **M35 — Efficient intelligence:** measure latency and inference cost; use fast local techniques for suitable low-latency work and higher-capability reasoning for difficult cases, with explicit fallback behavior.
-- **M36 — Permission-based continuity:** make saved memory optional, inspectable, correctable, exportable, and deletable; keep the core copilot useful without saved memory.
+- **M35 — Efficient intelligence (implementation and synthetic contracts added; production telemetry observation pending):** stable idle camera frames may be suppressed locally with a 2.4-second freshness heartbeat; motion, active task state, tracking, target selection, zoom, and fresh-evidence demand bypass suppression. Setup/first-audio/search latency and media counts are measured. Provider token usage is recorded only when returned; cost estimates stay null unless both explicit rates and provider token counts exist. See [M35 acceptance](acceptance/m35-efficient-intelligence.md).
+- **M36 — Permission-based continuity (implementation and synthetic contracts added; device acceptance pending):** saved memories can be opted into only for future sessions, previewed before sharing, edited, exported as an encrypted backup, or deleted. A cross-tab opt-out marker overrides stale tab caches. Existing connected sessions must be ended to clear context already sent. See [M36 acceptance](acceptance/m36-permission-based-continuity.md).
 - **M37 — Assam-first, world-ready speech:** evaluate real Upper Assam speakers and natural Assamese-English code-switching, then broaden language and accent coverage through measured test suites rather than intuition.
 
 ### Phase 4 — Evidence, pilot, and scale

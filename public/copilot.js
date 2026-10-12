@@ -24,6 +24,27 @@
   const focusInstruction = $("#focusInstruction");
   const approxTag = $("#approxTag");
   const clearTranscriptButton = $("#clearTranscript");
+  const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
+  const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
+
+  function readOptedInMemoryContext() {
+    try {
+      const consent = localStorage.getItem(MEMORY_CONSENT_KEY);
+      if (consent === "disabled") return "";
+      const value = String(localStorage.getItem(MEMORY_CONTEXT_KEY) || sessionStorage.getItem(MEMORY_CONTEXT_KEY) || "").trim().slice(0, 3000);
+      if (value && consent !== "enabled") {
+        try { localStorage.setItem(MEMORY_CONSENT_KEY, "enabled"); } catch (_) {}
+      }
+      return value;
+    } catch (_) { return ""; }
+  }
+
+  window.addEventListener("storage", (event) => {
+    if ((event.key === MEMORY_CONSENT_KEY && event.newValue !== "enabled") ||
+        (event.key === MEMORY_CONTEXT_KEY && event.newValue === null)) {
+      try { sessionStorage.removeItem(MEMORY_CONTEXT_KEY); } catch (_) {}
+    }
+  });
   const captionsToggleButton = $("#toggleCaptions");
   const moreControlsButton = $("#toggleMoreControls");
   const secondaryControls = $("#secondaryControls");
@@ -34,6 +55,10 @@
   const zoomOutButton = $("#zoomOut");
   const trackingCanvas = document.createElement("canvas");
   const trackingContext = trackingCanvas.getContext("2d", { willReadFrequently: true });
+  const frameSampleCanvas = document.createElement("canvas");
+  frameSampleCanvas.width = 24;
+  frameSampleCanvas.height = 18;
+  const frameSampleContext = frameSampleCanvas.getContext("2d", { willReadFrequently: true });
   let trackingPixels = null;
   let trackingTimer = null;
   let localTrackingActive = false;
@@ -91,6 +116,9 @@
   let availabilitySequence = 0;
   let facingMode = "environment";
   let lastVideoSentAt = 0;
+  let previousFrameSample = null;
+  let lastFrameEfficiencyReportAt = 0;
+  const frameEfficiencyStats = { sent: 0, suppressed: 0, encodedChars: 0, lastMotionScore: 1 };
   let sendingVideo = false;
   let cameraSuspendedForSpatialAr = false;
   let cameraResumeInProgress = false;
@@ -1403,10 +1431,77 @@
     });
   }
 
+  function measureCameraChangeScore() {
+    if (!frameSampleContext || !video.videoWidth || !video.videoHeight) return 1;
+    try {
+      frameSampleContext.drawImage(video, 0, 0, frameSampleCanvas.width, frameSampleCanvas.height);
+      const rgba = frameSampleContext.getImageData(0, 0, frameSampleCanvas.width, frameSampleCanvas.height).data;
+      const sample = new Uint8Array(frameSampleCanvas.width * frameSampleCanvas.height);
+      for (let i = 0, p = 0; i < sample.length; i += 1, p += 4) {
+        const luminance = rgba[p] * 0.299 + rgba[p + 1] * 0.587 + rgba[p + 2] * 0.114;
+        sample[i] = Math.min(15, Math.floor(luminance / 16));
+      }
+      if (!previousFrameSample || previousFrameSample.length !== sample.length) {
+        previousFrameSample = sample;
+        return 1;
+      }
+      let difference = 0;
+      for (let i = 0; i < sample.length; i += 1) difference += Math.abs(sample[i] - previousFrameSample[i]);
+      previousFrameSample = sample;
+      return difference / (sample.length * 15);
+    } catch (_) {
+      previousFrameSample = null;
+      return 1; // Sampling failure must preserve evidence by sending the frame.
+    }
+  }
+
+  function shouldSuppressStableFrame(changeScore, elapsedMs, forceFresh) {
+    return !forceFresh && Number.isFinite(changeScore) && Number.isFinite(elapsedMs) &&
+      changeScore < 0.028 && elapsedMs < 2400;
+  }
+
+  function hasHighPriorityCameraDemand() {
+    return Boolean(
+      localTrackingActive || awaitingTargetSelection || latestVisualGuidance ||
+      (Array.isArray(latestVisualGuideElements) && latestVisualGuideElements.length > 0) ||
+      (taskWorldModel && taskWorldModel.goal) ||
+      (realityLoopState && (realityLoopState.freshFrameRequired === true ||
+        realityLoopState.mode === "awaiting_frame" || realityLoopState.camera === "resuming")) ||
+      zoomLevel !== 1
+    );
+  }
+
+  function reportFrameEfficiency(now) {
+    if (!lastFrameEfficiencyReportAt) lastFrameEfficiencyReportAt = now;
+    if (now - lastFrameEfficiencyReportAt < 30000) return;
+    if (frameEfficiencyStats.sent || frameEfficiencyStats.suppressed) {
+      console.info("[AskMoina] Adaptive camera sampling", JSON.stringify({
+        sampleWindowMs: now - lastFrameEfficiencyReportAt,
+        framesSent: frameEfficiencyStats.sent,
+        stableFramesSuppressed: frameEfficiencyStats.suppressed,
+        sentImageBase64Chars: frameEfficiencyStats.encodedChars,
+        lastMotionScore: Number(frameEfficiencyStats.lastMotionScore.toFixed(3))
+      }));
+    }
+    frameEfficiencyStats.sent = 0;
+    frameEfficiencyStats.suppressed = 0;
+    frameEfficiencyStats.encodedChars = 0;
+    lastFrameEfficiencyReportAt = now;
+  }
+
   function sendVideoFrame() {
     if (sendingVideo || !active || !setupReady || !socket || socket.readyState !== WebSocket.OPEN || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) return;
     const now = Date.now();
     if (now - lastVideoSentAt < 900) return;
+    const changeScore = measureCameraChangeScore();
+    frameEfficiencyStats.lastMotionScore = changeScore;
+    const forceFresh = hasHighPriorityCameraDemand();
+    const elapsedSinceSent = lastVideoSentAt ? now - lastVideoSentAt : Number.POSITIVE_INFINITY;
+    if (lastVideoSentAt && shouldSuppressStableFrame(changeScore, elapsedSinceSent, forceFresh)) {
+      frameEfficiencyStats.suppressed += 1;
+      reportFrameEfficiency(now);
+      return;
+    }
     sendingVideo = true;
     try {
       const maxDimension = 320;
@@ -1441,10 +1536,13 @@
         realtime_input: { video: { data, mime_type: "image/jpeg" } }
       }));
       lastVideoSentAt = Date.now();
+      frameEfficiencyStats.sent += 1;
+      frameEfficiencyStats.encodedChars += data.length;
+      reportFrameEfficiency(lastVideoSentAt);
       recordRealityLoopEvent("frame_sent", { trackingActive: localTrackingActive });
       lastSentCameraFrameSequence += 1;
       lastSentCameraViewGeneration = cameraViewGeneration;
-      setCameraState("Live · frames ~1/sec", "live");
+      setCameraState("Live · adaptive camera sampling", "live");
     } catch (_) {
       setStatus("Couldn't process a camera frame. Keep the camera view steady and try again.", "warning");
     } finally {
@@ -1456,6 +1554,12 @@
     clearInterval(videoTimer);
     clearTimeout(firstVideoTimer);
     lastVideoSentAt = 0;
+    previousFrameSample = null;
+    lastFrameEfficiencyReportAt = Date.now();
+    frameEfficiencyStats.sent = 0;
+    frameEfficiencyStats.suppressed = 0;
+    frameEfficiencyStats.encodedChars = 0;
+    frameEfficiencyStats.lastMotionScore = 1;
     firstVideoTimer = window.setTimeout(sendVideoFrame, 250);
     videoTimer = window.setInterval(sendVideoFrame, 1200);
   }
@@ -1849,7 +1953,7 @@
         if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         const setupPayload = { setup: {}, copilot_mode: true };
         try {
-          const memory = String(localStorage.getItem("askmoina.memory.context") || sessionStorage.getItem("askmoina.memory.context") || "").trim().slice(0, 3000);
+          const memory = readOptedInMemoryContext();
           if (memory) setupPayload.memory_context = memory;
         } catch (_) {}
         sessionSocket.send(JSON.stringify(setupPayload));

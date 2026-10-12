@@ -87,6 +87,7 @@ export async function recordSessionStart(
 
 export async function recordSessionFinish(
   env: Env, sessionId: string, visitorId: string | null, startedAt: number, outcome: string, setupCompleted: boolean,
+  estimatedCostUsd: number | null = null,
 ): Promise<void> {
   const endedAt = new Date().toISOString();
   const duration = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
@@ -95,8 +96,9 @@ export async function recordSessionFinish(
     "UPDATE voice_sessions SET ended_at = ?, duration_seconds = ?, outcome = ?, setup_completed = ? WHERE session_id = ? AND ended_at IS NULL",
   ).bind(endedAt, duration, safeOutcome, setupCompleted ? 1 : 0, sessionId).run();
   await env.DB.prepare(
-    "INSERT INTO usage_events (id, user_id, event_type, duration_seconds, estimated_cost_usd, created_at) VALUES (?, ?, ?, ?, NULL, ?)",
-  ).bind(crypto.randomUUID(), visitorId, "voice_session_" + safeOutcome, duration, endedAt).run();
+    "INSERT INTO usage_events (id, user_id, event_type, duration_seconds, estimated_cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).bind(crypto.randomUUID(), visitorId, "voice_session_" + safeOutcome, duration,
+    typeof estimatedCostUsd === "number" && Number.isFinite(estimatedCostUsd) && estimatedCostUsd >= 0 ? estimatedCostUsd : null, endedAt).run();
 }
 
 function sameOrigin(request: Request): boolean {
@@ -136,7 +138,7 @@ function vaultPage(): string {
     '<div id="recoveryPanel" class="alert hidden"><strong>Save this recovery code now</strong><p class="muted">Anyone with this code and your vault ID can decrypt your memory backup. We cannot reset it for you.</p><div id="recoveryDisplay" class="key"></div><div class="actions"><button id="copyCode" class="secondary">Copy code</button><button id="downloadKit" class="secondary">Download recovery kit</button><button id="confirmSaved">I have saved it</button></div></div><div id="message" class="alert hidden" role="status" aria-live="polite"></div></section>',
     '<section id="vaultPanel" class="panel hidden"><div class="top"><div><h2>Your Memory Vault</h2><div class="muted" id="vaultStatus">Unlocked · local encrypted copy</div></div><button id="lockVault" class="secondary">Lock vault</button></div>',
     '<div class="field"><label for="memoryText">Add something for Moina to remember</label><textarea id="memoryText" maxlength="4000" placeholder="Example: I prefer Assamese and simple, friendly explanations."></textarea></div><div class="actions"><button id="saveMemory">Save memory</button><button id="exportBackup" class="secondary">Download encrypted backup</button><button id="uploadBackup" class="secondary">Enable / update encrypted cloud backup</button><button id="deleteLocal" class="secondary">Delete local copy</button><button id="deleteCloud" class="danger">Delete cloud backup</button></div>',
-    '<div class="field"><label><input type="checkbox" id="useInVoice"> Use these memories in AskMoina across this browser</label><p class="muted">When enabled, selected note text is stored in this browser (not on our server) so it can reach AskMoina from another tab too. It is sent to Gemini at the start of each new voice conversation while enabled. Uncheck this or lock the vault to clear the selected context. This opt-in cache is plaintext in browser storage.</p></div><h3>Saved memories</h3><div id="memoryList"><p class="muted">No memories saved yet.</p></div><p class="muted">This release saves facts you enter here. It does not automatically extract memories from speech.</p></section>',
+    '<div class="field"><label><input type="checkbox" id="useInVoice"> Use all saved memories in new AskMoina conversations across this browser</label><p class="muted">Off by default. When enabled, all saved note text is cached in plaintext browser storage and sent to Gemini at the start of each new voice conversation. You can edit or delete any note below. Turning this off clears the cache for future conversations across open tabs; it cannot retract notes already sent to a connected conversation, so end that conversation too. Your encrypted vault remains saved.</p><p id="voiceContextPreview" class="muted" role="status" aria-live="polite" style="white-space:pre-wrap;max-height:160px;overflow:auto;overflow-wrap:anywhere">Off — no saved memories will be sent to new conversations.</p></div><h3>Saved memories</h3><div id="memoryList"><p class="muted">No memories saved yet.</p></div><p class="muted">This release saves facts you enter here. It does not automatically extract memories from speech.</p></section>',
     '<p class="footer">Local-first storage · AES-GCM encryption · Optional encrypted backup · This vault does not save transcripts or microphone recordings.</p></main><script src="/vault.js" defer></script></body></html>',
   ].join("");
 }
@@ -150,6 +152,7 @@ const STORE = "vaults";
 const ITERATIONS = 600000;
 const TAB_CONTEXT = "askmoina.memory.context";
 const TAB_CONTEXT_VAULT_ID = "askmoina.memory.context.vaultId";
+const TAB_CONTEXT_CONSENT = "askmoina.memory.consent.v1";
 let vault = null, recoveryCode = "", key = null, currentState = null;
 
 function message(text, error) { const n=$("#message"); n.textContent=text; n.classList.remove("hidden","error"); if(error)n.classList.add("error"); }
@@ -165,18 +168,108 @@ async function encryptState(state) { const iv=crypto.getRandomValues(new Uint8Ar
 async function decryptStateWithKey(record,derived) { if(!record||record.version!==1||record.kdf!=="PBKDF2-SHA-256"||record.iterations!==ITERATIONS)throw new Error("Unsupported vault version.");const salt=unb64u(record.salt);if(salt.length!==16)throw new Error("Invalid vault salt.");const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64u(record.iv),additionalData:aad(record.vaultId)},derived,unb64u(record.ciphertext));const state=JSON.parse(new TextDecoder().decode(clear));if(!state||state.schemaVersion!==1||!Array.isArray(state.memories)||state.memories.length>50)throw new Error("Vault contents are not valid.");return {derived,state};}
 async function decryptState(record,code) { const derived=await deriveKey(code,unb64u(record.salt));return decryptStateWithKey(record,derived);}
 async function apiBackup(method,code,id,body) { const headers={"Authorization":"Bearer "+code};if(body)headers["Content-Type"]="application/json";const r=await fetch("/api/vault/"+encodeURIComponent(id),{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===409)throw new Error("A newer cloud revision exists. Restore that backup before updating.");if(r.status===404)throw new Error("Cloud backup was not found or the recovery code is incorrect.");throw new Error(d.error||"Encrypted backup request failed.");}return d;}
-function showUnlocked(){ $("#vaultPanel").classList.remove("hidden");$("#vaultStatus").textContent="Unlocked · local encrypted copy"+(vault.cloudEnabled?" · encrypted cloud backup enabled":"");$("#vaultId").value=vault.vaultId;$("#recoveryCode").value="";renderMemories();let owner=localStorage.getItem(TAB_CONTEXT_VAULT_ID);if(owner&&owner!==vault.vaultId){localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);}let selected=localStorage.getItem(TAB_CONTEXT)||sessionStorage.getItem(TAB_CONTEXT)||"";if(selected&&!localStorage.getItem(TAB_CONTEXT)){localStorage.setItem(TAB_CONTEXT,selected);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);}$("#useInVoice").checked=Boolean(selected);$("#rememberDevice").checked=Boolean(vault.deviceKey); }
-function lockVault(){vault=null;key=null;recoveryCode="";currentState=null;sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);$("#vaultPanel").classList.add("hidden");$("#recoveryPanel").classList.add("hidden");$("#recoveryCode").value="";$("#useInVoice").checked=false;message("Vault locked. Selected voice context was cleared from this browser.");}
-function renderMemories(){const list=$("#memoryList");list.replaceChildren();if(!currentState.memories.length){const p=document.createElement("p");p.className="muted";p.textContent="No memories saved yet.";list.append(p);return;}for(const m of currentState.memories){const row=document.createElement("div");row.className="memory";const left=document.createElement("div"),p=document.createElement("p"),small=document.createElement("small");p.textContent=m.text;small.textContent="Saved "+new Date(m.updatedAt||m.createdAt).toLocaleString();left.append(p,small);const btn=document.createElement("button");btn.className="danger";btn.textContent="Delete";btn.addEventListener("click",async()=>{currentState.memories=currentState.memories.filter(x=>x.id!==m.id);await saveLocalState();message("Memory deleted locally. Update your encrypted cloud backup to sync this deletion.");});row.append(left,btn);list.append(row);}}
-async function saveLocalState(){await encryptState(currentState);if($("#useInVoice").checked){const context=currentState.memories.map(m=>m.text).join("\n").slice(0,3000);if(context){localStorage.setItem(TAB_CONTEXT,context);sessionStorage.setItem(TAB_CONTEXT,context);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);}else{localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);$("#useInVoice").checked=false;}}renderMemories();message(vault.cloudEnabled?"Saved locally. Update your cloud backup to sync this change.":"Saved to this device in encrypted form.");}
-async function createVault(){if(vault&&!confirm("Create a different vault?"))return;localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);const id=crypto.randomUUID(),code=randCode(),salt=crypto.getRandomValues(new Uint8Array(16));key=await deriveKey(code,salt);vault={vaultId:id,version:1,kdf:"PBKDF2-SHA-256",iterations:ITERATIONS,salt:b64u(salt),iv:"",ciphertext:"",revision:0,cloudRevision:0,cloudEnabled:false};recoveryCode=code;currentState={schemaVersion:1,memories:[]};await encryptState(currentState);localStorage.setItem("askmoina.vault.lastId",id);$("#vaultId").value=id;$("#recoveryDisplay").textContent=code;$("#recoveryPanel").classList.remove("hidden");showUnlocked();$("#recoveryPanel").classList.remove("hidden");message("Vault created. Save the recovery code before closing or losing browser data.");}
+function showUnlocked(){
+  $("#vaultPanel").classList.remove("hidden");
+  $("#vaultStatus").textContent="Unlocked · local encrypted copy"+(vault.cloudEnabled?" · encrypted cloud backup enabled":"");
+  $("#vaultId").value=vault.vaultId;
+  $("#recoveryCode").value="";
+  renderMemories();
+  const owner=localStorage.getItem(TAB_CONTEXT_VAULT_ID);
+  if(owner&&owner!==vault.vaultId){
+    localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);
+    localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");
+  }
+  let consent=localStorage.getItem(TAB_CONTEXT_CONSENT);
+  if(consent==="disabled"){
+    localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);
+  }
+  const selected=consent==="disabled"?"":(localStorage.getItem(TAB_CONTEXT)||sessionStorage.getItem(TAB_CONTEXT)||"");
+  if(selected&&consent!=="enabled"){localStorage.setItem(TAB_CONTEXT_CONSENT,"enabled");consent="enabled";}
+  if(selected&&!localStorage.getItem(TAB_CONTEXT)){localStorage.setItem(TAB_CONTEXT,selected);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);}
+  $("#useInVoice").checked=Boolean(selected&&consent==="enabled");
+  $("#rememberDevice").checked=Boolean(vault.deviceKey);
+  renderConsentPreview();
+}
+function lockVault(){vault=null;key=null;recoveryCode="";currentState=null;localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);$("#vaultPanel").classList.add("hidden");$("#recoveryPanel").classList.add("hidden");$("#recoveryCode").value="";$("#useInVoice").checked=false;renderConsentPreview();message("Vault locked. Selected voice context was cleared from this browser.");}
+function renderConsentPreview(){
+  const preview=$("#voiceContextPreview"),checkbox=$("#useInVoice");
+  if(!preview||!checkbox)return;
+  if(!checkbox.checked||!currentState){preview.textContent="Off — no saved memories will be sent to new conversations.";return;}
+  const text=currentState.memories.map(m=>m.text).join("\\n").slice(0,3000);
+  preview.textContent=text?"Preview of saved note text sent to new conversations:\\n"+text:"No saved note text is available to send.";
+}
+function renderMemories(){
+  const list=$("#memoryList");list.replaceChildren();
+  if(!currentState.memories.length){const p=document.createElement("p");p.className="muted";p.textContent="No memories saved yet.";list.append(p);return;}
+  for(const m of currentState.memories){
+    const row=document.createElement("div");row.className="memory";
+    const left=document.createElement("div"),p=document.createElement("p"),small=document.createElement("small");
+    p.textContent=m.text;small.textContent="Saved "+new Date(m.updatedAt||m.createdAt).toLocaleString();left.append(p,small);
+    const actions=document.createElement("div");actions.className="actions";
+    const edit=document.createElement("button");edit.className="secondary";edit.textContent="Edit memory";edit.setAttribute("aria-label","Edit saved memory");
+    edit.addEventListener("click",()=>{
+      const editor=document.createElement("textarea");editor.maxLength=4000;editor.value=m.text;editor.setAttribute("aria-label","Edit memory text");
+      const save=document.createElement("button");save.textContent="Save changes";
+      const cancel=document.createElement("button");cancel.className="secondary";cancel.textContent="Cancel";
+      const editActions=document.createElement("div");editActions.className="actions";editActions.append(save,cancel);
+      row.replaceChildren(editor,editActions);cancel.addEventListener("click",renderMemories);
+      save.addEventListener("click",async()=>{
+        const next=editor.value.trim();
+        if(!next){message("A memory cannot be empty. Keep the note or cancel editing.",true);return;}
+        const oldText=m.text,oldUpdated=m.updatedAt;m.text=next;m.updatedAt=new Date().toISOString();
+        try{await saveLocalState();message(vault.cloudEnabled?"Memory updated locally. Update your encrypted cloud backup to sync the change.":"Memory updated in the encrypted local vault.");}
+        catch(error){m.text=oldText;m.updatedAt=oldUpdated;message(error&&error.message?error.message:"Could not update memory.",true);renderMemories();}
+      });
+      editor.focus();
+    });
+    const del=document.createElement("button");del.className="danger";del.textContent="Delete memory";
+    del.addEventListener("click",async()=>{
+      currentState.memories=currentState.memories.filter(x=>x.id!==m.id);await saveLocalState();
+      message(vault.cloudEnabled?"Memory deleted locally. Update your encrypted cloud backup to sync the deletion.":"Memory deleted from the encrypted local vault.");
+    });
+    actions.append(edit,del);row.append(left,actions);list.append(row);
+  }
+}
+async function saveLocalState(){
+  await encryptState(currentState);
+  if($("#useInVoice").checked){
+    const context=currentState.memories.map(m=>m.text).join("\\n").slice(0,3000);
+    if(context){
+      localStorage.setItem(TAB_CONTEXT_CONSENT,"enabled");localStorage.setItem(TAB_CONTEXT,context);
+      sessionStorage.setItem(TAB_CONTEXT,context);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);
+    }else{
+      localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");localStorage.removeItem(TAB_CONTEXT);
+      sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);$("#useInVoice").checked=false;
+    }
+  }
+  renderMemories();renderConsentPreview();
+  message(vault.cloudEnabled?"Saved locally. Update your cloud backup to sync this change.":"Saved to this device in encrypted form.");
+}
+async function createVault(){if(vault&&!confirm("Create a different vault?"))return;localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");localStorage.removeItem(TAB_CONTEXT);sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);const id=crypto.randomUUID(),code=randCode(),salt=crypto.getRandomValues(new Uint8Array(16));key=await deriveKey(code,salt);vault={vaultId:id,version:1,kdf:"PBKDF2-SHA-256",iterations:ITERATIONS,salt:b64u(salt),iv:"",ciphertext:"",revision:0,cloudRevision:0,cloudEnabled:false};recoveryCode=code;currentState={schemaVersion:1,memories:[]};await encryptState(currentState);localStorage.setItem("askmoina.vault.lastId",id);$("#vaultId").value=id;$("#recoveryDisplay").textContent=code;$("#recoveryPanel").classList.remove("hidden");showUnlocked();$("#recoveryPanel").classList.remove("hidden");message("Vault created. Save the recovery code before closing or losing browser data.");}
 async function unlockVault(){const id=($("#vaultId").value||localStorage.getItem("askmoina.vault.lastId")||"").trim(),code=$("#recoveryCode").value.trim();if(!/^[0-9a-f-]{36}$/i.test(id))throw new Error("Enter a valid vault ID or create a new vault.");let record=await getLocal(id);let opened;if(!record){if(!/^[A-Za-z0-9_-]{43}$/.test(code))throw new Error("Enter the recovery code to restore the cloud backup.");record=await apiBackup("GET",code,id,null);record={...record,cloudEnabled:true,cloudRevision:record.revision,revision:record.revision};await putLocal(record);localStorage.setItem("askmoina.vault.lastId",id);}if(/^[A-Za-z0-9_-]{43}$/.test(code)){opened=await decryptState(record,code);recoveryCode=code;}else if(record.deviceKey){opened=await decryptStateWithKey(record,record.deviceKey);recoveryCode="";}else throw new Error("Enter the recovery code, or enable browser unlock after a previous unlock.");vault={...record};key=opened.derived;currentState=opened.state;localStorage.setItem("askmoina.vault.lastId",id);$("#recoveryPanel").classList.add("hidden");showUnlocked();message("Vault unlocked on this device. Cloud backups remain encrypted.");}
 async function backupCloud(){if(!vault||!key)throw new Error("Unlock the vault first.");const body={version:vault.version,kdf:vault.kdf,iterations:vault.iterations,salt:vault.salt,iv:vault.iv,ciphertext:vault.ciphertext,expectedRevision:vault.cloudRevision||0};const result=await apiBackup("PUT",recoveryCode,vault.vaultId,body);vault.cloudRevision=result.revision;vault.cloudEnabled=true;await putLocal(vault);showUnlocked();message("Encrypted cloud backup updated. The server received ciphertext only.");}
 function download(filename,content,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement("a");a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function downloadKit(){if(!vault||!recoveryCode)throw new Error("Create or unlock a vault first.");download("askmoina-recovery-kit.txt","AskMoina encrypted memory recovery kit\n\nVault ID: "+vault.vaultId+"\nRecovery code: "+recoveryCode+"\n\nKeep this file private and offline. Anyone with both values can decrypt the cloud backup. AskMoina cannot reset this code.\n","text/plain");}
 async function deleteCloud(){if(!vault||!recoveryCode)throw new Error("Unlock the vault with its recovery code first.");if(!confirm("Permanently delete the encrypted cloud backup? The local copy will remain."))return;await apiBackup("DELETE",recoveryCode,vault.vaultId,null);vault.cloudEnabled=false;vault.cloudRevision=0;await putLocal(vault);showUnlocked();message("Encrypted cloud backup deleted. The local copy remains.");}
 async function deleteLocal(){if(!vault)throw new Error("Unlock the vault first.");if(!confirm("Delete the local encrypted copy from this browser? Without another backup, access may be lost."))return;await delLocal(vault.vaultId);localStorage.removeItem("askmoina.vault.lastId");lockVault();}
-function voiceContext(enabled){if(!vault||!currentState)return;if(!enabled){sessionStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);message("Selected memory context cleared from this browser; it will not be sent to Gemini.");return;}const text=currentState.memories.map(m=>m.text).join("\n").slice(0,3000);if(!text){$("#useInVoice").checked=false;message("Add at least one memory first.",true);return;}localStorage.setItem(TAB_CONTEXT,text);sessionStorage.setItem(TAB_CONTEXT,text);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);message("Selected memories are enabled across this browser. Their text is cached locally and will be sent to Gemini at the start of each voice conversation until you disable this setting or lock the vault.");}
+function voiceContext(enabled){
+  if(!vault||!currentState)return;
+  if(!enabled){
+    localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");sessionStorage.removeItem(TAB_CONTEXT);
+    localStorage.removeItem(TAB_CONTEXT);localStorage.removeItem(TAB_CONTEXT_VAULT_ID);renderConsentPreview();
+    message("Memory use is off for future conversations across open tabs. End any already-connected conversation to remove its current memory context; the saved vault is unchanged.");
+    return;
+  }
+  const text=currentState.memories.map(m=>m.text).join("\\n").slice(0,3000);
+  if(!text){
+    $("#useInVoice").checked=false;localStorage.setItem(TAB_CONTEXT_CONSENT,"disabled");
+    renderConsentPreview();message("Add at least one memory before enabling memory use.",true);return;
+  }
+  localStorage.setItem(TAB_CONTEXT_CONSENT,"enabled");localStorage.setItem(TAB_CONTEXT,text);
+  sessionStorage.setItem(TAB_CONTEXT,text);localStorage.setItem(TAB_CONTEXT_VAULT_ID,vault.vaultId);
+  renderConsentPreview();
+  message("Memory use enabled. Preview the exact note text above. It will be sent to Gemini at the start of each new voice conversation until you turn this off or lock the vault.");
+}
 async function importBackup(){const file=$("#importFile").files[0];if(!file)throw new Error("Choose an encrypted backup JSON file first.");if(file.size>750000)throw new Error("Backup file is too large.");const rec=JSON.parse(await file.text());const id=String(rec.vaultId||"");if(!/^[0-9a-f-]{36}$/i.test(id)||rec.version!==1)throw new Error("This does not look like an AskMoina encrypted backup.");const code=$("#recoveryCode").value.trim();const opened=await decryptState(rec,code);await putLocal({...rec,cloudEnabled:false,cloudRevision:0});localStorage.setItem("askmoina.vault.lastId",id);vault={...rec,cloudEnabled:false,cloudRevision:0};recoveryCode=code;key=opened.derived;currentState=opened.state;$("#vaultId").value=id;showUnlocked();message("Encrypted backup imported and unlocked on this device.");}
 $("#createVault").addEventListener("click",()=>createVault().catch(e=>message(e.message||"Could not create vault.",true)));
 $("#unlockVault").addEventListener("click",()=>unlockVault().catch(e=>message(e.message||"Could not unlock vault.",true)));
@@ -193,11 +286,18 @@ $("#useInVoice").addEventListener("change",e=>voiceContext(Boolean(e.target.chec
 $("#rememberDevice").addEventListener("change",async e=>{if(!vault||!key){if(e.target.checked)message("Unlock the vault first, then enable browser unlock.",true);e.target.checked=false;return;}try{if(e.target.checked){vault.deviceKey=key;await putLocal(vault);message("Browser unlock enabled on this device only.");}else{delete vault.deviceKey;await putLocal(vault);message("Browser unlock disabled. Your recovery code is required next time.");}}catch(_){e.target.checked=false;message("This browser could not persist its encryption key.",true);}});
 $("#importBackup").addEventListener("click",()=>importBackup().catch(e=>message(e.message||"Could not import backup.",true)));
 const last=localStorage.getItem("askmoina.vault.lastId");if(last)$("#vaultId").value=last;
+window.addEventListener("storage",e=>{
+  if((e.key===TAB_CONTEXT_CONSENT&&e.newValue!=="enabled")||(e.key===TAB_CONTEXT&&e.newValue===null)){
+    sessionStorage.removeItem(TAB_CONTEXT);
+    if($("#useInVoice").checked){$("#useInVoice").checked=false;renderConsentPreview();message("Memory use was turned off in another tab. End any already-connected conversation to clear its active memory context.");}
+  }
+});
 })();`;
 
 const CONTINUITY_JS = `(() => {
 "use strict";
 const contextKey = "askmoina.memory.context";
+const consentKey = "askmoina.memory.consent.v1";
 const NativeWebSocket = window.WebSocket;
 function AskMoinaWebSocket(url, protocols) {
   const socket = protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
@@ -210,7 +310,17 @@ function AskMoinaWebSocket(url, protocols) {
         if (message && message.setup && Object.keys(message).length === 1) {
           firstFrameSeen = true;
           let context = "";
-          try { context = localStorage.getItem(contextKey) || sessionStorage.getItem(contextKey) || ""; } catch (_) {}
+          try {
+            const consent = localStorage.getItem(consentKey);
+            if (consent !== "disabled") {
+              context = localStorage.getItem(contextKey) || sessionStorage.getItem(contextKey) || "";
+              if (context && consent !== "enabled") {
+                try { localStorage.setItem(consentKey, "enabled"); } catch (_) {}
+              }
+            } else {
+              try { sessionStorage.removeItem(contextKey); } catch (_) {}
+            }
+          } catch (_) {}
           if (context) {
             message.memory_context = context.slice(0, 3000);
             data = JSON.stringify(message);
@@ -221,6 +331,13 @@ function AskMoinaWebSocket(url, protocols) {
     return send(data);
   };
   return socket;
+}
+if (typeof window.addEventListener === "function") {
+  window.addEventListener("storage", event => {
+    if ((event.key === consentKey && event.newValue !== "enabled") || (event.key === contextKey && event.newValue === null)) {
+      try { sessionStorage.removeItem(contextKey); } catch (_) {}
+    }
+  });
 }
 AskMoinaWebSocket.prototype = NativeWebSocket.prototype;
 Object.setPrototypeOf(AskMoinaWebSocket, NativeWebSocket);

@@ -29,6 +29,27 @@
   }
 
   const visitorIdentityReady = ensureVisitorIdentity();
+  const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
+  const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
+
+  function readOptedInMemoryContext() {
+    try {
+      const consent = localStorage.getItem(MEMORY_CONSENT_KEY);
+      if (consent === "disabled") return "";
+      const value = String(localStorage.getItem(MEMORY_CONTEXT_KEY) || sessionStorage.getItem(MEMORY_CONTEXT_KEY) || "").trim().slice(0, 3000);
+      if (value && consent !== "enabled") {
+        try { localStorage.setItem(MEMORY_CONSENT_KEY, "enabled"); } catch (_) {}
+      }
+      return value;
+    } catch (_) { return ""; }
+  }
+
+  window.addEventListener("storage", (event) => {
+    if ((event.key === MEMORY_CONSENT_KEY && event.newValue !== "enabled") ||
+        (event.key === MEMORY_CONTEXT_KEY && event.newValue === null)) {
+      try { sessionStorage.removeItem(MEMORY_CONTEXT_KEY); } catch (_) {}
+    }
+  });
 
   let socket = null;
   let audioContext = null;
@@ -553,7 +574,7 @@
         const setupPayload = { setup: {} };
         let selectedMemoryContext = "";
         try {
-          selectedMemoryContext = String(localStorage.getItem("askmoina.memory.context") || sessionStorage.getItem("askmoina.memory.context") || "").trim().slice(0, 3_000);
+          selectedMemoryContext = readOptedInMemoryContext();
         } catch (_) {
           // Memory context is optional; voice must work if browser storage is unavailable.
         }

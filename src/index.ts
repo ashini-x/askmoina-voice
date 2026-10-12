@@ -2,7 +2,7 @@ import type { Env } from "./config/env";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
-import { inspectProviderControlFrame, isProviderAudioFrame } from "./sessions/provider-frame";
+import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, visitorIdFromRequest, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
@@ -16,6 +16,12 @@ import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded
 export { UserState } from "./sessions/user-state";
 
 const providerFrameDecoder = new TextDecoder();
+
+function configuredTokenRate(value?: string): number | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const rate = Number(value);
+  return Number.isFinite(rate) && rate >= 0 ? rate : null;
+}
 
 const COPILOT_SYSTEM_INSTRUCTION = [
   "You are Moina's live camera co-pilot for Assamese-speaking users.",
@@ -87,6 +93,7 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Make the next user action obvious without requiring a tutorial, mode choice, or knowledge of tool names. After connection, invite the user to say what they want to do in their own words; use a short everyday example when helpful, not a menu of required commands.",
   "Give one clear immediate action or answer in plain spoken language. Avoid unexplained jargon, long checklists, and multiple competing instructions. Let the camera and conversation remain primary; offer visual guidance only when it genuinely makes the next action easier to understand.",
   "Do not narrate interface mechanics such as overlays, task categories, internal state, or function names unless the user asks. If the user seems stuck, explain the next step briefly and specifically. Keep optional or expert controls out of the main path, and never imply that starting voice or seeing a guide confirms a physical result.",
+  "M35 — EFFICIENT INTELLIGENCE: use the live conversation for direct stable answers, and use grounded lookup only when current/model-specific evidence materially matters. Respect the bounded search budget. If a lookup fails, say so and fall back only to clearly labelled general guidance when safe; do not claim verification. Camera sampling is an efficiency heuristic, never object recognition or proof of progress.",
   "M28 — GENERATIVE SPATIAL LANGUAGE:",
   "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
@@ -836,12 +843,13 @@ async function handleVoiceSocket(
   const analyticsStartedAt = Date.now();
   let analyticsFinished = false;
   let analyticsSetupComplete = false;
+  let estimatedInferenceCostUsd: number | null = null;
   const analyticsStart = recordSessionStart(env, request, reservation.sessionId, env.GEMINI_MODEL || "gemini-3.8-live", env.GEMINI_LOCATION || "us-central1", analyticsStartedAt).catch(() => null);
   ctx.waitUntil(analyticsStart);
   const finishAnalytics = (outcome: string) => {
     if (analyticsFinished) return;
     analyticsFinished = true;
-    ctx.waitUntil(analyticsStart.then((visitorId) => recordSessionFinish(env, reservation.sessionId, visitorId, analyticsStartedAt, outcome, analyticsSetupComplete)).catch(() => undefined));
+    ctx.waitUntil(analyticsStart.then((visitorId) => recordSessionFinish(env, reservation.sessionId, visitorId, analyticsStartedAt, outcome, analyticsSetupComplete, estimatedInferenceCostUsd)).catch(() => undefined));
   };
 
   let accessToken: string;
@@ -896,6 +904,16 @@ async function handleVoiceSocket(
 
   const upstreamStartedAt = Date.now();
   let firstAudioFrameLogged = false;
+  let requestToFirstAudioMs: number | null = null;
+  let requestToSetupMs: number | null = null;
+  let providerUsageFrameCount = 0;
+  let latestProviderUsage: ProviderUsageMetrics | null = null;
+  const inputUsdPerMillionTokens = configuredTokenRate(env.LIVE_INPUT_USD_PER_MILLION_TOKENS);
+  const outputUsdPerMillionTokens = configuredTokenRate(env.LIVE_OUTPUT_USD_PER_MILLION_TOKENS);
+  let videoFramesForwarded = 0;
+  let videoFramesThrottled = 0;
+  let audioFramesForwarded = 0;
+  let forwardedMediaBytes = 0;
   let setupForwarded = false;
   let setupInitializing = false;
   let setupCompleteReceived = false;
@@ -936,6 +954,23 @@ async function handleVoiceSocket(
       (reason === "Client disconnected" && code === 1000 ? (analyticsSetupComplete ? "completed" : "disconnected_before_setup") :
       (code === 1008 ? "protocol_error" : "provider_error"));
     finishAnalytics(analyticsOutcome);
+    console.info("[AskMoina] Voice session efficiency summary", JSON.stringify({
+      mode: copilotMode ? "copilot" : "voice",
+      model,
+      outcome: analyticsOutcome,
+      sessionLifetimeMs: Date.now() - analyticsStartedAt,
+      requestToSetupMs,
+      requestToFirstAudioMs,
+      videoFramesForwarded,
+      videoFramesThrottled,
+      audioFramesForwarded,
+      forwardedMediaBytes,
+      groundedSearchCount,
+      providerUsageFrameCount,
+      providerTokenUsage: latestProviderUsage,
+      estimatedInferenceCostUsd,
+      costRatesConfigured: inputUsdPerMillionTokens !== null && outputUsdPerMillionTokens !== null,
+    }));
     if (notice && workerSocket.readyState === WebSocket.OPEN) {
       try {
         // WebSocket preserves message order, so the browser receives this explanation before close.
@@ -1113,7 +1148,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       const now = Date.now();
       if (isVideo) {
         // Gemini Live consumes video as individual frames; keep camera input near 1 FPS.
-        if (now - lastVideoFrameAt < 850) return;
+        if (now - lastVideoFrameAt < 850) { videoFramesThrottled += 1; return; }
         lastVideoFrameAt = now;
       }
       if (now - inputWindowStart >= 1_000 || now < inputWindowStart) {
@@ -1144,10 +1179,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         upstreamSocket.send(JSON.stringify({
           realtimeInput: { video: { data: parsed.data, mimeType: "image/jpeg" } },
         }));
+        videoFramesForwarded += 1;
+        forwardedMediaBytes += event.data.length;
       } else {
         upstreamSocket.send(JSON.stringify({
           realtimeInput: { audio: { data: parsed.data, mimeType: "audio/pcm;rate=16000" } },
         }));
+        audioFramesForwarded += 1;
+        forwardedMediaBytes += event.data.length;
       }
     } catch {
       closeBoth(1008, "Invalid client message");
@@ -1198,12 +1237,31 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     if (!firstAudioFrameLogged && isProviderAudioFrame(frameText)) {
       firstAudioFrameLogged = true;
       const firstAudioAt = Date.now();
+      requestToFirstAudioMs = firstAudioAt - analyticsStartedAt;
       console.info("[AskMoina] First assistant audio frame", JSON.stringify({
         frameNumber,
-        requestToFirstAudioMs: firstAudioAt - analyticsStartedAt,
+        requestToFirstAudioMs,
         upstreamConnectedToFirstAudioMs: firstAudioAt - upstreamStartedAt,
         setupComplete: setupCompleteReceived,
         frameBytes: frameSize,
+      }));
+    }
+
+    // Parse only explicit usage metadata; never log media or transcript payloads.
+    const usageMetrics = inspectProviderUsageMetrics(frameText);
+    if (usageMetrics) {
+      providerUsageFrameCount += 1;
+      const measured = Object.fromEntries(Object.entries(usageMetrics).filter(([, value]) => typeof value === "number")) as ProviderUsageMetrics;
+      latestProviderUsage = { ...(latestProviderUsage || {}), ...measured };
+      const estimate = estimateProviderCostUsd(latestProviderUsage, inputUsdPerMillionTokens, outputUsdPerMillionTokens);
+      if (estimate !== null) estimatedInferenceCostUsd = estimate;
+      console.info("[AskMoina] Provider token usage snapshot", JSON.stringify({
+        promptTokenCount: latestProviderUsage.promptTokenCount,
+        responseTokenCount: latestProviderUsage.responseTokenCount,
+        totalTokenCount: latestProviderUsage.totalTokenCount,
+        cachedContentTokenCount: latestProviderUsage.cachedContentTokenCount,
+        estimatedInferenceCostUsd: estimate,
+        costRatesConfigured: inputUsdPerMillionTokens !== null && outputUsdPerMillionTokens !== null,
       }));
     }
 
@@ -1228,9 +1286,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     if (providerMessage?.setupComplete) {
       setupCompleteReceived = true;
       analyticsSetupComplete = true;
+      requestToSetupMs = Date.now() - analyticsStartedAt;
       console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
         frameNumber,
-        requestToSetupMs: Date.now() - analyticsStartedAt,
+        requestToSetupMs,
         upstreamConnectedToSetupMs: Date.now() - upstreamStartedAt,
       }));
     }

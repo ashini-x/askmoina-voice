@@ -210,3 +210,73 @@ describe("selected browser memory reaches the Vertex session setup frame", () =>
     expect(JSON.parse(socket.sent[0]).memory_context).toHaveLength(3_000);
   });
 });
+
+
+describe("M36 cross-tab memory consent", () => {
+  it("does not inject stale tab memory after an explicit opt-out", async () => {
+    const response = await handleContinuityRequest(
+      new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx,
+    );
+    const source = await response!.text();
+    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
+    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
+    const localValues: Record<string, string> = {
+      "askmoina.memory.context": "stale preferred-name note",
+      "askmoina.memory.consent.v1": "disabled",
+    };
+    const sessionValues: Record<string, string> = { "askmoina.memory.context": "stale preferred-name note" };
+    const localStorage = {
+      getItem: (key: string) => localValues[key] ?? null,
+      setItem: (key: string, value: string) => { localValues[key] = value; },
+      removeItem: (key: string) => { delete localValues[key]; },
+    };
+    const sessionStorage = {
+      getItem: (key: string) => sessionValues[key] ?? null,
+      setItem: (key: string, value: string) => { sessionValues[key] = value; },
+      removeItem: (key: string) => { delete sessionValues[key]; },
+    };
+    const window = { WebSocket: FakeWebSocket };
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
+    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
+    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
+    socket.send(JSON.stringify({ setup: {} }));
+    expect(socket.sent).toHaveLength(1);
+    expect(JSON.parse(socket.sent[0]).memory_context).toBeUndefined();
+    expect(sessionValues["askmoina.memory.context"]).toBeUndefined();
+  });
+});
+
+
+describe("M36 cross-tab memory consent", () => {
+  it("does not inject stale tab memory after an explicit opt-out", async () => {
+    const response = await handleContinuityRequest(
+      new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx,
+    );
+    const source = await response!.text();
+    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
+    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
+    const localValues: Record<string, string> = {
+      "askmoina.memory.context": "stale preferred-name note",
+      "askmoina.memory.consent.v1": "disabled",
+    };
+    const sessionValues: Record<string, string> = { "askmoina.memory.context": "stale preferred-name note" };
+    const localStorage = {
+      getItem: (key: string) => localValues[key] ?? null,
+      setItem: (key: string, value: string) => { localValues[key] = value; },
+      removeItem: (key: string) => { delete localValues[key]; },
+    };
+    const sessionStorage = {
+      getItem: (key: string) => sessionValues[key] ?? null,
+      setItem: (key: string, value: string) => { sessionValues[key] = value; },
+      removeItem: (key: string) => { delete sessionValues[key]; },
+    };
+    const window = { WebSocket: FakeWebSocket };
+    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
+    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
+    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
+    socket.send(JSON.stringify({ setup: {} }));
+    expect(socket.sent).toHaveLength(1);
+    expect(JSON.parse(socket.sent[0]).memory_context).toBeUndefined();
+    expect(sessionValues["askmoina.memory.context"]).toBeUndefined();
+  });
+});

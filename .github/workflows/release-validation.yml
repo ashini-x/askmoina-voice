@@ -51,6 +51,13 @@ jobs:
           grep -R -q 'Do not ask the user to choose a task type' dist/
           grep -R -q 'ZERO-LEARNING CAMERA-FIRST UX' dist/
           grep -R -q 'Keep optional or expert controls out of the main path' dist/
+      - name: Verify M35/M36 Worker bundle contracts
+        run: |
+          grep -R -q 'M35 — EFFICIENT INTELLIGENCE' dist/
+          grep -R -q 'inspectProviderUsageMetrics' dist/
+          grep -R -q 'M36 — PERMISSION-BASED CONTINUITY' dist/
+          grep -R -q 'askmoina.memory.consent.v1' dist/
+          grep -R -q 'Edit memory' dist/
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
@@ -102,8 +109,12 @@ jobs:
           status="$(fetch_status /vault.js /tmp/moina-vault.js)"
           test "$status" = "200"
           grep -q 'PBKDF2-SHA-256' /tmp/moina-vault.js
+          grep -q 'Edit memory' /tmp/moina-vault.js
+          grep -q 'Save changes' /tmp/moina-vault.js
+          grep -q 'askmoina.memory.consent.v1' /tmp/moina-vault.js
+          grep -q 'voiceContextPreview' /tmp/moina-vault.html
           node --check /tmp/moina-vault.js
-          echo "Vault client JavaScript: OK"
+          echo "Memory Vault crypto, edit controls, and explicit consent: OK"
 
           status="$(fetch_status /copilot /tmp/moina-copilot.html)"
           test "$status" = "200"
@@ -137,19 +148,36 @@ jobs:
           grep -q 'M32: explicit state machine' /tmp/moina-copilot.js
           grep -q 'Connected. Tell Moina what you want to do in your own words.' /tmp/moina-copilot.js
           grep -q 'Try: “Set this up” · “Compare these” · “Explain this”' /tmp/moina-copilot.js
+          grep -q 'shouldSuppressStableFrame' /tmp/moina-copilot.js
+          grep -q 'Adaptive camera sampling' /tmp/moina-copilot.js
+          grep -q 'askmoina.memory.consent.v1' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
-          echo "Live Co-Pilot client, M34 onboarding, and session-release retry: OK"
+          echo "Live Co-Pilot client, M34 onboarding, M35 adaptive sampling, and M36 consent gate: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
           echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
           echo "M29 deployed client bundle: session-local task world model and guarded outcome continuity OK"
           echo "M31 deployed client bundle: consequence-aware safety gate and hazardous-overlay suppression OK"
           echo "M32 deployed client bundle: AR/camera handoff state machine and fresh-frame gate OK"
           echo "M33/M34 deployed Worker bundle: universal task instruction and zero-learning UX contract OK"
+          echo "M35/M36 deployed Worker bundle: adaptive sampling, provider usage telemetry, and permission-based memory continuity OK"
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"
           grep -q '.focus-marker' /tmp/moina-copilot.css
           echo "Live Co-Pilot styles: OK"
+
+          status="$(fetch_status /app.js /tmp/moina-app.js)"
+          test "$status" = "200"
+          grep -q 'readOptedInMemoryContext' /tmp/moina-app.js
+          grep -q 'askmoina.memory.consent.v1' /tmp/moina-app.js
+          node --check /tmp/moina-app.js
+          echo "Regular voice explicit memory-consent gate: OK"
+
+          status="$(fetch_status /continuity.js /tmp/moina-continuity.js)"
+          test "$status" = "200"
+          grep -q 'askmoina.memory.consent.v1' /tmp/moina-continuity.js
+          node --check /tmp/moina-continuity.js
+          echo "Cross-tab stale memory cache revocation: OK"
 
           status="$(fetch_status /transcript-merge.js /tmp/moina-transcript-merge.js)"
           test "$status" = "200"

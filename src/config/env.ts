@@ -27,4 +27,7 @@ export interface Env {
   ADMIN_DASHBOARD_PASSWORD?: string;
   ADMIN_SESSION_SECRET?: string;
   ADMIN_VOICE_DAILY_QUOTA_BYPASS?: string;
+  // Optional model-specific prices in USD per million provider-reported tokens. Never guessed.
+  LIVE_INPUT_USD_PER_MILLION_TOKENS?: string;
+  LIVE_OUTPUT_USD_PER_MILLION_TOKENS?: string;
 }
