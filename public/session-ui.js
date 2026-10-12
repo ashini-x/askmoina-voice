@@ -16,7 +16,7 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data.ok !== true) throw new Error("Sign out was not confirmed.");
-        window.location.replace("/login?reason=signed-out");
+        window.location.replace("/?reason=signed-out");
       } catch (_) {
         signingOut = false;
         button.disabled = false;
