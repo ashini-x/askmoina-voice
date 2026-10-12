@@ -781,11 +781,11 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 /* A faint halo is the only voice signal. No solid ring, idle animation, or network-wait pulsing. */
 .edge-glow{opacity:0!important}
 .edge-glow:before{display:none!important;animation:none!important;opacity:0!important}
-.edge-glow:after{padding:9px!important;filter:blur(17px)!important;opacity:0!important;animation:none!important;background:conic-gradient(from 190deg,#82aaff 0deg,#aaa8ff 95deg,#d8b2f3 178deg,#b6e7e6 260deg,#82aaff 360deg)!important}
+.edge-glow:after{padding:9px;filter:blur(17px) saturate(1.3) brightness(1.16);opacity:0;animation:none;background:conic-gradient(from 190deg,#82aaff 0deg,#aaa8ff 95deg,#d8b2f3 178deg,#b6e7e6 260deg,#82aaff 360deg)}
 .camera-stage.is-connecting .edge-glow,.camera-stage.voice-active .edge-glow,.camera-stage.has-notice .edge-glow{opacity:0!important}
 .camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.76!important}
-.camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{opacity:.28!important;animation:quiet-voice-halo 1.05s ease-in-out infinite alternate!important}
-@keyframes quiet-voice-halo{from{padding:8px!important;filter:blur(15px)!important;opacity:.19!important}to{padding:18px!important;filter:blur(25px)!important;opacity:.48!important}}
+.camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{opacity:.34;animation:quiet-voice-halo 1.05s ease-in-out infinite alternate}
+@keyframes quiet-voice-halo{from{padding:8px;filter:blur(15px) saturate(1.18) brightness(1.16);opacity:.25}to{padding:17px;filter:blur(23px) saturate(1.36) brightness(1.32);opacity:.58}}
 /* Keep real connectivity errors visible and the preview defocused until a successful setup resolves them. */
 .camera-stage.has-notice #videoPreview{filter:blur(13px) saturate(.62) brightness(.52);transform:scale(1.06)}
 .connection-notice{width:min(354px,calc(100% - 34px));gap:13px;padding:25px 24px 22px;border-radius:25px;background:rgba(27,28,34,.84);border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 84px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.11);backdrop-filter:blur(42px) saturate(145%);-webkit-backdrop-filter:blur(42px) saturate(145%)}
@@ -814,3 +814,16 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 #zoomDock,.zoom-dock[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
 @media(max-width:380px){.camera-controls .primary-control-row{gap:8px;padding:0 7px}.camera-controls .primary-control-row .control-icon:not(#toggleCopilot){width:50px;height:50px;min-width:50px;min-height:50px;flex-basis:50px}.camera-controls .primary-control-row #toggleCopilot.stop-button{flex-basis:58px;width:58px;height:58px;min-width:58px!important;max-width:58px;min-height:58px}.camera-controls .primary-control-row .control-icon svg{width:24px;height:24px}#toggleCopilot .icon-start,#toggleCopilot .icon-end{width:25px;height:25px}.vision-slide-label{font-size:.77rem}}
 @media(prefers-reduced-motion:reduce){.camera-stage.initial-intro .intelligence-intro,.intro-ribbon-one,.intro-ribbon-two,.intro-ribbon-three,.vision-slide-chevron{animation:none!important}.camera-stage.initial-intro .intelligence-intro{opacity:0!important}.edge-glow:after{animation:none!important}.vision-slide-handle,.vision-slide-track:before{transition:none!important}}
+
+/* Final slide polish: a moving text glint with the arrow group aligned to the same baseline. */
+.vision-slide-copy{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%;min-width:0;white-space:nowrap;overflow:hidden}
+.vision-slide-label{flex:0 1 auto;min-width:0;max-width:100%;overflow:visible;text-overflow:clip;white-space:nowrap;background:linear-gradient(105deg,#292a31 0%,#292a31 36%,#777b88 44%,#fff 49%,#b9ceff 52%,#292a31 61%,#292a31 100%);background-size:240% 100%;background-position:100% 0;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:vision-text-shimmer 2.45s cubic-bezier(.42,0,.58,1) infinite}
+@keyframes vision-text-shimmer{0%,18%{background-position:100% 0}78%,100%{background-position:0 0}}
+.vision-slide-chevron{position:static;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;margin:0;padding:0 .12em 0 0;transform:none;translate:0 0;line-height:1;font-size:1.08rem;letter-spacing:-.20em;color:#737986;opacity:.72;animation:vision-chevron-nudge 1.25s ease-in-out infinite}
+@keyframes vision-chevron-nudge{0%,100%{translate:0 0;opacity:.48}50%{translate:3px 0;opacity:.88}}
+.camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{filter:blur(18px) saturate(1.34) brightness(1.24)}
+.camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.86!important}
+@media(prefers-reduced-motion:reduce){.vision-slide-label,.vision-slide-chevron{animation:none!important}.vision-slide-label{background-position:50% 0}}
+
+.camera-stage.is-returning{opacity:0;transition:opacity .18s ease}
+@media(prefers-reduced-motion:reduce){.camera-stage.is-returning{transition:none}}
