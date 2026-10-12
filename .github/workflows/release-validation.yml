@@ -45,6 +45,12 @@ jobs:
           grep -R -q 'transitionRealityLoopState' dist/
           grep -R -q 'SAFETY AND UNCERTAINTY ENGINE' dist/
           grep -R -q 'ONE CONTINUOUS REALITY LOOP' dist/
+      - name: Verify M33/M34 Worker bundle contracts
+        run: |
+          grep -R -q 'UNIVERSAL TASK ENGINE' dist/
+          grep -R -q 'Do not ask the user to choose a task type' dist/
+          grep -R -q 'ZERO-LEARNING CAMERA-FIRST UX' dist/
+          grep -R -q 'Keep optional or expert controls out of the main path' dist/
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
@@ -103,7 +109,9 @@ jobs:
           test "$status" = "200"
           grep -q 'Live Co-Pilot' /tmp/moina-copilot.html
           grep -q 'not world-locked AR' /tmp/moina-copilot.html
-          echo "Live Co-Pilot page: OK"
+          grep -q 'Tell Moina your goal in your own words.' /tmp/moina-copilot.html
+          grep -q 'Compare these' /tmp/moina-copilot.html
+          echo "Live Co-Pilot page and M34 first-use guidance: OK"
 
           status="$(fetch_status /copilot.js /tmp/moina-copilot.js)"
           test "$status" = "200"
@@ -127,13 +135,16 @@ jobs:
           grep -q 'function transitionRealityLoopState' /tmp/moina-copilot.js
           grep -q 'M31: local safety gate' /tmp/moina-copilot.js
           grep -q 'M32: explicit state machine' /tmp/moina-copilot.js
+          grep -q 'Connected. Tell Moina what you want to do in your own words.' /tmp/moina-copilot.js
+          grep -q 'Try: “Set this up” · “Compare these” · “Explain this”' /tmp/moina-copilot.js
           node --check /tmp/moina-copilot.js
-          echo "Live Co-Pilot client and session-release retry: OK"
+          echo "Live Co-Pilot client, M34 onboarding, and session-release retry: OK"
           echo "M25/M26 deployed client bundle: scene model, evidence invalidation, and persistent local tracking OK"
           echo "M27/M28 deployed client bundle: guarded visual verification and generative spatial cue rendering OK"
           echo "M29 deployed client bundle: session-local task world model and guarded outcome continuity OK"
           echo "M31 deployed client bundle: consequence-aware safety gate and hazardous-overlay suppression OK"
           echo "M32 deployed client bundle: AR/camera handoff state machine and fresh-frame gate OK"
+          echo "M33/M34 deployed Worker bundle: universal task instruction and zero-learning UX contract OK"
 
           status="$(fetch_status /copilot.css /tmp/moina-copilot.css)"
           test "$status" = "200"

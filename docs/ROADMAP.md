@@ -1,4 +1,4 @@
-# AskMoina product roadmap
+Last updated: 2026-10-12 (M31–M34 implemented; release validation passed 40 test files / 246 tests; production smoke passed; active Worker deployment verified at 100%; live-model quality, held-out-task evaluation, and physical-device acceptance pending).
 Last updated: 2026-10-12 (M31–M32 merged; release validation passed 38 test files / 238 tests; production smoke passed; Cloudflare deployment 6ea141c3 has version 9c026f74 at 100%; live-model task quality and physical-device acceptance pending)
 
 ## Product vision
