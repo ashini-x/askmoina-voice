@@ -1,11 +1,11 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M21 observe/verify/recover instructions deployed; real-task acceptance pending)
+Last updated: 2026-10-12 (M22 AI-directed visual guide primitives deployed; real-task acceptance pending)
 
 ## Product vision
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A user points a camera at a situation and asks naturally; Moina interprets the goal and visual evidence, selects and tracks relevant targets when useful, guides one step at a time, observes results, adapts, and clearly communicates uncertainty or risk. Electrician work is one example, not the product boundary.
 
 ## Shipped foundation
-Milestones 1–21 are deployed on the production Worker; a follow-up tracking-anchor reliability fix prevents untracked model-generated highlights from appearing at a guessed screen position. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. M14 adds evidence-first scene instructions and was smoke-tested by the product owner; this is not proof of general object-recognition accuracy. Existing cues remain approximate and are not semantic object segmentation.
+Milestones 1–22 are deployed on the production Worker; a follow-up tracking-anchor reliability fix prevents untracked model-generated highlights from appearing at a guessed screen position. Milestone 11 simplified the Co-Pilot to a camera-first interface with contextual controls and opt-in captions. Milestone 12 improves live transcript fragment merging, interruption audio cleanup, conversational follow-up guidance, and explicit retry affordances. The present release includes live voice, the camera-first Co-Pilot prototype, approximate screen-space focus markers and local patch tracking, AI-selected 2D visual-guide primitives, an experimental WebXR cue/guide flow, multi-step AR guide behavior, saved local scene templates, memory vault, operations dashboard, usage safeguards, and release validation. M14 adds evidence-first scene instructions and was smoke-tested by the product owner; this is not proof of general object-recognition accuracy. Existing cues remain approximate and are not semantic object segmentation.
 
 ## Remaining roadmap
 
@@ -25,22 +25,23 @@ Milestones 1–21 are deployed on the production Worker; a follow-up tracking-an
 - **M19 — Dynamic task planning (deployed 2026-10-11; real-task acceptance pending):** select the lightest useful approach for the real goal and context rather than forcing a fixed template; size the plan to the task; define the next action and what evidence will guide the next branch; adapt to feedback and constraints; avoid long checklists and padded steps. Real-task quality still requires hands-on acceptance.
 - **M20 — Adaptive step-by-step guidance (deployed 2026-10-11; real-task acceptance pending):** deliver one concrete action at a time; define a useful observable result; wait for confirmation or evidence; recover from failed or confusing steps; preserve task continuity and adapt to changed evidence without dumping the full procedure.
 - **M21 — Observe, verify, recover (deployed 2026-10-12; real-task acceptance pending):** establish a useful baseline and an observable expected result for each action; distinguish camera-supported changes from user-reported outcomes; compare frames only when target/view clarity supports it; branch safely on confirmed, absent, unclear, or contradictory results; preserve failed checks and uncertainty; and do not declare the whole task complete based on one changed symptom.
-- **M22 — Evidence-grounded guidance:** match model numbers and labels to reliable manuals/schematics; surface sources and uncertainty.
-- **M23 — Safety and uncertainty engine:** escalate caution for high-consequence tasks; never infer hidden or hazardous physical states from appearance alone.
+- **M22 — AI-directed visual guidance (deployed foundation; real-task acceptance pending):** Moina can choose bounded screen-space primitives—lines, arrows, circles, placement outlines, ticks and labels—and render them over the live camera without requiring a separate button or target tap for every geometric guide. The drawings are approximate viewport overlays, not semantic detections or world anchors; dependable automatic progress verification remains future work.
+- **M23 — Evidence-grounded guidance:** match model numbers and labels to reliable manuals/schematics; surface sources and uncertainty.
+- **M24 — Safety and uncertainty engine:** escalate caution for high-consequence tasks; never infer hidden or hazardous physical states from appearance alone.
 
 ### Phase 4 — General-purpose coverage
-- **M24 — Reusable task engine:** share scene, target, reasoning, planning, guidance and recovery primitives across categories.
-- **M25 — Cross-scenario evaluation:** test repairs, setup, assembly, troubleshooting and unfamiliar objects, including cases not explicitly scripted.
+- **M25 — Reusable task engine:** share scene, target, reasoning, planning, guidance and recovery primitives across categories.
+- **M26 — Cross-scenario evaluation:** test repairs, setup, assembly, troubleshooting and unfamiliar objects, including cases not explicitly scripted.
 
 ### Phase 5 — Reliability and readiness
-- **M26 — Device and environment reliability:** test low light, glare, camera movement, occlusion, poor network, disconnects and recovery.
-- **M27 — Voice, privacy and security acceptance:** evaluate Upper Assam speech quality, consent, memory opt-in/out, data retention, authentication, and abuse protection.
-- **M28 — Latency, cost and capacity engineering:** measure p50/p95 first-audio latency, vision/search budgets, session recovery and defined target concurrency. Prove capacity by load testing; do not infer it from successful deploys.
+- **M27 — Device and environment reliability:** test low light, glare, camera movement, occlusion, poor network, disconnects and recovery.
+- **M28 — Voice, privacy and security acceptance:** evaluate Upper Assam speech quality, consent, memory opt-in/out, data retention, authentication, and abuse protection.
+- **M29 — Latency, cost and capacity engineering:** measure p50/p95 first-audio latency, vision/search budgets, session recovery and defined target concurrency. Prove capacity by load testing; do not infer it from successful deploys.
   
 ### Phase 6 — Release
-- **M29 — Closed real-world pilot:** invite a small group, observe genuine tasks, collect structured feedback, fix blockers, and repeat acceptance tests.
-- **M30 — Public beta and progressive scaling:** launch gradually with monitoring, support, spend safeguards, feedback and rollback. Expand categories only when each is sufficiently reliable and safe.
-- **Final destination — General-purpose visual copilot:** a user can show Moina a real-world problem, converse naturally, receive evidence-grounded guidance, see relevant targets highlighted, and have the guidance adapt as the situation changes.
+- **M30 — Closed real-world pilot:** invite a small group, observe genuine tasks, collect structured feedback, fix blockers, and repeat acceptance tests.
+- **M31 — Public beta and progressive scaling:** launch gradually with monitoring, support, spend safeguards, feedback and rollback. Expand categories only when each is sufficiently reliable and safe.
+- **Final destination — General-purpose visual copilot:** a user can show Moina a real-world problem, converse naturally, receive evidence-grounded guidance, see AI-selected visual guides and relevant targets, and have the guidance adapt as the situation changes.
 
 ## Product loop
 See → Understand → Select → Track → Guide → Verify → Recover.
