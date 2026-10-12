@@ -152,7 +152,7 @@ const SEARCH_WEB_FUNCTION = {
 const COPILOT_TOOL = {
   functionDeclarations: [{
     name: "display_screen_overlay",
-    description: "Proactively use this tool when a compact visual cue would clarify a low-risk physical action; do not wait for the user to explicitly ask for a drawing. Use visual_elements for the smallest useful line, arrow, circle, placement outline, tick, or short label based on the latest frame. Set visual_only=true for geometric guides that do not require identifying one exact object, so a line or arrow can appear without a target tap. This does not locate objects or provide world tracking. For an object-specific highlight without an existing local tracker, ask the user to tap the exact visible target. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
+    description: "Proactively use this tool when a compact visual cue would clarify a low-risk physical action; do not wait for the user to explicitly ask for a drawing. When a task spans turns, also include a compact task_world_state update. Use visual_elements for the smallest useful line, arrow, circle, placement outline, tick, or short label based on the latest frame. Set visual_only=true for geometric guides that do not require identifying one exact object, so a line or arrow can appear without a target tap. This does not locate objects or provide world tracking. For an object-specific highlight without an existing local tracker, ask the user to tap the exact visible target. For an explicitly requested low-risk walkthrough, optionally include 2–5 ordered steps; screen regions are approximate, not measured object coordinates.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -270,6 +270,28 @@ const COPILOT_TOOL = {
             consequence: { type: "STRING", enum: ["low", "moderate", "high"] }
           },
           required: ["target_id", "criterion", "criterion_status", "change_observed", "evidence", "confidence", "consequence"]
+        },
+        task_world_state: {
+          type: "OBJECT",
+          description: "Optional compact task world-model update for M29. State only user goal, current visible/reported state, one intended next action, expected observable evidence, constraints, uncertainty, why the plan changed, and whether the user explicitly reports done/failed/unsure. Do not claim a planned action succeeded.",
+          properties: {
+            task_goal: { type: "STRING", description: "User's active goal, concise. Replace it if the user clearly changes tasks." },
+            current_state: { type: "STRING", description: "Most recent known state; distinguish observed, user-reported, and unknown." },
+            intended_action: { type: "STRING", description: "One next action only, or empty if a question/check is needed first." },
+            expected_evidence: { type: "STRING", description: "The visible or user-reportable signal that would distinguish the next result." },
+            constraints: {
+              type: "ARRAY",
+              description: "Important user constraints or safety/access limits, maximum five short strings.",
+              items: { type: "STRING" }
+            },
+            uncertainties: {
+              type: "ARRAY",
+              description: "Material unresolved uncertainties only, maximum five short strings.",
+              items: { type: "STRING" }
+            },
+            user_report: { type: "STRING", enum: ["none", "says_done", "says_failed", "unsure"], description: "How the user explicitly described the outcome, not camera verification." },
+            update_reason: { type: "STRING", description: "Short note if new evidence or the user changed the plan." }
+          }
         },
         steps: {
           type: "ARRAY",
