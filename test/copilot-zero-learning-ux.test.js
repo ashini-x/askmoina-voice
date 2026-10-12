@@ -17,7 +17,8 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).toContain("id=\"backButton\"");
     expect(html).toContain("SHOW ME YOUR PROBLEM");
     expect(html).toContain("Slide to show your problem");
-    expect(html).toContain('id="intelligenceIntro"');
+    expect(html).not.toContain('id="intelligenceIntro"');
+    expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).not.toContain('id="secondaryControls"');
     expect(html).not.toContain('id="toggleMoreControls"');
@@ -39,9 +40,9 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html.indexOf('id="vaultButton"')).toBeLessThan(html.indexOf('id="muteMic"'));
     expect(html).toContain('<path d="M7 10V7.5a5 5 0 0 1 10 0V10"/>');
     expect(html).toContain('<circle cx="12" cy="12" r="2.1"/>');
-    expect(css).toContain(".vision-slide-chevron{");
-    expect(css).toContain("position:absolute;right:13px;top:50%");
-    expect(css).toContain("filter:none;text-shadow:none");
+    expect(html).not.toContain("vision-slide-chevron");
+    expect(css).not.toContain("vision-slide-chevron");
+    expect(css).not.toContain("vision-slide-hint");
   });
 
   it("matches edge pulse intensity to live microphone and assistant playback audio", () => {
