@@ -1371,7 +1371,8 @@
     if (!audioTrack) throw new Error("No microphone track is available.");
     const audioOnly = new MediaStream([audioTrack]);
     microphoneSource = audioContext.createMediaStreamSource(audioOnly);
-    processor = audioContext.createScriptProcessor(2048, 1, 1);
+    const audioBufferSize = audioContext.sampleRate > 48000 ? 2048 : 1024;
+    processor = audioContext.createScriptProcessor(audioBufferSize, 1, 1);
     silentGain = audioContext.createGain();
     silentGain.gain.value = 0;
     processor.onaudioprocess = (event) => {

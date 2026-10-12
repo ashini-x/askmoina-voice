@@ -41,17 +41,11 @@
     "APP_VERSION": "0.4.11",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
-    "ADMIN_VOICE_DAILY_QUOTA_BYPASS": "true",
     "GEMINI_MODEL": "gemini-3.8-live",
     "LIVE_VOICE_NAME": "Leda",
     "LIVE_VOICE_ID": "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
-    "MAX_LIVE_SESSION_SECONDS": "540",
-    "MAX_DAILY_SESSION_SECONDS": "1800",
-    "MAX_CONCURRENT_SESSIONS_PER_USER": "1",
-    "MAX_GLOBAL_DAILY_SESSION_SECONDS": "36000",
-    "MAX_GLOBAL_CONCURRENT_SESSIONS": "25",
     "ANALYTICS_RAW_RETENTION_DAYS": "30"
   },
   "secrets": {

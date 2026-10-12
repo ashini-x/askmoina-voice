@@ -13,7 +13,9 @@ describe("voice media backpressure without app usage caps", () => {
     expect(copilot).not.toContain("A voice conversation is still active for this browser");
     expect(copilot).not.toContain('result.reason === "already_active"');
   });
-  it("does not queue stale microphone audio during a network stall", () => {
+  it("uses roughly 20-23 ms microphone packets at common sample rates and keeps high-rate devices below the relay packet ceiling", () => {
+    expect(client).toContain("const audioBufferSize = audioContext.sampleRate > 48000 ? 2048 : 1024;");
+    expect(copilot).toContain("const audioBufferSize = audioContext.sampleRate > 48000 ? 2048 : 1024;");
     expect(client).toContain("socket.bufferedAmount > 96 * 1024");
     expect(copilot).toContain("socket.bufferedAmount > 96 * 1024");
   });

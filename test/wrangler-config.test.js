@@ -13,10 +13,17 @@ describe("production Worker configuration", () => {
     });
   });
 
-  it("enables the daily quota bypass only for authenticated admin sessions", () => {
-    expect(config.vars?.ADMIN_VOICE_DAILY_QUOTA_BYPASS).toBe("true");
-    expect(config.vars?.MAX_LIVE_SESSION_SECONDS).toBe("540");
-    expect(config.vars?.MAX_CONCURRENT_SESSIONS_PER_USER).toBe("1");
+  it("does not configure application-owned session, daily, concurrency, or admin quota limits", () => {
+    for (const key of [
+      "ADMIN_VOICE_DAILY_QUOTA_BYPASS",
+      "MAX_LIVE_SESSION_SECONDS",
+      "MAX_DAILY_SESSION_SECONDS",
+      "MAX_CONCURRENT_SESSIONS_PER_USER",
+      "MAX_GLOBAL_DAILY_SESSION_SECONDS",
+      "MAX_GLOBAL_CONCURRENT_SESSIONS",
+    ]) {
+      expect(config.vars).not.toHaveProperty(key);
+    }
   });
 
   it("routes both voice-lab URLs through the Worker so the admin gate cannot be bypassed by static assets", () => {

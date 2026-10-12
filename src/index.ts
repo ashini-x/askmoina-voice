@@ -475,11 +475,6 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
 }
 
 
-async function hasAdminDailyQuotaBypass(request: Request, env: Env): Promise<boolean> {
-  return env.ADMIN_VOICE_DAILY_QUOTA_BYPASS?.trim().toLowerCase() === "true" &&
-    await isAdmin(request, env);
-}
-
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");

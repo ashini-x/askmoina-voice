@@ -247,7 +247,8 @@
     microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
     // ScriptProcessor is retained for broad browser compatibility in this first live prototype.
     // It is not connected audibly to the speakers.
-    processor = audioContext.createScriptProcessor(2048, 1, 1);
+    const audioBufferSize = audioContext.sampleRate > 48000 ? 2048 : 1024;
+    processor = audioContext.createScriptProcessor(audioBufferSize, 1, 1);
     silentGain = audioContext.createGain();
     silentGain.gain.value = 0;
 

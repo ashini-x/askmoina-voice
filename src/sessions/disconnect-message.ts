@@ -68,7 +68,7 @@ export function getUserFacingDisconnectNotice(
     return {
       state: "ended",
       code: "audio_rate_limit",
-      message: "Audio packets arrived faster than AskMoina can accept them. This is not a question-count limit. Please refresh and start again; if it repeats, we can use the recorded connection diagnostics to tune audio handling.",
+      message: "The live audio relay received too many packets in a short burst. AskMoina now paces microphone packets more conservatively; close older AskMoina tabs, reload once, and reconnect. This is not a question-count or account limit.",
     };
   }
 

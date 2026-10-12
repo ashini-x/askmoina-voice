@@ -11,11 +11,6 @@ export interface Env {
   LIVE_VOICE_NAME?: string;
   LIVE_VOICE_ID?: string;
   GCP_PROJECT_ID: string;
-  MAX_LIVE_SESSION_SECONDS: string;
-  MAX_DAILY_SESSION_SECONDS: string;
-  MAX_CONCURRENT_SESSIONS_PER_USER: string;
-  MAX_GLOBAL_DAILY_SESSION_SECONDS: string;
-  MAX_GLOBAL_CONCURRENT_SESSIONS: string;
   ANALYTICS_RAW_RETENTION_DAYS: string;
 
   GCP_SERVICE_ACCOUNT_JSON?: string;
@@ -32,7 +27,6 @@ export interface Env {
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_VERIFY_SERVICE_SID?: string;
-  ADMIN_VOICE_DAILY_QUOTA_BYPASS?: string;
   // Optional model-specific prices in USD per million provider-reported tokens. Never guessed.
   LIVE_INPUT_USD_PER_MILLION_TOKENS?: string;
   LIVE_OUTPUT_USD_PER_MILLION_TOKENS?: string;
