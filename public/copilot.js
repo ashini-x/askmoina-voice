@@ -8,6 +8,7 @@
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
   const toggleButton = $("#toggleCopilot");
+  const showProblemButton = $("#showProblemButton");
   const buttonLabel = $("#buttonLabel");
   const flipButton = $("#flipCamera");
   const clearMarkerButton = $("#clearMarker");
@@ -97,6 +98,10 @@
 
   let socket = null;
   let microphoneStream = null;
+  let previewStream = null;
+  let previewPromise = null;
+  let greetingTurnPending = false;
+  let greetingTimer = null;
   let audioContext = null;
   let microphoneSource = null;
   let processor = null;
@@ -412,6 +417,7 @@
     toggleButton.disabled = Boolean(disabled);
     toggleButton.classList.toggle("is-live", active);
     stage.classList.toggle("voice-active", active);
+    stage.classList.toggle("is-connecting", starting && !active);
     toggleButton.setAttribute("aria-label", active ? "End call" : "Start call");
     toggleButton.title = active ? "End call" : "Start call";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
@@ -1685,6 +1691,9 @@
     stopLocalTracking(false);
     sceneModel = { viewGeneration: ++cameraViewGeneration, updatedAt: 0, frameSequence: 0, observations: [], relations: [], staleInputRejected: false };
     persistentSpatialTrack = null;
+    if (greetingTimer) window.clearTimeout(greetingTimer);
+    greetingTimer = null;
+    greetingTurnPending = false;
     if (microphoneStream) {
       microphoneStream.getTracks().forEach((track) => track.stop());
       microphoneStream = null;
@@ -1702,9 +1711,16 @@
       audioContext = null;
       previous.close().catch(() => {});
     }
-    video.srcObject = null;
-    stage.classList.remove("has-camera");
-    setCameraState("Camera paused", "idle");
+    const livePreviewTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
+    if (livePreviewTrack) {
+      video.srcObject = previewStream;
+      stage.classList.add("has-camera", "pre-start");
+      void video.play().catch(() => {});
+    } else {
+      video.srcObject = null;
+      stage.classList.remove("has-camera");
+    }
+    setCameraState(livePreviewTrack ? "Camera preview" : "Camera paused", livePreviewTrack ? "live" : "idle");
   }
 
   function stopCopilot(userInitiated, statusMessage, statusKind) {
@@ -1721,12 +1737,14 @@
     starting = false;
     active = false;
     stopping = false;
+    stage.classList.add("pre-start");
     setControls(statusMessage && (statusKind === "error" || statusKind === "warning") ? "Try again" : "Start Co-Pilot", false);
     setConnectionState("READY", "ready");
     clearOverlay();
     if (statusMessage) setStatus(statusMessage, statusKind);
     else if (userInitiated) setStatus("Co-Pilot paused. Start again whenever you're ready.");
     void refreshAvailabilityAfterRelease();
+    void prepareCameraPreview();
   }
 
   function getToolCalls(message) {
@@ -1831,7 +1849,11 @@
       setStatus("Connected. Tell Moina what you want to do in your own words.");
       setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
-      startAudioCapture();
+      playConnectionChime();
+      greetingTurnPending = true;
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ initial_greeting: true }));
+      if (greetingTimer) window.clearTimeout(greetingTimer);
+      greetingTimer = window.setTimeout(() => beginListeningAfterGreeting(), 10_000);
       startVideoFrames();
       return;
     }
@@ -1866,7 +1888,8 @@
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
         finalizeTurn();
-        if (active) setStatus("Listening — ask another question or follow the highlighted step.");
+        if (greetingTurnPending) beginListeningAfterGreeting();
+        else if (active && processor) setStatus("Listening — show me the next thing you want help with.");
       }
     }
 
@@ -1885,6 +1908,86 @@
     }
   }
 
+
+  async function prepareCameraPreview() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || active || stopping) return;
+    const liveTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
+    if (liveTrack) {
+      if (video.srcObject !== previewStream) video.srcObject = previewStream;
+      stage.classList.add("has-camera", "pre-start");
+      try { await video.play(); } catch (_) {}
+      return;
+    }
+    if (previewPromise) return previewPromise;
+    previewPromise = (async () => {
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facingMode }, width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        if (active || stopping) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        previewStream = stream;
+        video.srcObject = previewStream;
+        await video.play();
+        stage.classList.add("has-camera", "pre-start");
+        setCameraState("Camera preview", "live");
+      } catch (_) {
+        if (stream) stream.getTracks().forEach((track) => track.stop());
+      } finally {
+        previewPromise = null;
+      }
+    })();
+    return previewPromise;
+  }
+
+  function playConnectionChime() {
+    if (!audioContext || audioContext.state !== "running") return;
+    const baseTime = audioContext.currentTime + 0.025;
+    // Original soft glass-like cue, not a recording of a proprietary sound.
+    const notes = [
+      { frequency: 587.33, offset: 0, duration: 0.26 },
+      { frequency: 739.99, offset: 0.11, duration: 0.31 },
+      { frequency: 880.00, offset: 0.22, duration: 0.38 }
+    ];
+    for (const note of notes) {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, baseTime + note.offset);
+      gain.gain.setValueAtTime(0.0001, baseTime + note.offset);
+      gain.gain.exponentialRampToValueAtTime(0.052, baseTime + note.offset + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, baseTime + note.offset + note.duration);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(baseTime + note.offset);
+      oscillator.stop(baseTime + note.offset + note.duration + 0.02);
+    }
+  }
+
+  function beginListeningAfterGreeting() {
+    if (!greetingTurnPending) return;
+    greetingTurnPending = false;
+    if (greetingTimer) window.clearTimeout(greetingTimer);
+    greetingTimer = null;
+    const drainMs = audioContext
+      ? Math.max(450, Math.min(2600, Math.round((nextPlaybackTime - audioContext.currentTime) * 1000 + 200)))
+      : 700;
+    greetingTimer = window.setTimeout(() => {
+      greetingTimer = null;
+      if (!active || !setupReady || stopping || processor) return;
+      try {
+        startAudioCapture();
+        setStatus("I'm here. Show me what you're working on.");
+      } catch (error) {
+        stopCopilot(false, error && error.message ? error.message : "The microphone could not start.", "error");
+      }
+    }, drainMs);
+  }
+
   async function startCopilot() {
     if (starting || active) {
       if (active || starting) stopCopilot(true);
@@ -1892,6 +1995,10 @@
     }
     starting = true;
     stopping = false;
+    greetingTurnPending = false;
+    stage.classList.remove("pre-start");
+    stage.classList.add("is-connecting");
+    if (previewPromise) { try { await previewPromise; } catch (_) {} }
     recordRealityLoopEvent("session_starting");
     clearOverlay();
     setControls("Starting…", true);
@@ -1900,6 +2007,7 @@
     const preflight = await refreshAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
+      stage.classList.add("pre-start");
       setControls("Start Co-Pilot", false);
       setConnectionState("BUSY", "error");
       setStatus(
@@ -1914,8 +2022,9 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("This browser does not support camera and microphone access.");
       }
-      microphoneStream = await navigator.mediaDevices.getUserMedia({
-        video: {
+      const previewTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
+      const captured = await navigator.mediaDevices.getUserMedia({
+        video: previewTrack ? false : {
           facingMode: { ideal: facingMode },
           width: { ideal: 640 },
           height: { ideal: 480 }
@@ -1927,6 +2036,16 @@
           autoGainControl: true
         }
       });
+      if (previewTrack && captured.getAudioTracks()[0]) {
+        microphoneStream = new MediaStream([previewTrack, ...captured.getAudioTracks()]);
+        previewStream = null;
+      } else {
+        microphoneStream = captured;
+        if (previewStream) {
+          previewStream.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
+          previewStream = null;
+        }
+      }
       video.srcObject = microphoneStream;
       await video.play();
       recordRealityLoopEvent("camera_ready");
@@ -2574,6 +2693,9 @@
     }
   }
 
+  if (showProblemButton) showProblemButton.addEventListener("click", () => {
+    if (!active && !starting) void startCopilot();
+  });
   toggleButton.addEventListener("click", () => {
     if (active || starting) stopCopilot(true);
     else void startCopilot();
@@ -2601,6 +2723,10 @@
   });
   window.addEventListener("pagehide", () => {
     if (active || starting || socket) stopCopilot(false);
+    if (previewStream) {
+      previewStream.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
+      previewStream = null;
+    }
   });
 
 
@@ -3870,6 +3996,7 @@
 
   setCameraState("Camera paused", "idle");
   setControls("Checking voice…", true);
+  void prepareCameraPreview();
   void checkSpatialArSupport();
   void checkBackend();
 })();
