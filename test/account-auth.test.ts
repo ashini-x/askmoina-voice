@@ -45,12 +45,28 @@ describe("unique account ID and no-guest access", () => {
     expect(await getAuthenticatedUserId(r, envMock())).toBeNull();
   });
 
-  it("denies guest voice status and redirects from home and camera co-pilot", async () => {
+  it("shows the sign-in overlay at root while keeping live Co-Pilot inaccessible to guests", async () => {
     const env = envMock();
     const status = await worker.fetch(new Request("https://askmoina.test/api/voice/status"), env, ctx);
     expect(status.status).toBe(401);
     expect(await status.json()).toMatchObject({ error: "authentication_required" });
-    for (const path of ["/", "/copilot", "/iphone.css", "/iphone.js"]) {
+
+    const root = await worker.fetch(new Request("https://askmoina.test/"), env, ctx);
+    expect(root.status).toBe(200);
+    expect(root.headers.get("Set-Cookie")).toBeNull();
+    const html = await root.text();
+    expect(html).toContain('data-entry-state="login"');
+    expect(html).toContain('aria-label="Secure sign in"');
+    expect(html).toContain("Continue with Face ID or Touch ID");
+    expect(html).toContain("OR USE YOUR PHONE");
+    expect(html).toContain('id="phoneCountry"');
+    expect(html).not.toContain('<script src="/copilot.js"');
+    expect(html).not.toContain('<script src="/transcript-merge.js"');
+
+    const copilot = await worker.fetch(new Request("https://askmoina.test/copilot"), env, ctx);
+    expect(copilot.status).toBe(302);
+    expect(copilot.headers.get("Location")).toBe("https://askmoina.test/");
+    for (const path of ["/iphone.css", "/iphone.js"]) {
       const response = await worker.fetch(new Request("https://askmoina.test" + path), env, ctx);
       expect(response.status).toBe(302);
       expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
