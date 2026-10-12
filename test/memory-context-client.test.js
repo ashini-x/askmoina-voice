@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 describe("static client memory handoff", () => {
   it("sends the selected vault notes in the first voice setup frame", () => {
     const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-    expect(app).toContain('sessionStorage.getItem("askmoina.memory.context")');
+    expect(app).toContain("function readOptedInMemoryContext()");
+    expect(app).toContain("localStorage.getItem(MEMORY_CONSENT_KEY)");
+    expect(app).toContain('if (consent === "disabled") return "";');
+    expect(app).toContain("selectedMemoryContext = readOptedInMemoryContext();");
     expect(app).toContain("setupPayload.memory_context = selectedMemoryContext");
     expect(app).toContain("sessionSocket.send(JSON.stringify(setupPayload))");
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
