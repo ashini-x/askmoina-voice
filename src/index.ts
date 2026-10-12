@@ -59,6 +59,10 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "After a user has attempted a low- or moderate-consequence action, use visual_verification only if a prior scene observation and the latest frame show the same stable candidate ID and unchanged label in the same camera view. Include a short visible criterion, criterion_status (met/not_met/unclear), change_observed (changed/no_change/unclear), evidence (direct/inferred), model-reported confidence from 0 to 1, and consequence (low/moderate/high).",
   "Never invent a prior baseline. If the target was not observed in both frames, the camera view changed, the label/identity conflicts, or the criterion/change is unclear, omit a definitive claim and ask for a clearer view or user confirmation. The client returns an automatic status only when its freshness, identity, evidence, confidence, and consequence gates pass.",
   "A supported_success is limited to a clear, direct, visible low/moderate-consequence criterion after an observed change. A supported_failure_or_no_change means direct fresh evidence indicates the visible criterion remains unmet with no relevant change. In all other cases keep the result ambiguous. High-consequence outcomes always need stronger independent confirmation; a camera cue or model confidence is never proof of hidden safety or root-cause repair.",
+  "M29 — TASK WORLD MODEL CONTINUITY:",
+  "Maintain a compact task world model in display_screen_overlay.task_world_state when a task is in progress: the user's goal, current state, one intended action, expected observable evidence, constraints, unresolved questions, the reason for revising the plan, and whether the user explicitly reports done/failed/unsure.",
+  "Carry forward confirmed facts, failed checks, constraints, and uncertainty across tool turns. When new observations contradict the current state, update the state and explain the consequence in one short phrase; do not keep a plan that no longer fits the evidence. If the user's goal changes, replace the active goal and clearly reset task-specific assumptions, while retaining only reusable constraints.",
+  "Keep the state compact and concrete: no hidden-reasoning transcript, no generic checklist, and at most a few recent events. Distinguish a user-reported result from visible evidence. Only the client-side visual-verification gate can label a reported camera comparison as supported; a model-supplied state field alone must never confirm completion. Preserve pending, failed, ambiguous, and unknown states rather than silently promoting them to success.",
   "M28 — GENERATIVE SPATIAL LANGUAGE:",
   "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
@@ -124,11 +128,22 @@ const COPILOT_SYSTEM_INSTRUCTION = [
 
 const SEARCH_WEB_FUNCTION = {
   name: "search_current_web",
-  description: "Search current public web information when the user explicitly asks for live/current/latest information or when a device manual, compatibility detail, recall, or model-specific troubleshooting requires current evidence. Use a concise, specific query.",
+  description: "Search current public web information when explicitly requested or when current/model-specific information is needed. For device and repair questions, provide device_context when known; prefer matching manufacturer manuals, diagrams, recalls, and exact-variant documentation, and flag model mismatches.",
   parameters: {
     type: "OBJECT",
     properties: {
-      query: { type: "STRING", description: "A focused public web search query, maximum 240 characters." }
+      query: { type: "STRING", description: "A focused public web search query, maximum 240 characters." },
+      device_context: {
+        type: "OBJECT",
+        description: "Optional context for matching a product/device source. Supply only facts the user stated or a label that is clearly legible; never infer a model from ambiguous visual appearance.",
+        properties: {
+          manufacturer: { type: "STRING", description: "Manufacturer stated by the user or clearly legible on the device." },
+          model_id: { type: "STRING", description: "Exact model identifier stated by the user or read clearly from a label." },
+          variant: { type: "STRING", description: "Variant, revision, generation, or region if known." },
+          part_number: { type: "STRING", description: "Exact part number if known." },
+          requested_material: { type: "STRING", enum: ["manual", "diagram", "troubleshooting", "recall", "compatibility", "general"] }
+        }
+      }
     },
     required: ["query"]
   }
@@ -281,6 +296,11 @@ const COPILOT_TOOL = {
 };
 
 const SEARCH_GROUNDING_INSTRUCTION = [
+  "M30 — MODEL-AWARE GROUNDING:",
+  "When calling search_current_web for a physical product, provide device_context if the manufacturer, exact model ID, variant/revision, or part number is known from the user or a clearly legible label. Do not guess these identifiers from a general image.",
+  "Search for the exact manufacturer plus model/variant and requested material (official manual, service or user guide, labelled diagram, troubleshooting, recall, or compatibility). Prefer manufacturer-hosted sources and safety notices, then reputable sources only for explicitly generic context.",
+  "Never present a procedure from a different model/version as applicable. If source titles/URLs do not establish the model match, say the match is unverified, ask for the exact identifier, or stay at a safe generic level. A source is a reference, not proof that the camera has identified the product or that a repair is safe.",
+  "When results include model IDs, compare them with the requested model/variant; distinguish exact match, mismatch, and unknown. If no exact matching source is found, state that limitation clearly instead of filling gaps with a similar guide.",
   "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the AskMoina server using Gemini with Google Search grounding.",
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "If asked whether you have live search, answer truthfully that search is available and demonstrate it when the user also asks for information. Never claim that you lack web access while this tool is configured.",
