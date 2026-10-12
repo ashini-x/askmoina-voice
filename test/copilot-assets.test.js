@@ -6,6 +6,7 @@ const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "u
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -286,4 +287,30 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
   });
 
+});
+
+
+describe("Apple-style entry navigation and disconnect cue", () => {
+  it("adds the menu only to the sign-in and experience chooser surfaces", () => {
+    expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY.replace(");
+    expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
+    for (const route of ["/account", "/vault", "/about", "/developer", "/help", "/privacy"]) {
+      expect(workerSource).toContain('href="' + route + '"');
+    }
+    expect(workerSource).toContain('url.pathname === "/entry-menu.js"');
+    expect(workerSource).toContain("renderSiteInfoPage(url.pathname)");
+    expect(html).not.toContain("entry-site-menu");
+    expect(css).toContain(".entry-site-menu{");
+    expect(entryMenuScript).toContain('document.addEventListener("pointerdown"');
+    expect(entryMenuScript).toContain('document.addEventListener("keydown"');
+  });
+
+  it("keeps the disconnect tone distinct and lets it finish before returning to the chooser", () => {
+    expect(script).toContain("function playDisconnectSound()");
+    expect(script).toContain("disconnectToneUntil = performance.now() + 560");
+    expect(script).toContain("peak: 0.052");
+    expect(script).toContain("peak: 0.058");
+    expect(script).toContain('window.setTimeout(() => window.location.replace("/"), 570)');
+  });
 });
