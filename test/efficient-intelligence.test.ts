@@ -12,7 +12,7 @@ describe("M35 provider usage and cost estimate telemetry", () => {
       usageMetadata: { promptTokenCount: 120, responseTokenCount: 45, totalTokenCount: 165, cachedContentTokenCount: 10 }
     }))).toMatchObject({ promptTokenCount: 120, responseTokenCount: 45, totalTokenCount: 165, cachedContentTokenCount: 10 });
     expect(inspectProviderUsageMetrics(JSON.stringify({
-      server_content: { usage_metadata: { prompt_token_count: 15, candidates_token_count: 5, total_token_count: 20 }
+      server_content: { usage_metadata: { prompt_token_count: 15, candidates_token_count: 5, total_token_count: 20 } }
     }))).toMatchObject({ promptTokenCount: 15, responseTokenCount: 5, totalTokenCount: 20 });
   });
 
