@@ -32,8 +32,7 @@
       "/vault.js",
       "/continuity.js",
       "/app.js",
-      "/iphone.css",
-      "/iphone.js"
+      "/session-ui.js"
     ]
   },
   "observability": {

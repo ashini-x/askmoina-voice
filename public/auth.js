@@ -342,5 +342,6 @@
       .catch(() => say("Could not load your account. Please refresh the page.", "error"));
   } else {
     setMode("create");
+    if (new URLSearchParams(window.location.search).get("reason") === "signed-out") say("You have signed out securely.", "success");
   }
 })();

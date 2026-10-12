@@ -2,157 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0c1222">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f3">
+  <meta name="color-scheme" content="light">
   <meta name="description" content="AskMoina — a voice-first AI companion for Assam.">
   <title>AskMoina — Your voice, your language</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/iphone.css">
-  <style>.vault-link{color:#9edbe3;text-decoration:none;border:1px solid #2e5360;border-radius:999px;padding:5px 9px;white-space:nowrap}.vault-link:hover{background:#172b3d}</style>
 </head>
 <body>
-  <section id="phoneOS" class="phone-os" aria-label="AskMoina interactive phone-style home screen">
-    <div class="phone-device">
-      <div class="phone-screen" id="phoneScreen">
-        <div class="phone-wallpaper" aria-hidden="true"><span class="wallpaper-orb orb-a"></span><span class="wallpaper-orb orb-b"></span><span class="wallpaper-orb orb-c"></span><span class="wallpaper-ribbon"></span></div>
-        <div class="phone-statusbar">
-          <button type="button" class="status-time" data-action="notifications" aria-label="Open notifications"><span data-time>9:41</span></button>
-          <div class="dynamic-island" aria-hidden="true"><span class="island-camera"></span></div>
-          <button type="button" class="status-right" data-action="control-center" aria-label="Open Control Center">
-            <svg viewBox="0 0 48 18" aria-hidden="true"><path d="M2 6 Q8 0 14 6 M5 9 Q8 6 11 9 M8 12h.2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M20 11V7M24 11V4M28 11V1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="33" y="3" width="12" height="11" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="45.5" y="6" width="2" height="5" rx="1" fill="currentColor"/><rect x="35.2" y="5.2" width="7.5" height="6.5" rx="1" fill="currentColor"/></svg>
-          </button>
-        </div>
-
-        <div class="phone-home-content">
-          <div class="date-welcome">
-            <div class="date-stamp"><span id="phoneWeekday">MONDAY</span><span id="phoneDate">12 OCTOBER</span></div>
-            <button type="button" class="day-widget" data-app="calendar" aria-label="Open Calendar">
-              <span class="widget-topline">YOUR DAY</span>
-              <span class="widget-title">A little more space.</span>
-              <span class="widget-bottom"><span>Make today yours</span><span class="widget-arrow">↗</span></span>
-              <span class="widget-orb" aria-hidden="true"></span>
-            </button>
-          </div>
-
-          <div class="phone-search-wrap">
-            <button type="button" class="phone-search" data-action="search" aria-label="Search apps"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><span>Search</span><span class="search-shortcut">⌕</span></button>
-          </div>
-
-          <div class="app-grid" aria-label="Apps">
-            <button type="button" class="app-icon" data-app="askmoina"><span class="app-art art-moina"><span class="moina-mark">m</span></span><span class="app-label">AskMoina</span></button>
-            <button type="button" class="app-icon" data-app="photos"><span class="app-art art-photos"><span class="photos-petal p1"></span><span class="photos-petal p2"></span><span class="photos-petal p3"></span><span class="photos-petal p4"></span><span class="photos-petal p5"></span><span class="photos-petal p6"></span></span><span class="app-label">Photos</span></button>
-            <button type="button" class="app-icon" data-app="camera"><span class="app-art art-camera"><span class="camera-lens"></span></span><span class="app-label">Camera</span></button>
-            <button type="button" class="app-icon" data-app="messages"><span class="app-art art-messages"><svg viewBox="0 0 50 50" aria-hidden="true"><path d="M25 10c-10 0-18 6.5-18 15 0 4.5 2.4 8.5 6.3 11.2L11 43l9-4.3c1.6.4 3.3.6 5 .6 10 0 18-6.5 18-15S35 10 25 10Z" fill="white"/></svg></span><span class="app-label">Messages</span></button>
-            <button type="button" class="app-icon" data-app="calendar"><span class="app-art art-calendar"><span class="calendar-red">CALENDAR</span><strong id="calendarAppDate">12</strong></span><span class="app-label">Calendar</span></button>
-            <button type="button" class="app-icon" data-app="clock"><span class="app-art art-clock"><svg viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="22" fill="none" stroke="white" stroke-width="2.5"/><path d="M29 14v15l10 6" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round"/></svg></span><span class="app-label">Clock</span></button>
-            <button type="button" class="app-icon" data-app="settings"><span class="app-art art-settings"><svg viewBox="0 0 58 58" aria-hidden="true"><g fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"><circle cx="29" cy="29" r="10"/><path d="M29 7v7M29 44v7M7 29h7M44 29h7M13.5 13.5l5 5M39.5 39.5l5 5M44.5 13.5l-5 5M18.5 39.5l-5 5"/></g></svg></span><span class="app-label">Settings</span></button>
-            <button type="button" class="app-icon" data-app="notes"><span class="app-art art-notes"><span class="note-lines"></span></span><span class="app-label">Notes</span></button>
-            <button type="button" class="app-icon" data-app="safari"><span class="app-art art-safari"><span class="safari-face">⌖</span></span><span class="app-label">Browser</span></button>
-            <button type="button" class="app-icon" data-app="maps"><span class="app-art art-maps"><span class="map-road road-one"></span><span class="map-road road-two"></span><span class="map-pin">●</span></span><span class="app-label">Maps</span></button>
-            <button type="button" class="app-icon" data-app="music"><span class="app-art art-music"><span class="music-note">♫</span></span><span class="app-label">Music</span></button>
-            <button type="button" class="app-icon" data-app="reminders"><span class="app-art art-reminders"><span class="reminder-check">✓</span><span class="reminder-bars"></span></span><span class="app-label">Reminders</span></button>
-            <button type="button" class="app-icon" data-app="phone"><span class="app-art art-phone"><svg viewBox="0 0 58 58" aria-hidden="true"><path d="M17 10c-2 0-4 2-4 4 0 17 14 31 31 31 2 0 4-2 4-4v-7l-10-3-4 6c-5-2-11-8-13-13l6-4-3-10Z" fill="white"/></svg></span><span class="app-label">Phone</span></button>
-            <button type="button" class="app-icon" data-app="mail"><span class="app-art art-mail"><svg viewBox="0 0 58 58" aria-hidden="true"><rect x="10" y="16" width="38" height="27" rx="5" fill="white"/><path d="m12 19 17 13 17-13" fill="none" stroke="#439cff" stroke-width="3" stroke-linejoin="round"/></svg></span><span class="app-label">Mail</span></button>
-            <button type="button" class="app-icon" data-app="files"><span class="app-art art-files"><span class="folder-shape"></span></span><span class="app-label">Files</span></button>
-            <button type="button" class="app-icon" data-app="store"><span class="app-art art-store"><span class="store-mark">A</span></span><span class="app-label">Discover</span></button>
-          </div>
-
-          <div class="home-dock" aria-label="Dock">
-            <button type="button" class="app-icon" data-app="phone" aria-label="Phone"><span class="app-art art-phone"><svg viewBox="0 0 58 58" aria-hidden="true"><path d="M17 10c-2 0-4 2-4 4 0 17 14 31 31 31 2 0 4-2 4-4v-7l-10-3-4 6c-5-2-11-8-13-13l6-4-3-10Z" fill="white"/></svg></span></button>
-            <button type="button" class="app-icon" data-app="safari" aria-label="Browser"><span class="app-art art-safari"><span class="safari-face">⌖</span></span></button>
-            <button type="button" class="app-icon" data-app="messages" aria-label="Messages"><span class="app-art art-messages"><svg viewBox="0 0 50 50" aria-hidden="true"><path d="M25 10c-10 0-18 6.5-18 15 0 4.5 2.4 8.5 6.3 11.2L11 43l9-4.3c1.6.4 3.3.6 5 .6 10 0 18-6.5 18-15S35 10 25 10Z" fill="white"/></svg></span></button>
-            <button type="button" class="app-icon" data-app="music" aria-label="Music"><span class="app-art art-music"><span class="music-note">♫</span></span></button>
-          </div>
-        </div>
-
-        <div class="home-indicator-wrap"><button type="button" id="homeIndicator" class="home-indicator" aria-label="Return to home screen"></button></div>
-
-        <div id="appSheet" class="app-sheet" hidden>
-          <div class="sheet-scrim" data-action="close-app"></div>
-          <section class="app-window" role="dialog" aria-modal="true" aria-labelledby="appTitle">
-            <header class="app-titlebar"><button type="button" class="titlebar-home" data-action="home">⌂ <span>Home</span></button><h2 id="appTitle">Settings</h2><button type="button" class="titlebar-close" data-action="close-app" aria-label="Close app">×</button></header>
-            <div id="appContent" class="app-content"></div>
-          </section>
-        </div>
-
-        <div id="controlCenter" class="floating-panel control-panel" hidden>
-          <div class="panel-grabber"></div><div class="panel-heading"><strong>Control Center</strong><button type="button" data-action="close-panel" aria-label="Close Control Center">×</button></div>
-          <div class="quick-toggle-grid">
-            <button type="button" data-toggle="airplane" class="quick-tile"><span>✈</span><strong>Airplane</strong></button>
-            <button type="button" data-toggle="wifi" class="quick-tile is-on"><span>⌁</span><strong>Wi-Fi</strong></button>
-            <button type="button" data-toggle="bluetooth" class="quick-tile is-on"><span>ᛒ</span><strong>Bluetooth</strong></button>
-            <button type="button" data-toggle="focus" class="quick-tile"><span>◐</span><strong>Focus</strong></button>
-          </div>
-          <label class="brightness-control"><span>Display brightness <b id="brightnessLabel">100%</b></span><input id="brightnessSlider" type="range" min="55" max="115" value="100"></label>
-          <button type="button" class="panel-row" data-toggle="dark"><span>Appearance</span><strong id="appearanceState">Light</strong></button>
-          <p class="simulated-note">These controls change this demo only, not your device settings.</p>
-        </div>
-
-        <div id="notificationCenter" class="floating-panel notification-panel" hidden>
-          <div class="panel-grabber"></div><div class="panel-heading"><strong>Notifications</strong><button type="button" data-action="close-panel" aria-label="Close notifications">×</button></div>
-          <div class="empty-notifications"><span class="notification-orb">m</span><strong>You're all caught up.</strong><p>New activity will appear here in this interactive demo.</p></div>
-          <p class="simulated-note">Demo notifications only.</p>
-        </div>
-
-        <div id="searchPanel" class="search-panel" hidden>
-          <div class="search-sheet">
-            <div class="search-input-wrap"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="appSearchInput" type="search" placeholder="Search apps" autocomplete="off" aria-label="Search apps"><button type="button" data-action="close-search" aria-label="Close search">×</button></div>
-            <div id="searchResults" class="search-results"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <p class="phone-caption">AskMoina · Interactive phone-style concept <span>— simulated system controls</span></p>
-  </section>
-  <main id="askmoinaApp" class="shell askmoina-app is-app-hidden">
+  <main class="shell">
     <header class="brand">
-      <span class="brand-mark" aria-hidden="true">m</span>
-      <span>AskMoina</span>
+      <a class="wordmark" href="/" aria-label="AskMoina home">AskMoina</a>
       <span class="brand-location">Made for Assam</span>
-      <a class="brand-location vault-link" href="/vault">Memory Vault</a>
-      <a class="brand-location copilot-link" href="/copilot">Live Co-Pilot ↗</a>
-      <a class="brand-location account-link" href="/account">My ID</a>
+      <button class="logout-button" type="button" data-logout>Sign out</button>
+      <nav class="app-nav" aria-label="AskMoina navigation">
+        <a href="/copilot">Live Co-Pilot</a><a href="/vault">Memory Vault</a><a href="/account">My ID</a>
+      </nav>
     </header>
-
     <section class="hero" aria-labelledby="hero-title">
-      <div class="orb-wrap" aria-hidden="true">
-        <div class="orb"></div>
-        <div class="orbit orbit-one"></div>
-        <div class="orbit orbit-two"></div>
-      </div>
+      <div class="orb-wrap" aria-hidden="true"><div class="orb"></div><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div></div>
       <p class="eyebrow">A new kind of conversation</p>
       <h1 id="hero-title">Your voice.<br><span>Your language.</span></h1>
       <p class="intro">A voice-first AI companion for Assam, starting with Upper Assam.</p>
-      <a class="home-copilot-cta" href="/copilot"><span>Try the Live Co-Pilot</span><span aria-hidden="true">↗</span></a>
-
+      <a class="home-copilot-cta" href="/copilot"><span>Open Live Co-Pilot</span><span aria-hidden="true">↗</span></a>
       <p class="status" id="status" role="status" aria-live="polite">Ready when you are.</p>
-      <button type="button" id="toggleVoice" class="voice-button" disabled>
-        <span class="button-icon" aria-hidden="true">●</span>
-        <span id="buttonLabel">Start talking</span>
-      </button>
+      <button type="button" id="toggleVoice" class="voice-button" disabled><span class="button-icon" aria-hidden="true">●</span><span id="buttonLabel">Start talking</span></button>
       <p class="availability" id="availability" role="status" aria-live="polite">Checking voice availability…</p>
-
-      <p class="note" id="privacyNote">
-        When you start, your microphone audio is streamed to Google Cloud Vertex AI to generate replies.
-        AskMoina does not save raw audio in this app. Use a quiet, private place for sensitive conversations.
-      </p>
-
+      <p class="note" id="privacyNote">When you start, your microphone audio is streamed to Google Cloud Vertex AI to generate replies. AskMoina does not save raw audio in this app. Use a quiet, private place for sensitive conversations.</p>
       <section class="conversation" aria-label="Conversation transcript">
-        <div class="conversation-heading">
-          <span>Conversation</span>
-          <button type="button" id="clearTranscript" class="clear-button">Clear</button>
-        </div>
-        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text">
-          <p class="empty-transcript" id="emptyTranscript">Your conversation will appear here when you speak.</p>
-        </div>
+        <div class="conversation-heading"><span>Conversation</span><button type="button" id="clearTranscript" class="clear-button">Clear</button></div>
+        <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text"><p class="empty-transcript" id="emptyTranscript">Your conversation will appear here when you speak.</p></div>
       </section>
     </section>
-
     <footer>Built for Assam · Audio is processed live, not recorded by AskMoina</footer>
-    <button type="button" id="returnHome" class="return-home" hidden aria-label="Return to phone-style home screen"><span>⌂</span> Home screen</button>
   </main>
-  <script src="/transcript-merge.js" defer></script>
-  <script src="/app.js" defer></script>
-  <script src="/iphone.js" defer></script>
+  <script src="/transcript-merge.js" defer></script><script src="/app.js" defer></script><script src="/session-ui.js" defer></script>
 </body>
 </html>

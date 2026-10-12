@@ -19,7 +19,7 @@ jobs:
       - run: node --check public/app.js
       - run: node --check public/copilot.js
       - run: node --check public/auth.js
-      - run: node --check public/iphone.js
+      - run: node --check public/session-ui.js
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
@@ -112,11 +112,9 @@ jobs:
           node --check /tmp/moina-auth.js
           echo "Passkey client and three-method login page: OK"
 
-          status="$(fetch_status /iphone.css /tmp/moina-iphone.css)"
+          status="$(fetch_status /session-ui.js /tmp/moina-session-ui.js)"
           test "$status" = "302"
-          status="$(fetch_status /iphone.js /tmp/moina-iphone.js)"
-          test "$status" = "302"
-          echo "Unauthenticated simulator assets denied: OK"
+          echo "Unauthenticated shared session UI denied: OK"
 
           status="$(fetch_status /api/auth/me /tmp/moina-auth-me.json)"
           test "$status" = "200"

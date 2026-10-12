@@ -57,6 +57,15 @@ describe("unique account ID and no-guest access", () => {
     }
   });
 
+  it("logs out through the same-origin endpoint and expires the session cookie", async () => {
+    const response = await handleAuthRequest(new Request("https://askmoina.test/api/auth/logout", {
+      method: "POST", headers: { Origin: "https://askmoina.test" }
+    }), envMock());
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ ok: true });
+    expect(response?.headers.get("Set-Cookie")).toContain("moina_session=; Max-Age=0");
+  });
+
   it("redirects the account page for an unauthenticated request", async () => {
     const r = await handleAuthRequest(new Request("https://askmoina.test/account"), envMock());
     expect(r?.status).toBe(302);
