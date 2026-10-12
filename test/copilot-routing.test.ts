@@ -31,24 +31,29 @@ function setup() {
 }
 
 describe("public Live Co-Pilot routing", () => {
-  it("redirects guest page requests to sign-in without resolving a static asset", async () => {
+  it("redirects guest Co-Pilot page requests to the root sign-in overlay without resolving a static asset", async () => {
     for (const path of ["/copilot", "/copilot.html"]) {
       const mock = setup();
       const response = await worker.fetch(new Request("https://askmoina.test" + path), mock.env, ctx);
       expect(response.status).toBe(302);
-      expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
+      expect(response.headers.get("Location")).toBe("https://askmoina.test/");
       expect(mock.requestedPath()).toBe("");
     }
   });
 
-  it("denies guest access to camera scripts and styles", async () => {
-    for (const path of ["/copilot.js", "/copilot.css"]) {
-      const mock = setup();
-      const response = await worker.fetch(new Request("https://askmoina.test" + path), mock.env, ctx);
-      expect(response.status).toBe(401);
-      expect(await response.json()).toMatchObject({ error: "authentication_required" });
-      expect(mock.requestedPath()).toBe("");
-    }
+  it("keeps camera JavaScript private while allowing the CSS needed to render the sign-in overlay", async () => {
+    const scriptMock = setup();
+    const script = await worker.fetch(new Request("https://askmoina.test/copilot.js"), scriptMock.env, ctx);
+    expect(script.status).toBe(401);
+    expect(await script.json()).toMatchObject({ error: "authentication_required" });
+    expect(scriptMock.requestedPath()).toBe("");
+
+    const styleMock = setup();
+    const style = await worker.fetch(new Request("https://askmoina.test/copilot.css"), styleMock.env, ctx);
+    expect(style.status).toBe(200);
+    expect(style.headers.get("Content-Type")).toContain("text/css");
+    expect(await style.text()).toContain(".show-problem-button");
+    expect(styleMock.requestedPath()).toBe("");
   });
 
 });
