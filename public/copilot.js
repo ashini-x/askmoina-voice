@@ -2145,7 +2145,7 @@
     clearOverlay();
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
-    if (connectionNoticeAction) connectionNoticeAction.disabled = Boolean(persistentConnectionIssue);
+    if (connectionNoticeAction) connectionNoticeAction.disabled = true;
     setStatus("Checking availability and requesting camera + microphone access…");
     showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting");
     const preflight = await refreshAvailabilityAfterRelease();

@@ -824,3 +824,6 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 .camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{filter:blur(18px) saturate(1.34) brightness(1.24)}
 .camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.86!important}
 @media(prefers-reduced-motion:reduce){.vision-slide-label,.vision-slide-chevron{animation:none!important}.vision-slide-label{background-position:50% 0}}
+
+.camera-stage.is-returning{opacity:0;transition:opacity .18s ease}
+@media(prefers-reduced-motion:reduce){.camera-stage.is-returning{transition:none}}
