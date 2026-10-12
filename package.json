@@ -9,7 +9,8 @@
     "types": "wrangler types",
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "benchmark:validate": "node scripts/reality-benchmark.mjs --validate"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260914.1",

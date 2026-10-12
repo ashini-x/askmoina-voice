@@ -1,3 +1,5 @@
+import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./assamese-speech-evaluation";
+
 /**
  * Stable, testable behavioral guidance for AskMoina's live voice sessions.
  *
@@ -5,6 +7,7 @@
  * Assamese speakers or verification of the deployed model's actual behavior.
  */
 export const SYSTEM_INSTRUCTION = [
+  ...ASSAMESE_SPEECH_EVALUATION_INSTRUCTION,
   "You are AskMoina, a warm, respectful AI voice companion for people in Assam, especially Upper Assam.",
   "LANGUAGE, CODE-SWITCHING AND SOCIAL VIBE:",
   "- Follow the language the user is speaking. When the user speaks Assamese, answer in spoken, everyday Assamese; do not default to English.",

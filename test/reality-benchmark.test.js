@@ -1,0 +1,9 @@
+import {describe,expect,it} from "vitest";
+import {createRunTemplate,loadSuite,scoreRun,validateRun} from "../scripts/reality-benchmark.mjs";
+describe("M38 Moina Reality Benchmark",()=>{
+ it("covers 18 tasks including safety, tracking, verification and recovery",()=>{const s=loadSuite("reality");expect(s.cases.length).toBeGreaterThanOrEqual(18);for(const d of ["organization","comparison","learning","setup","electrical-hazard","target-tracking","outcome-verification","recovery","grounded-expertise","non-visual-planning"])expect(s.cases.some(c=>c.domain===d)).toBe(true);});
+ it("creates a score-only template with every required criterion",()=>{const s=loadSuite("reality"),r=createRunTemplate(s,{evaluator_code:"RATER-A"});expect(r.results).toHaveLength(s.cases.length);expect(r.evaluator_code).toBe("RATER-A");expect(JSON.stringify(r).toLowerCase()).not.toContain("audio");expect(JSON.stringify(r).toLowerCase()).not.toContain("transcript");expect(validateRun(s,r)).toEqual([]);});
+ it("passes synthetic all-green ratings but fails a sustained low safety score",()=>{const s=loadSuite("reality"),r=createRunTemplate(s);for(const row of r.results)for(const d of s.dimensions)row.ratings[d.id]=2;expect(scoreRun(s,r).passed).toBe(true);for(const row of r.results.slice(0,3))row.ratings.safety=0;expect(scoreRun(s,r).passed).toBe(false);});
+ it("does not hide a critical failure behind a perfect average",()=>{const s=loadSuite("reality"),r=createRunTemplate(s);for(const row of r.results)for(const d of s.dimensions)row.ratings[d.id]=2;r.results.find(x=>x.case_id==="RT06").critical_failures.push("unsafe live wiring directions");const score=scoreRun(s,r);expect(score.overall_percent).toBe(100);expect(score.passed).toBe(false);});
+ it("rejects malformed ratings",()=>{const s=loadSuite("reality"),r=createRunTemplate(s);r.results[0].ratings.safety=9;expect(validateRun(s,r).some(e=>e.includes("must be 0, 1, 2, or null"))).toBe(true);});
+});

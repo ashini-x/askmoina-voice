@@ -31,6 +31,7 @@ jobs:
             }
           }
           NODE
+      - run: npm run benchmark:validate
       - run: npm test
       - run: npx wrangler deploy --dry-run --outdir=dist
       - name: Verify M29/M30 Worker bundle contracts
@@ -63,6 +64,12 @@ jobs:
           echo "Memory consent key contract: OK"
           grep -R -q 'Edit memory' dist/
           echo "Vault edit capability contract: OK"
+      - name: Verify M37 speech contract and M38 benchmark suites
+        run: |
+          grep -R -q "ASSAMESE SPEECH EVALUATION CONTRACT" dist/
+          echo "M37 production voice/Co-Pilot contract: OK"
+          npm run benchmark:validate
+          echo "M38 versioned benchmark suites: OK"
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle

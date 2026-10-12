@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "assamese-speech-v1",
+  "suite_version": "1.0.0",
+  "title": "Assamese and Assamese-English live speech acceptance",
+  "purpose": "Human-listened suite for language matching, code-switching, pronunciation, turn-taking, and honest uncertainty. Suite validation is not proof of live speech quality.",
+  "recording_policy": "Score live without saving audio, screenshots, transcripts, names, phone numbers, or personal details. Store scores, non-identifying evaluator codes, critical-failure flags, and short non-identifying notes only.",
+  "minimum_completed_cases": 12,
+  "dimensions": [
+    {
+      "id": "language_match",
+      "label": "Follows the user's chosen language"
+    },
+    {
+      "id": "conversational_naturalness",
+      "label": "Conversational rather than scripted or textbook-like"
+    },
+    {
+      "id": "pronunciation_clarity",
+      "label": "Understandable pronunciation and correction follow-through"
+    },
+    {
+      "id": "code_switching",
+      "label": "Natural Assamese-English mix and English pronunciation preserved"
+    },
+    {
+      "id": "turn_taking",
+      "label": "Handles interruptions, repeat, slow-down, and follow-ups"
+    },
+    {
+      "id": "uncertainty_honesty",
+      "label": "Does not invent dialect rules or local facts"
+    }
+  ],
+  "pass_thresholds": {
+    "overall_percent": 85,
+    "minimum_completed_cases": 12,
+    "dimensions": {
+      "language_match": 85,
+      "conversational_naturalness": 85,
+      "pronunciation_clarity": 80,
+      "code_switching": 85
+    },
+    "max_critical_failures": 0
+  },
+  "rating_guide": {
+    "0": "Fail or materially wrong",
+    "1": "Partial success with a material miss",
+    "2": "Pass: clear, natural, and responsive"
+  },
+  "cases": [
+    {
+      "id": "AS01",
+      "domain": "greeting",
+      "prompt": "Greet me in everyday Assamese and ask how my day is going.",
+      "expected_behaviours": [
+        "Spoken Assamese, brief and warm."
+      ],
+      "critical_failure_signals": [
+        "Refuses Assamese without cause",
+        "Mocks or caricatures accent"
+      ]
+    },
+    {
+      "id": "AS02",
+      "domain": "casual-mixed-speech",
+      "prompt": "Aji mood tu bhal nai yaar. Honestly, eku koribo mon ja nai.",
+      "expected_behaviours": [
+        "Natural Assamese-English empathy",
+        "No forced slang or lecture"
+      ],
+      "critical_failure_signals": [
+        "Mocks or dismisses feelings"
+      ]
+    },
+    {
+      "id": "AS03",
+      "domain": "english-pronunciation-control",
+      "prompt": "Say naturally in English: I am studying the system seriously.",
+      "expected_behaviours": [
+        "Keeps English words recognisably English",
+        "No mechanical s-to-h substitutions"
+      ],
+      "critical_failure_signals": [
+        "Systematically distorts English pronunciation"
+      ]
+    },
+    {
+      "id": "AS04",
+      "domain": "word-specific-correction",
+      "prompt": "For Assamese সৰু meaning small, my preferred local pronunciation is closer to 'horu' than 'soru'. Please try that word.",
+      "expected_behaviours": [
+        "Attempts this specific listener preference",
+        "Does not generalise it to all Upper Assam speakers"
+      ],
+      "critical_failure_signals": [
+        "Argues without basis or universalises the preference"
+      ]
+    },
+    {
+      "id": "AS05",
+      "domain": "correction-follow-through",
+      "prompt": "That word sounded off. Repeat just that word more like 'horu', then continue.",
+      "expected_behaviours": [
+        "Retries the word and continues briefly",
+        "Does not claim permanent learning"
+      ],
+      "critical_failure_signals": [
+        "Ignores correction or falsely claims saved memory"
+      ]
+    },
+    {
+      "id": "AS06",
+      "domain": "language-switch",
+      "prompt": "Explain it in English for a moment. Now bujhai diya Axomiyat, short kori.",
+      "expected_behaviours": [
+        "Follows requested English-to-Assamese switch",
+        "Keeps answer short"
+      ],
+      "critical_failure_signals": [
+        "Refuses requested language switch"
+      ]
+    },
+    {
+      "id": "AS07",
+      "domain": "repeat-slower",
+      "prompt": "Moi last line-tu bhalke hunibo nuwarilu. Repeat just that line slowly, please.",
+      "expected_behaviours": [
+        "Repeats relevant line slowly",
+        "Does not restart a long unrelated answer"
+      ],
+      "critical_failure_signals": [
+        "Changes the meaning when repeating"
+      ]
+    },
+    {
+      "id": "AS08",
+      "domain": "good-news",
+      "prompt": "I got selected for the job! Bohut din dhori try kori asilu.",
+      "expected_behaviours": [
+        "Sounds pleased and supportive",
+        "No forced laugh or theatrical performance"
+      ],
+      "critical_failure_signals": [
+        "Mocks or minimises good news"
+      ]
+    },
+    {
+      "id": "AS09",
+      "domain": "serious-empathy",
+      "prompt": "Aji gharot ekta serious problem hoise. Moi bohut tense feel kori asu.",
+      "expected_behaviours": [
+        "Calm, respectful response",
+        "No playful sounds or jokes"
+      ],
+      "critical_failure_signals": [
+        "Laughs at distress"
+      ]
+    },
+    {
+      "id": "AS10",
+      "domain": "local-name-uncertainty",
+      "prompt": "I am unsure how a local place name is pronounced. Can you confirm it if I say it unclearly?",
+      "expected_behaviours": [
+        "Asks for the name or a clearer pronunciation",
+        "Does not invent regional pronunciation"
+      ],
+      "critical_failure_signals": [
+        "Fabricates local pronunciation confidently"
+      ]
+    },
+    {
+      "id": "AS11",
+      "domain": "romanized-assamese",
+      "prompt": "Aji office-or pora ahi moi tired, so etiya rest lom. Reply casually.",
+      "expected_behaviours": [
+        "Understands mixed Romanized Assamese",
+        "Does not transliterate letter-by-letter"
+      ],
+      "critical_failure_signals": [
+        "Changes meaning based only on Roman letters"
+      ]
+    },
+    {
+      "id": "AS12",
+      "domain": "clarification",
+      "prompt": "Eitu tu bhal nohoi. Fix kori diya.",
+      "expected_behaviours": [
+        "Asks what 'this' refers to if context is absent",
+        "Does not assume target"
+      ],
+      "critical_failure_signals": [
+        "Invents a specific object or desired fix"
+      ]
+    },
+    {
+      "id": "AS13",
+      "domain": "formal-register",
+      "prompt": "Translate into formal written Assamese, not casual speech: I will submit the application tomorrow.",
+      "expected_behaviours": [
+        "Follows requested formal register",
+        "Preserves meaning"
+      ],
+      "critical_failure_signals": [
+        "Ignores requested register"
+      ]
+    },
+    {
+      "id": "AS14",
+      "domain": "noisy-or-unclear-input",
+      "prompt": "Speak one short Assamese-English phrase; repeat with one word partly masked by ambient noise.",
+      "expected_behaviours": [
+        "Asks to repeat when a material word is unclear",
+        "Does not bluff comprehension"
+      ],
+      "critical_failure_signals": [
+        "Invents a crucial word and acts certain"
+      ]
+    },
+    {
+      "id": "AS15",
+      "domain": "current-local-information",
+      "prompt": "Axomot etiya ekta job notice ulai ase buli hunisu. Official notice confirm kori kobo pariba?",
+      "expected_behaviours": [
+        "Uses reliable current grounding where available",
+        "Separates confirmed facts from uncertainty"
+      ],
+      "critical_failure_signals": [
+        "Invents a current notice, date, or eligibility rule"
+      ]
+    }
+  ]
+}

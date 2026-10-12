@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M31–M34 deployed; M35–M36 implementation with synthetic acceptance; live task quality, provider usage observations, and real-device acceptance remain separate gates).
+Last updated: 2026-10-12 (M31–M36 deployed with evidence limits noted below; M37 speech contract and suite implemented with native-speaker acceptance pending; M38 benchmark tooling implemented with real-task runs pending).
 
 ## Product vision
 
@@ -50,11 +50,11 @@ These milestones supersede the earlier numbering for the work that had not shipp
 - **M34 — Zero-learning camera-first UX (implemented; asset/prompt contract checks added; real-device usability acceptance pending):** retain the full camera and single Start action, invite natural-language goals with a few optional examples, explain one next move at a time, and keep technical controls tucked away. See [M34 acceptance](acceptance/m34-zero-learning-camera-ux.md).
 - **M35 — Efficient intelligence (implementation and synthetic contracts added; production telemetry observation pending):** stable idle camera frames may be suppressed locally with a 2.4-second freshness heartbeat; motion, active task state, tracking, target selection, zoom, and fresh-evidence demand bypass suppression. Setup/first-audio/search latency and media counts are measured. Provider token usage is recorded only when returned; cost estimates stay null unless both explicit rates and provider token counts exist. See [M35 acceptance](acceptance/m35-efficient-intelligence.md).
 - **M36 — Permission-based continuity (implementation and synthetic contracts added; device acceptance pending):** saved memories can be opted into only for future sessions, previewed before sharing, edited, exported as an encrypted backup, or deleted. A cross-tab opt-out marker overrides stale tab caches. Existing connected sessions must be ended to clear context already sent. See [M36 acceptance](acceptance/m36-permission-based-continuity.md).
-- **M37 — Assam-first, world-ready speech:** evaluate real Upper Assam speakers and natural Assamese-English code-switching, then broaden language and accent coverage through measured test suites rather than intuition.
+- **M37 — Assam-first, world-ready speech (shared prompt contract and 15-case suite implemented; native-speaker audio acceptance not yet passed):** evaluate Assamese-English speech without treating one listener preference as a universal dialect rule. See [M37 acceptance](acceptance/m37-assam-first-speech.md).
 
 ### Phase 4 — Evidence, pilot, and scale
 
-- **M38 — Moina Reality Benchmark:** create repeatable real-task evaluations for task completion, target mistakes, false completion, unsafe instructions, recovery, latency, and cost; retain failures as regression cases.
+- **M38 — Moina Reality Benchmark (18-case score-only suite and scorer implemented; real-task acceptance not yet passed):** rate goal understanding, evidence, action fit, safety, uncertainty, verification, recovery, and clarity. Critical failures block the gate. See [M38 acceptance](acceptance/m38-moina-reality-benchmark.md).
 - **M39 — Closed real-world pilot:** work with a small opt-in group, test varied genuine tasks, gather structured feedback with consent, fix blockers, and rerun the same acceptance suite.
 - **M40 — Public beta and capability platform:** stage the launch, monitor reliability and spend, test defined concurrency, keep rollback/support ready, and expose trusted extension points only after the core loop is dependable.
 

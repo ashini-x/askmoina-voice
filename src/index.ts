@@ -7,6 +7,7 @@ import { handleContinuityRequest, ensureVisitor, visitorIdFromRequest, isAdmin, 
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
+import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./sessions/assamese-speech-evaluation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
@@ -26,6 +27,7 @@ function configuredTokenRate(value?: string): number | null {
 const COPILOT_SYSTEM_INSTRUCTION = [
   "You are Moina's live camera co-pilot for Assamese-speaking users.",
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
+  ...ASSAMESE_SPEECH_EVALUATION_INSTRUCTION,
   "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
   "PROBLEM UNDERSTANDING — BEFORE CHOOSING AN ACTION:",
   "Before recommending a fix or step, build a small working understanding from the user's words and the latest visible evidence: the outcome they want or symptom they report, the relevant object/context, what is directly known versus only suspected, the one missing fact that could change the next action, and the consequence if the guess is wrong.",
