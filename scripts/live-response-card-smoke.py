@@ -14,8 +14,8 @@ import websocket
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
-    "Please make a response card with three simple steps for organizing pens on a desk. "
-    "Use short, safe steps, and also tell me the first step out loud."
+    "Please make a response card with three steps for organizing pens. "
+    "Then tell me step one out loud."
 )
 SETUP_WAIT_SECONDS = 18
 GREETING_WAIT_SECONDS = 22
@@ -26,7 +26,7 @@ PHASE = "startup"
 def synthesize_pcm_16k() -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
         subprocess.run(
-            ["espeak-ng", "-v", "en-us", "-s", "135", "-w", wav_file.name, PROMPT],
+            ["espeak-ng", "-v", "en-us", "-s", "115", "-w", wav_file.name, PROMPT],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         with wave.open(wav_file.name, "rb") as source:
@@ -261,7 +261,9 @@ def main() -> int:
         tool_count = 0
         final_complete = False
         saw_final_text = False
-        input_intent_observed = False
+        input_transcription_received = False
+        card_keyword_observed = False
+        steps_keyword_observed = False
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
             try:
@@ -279,8 +281,12 @@ def main() -> int:
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
             input_text = get_input_text(message).lower()
-            if any(term in input_text for term in ("response card", "checklist card", "card with three", "steps for organizing")):
-                input_intent_observed = True
+            if input_text.strip():
+                input_transcription_received = True
+            if any(term in input_text for term in ("card", "cart", "checklist")):
+                card_keyword_observed = True
+            if any(term in input_text for term in ("step", "steps", "checklist")):
+                steps_keyword_observed = True
             calls = get_calls(message)
             responses = []
             supported_tool_call = False
@@ -321,8 +327,10 @@ def main() -> int:
                     break
         if tool_count == 0:
             raise RuntimeError(
-                "The live model did not call display_response_card for the explicit checklist request "
-                "(explicit_card_intent_transcribed=" + str(input_intent_observed).lower() + ")."
+                "The live model did not call display_response_card "
+                "(input_transcription_received=" + str(input_transcription_received).lower()
+                + ", card_keyword_observed=" + str(card_keyword_observed).lower()
+                + ", steps_keyword_observed=" + str(steps_keyword_observed).lower() + ")."
             )
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
