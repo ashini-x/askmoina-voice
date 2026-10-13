@@ -250,6 +250,7 @@ jobs:
           trap cleanup EXIT
           python scripts/live-grounding-smoke.py
           python scripts/live-response-card-smoke.py
+          python scripts/live-ranked-list-smoke.py
           python scripts/live-memory-voice-smoke.py
           cleanup
           trap - EXIT
