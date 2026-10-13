@@ -79,6 +79,8 @@
   let liveSearchStageIndex = 0;
   let liveSearchSpokenAcknowledgementText = "";
   let liveSearchProgressStageIndex = 0;
+  let liveSearchPreflightStages = [];
+  let liveSearchPreflightContext = "";
 
   function updateLiveSearchProgress(value) {
     const next = Math.max(0, Math.min(100, Math.round(value)));
@@ -188,6 +190,8 @@
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
+    liveSearchPreflightStages = [];
+    liveSearchPreflightContext = "";
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     liveSearchProgressInterval = null;
@@ -204,41 +208,105 @@
   }
 
   const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top[\s-]*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:all|every)\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:full|complete|entire|whole)\s+(?:ranked\s+)?list|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
-  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
+  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:got it[, .]+(?:i(?:'m| am) (?:looking|checking)|i(?:'ll| will) (?:look|check)|let me (?:check|look))|i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
 
   function isLikelyLiveSearchRequest(text) {
     const normalized = String(text || "").replace(/\s+/g, " ").trim();
     return normalized.length >= 8 && LIVE_SEARCH_INTENT.test(normalized);
   }
 
-  function showLiveSearchAcknowledgement() {
+  function getLiveSearchPreflightProfile(text, isSearchIntent) {
+    const normalized = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!isSearchIntent) {
+      return {
+        key: "general",
+        stages: [
+          { title: "Understanding your request", message: "Working out what will help you most." },
+          { title: "Preparing your answer", message: "Checking whether up-to-date sources would help." },
+          { title: "Putting it together", message: "Keeping the answer focused on your question." }
+        ]
+      };
+    }
+    if (/\b(top|rank(?:ed|ing|ers?)|leaderboard|standings|run scorers?|wicket takers?|orange cap|purple cap|all\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten))\b/i.test(normalized)) {
+      return {
+        key: "ranked-list",
+        stages: [
+          { title: "Preparing your search", message: "Looking for complete source-backed tables." },
+          { title: "Checking ranked results", message: "Checking names, positions and supporting figures." },
+          { title: "Preparing your list", message: "Getting the full set of verified details ready." }
+        ]
+      };
+    }
+    if (/\b(weather|temperature|forecast|rain|traffic|nearby|near me|opening hours|open now|exchange rate|price|today|latest|current|right now)\b/i.test(normalized)) {
+      return {
+        key: "current-info",
+        stages: [
+          { title: "Preparing a live lookup", message: "Looking for current information relevant to your question." },
+          { title: "Checking recent sources", message: "Prioritising useful, up-to-date details." },
+          { title: "Preparing your answer", message: "Bringing the most relevant information together." }
+        ]
+      };
+    }
+    if (/\b(manual|model|device|laptop|phone|compatib(?:le|ility)|recall|repair|version|release notes|specification|specs)\b/i.test(normalized)) {
+      return {
+        key: "reference-check",
+        stages: [
+          { title: "Preparing a source check", message: "Looking for relevant official documentation." },
+          { title: "Checking the details", message: "Matching source information to your specific question." },
+          { title: "Preparing useful guidance", message: "Separating verified details from anything uncertain." }
+        ]
+      };
+    }
+    return {
+      key: "web-search",
+      stages: [
+        { title: "Preparing your search", message: "Finding the best way to verify the answer." },
+        { title: "Choosing useful sources", message: "Focusing on sources that directly answer your question." },
+        { title: "Preparing your answer", message: "Getting the relevant evidence ready." }
+      ]
+    };
+  }
+
+  function showLiveSearchAcknowledgement(text = "", isSearchIntent = false) {
     if (!liveSearchStatus || liveSearchActive || liveSearchFinishing) return;
+    const profile = getLiveSearchPreflightProfile(text, isSearchIntent);
+    if (liveSearchAcknowledgementActive) {
+      // Do not restart the stage timer for every partial transcript update.
+      if (liveSearchPreflightContext !== profile.key) {
+        liveSearchPreflightContext = profile.key;
+        liveSearchPreflightStages = profile.stages;
+        liveSearchStageIndex = 0;
+        const stageItem = liveSearchPreflightStages[0];
+        if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
+        if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
+      }
+      return;
+    }
+
     liveSearchAcknowledgementActive = true;
+    liveSearchPreflightContext = profile.key;
+    liveSearchPreflightStages = profile.stages;
+    liveSearchStageIndex = 0;
     liveSearchStatus.hidden = false;
     liveSearchStatus.classList.add("is-acknowledging");
-    liveSearchStageIndex = 0;
-    if (liveSearchTitle) liveSearchTitle.textContent = "Got it";
-    if (liveSearchMessage) liveSearchMessage.textContent = "I'm preparing your search.";
+    if (liveSearchTitle) liveSearchTitle.textContent = liveSearchPreflightStages[0].title;
+    if (liveSearchMessage) liveSearchMessage.textContent = liveSearchPreflightStages[0].message;
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    const preflightStages = [
-      { title: "Preparing your search", message: "Finding the right way to verify the answer." },
-      { title: "Getting the lookup ready", message: "Keeping the answer focused on your request." },
-      { title: "Preparing your answer", message: "Gathering the information needed for a useful response." }
-    ];
+
     const advancePreflightStage = () => {
       if (!liveSearchAcknowledgementActive || liveSearchActive || liveSearchFinishing) {
         liveSearchAcknowledgementTimer = null;
         return;
       }
-      const stageItem = preflightStages[liveSearchStageIndex % preflightStages.length];
+      const stages = liveSearchPreflightStages.length ? liveSearchPreflightStages : profile.stages;
+      const stageItem = stages[liveSearchStageIndex % stages.length];
       if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
       if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
       liveSearchStageIndex += 1;
-      liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1700);
+      liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1650);
     };
-    liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1500);
+    liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1650);
     updateLiveSearchProgress(0);
-    // Keep the stage indicator visible until the Worker confirms that a real lookup has begun.
   }
 
   function hideLiveSearchAcknowledgement() {
@@ -246,6 +314,8 @@
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
+    liveSearchPreflightStages = [];
+    liveSearchPreflightContext = "";
     if (liveSearchStatus) {
       liveSearchStatus.classList.remove("is-acknowledging");
       liveSearchStatus.hidden = true;
@@ -314,6 +384,7 @@
   function handleTranscriptAcknowledgement(role, text) {
     if (role === "user") {
       const normalized = String(text || "").replace(/\s+/g, " ").trim();
+      if (!normalized) return;
       const expansion = isListDisplayFollowup(normalized);
       const count = requestedListCountFromTranscript(normalized);
       if (expansion && lastGroundedRankedListCard) {
@@ -332,16 +403,23 @@
         lastGroundedRankedListCard = null;
       }
 
-      if (isLikelyLiveSearchRequest(normalized)) {
-        showLiveSearchAcknowledgement();
-        speakImmediateSearchAcknowledgement(normalized);
-      } else if (liveSearchAcknowledgementActive) {
-        hideLiveSearchAcknowledgement();
-      }
+      const searchIntent = isLikelyLiveSearchRequest(normalized);
+      // Even if intent detection is inconclusive, keep a generic preflight visible
+      // from the first user-audio frame until an answer starts or a real lookup takes over.
+      showLiveSearchAcknowledgement(normalized, searchIntent);
+      if (searchIntent) speakImmediateSearchAcknowledgement(normalized);
       return;
     }
-    // Interim assistant transcription can arrive before the Live API's function call.
-    // Only a real search-start event advances the acknowledgement to the searching state.
+
+    if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
+      const normalized = String(text || "").replace(/\s+/g, " ").trim();
+      if (!normalized) return;
+      // Preserve a brief spoken lookup acknowledgement, but remove the preflight as soon
+      // as the real answer starts. A real server search has its own progress lifecycle.
+      if (!LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) || normalized.length >= 90) {
+        hideLiveSearchAcknowledgement();
+      }
+    }
   }
 
   function readOptedInMemoryContext() {
@@ -1772,7 +1850,11 @@
       const now = performance.now();
       if (rms > 0.012) {
         lastMicVoiceAt = now;
+        const wasListening = stage.classList.contains("is-listening");
         stage.classList.add("is-listening");
+        if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive) {
+          showLiveSearchAcknowledgement("", false);
+        }
       } else if (now - lastMicVoiceAt > 145) {
         stage.classList.remove("is-listening");
       }
@@ -2529,6 +2611,7 @@
           pendingResponseCards.push({ id, args: call.args });
           continue;
         }
+        if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
         const rendered = renderResponseCard(call.args);
         if (id) {
           responses.push({
@@ -2632,6 +2715,7 @@
           if (liveSearchMessage) liveSearchMessage.textContent = "Grounded results found · designing your list";
           completeLiveSearchProgress();
         } else {
+          hideLiveSearchAcknowledgement();
           renderResponseCard(fallbackCard, true);
         }
       }
@@ -2696,8 +2780,7 @@
     const serverContent = message.server_content || message.serverContent;
     if (serverContent) {
       const interimUserTranscription = serverContent.interim_input_transcription || serverContent.interimInputTranscription;
-      if (interimUserTranscription && typeof interimUserTranscription.text === "string" &&
-          isLikelyLiveSearchRequest(interimUserTranscription.text)) {
+      if (interimUserTranscription && typeof interimUserTranscription.text === "string") {
         handleTranscriptAcknowledgement("user", interimUserTranscription.text);
       }
       if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);

@@ -526,11 +526,13 @@ describe("Immediate live-search acknowledgement", () => {
     expect(script).toContain("top\\s+\\d+");
     expect(script).toContain("rank(?:ed|ing|ers?)");
     expect(script).toContain("orange cap|purple cap");
-    expect(script).toContain("function showLiveSearchAcknowledgement()");
+    expect(script).toContain("function showLiveSearchAcknowledgement(text = \"\", isSearchIntent = false)");
+    expect(script).toContain("getLiveSearchPreflightProfile(text, isSearchIntent)");
     expect(script).toContain("handleTranscriptAcknowledgement(role, entry.text)");
     expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
-    expect(script).toContain('liveSearchTitle.textContent = "Got it"');
-    expect(script).toContain('liveSearchMessage.textContent = "I\'m preparing your search."');
+    expect(script).toContain('liveSearchTitle.textContent = liveSearchPreflightStages[0].title');
+    expect(script).toContain('title: "Understanding your request"');
+    expect(script).toContain('message: "Working out what will help you most."');
     expect(script).toContain('liveSearchTitle.textContent = stageItem.title');
     expect(script).toContain('liveSearchTitle.textContent = "Building your answer"');
     expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
@@ -582,5 +584,28 @@ describe("RC6 grounded list visibility regressions", () => {
     expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
     expect(script).toContain("if (!normalized || liveSearchSpokenAcknowledgementText) return");
+  });
+});
+
+describe("RC7 zero-gap search-status feedback", () => {
+  it("shows a generic status on the first detected user speech before transcription or search start", () => {
+    expect(script).toContain('showLiveSearchAcknowledgement("", false)');
+    expect(script).toContain('if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive)');
+    expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
+    expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
+  });
+
+  it("adapts preflight stages by context and hides them as soon as a non-search answer starts", () => {
+    expect(script).toContain('key: "ranked-list"');
+    expect(script).toContain('key: "current-info"');
+    expect(script).toContain('key: "reference-check"');
+    expect(script).toContain('key: "general"');
+    expect(script).toContain('if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing)');
+    expect(script).toContain("hideLiveSearchAcknowledgement()");
+  });
+
+  it("removes a preflight status before revealing a card when a web search was not started", () => {
+    expect(script).toContain("if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();");
+    expect(script).toContain("hideLiveSearchAcknowledgement();\n          renderResponseCard(fallbackCard, true);");
   });
 });
