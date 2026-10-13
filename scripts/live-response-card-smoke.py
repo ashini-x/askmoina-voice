@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Authenticated synthetic Live Co-Pilot test for the RC2 response-card tool."""
-import base64
+"""Authenticated synthetic Live Co-Pilot text-turn test for the RC2 response-card tool.
+
+This isolates tool selection and the bounded tool protocol from speech-recognition
+and VAD variability. The separate voice-memory smoke test still exercises audio.
+"""
 import json
 import os
-import struct
-import subprocess
-import tempfile
 import time
-import wave
 
 import websocket
 
@@ -21,31 +20,6 @@ SETUP_WAIT_SECONDS = 18
 GREETING_WAIT_SECONDS = 22
 TURN_WAIT_SECONDS = 65
 PHASE = "startup"
-
-
-def synthesize_pcm_16k() -> bytes:
-    with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
-        subprocess.run(
-            ["espeak-ng", "-v", "en-us", "-s", "115", "-w", wav_file.name, PROMPT],
-            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        with wave.open(wav_file.name, "rb") as source:
-            channels, sample_width, source_rate = source.getnchannels(), source.getsampwidth(), source.getframerate()
-            data = source.readframes(source.getnframes())
-    if channels != 1 or sample_width != 2 or source_rate <= 0:
-        raise RuntimeError("Synthetic speech generator returned an unsupported WAV format.")
-    sample_count = len(data) // 2
-    samples = struct.unpack("<" + "h" * sample_count, data)
-    output_count = int(sample_count * 16000 / source_rate)
-    output = bytearray(output_count * 2)
-    for index in range(output_count):
-        position = index * source_rate / 16000
-        left = min(int(position), sample_count - 1)
-        right = min(left + 1, sample_count - 1)
-        fraction = position - left
-        value = int(samples[left] * (1 - fraction) + samples[right] * fraction)
-        struct.pack_into("<h", output, index * 2, max(-32768, min(32767, value)))
-    return bytes(output)
 
 
 def get_text(message: dict) -> str:
@@ -182,21 +156,6 @@ def bounded_card(args: object) -> bool:
     return True
 
 
-def send_speech(ws, pcm: bytes) -> None:
-    chunk_bytes = 1600 * 2  # 100 ms of mono PCM16 at 16 kHz
-    for offset in range(0, len(pcm), chunk_bytes):
-        chunk = pcm[offset:offset + chunk_bytes]
-        ws.send(json.dumps({
-            "realtime_input": {"audio": {
-                "data": base64.b64encode(chunk).decode("ascii"),
-                "mime_type": "audio/pcm;rate=16000",
-            }}
-        }))
-        # Pace frames to their real duration instead of sending faster than real time.
-        time.sleep(len(chunk) / 32_000)
-    ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
-
-
 def send_silence_keepalive(ws) -> None:
     """Keep the authenticated Co-Pilot relay alive during a long synthetic turn."""
     silence = bytes(3200)  # 100 ms of mono PCM16 silence at 16 kHz
@@ -212,8 +171,6 @@ def main() -> int:
     global PHASE
     if not BASE_URL.startswith("https://") or not AUTH_COOKIE.startswith("moina_session="):
         raise RuntimeError("HTTPS base URL and authenticated synthetic session are required.")
-    PHASE = "synthesize_prompt"
-    pcm = synthesize_pcm_16k()
     PHASE = "connect_websocket"
     ws = websocket.create_connection(
         BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket",
@@ -254,8 +211,8 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for the Co-Pilot greeting turn.")
 
-        PHASE = "send_synthetic_prompt_audio"
-        send_speech(ws, pcm)
+        PHASE = "send_explicit_card_text_turn"
+        ws.send(json.dumps({"text_input": PROMPT}))
         PHASE = "wait_for_response_card_tool"
         last_keepalive_at = time.monotonic()
         tool_count = 0
