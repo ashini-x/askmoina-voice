@@ -23,21 +23,23 @@ body.site-info-body .site-info-card{width:100%}
 @media(prefers-reduced-motion:reduce){.entry-site-menu>summary,.entry-site-menu-panel{animation:none!important;transition:none!important}}
 
 .entry-logo-slot img{width:22px;height:22px}
-.entry-site-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;min-width:0;margin-left:auto}
-.entry-header-donation{display:inline-flex;align-items:center;gap:7px;min-height:32px;flex:0 0 auto;white-space:nowrap;text-decoration:none;color:#7056c7;font:560 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.012em}
-.entry-live-dot{display:inline-block;flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 0 0 rgba(139,92,246,.34);animation:live-donation-pulse 1.9s ease-out infinite}
-.entry-header-donation-label{display:inline-block;white-space:nowrap;background-image:linear-gradient(105deg,#634eb7 0%,#8b5cf6 38%,#d4c8ff 50%,#7956dc 62%,#634eb7 100%);background-size:230% 100%;background-position:100% 0;background-clip:text;-webkit-background-clip:text;color:transparent;animation:live-donation-shimmer 3.1s linear infinite}
-.entry-header-donation:active{opacity:.72}
 .entry-site-menu-panel .entry-menu-section{display:flex;flex-direction:column;gap:1px;padding:3px 0}
 .entry-site-menu-panel .entry-menu-section h2{margin:4px 12px 5px;color:#86868b;font:560 11px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:.015em}
 .entry-site-menu-panel .entry-menu-memory h2{text-transform:none;font-size:12px;color:#6e6e73}
 .entry-site-menu-panel .entry-menu-public a,.entry-site-menu-panel .entry-menu-pricing a{min-height:40px}
 .entry-site-menu-panel .entry-menu-pricing a{font-weight:550}
 .entry-site-menu-panel .entry-menu-account{padding:3px 0 1px}
-.entry-site-menu-panel .entry-menu-logout{justify-content:flex-start;gap:10px;min-height:42px;margin:0;padding:0 12px;color:#1d1d1f}
+.entry-site-menu-panel .entry-menu-logout{justify-content:flex-start;gap:10px;min-height:42px;margin:0;padding:0 12px;border:0;border-top:0;border-radius:10px;color:#ff3b30}
 .entry-site-menu-panel .entry-menu-logout svg{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .entry-site-menu-divider{height:1px;margin:5px 0;background:rgba(60,60,67,.14)}
-@keyframes live-donation-shimmer{0%{background-position:100% 0}100%{background-position:-130% 0}}
-@keyframes live-donation-pulse{0%,100%{transform:scale(.9);box-shadow:0 0 0 0 rgba(139,92,246,.30)}50%{transform:scale(1);box-shadow:0 0 0 4px rgba(139,92,246,0)}}
-@media(max-width:360px){.entry-site-header{padding-left:12px;padding-right:12px}.entry-site-header-actions{gap:10px}.entry-header-donation{font-size:11px;gap:6px}}
-@media(prefers-reduced-motion:reduce){.entry-header-donation-label{animation:none;background-image:none;color:#7056c7;background-clip:border-box;-webkit-background-clip:border-box}.entry-live-dot{animation:none;box-shadow:0 0 0 2px rgba(139,92,246,.13)}}
+.entry-donation-card{min-height:148px!important;gap:13px;padding:16px 18px 17px;background:rgba(255,255,255,.96);border-color:rgba(60,60,67,.12);box-shadow:0 8px 24px rgba(20,25,35,.045);backdrop-filter:none;-webkit-backdrop-filter:none}
+.entry-donation-card .entry-donation-status{display:inline-flex;align-items:center;gap:7px;min-height:23px;width:max-content;max-width:100%;box-sizing:border-box;padding:0 9px;border-radius:7px;background:#1d1d1f;color:#f5f5f7;font:650 9px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:.075em;white-space:nowrap}
+.entry-donation-status-dot{width:5px;height:5px;flex:0 0 5px;border-radius:50%;background:#30d158}
+.entry-donation-content{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;width:100%;min-width:0}
+.entry-donation-copy{display:flex;flex-direction:column;gap:7px;min-width:0}
+.entry-donation-card .entry-product-name{font-size:clamp(1.08rem,4vw,1.35rem);font-weight:620;letter-spacing:-.035em}
+.entry-donation-note{max-width:220px;color:#77777d;font-size:10px;line-height:1.4;letter-spacing:-.005em}
+.entry-donation-total{flex:0 0 auto;color:#1d1d1f;font-size:clamp(1.45rem,6vw,1.9rem);font-weight:620;line-height:1;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.entry-donation-card .entry-product-arrow{top:16px;right:16px;bottom:auto}
+@media(max-width:360px){.entry-donation-card{padding-left:15px;padding-right:15px}.entry-donation-content{align-items:flex-start;flex-direction:column;gap:8px}.entry-donation-total{font-size:1.6rem}.entry-donation-card .entry-donation-status{padding-right:9px}}
+@media(prefers-reduced-motion:reduce){.entry-donation-card{animation:none!important;transition:none!important}}
