@@ -2446,6 +2446,11 @@
     }
     const serverContent = message.server_content || message.serverContent;
     if (serverContent) {
+      const interimUserTranscription = serverContent.interim_input_transcription || serverContent.interimInputTranscription;
+      if (interimUserTranscription && typeof interimUserTranscription.text === "string" &&
+          isLikelyLiveSearchRequest(interimUserTranscription.text)) {
+        showLiveSearchAcknowledgement();
+      }
       if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);
       if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);
       const wasInterrupted = serverContent.interrupted === true;
