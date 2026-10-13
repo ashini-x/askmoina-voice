@@ -340,7 +340,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   it("keeps the Apple-style header at the page root with bird logo left and hamburger right", () => {
     expect(workerSource).toContain("askmoina-bird-mark.png");
     expect(workerSource).toContain("function withSiteChrome(html: string, authenticated = false)");
-    expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname)");
+    expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu)");
     expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
     expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
     expect(siteChromeCss).toContain("background:rgba(245,245,247,.88)");
