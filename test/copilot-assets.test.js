@@ -293,11 +293,11 @@ describe("Live Co-Pilot browser assets", () => {
 
 
 describe("Apple-style entry navigation and disconnect cue", () => {
-  it("adds the menu only to the sign-in and experience chooser surfaces", () => {
+  it("uses a shared menu on the sign-in, chooser, and standard-page surfaces", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Profile", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
+    for (const label of ["Live Donation", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
       expect(workerSource).toContain(label);
     }
     for (const route of ["/about", "/developer", "/help", "/privacy"]) {
@@ -313,8 +313,8 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 
 
   it("inserts a real newline, never literal backslash-n text, before the menu on both entry surfaces", () => {
-    expect(workerSource).toContain("ENTRY_SITE_MENU + productsOverlay");
-    expect(workerSource).toContain("ENTRY_SITE_MENU + authOverlay");
+    expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
+    expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
     expect(workerSource).not.toContain("ENTRY_AUTH_OVERLAY.replace(");
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
   });
@@ -341,8 +341,8 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("askmoina-bird-mark.png");
     expect(workerSource).toContain("function withSiteChrome(html: string)");
     expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname)");
-    expect(workerSource).toContain("ENTRY_SITE_MENU + productsOverlay");
-    expect(workerSource).toContain("ENTRY_SITE_MENU + authOverlay");
+    expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
+    expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
     expect(siteChromeCss).toContain("background:rgba(245,245,247,.88)");
     expect(siteChromeCss).toContain("justify-content:space-between");
     expect(siteChromeCss).toContain("width:min(100%,var(--site-chrome-width,430px))");
@@ -353,8 +353,8 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 
 
   it("emits valid script src attributes for auth and menu handlers", () => {
-    const authInjection = workerSource.split("\n").find((line) => line.includes("ENTRY_SITE_MENU + authOverlay")) || "";
-    const productInjection = workerSource.split("\n").find((line) => line.includes("ENTRY_SITE_MENU + productsOverlay")) || "";
+    const authInjection = workerSource.split("\n").find((line) => line.includes("renderSiteMenu(false) + authOverlay")) || "";
+    const productInjection = workerSource.split("\n").find((line) => line.includes("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay")) || "";
     expect(authInjection).toContain(String.raw`src=\"/auth.js\"`);
     expect(authInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
     expect(productInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
@@ -369,4 +369,23 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(authScript).toContain("navigator.credentials.create({ publicKey, signal: controller.signal })");
   });
 
+  it("keeps user-specific navigation out of signed-out menu markup and retires Profile", () => {
+    expect(workerSource).not.toContain('>Profile <span aria-hidden="true">›</span></a>');
+    expect(workerSource).toContain("function renderSiteMenu(authenticated: boolean)");
+    expect(workerSource).toContain("authenticated ? ");
+    expect(workerSource).toContain("<!-- ASKMOINA_AUTHENTICATED_MENU -->");
+    expect(workerSource).toContain('"/donate":');
+    expect(workerSource).toContain('href="/donate">Live Donation</a>');
+    expect(workerSource).toContain('href="/vault">Memory Vault');
+    expect(workerSource).toContain('class="entry-menu-logout">Sign Out</button>');
+    expect(workerSource).toContain('url.pathname === "/account" || url.pathname === "/account.html"');
+  });
+
+  it("uses a one-line donation shimmer and honors reduced-motion preferences", () => {
+    expect(siteChromeCss).toContain(".entry-site-menu-panel a.entry-menu-donation");
+    expect(siteChromeCss).toContain("white-space:nowrap");
+    expect(siteChromeCss).toContain("@keyframes live-donation-shimmer");
+    expect(siteChromeCss).toContain("@media(prefers-reduced-motion:reduce){.entry-site-menu-panel a.entry-menu-donation");
+    expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
+  });
 });

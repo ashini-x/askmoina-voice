@@ -14,10 +14,6 @@
     menu.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => { menu.open = false; }));
     const logout = menu.querySelector(".entry-menu-logout");
     if (logout) {
-      fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" })
-        .then((response) => response.json())
-        .then((result) => { logout.hidden = result.authenticated !== true; })
-        .catch(() => { logout.hidden = true; });
       logout.addEventListener("click", async () => {
         logout.disabled = true;
         try {

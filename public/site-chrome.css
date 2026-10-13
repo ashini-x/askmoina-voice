@@ -21,3 +21,8 @@ body.site-info-body .site-info-shell{box-sizing:border-box;width:min(100%,430px)
 body.site-info-body .site-info-header{display:none!important}
 body.site-info-body .site-info-card{width:100%}
 @media(prefers-reduced-motion:reduce){.entry-site-menu>summary,.entry-site-menu-panel{animation:none!important;transition:none!important}}
+
+.entry-site-menu-panel a.entry-menu-donation{display:block;white-space:nowrap;flex-wrap:nowrap;overflow:hidden;text-overflow:clip;font-weight:560;letter-spacing:-.015em;background-image:linear-gradient(105deg,#1d1d1f 0%,#1d1d1f 34%,#8877d8 47%,#c0b5ff 51%,#1d1d1f 65%,#1d1d1f 100%);background-size:230% 100%;background-position:100% 0;background-clip:text;-webkit-background-clip:text;color:transparent;animation:live-donation-shimmer 3.8s ease-in-out infinite}
+.entry-site-menu-panel a.entry-menu-donation:hover,.entry-site-menu-panel a.entry-menu-donation:focus-visible{background-color:rgba(118,118,128,.11);background-image:linear-gradient(105deg,#1d1d1f 0%,#1d1d1f 34%,#8877d8 47%,#c0b5ff 51%,#1d1d1f 65%,#1d1d1f 100%);outline:none}
+@keyframes live-donation-shimmer{0%,12%{background-position:100% 0}72%,100%{background-position:-130% 0}}
+@media(prefers-reduced-motion:reduce){.entry-site-menu-panel a.entry-menu-donation{animation:none;background-image:none;color:#6554b8;background-clip:border-box;-webkit-background-clip:border-box}}
