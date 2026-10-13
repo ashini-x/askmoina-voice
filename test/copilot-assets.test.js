@@ -514,8 +514,21 @@ describe("Immediate live-search acknowledgement", () => {
 
   it("transitions to real progress when the Worker confirms lookup start and clears unused acknowledgements", () => {
     expect(script).toContain("function hideLiveSearchAcknowledgement()");
-    expect(script).toContain("liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000)");
+    expect(script).not.toContain("liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000)");
+    expect(script).not.toContain("if (reply.length >= 18) hideLiveSearchAcknowledgement()");
     expect(script).toContain("if (hasSearchCallOnThisMessage) startLiveSearchProgress()");
-    expect(script).toContain("else if (liveSearchAcknowledgementActive && messageToolCalls.length > 0) hideLiveSearchAcknowledgement()");
+    expect(script).toContain("else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage)");
+  });
+});
+
+
+describe("Grounded search resilience", () => {
+  it("keeps the supported fast grounding model and retries slow/transient provider failures", () => {
+    expect(workerSource).toContain('const model = "gemini-3.8-flash";');
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
+    expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
+    expect(workerSource).toContain('temperature: 0.0');
+    expect(workerSource).toContain('reason: timedOut ? "timeout" : "network"');
   });
 });
