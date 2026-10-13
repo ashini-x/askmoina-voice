@@ -87,6 +87,8 @@ def recv_json_message(ws):
     remain a hard failure so the smoke test does not hide protocol regressions.
     """
     frame = ws.recv()
+    if frame == "":
+        return None
     if isinstance(frame, bytes):
         try:
             frame_text = frame.decode("utf-8")
