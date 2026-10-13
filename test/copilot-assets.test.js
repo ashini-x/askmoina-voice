@@ -569,3 +569,18 @@ describe("Proactive ranked-list UX", () => {
     expect(workerSource).toContain("M39 — DETAIL WITHOUT EXTRA FRICTION");
   });
 });
+
+describe("RC6 grounded list visibility regressions", () => {
+  it("prioritizes server-grounded list cards over shorter model cards", () => {
+    expect(script).toContain("const groundedFallback = [...queuedCards].reverse().find");
+    expect(script).toContain("Grounded results found · designing your list");
+    expect(script).toContain("protectGroundedListForTurn && lastGroundedRankedListCard");
+  });
+
+  it("recognizes a full-list follow-up and immediately reopens cached grounded data", () => {
+    expect(script).toContain("function isListDisplayFollowup(text)");
+    expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
+    expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
+    expect(script).toContain("if (!normalized || liveSearchSpokenAcknowledgementText) return");
+  });
+});
