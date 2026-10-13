@@ -506,6 +506,12 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   const accessToken = await getGoogleAccessToken(env);
   // Credential acquisition cannot silently shorten the time available for actual search.
   const groundingBudgetStartedAt = Date.now();
+  // Full ranked tables need more retrieval time than ordinary current-fact lookups.
+  // Only explicit requests for at least eight entries receive this longer bounded budget.
+  const requestedListCountForBudget = getRequestedRankedListCount(query);
+  const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;
+  const searchTimeoutMs = rankedListSearchBudget ? 16_000 : GROUNDED_SEARCH_TIMEOUT_MS;
+  const searchBudgetMs = rankedListSearchBudget ? 28_000 : GROUNDED_SEARCH_BUDGET_MS;
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
   const groundingPrompt = [
       `Search the public web for: ${query}`,
@@ -534,9 +540,9 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   for (let attempt = 1; attempt <= GROUNDED_SEARCH_MAX_ATTEMPTS; attempt++) {
     attemptsUsed = attempt;
     const elapsedGroundingMs = Date.now() - groundingBudgetStartedAt;
-    const remainingBudget = GROUNDED_SEARCH_BUDGET_MS - elapsedGroundingMs;
+    const remainingBudget = searchBudgetMs - elapsedGroundingMs;
     if (remainingBudget <= 0) break;
-    const attemptTimeoutMs = Math.min(GROUNDED_SEARCH_TIMEOUT_MS, remainingBudget);
+    const attemptTimeoutMs = Math.min(searchTimeoutMs, remainingBudget);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), attemptTimeoutMs);
     try {
@@ -604,6 +610,8 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           location,
           attempt,
           timeoutMs: attemptTimeoutMs,
+          totalBudgetMs: searchBudgetMs,
+          requestedListCount: requestedListCountForBudget,
           reason: timedOut ? "timeout" : "network",
           retrying: true
         }));
