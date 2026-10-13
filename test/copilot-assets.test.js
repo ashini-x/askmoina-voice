@@ -60,6 +60,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
     expect(script).toContain("function renderGroundedDetails(card)");
+    expect(script).toContain("Optional source links are best-effort");
+    expect(script).toContain("if (Array.isArray(value.sources))");
+    expect(script).toContain("Optional source links are best-effort");
+    expect(script).toContain("if (Array.isArray(value.sources))");
     expect(script).toContain("value.details.length > 10");
     expect(script).toContain("value.slice(0, 10)");
     expect(script).toContain("new window.SpeechSynthesisUtterance");

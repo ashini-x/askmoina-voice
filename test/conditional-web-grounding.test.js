@@ -22,11 +22,13 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
     expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 20_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 30_000;");
     expect(workerSource).toContain("Math.min(GROUNDED_SEARCH_TIMEOUT_MS, remainingBudget)");
+    expect(workerSource).toContain("const groundingBudgetStartedAt = Date.now();");
+    expect(workerSource).toContain("Date.now() - groundingBudgetStartedAt");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
-    expect(workerSource).toContain("maxOutputTokens: 1_100");
+    expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 
   it("routes bounded normal voice test text to a complete Live client-content turn", () => {
@@ -69,6 +71,6 @@ describe("Grounded ranked-list completeness and recovery", () => {
   it("instructs grounded search to return a complete top-N table when sources support it", () => {
     expect(workerSource).toContain("Do not truncate a top-10 list to three or four entries");
     expect(workerSource).toContain("Prefer official league/statistics tables or reputable full-table reports");
-    expect(workerSource).toContain("maxOutputTokens: 1_100");
+    expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 });

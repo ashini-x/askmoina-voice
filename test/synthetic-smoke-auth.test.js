@@ -58,10 +58,10 @@ describe("authenticated live synthetic verification", () => {
   it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
     expect(workerSource).toContain("EXPLICIT CARD REQUEST OVERRIDE");
     expect(workerSource).toContain("Example: 'Make a response card with three steps for organizing pens'");
-    expect(workerSource).toContain("RC3 renders validated card data in a compact on-screen tray");
+    expect(workerSource).toContain("RC4 renders validated card data as a full-screen translucent, type-specific answer sheet");
 
     expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).toContain("The client renders validated RC3 response-card payloads as a compact generic reference tray using text-only DOM nodes.");
+    expect(workerSource).toContain("The client renders validated RC4 response-card payloads as a full-screen translucent, Apple-minimal answer sheet");
     expect(workerSource).toContain("Do not imply that showing a card completes any action.");
   });
 

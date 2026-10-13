@@ -48,7 +48,7 @@ describe("RC4 bounded response-card contract", () => {
     }
   });
 
-  it("accepts grounded source links and rejects unsafe source URLs", () => {
+  it("keeps a complete list and drops unsafe optional source URLs", () => {
     const valid = validateResponseCard({
       type: "key_details",
       title: "IPL 2025 top run scorers",
@@ -59,12 +59,17 @@ describe("RC4 bounded response-card contract", () => {
     if (valid.valid && valid.card.type === "key_details") {
       expect(valid.card.sources?.[0].url).toBe("https://example.com/stats");
     }
-    expect(validateResponseCard({
+    const unsafeOptionalSource = validateResponseCard({
       type: "key_details",
       title: "Unsafe link",
-      details: [{ label: "1. Example Player", value: "700 runs" }],
+      details: Array.from({ length: 10 }, (_, i) => ({ label: `${i + 1}. Player ${i + 1}`, value: `${700 - i * 20} runs` })),
       sources: [{ title: "Unsafe", url: "javascript:alert(1)" }]
-    }).valid).toBe(false);
+    });
+    expect(unsafeOptionalSource.valid).toBe(true);
+    if (unsafeOptionalSource.valid && unsafeOptionalSource.card.type === "key_details") {
+      expect(unsafeOptionalSource.card.details).toHaveLength(10);
+      expect(unsafeOptionalSource.card.sources).toBeUndefined();
+    }
   });
 
   it("accepts aligned comparison attributes and an optional takeaway", () => {
