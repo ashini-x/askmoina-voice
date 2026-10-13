@@ -169,11 +169,11 @@
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
   }
 
-  const LIVE_SEARCH_INTENT = /\\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release))\\b/i;
+  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release))\b/i;
   const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
 
   function isLikelyLiveSearchRequest(text) {
-    const normalized = String(text || "").replace(/\\s+/g, " ").trim();
+    const normalized = String(text || "").replace(/\s+/g, " ").trim();
     return normalized.length >= 8 && LIVE_SEARCH_INTENT.test(normalized);
   }
 
