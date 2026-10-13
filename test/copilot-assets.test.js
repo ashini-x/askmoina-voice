@@ -351,4 +351,14 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(logo.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   });
 
+
+  it("emits valid script src attributes for auth and menu handlers", () => {
+    const authInjection = workerSource.split("\n").find((line) => line.includes("ENTRY_SITE_MENU + authOverlay")) || "";
+    const productInjection = workerSource.split("\n").find((line) => line.includes("ENTRY_SITE_MENU + productsOverlay")) || "";
+    expect(authInjection).toContain(String.raw`src=\"/auth.js\"`);
+    expect(authInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
+    expect(productInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
+    expect(authInjection).not.toContain(String.raw`src=\\\\"/auth.js`);
+  });
+
 });

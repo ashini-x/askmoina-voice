@@ -1327,12 +1327,12 @@ export default {
       } else if (accountId || adminAccess) {
         html = html.replace("<body>", '<body data-page="entry" data-entry-state="products">');
         const productsOverlay = ENTRY_PRODUCTS_OVERLAY;
-        html = html.replace("</body>", ENTRY_SITE_MENU + productsOverlay + "<script src=\\\"/entry-menu.js\\\" defer></script></body>");
+        html = html.replace("</body>", ENTRY_SITE_MENU + productsOverlay + "<script src=\"/entry-menu.js\" defer></script></body>");
       } else {
         html = html.replace('<script src="/session-ui.js" defer></script>', "");
         html = html.replace("<body>", '<body data-page="login" data-entry-state="login">');
         const authOverlay = ENTRY_AUTH_OVERLAY;
-        html = html.replace("</body>", ENTRY_SITE_MENU + authOverlay + "<script src=\\\"/auth.js\\\" defer></script><script src=\\\"/entry-menu.js\\\" defer></script></body>");
+        html = html.replace("</body>", ENTRY_SITE_MENU + authOverlay + "<script src=\"/auth.js\" defer></script><script src=\"/entry-menu.js\" defer></script></body>");
       }
       html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
       const headers = new Headers({
