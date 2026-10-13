@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "../src/sessions/response-card";
 
 
-describe("RC2 bounded response-card contract", () => {
+describe("RC4 bounded response-card contract", () => {
   it("accepts and normalizes ordered steps", () => {
     expect(validateResponseCard({
       type: "steps", title: "  Organize the desk  ", summary: "Keep it simple.",
@@ -46,6 +46,25 @@ describe("RC2 bounded response-card contract", () => {
       expect(result.card.type).toBe("key_details");
       if (result.card.type === "key_details") expect(result.card.details).toHaveLength(10);
     }
+  });
+
+  it("accepts grounded source links and rejects unsafe source URLs", () => {
+    const valid = validateResponseCard({
+      type: "key_details",
+      title: "IPL 2025 top run scorers",
+      details: [{ label: "1. Example Player", value: "700 runs" }],
+      sources: [{ title: "Official statistics", url: "https://example.com/stats" }]
+    });
+    expect(valid.valid).toBe(true);
+    if (valid.valid && valid.card.type === "key_details") {
+      expect(valid.card.sources?.[0].url).toBe("https://example.com/stats");
+    }
+    expect(validateResponseCard({
+      type: "key_details",
+      title: "Unsafe link",
+      details: [{ label: "1. Example Player", value: "700 runs" }],
+      sources: [{ title: "Unsafe", url: "javascript:alert(1)" }]
+    }).valid).toBe(false);
   });
 
   it("accepts aligned comparison attributes and an optional takeaway", () => {
@@ -102,6 +121,7 @@ describe("RC2 bounded response-card contract", () => {
   it("exports a distinct function declaration with exactly the supported layouts", () => {
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.name).toBe("display_response_card");
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.properties.type.enum).toEqual(["steps", "key_details", "comparison"]);
+    expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.properties.sources.description).toContain("full HTTPS URLs");
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.required).toEqual(["type", "title"]);
   });
 });
