@@ -76,18 +76,16 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
       details.push({ label, value: detailValue, ...(unit.value ? { unit: unit.value } : {}) });
     }
     const sources: Array<{ title: string; url: string }> = [];
-    if (value.sources !== undefined) {
-      if (!Array.isArray(value.sources) || value.sources.length < 1 || value.sources.length > 4) {
-        return invalid("invalid_sources_count");
-      }
-      for (const item of value.sources) {
-        if (!isRecord(item) || !exactKeys(item, ["title", "url"])) return invalid("invalid_source_shape");
+    // Source links are optional metadata; keep valid rows even when a link is malformed.
+    if (Array.isArray(value.sources)) {
+      for (const item of value.sources.slice(0, 4)) {
+        if (!isRecord(item) || !exactKeys(item, ["title", "url"])) continue;
         const sourceTitle = cleanText(item.title, 100);
         const sourceUrl = cleanText(item.url, 500);
-        if (sourceTitle === null || sourceUrl === null) return invalid("invalid_source_text");
+        if (sourceTitle === null || sourceUrl === null) continue;
         let parsedUrl: URL;
-        try { parsedUrl = new URL(sourceUrl); } catch { return invalid("invalid_source_url"); }
-        if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) return invalid("invalid_source_url");
+        try { parsedUrl = new URL(sourceUrl); } catch { continue; }
+        if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) continue;
         sources.push({ title: sourceTitle, url: parsedUrl.href });
       }
     }
