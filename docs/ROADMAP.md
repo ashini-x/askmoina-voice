@@ -63,7 +63,7 @@ These milestones supersede the earlier numbering for the work that had not shipp
 RC1–RC8 is a separate, additive track for selecting and rendering useful response cards inside the existing live Co-Pilot. It does not replace or renumber M1–M40, and it must reuse the existing voice, camera, task-state, safety, and verification systems rather than rebuilding them.
 
 - **RC1 — Selective response-card policy:** acceptance examples define when to speak, when to show a card, and when to use both. Policy only; no feature implementation implied. See [selective response-card acceptance](acceptance/selective-response-cards.md).
-- **RC2 — Structured live tool:** add a bounded `display_response_card` tool separate from `display_screen_overlay`, with strict schema and protocol validation.
+- **RC2 — Structured live tool (implementation candidate; production verification pending):** add a bounded `display_response_card` tool separate from `display_screen_overlay`, validate the three allowed layouts and nested fields on the Worker, and carry bounded named acknowledgements through the Co-Pilot protocol. Rendering remains deliberately out of scope until RC3–RC4. See [RC2 acceptance](acceptance/rc2-structured-response-card-tool.md).
 - **RC3 — Responsive card area:** add an on-demand compact card tray to the existing Co-Pilot; preserve camera visibility and call controls. Match ChatGPT-style rich-response interactions (useful icons, checkmarks, expandable details) within Apple's restrained minimalism; use translucent semantic HTML surfaces that preserve readability, and a bottom Searching/Thinking status with honest progress signalling.
 - **RC4 — Three safe renderers:** render `steps`, `key_details`, and `comparison` cards from validated data using safe DOM text handling, not model-generated HTML. Render checkmarks only for confirmed/evidence-supported progress, and include accessible translucent styling plus a readable fallback.
 - **RC5 — Speech/card lifecycle:** coordinate concise speech with persistent details; update the current task card, avoid duplicates, handle interruptions, and clear stale cards on task changes.
@@ -71,7 +71,7 @@ RC1–RC8 is a separate, additive track for selecting and rendering useful respo
 - **RC7 — Automated regression coverage:** test policy, schemas, rendering, lifecycle, accessibility, safety, and parity between public assets and embedded Worker assets.
 - **RC8 — Live prompt and user evaluation:** verify both correct card use and correct suppression across English and Assamese-English prompts; extend M38 scoring without treating synthetic checks as proof of real-task success.
 
-Current status: **RC1 policy drafted for acceptance; RC2–RC8 not started.** Do not mark any RC item complete merely because its design or code exists; record synthetic, live-model, and real-device evidence separately.
+Current status: **RC1 policy merged; RC2 implementation candidate ready for validation; RC3–RC8 not started.** The RC2 contract does not display visible cards. Do not mark any RC item complete merely because its design or code exists; record synthetic, live-model, and real-device evidence separately.
 
 ## Release and evidence discipline
 
