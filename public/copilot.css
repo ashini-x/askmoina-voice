@@ -1039,3 +1039,38 @@ body.site-info-body .site-info-card{width:100%}
 @media(prefers-reduced-transparency:reduce){
   .response-card-tray{background:#101216}
 }
+
+/* Live grounding acknowledgement: compact and shown only for a real search tool call. */
+.live-search-status[hidden]{display:none!important}
+.live-search-status{
+  position:absolute;z-index:8;left:50%;
+  bottom:calc(max(104px,env(safe-area-inset-bottom) + 96px) + min(31vh,260px) + 12px);
+  transform:translateX(-50%);width:min(330px,calc(100% - 28px));
+  padding:12px 13px 11px;border:1px solid rgba(255,255,255,.22);border-radius:16px;
+  background:rgba(18,18,20,.92);color:#f5f5f7;
+  -webkit-backdrop-filter:blur(22px) saturate(120%);backdrop-filter:blur(22px) saturate(120%);
+  box-shadow:0 8px 28px rgba(0,0,0,.18);text-align:left;pointer-events:none;
+}
+.live-search-status-top{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0}
+.live-search-mark{width:17px;height:17px;display:grid;place-items:center;border:1.5px solid #ffffff2d;border-top-color:#f5f5f7;border-radius:50%;animation:live-search-turn .85s linear infinite}
+.live-search-mark span{width:4px;height:4px;border-radius:50%;background:#f5f5f7}
+.live-search-copy{min-width:0}
+.live-search-copy p{margin:0}
+.live-search-title{font-size:.75rem;line-height:1.25;font-weight:600;letter-spacing:-.012em;color:#f5f5f7}
+.live-search-message{margin-top:3px!important;font-size:.65rem;line-height:1.3;font-weight:400;color:#b7b8bd}
+.live-search-percent{min-width:35px;text-align:right;font-size:.74rem;line-height:1;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#f5f5f7}
+.live-search-track{height:3px;margin-top:11px;border-radius:999px;background:#ffffff20;overflow:hidden}
+.live-search-track>span{display:block;width:0;height:100%;border-radius:inherit;background:#f5f5f7;transition:width .22s ease}
+.transcript.is-searching .transcript-entry.from-moina{display:none!important}
+@keyframes live-search-turn{to{transform:rotate(360deg)}}
+@media(max-width:430px){
+  .live-search-status{width:calc(100% - 24px);padding:11px 12px 10px;border-radius:15px}
+}
+@media(max-height:590px){
+  .live-search-status{bottom:calc(83px + 25vh + 10px);padding:9px 11px}
+  .live-search-track{margin-top:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .live-search-mark{animation:none}
+  .live-search-track>span{transition:none}
+}

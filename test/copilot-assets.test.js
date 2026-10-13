@@ -460,3 +460,40 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).not.toContain("Financial contributions");
   });
 });
+
+describe("Apple-style live-search progress", () => {
+  it("shows a compact accessible loader only when the live search tool is actually invoked", () => {
+    expect(html).toContain('id="liveSearchStatus" hidden');
+    expect(html).toContain('id="liveSearchTitle"');
+    expect(html).toContain('id="liveSearchPercent"');
+    expect(html).toContain('class="live-search-copy" role="status" aria-live="polite" aria-atomic="true"');
+    expect(html).toContain('role="progressbar"');
+    expect(script).toContain('call.name === "search_current_web"');
+    expect(script).toContain("function startLiveSearchProgress()");
+    expect(script).toContain("Checking current sources");
+    expect(css).toContain(".live-search-status[hidden]{display:none!important}");
+    expect(workerSource).toContain("briefly acknowledge in natural speech");
+    expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
+    expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
+    const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
+    const searchAwait = workerSource.indexOf("result = await performGroundedWebSearch(env, query, deviceContext)");
+    expect(workerStart).toBeGreaterThanOrEqual(0);
+    expect(searchAwait).toBeGreaterThan(workerStart);
+    const lookupComplete = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
+    expect(lookupComplete).toBeGreaterThan(searchAwait);
+    expect(script).toContain('message.live_search_status && message.live_search_status.state === "lookup_complete"');
+    expect(script).toContain('if (!hasSearchCallOnThisMessage || liveSearchLookupCompleted) completeLiveSearchProgress()');
+  });
+
+  it("holds estimated progress below completion, reaches 100%, then removes the loader before revealing cards and final text", () => {
+    expect(script).toContain("Math.min(92, liveSearchProgressValue + increment)");
+    expect(script).toContain("updateLiveSearchProgress(100)");
+    expect(script).toContain("liveSearchStatus.hidden = true");
+    expect(script).toContain("pendingResponseCards.push({ id, args: call.args })");
+    expect(script).toContain("const queuedCards = pendingResponseCards.splice(0)");
+    expect(script).toContain('transcriptNode.classList.add("is-searching")');
+    expect(script).toContain('transcriptNode.classList.remove("is-searching")');
+    expect(css).toContain(".transcript.is-searching .transcript-entry.from-moina{display:none!important}");
+    expect(css).toContain("@media(prefers-reduced-motion:reduce)");
+  });
+});

@@ -454,6 +454,7 @@ const SEARCH_GROUNDING_INSTRUCTION = [
   "Never present a procedure from a different model/version as applicable. If source titles/URLs do not establish the model match, say the match is unverified, ask for the exact identifier, or stay at a safe generic level. A source is a reference, not proof that the camera has identified the product or that a repair is safe.",
   "When results include model IDs, compare them with the requested model/variant; distinguish exact match, mismatch, and unknown. If no exact matching source is found, state that limitation clearly instead of filling gaps with a similar guide.",
   "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the AskMoina server using Gemini with Google Search grounding.",
+  "Before invoking search_current_web, briefly acknowledge in natural speech (for example, “I’ll look that up for you.”), then perform the lookup. Keep the acknowledgement to one short phrase and never say you are searching unless you actually invoke the tool.",
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "If asked whether you have live search, answer truthfully that search is available and demonstrate it when the user also asks for information. Never claim that you lack web access while this tool is configured.",
   "Do not search for ordinary conversation or stable general knowledge. After the tool returns, summarize the sourced findings, name the best source(s), mention relevant dates/version numbers, and distinguish verified facts from uncertainty.",
@@ -1219,6 +1220,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               requestedMaterial: deviceContext.requested_material || "unspecified",
               searchIndex: groundedSearchCount + 1,
             }));
+            // Notify Co-Pilot before awaiting the grounded lookup; the tool-call frame itself is forwarded only afterward.
+            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+            }
             let result: string;
             const now = Date.now();
             if (!query) {
@@ -1232,6 +1237,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 console.warn("[AskMoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
                 result = "The live web lookup is temporarily unavailable. Be transparent about this and do not present current or device-specific claims as verified.";
               }
+            }
+            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
             responses.push({ id: call.id, name: "search_current_web", response: { result } });
           }
