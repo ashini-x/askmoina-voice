@@ -250,6 +250,9 @@ def main() -> int:
             try:
                 message = recv_json_message(ws)
                 if message is None:
+                    if time.monotonic() - last_keepalive_at >= 10:
+                        send_silence_keepalive(ws)
+                        last_keepalive_at = time.monotonic()
                     continue
             except websocket.WebSocketTimeoutException:
                 if time.monotonic() - last_keepalive_at >= 10:
