@@ -93,13 +93,22 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live session returned a protocol/provider error.")
-            tool_called = tool_called or has_grounding_tool_call(message)
+            # A Live function-call turn can itself be marked turnComplete. That
+            # only ends the model's request for a tool; it is not the grounded
+            # user-facing answer. Wait for a subsequent completed turn that
+            # does not itself contain the search function call.
+            message_has_tool_call = has_grounding_tool_call(message)
+            tool_called = tool_called or message_has_tool_call
             transcript += " " + extract_text(message)
             content = message.get("serverContent") or message.get("server_content") or {}
-            if isinstance(content, dict) and (content.get("turnComplete") or content.get("turn_complete")):
+            if (
+                isinstance(content, dict)
+                and (content.get("turnComplete") or content.get("turn_complete"))
+                and tool_called
+                and not message_has_tool_call
+            ):
                 turn_complete = True
-                if tool_called:
-                    break
+                break
 
         lowered = transcript.lower()
         if not tool_called:
