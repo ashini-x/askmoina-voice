@@ -969,3 +969,18 @@ body.site-info-body{height:100%;overflow:hidden;background:#f5f5f7;color:#1d1d1f
 .site-info-footer span{margin-right:auto}
 .site-info-footer a{color:#626269;text-decoration:none}
 @media(max-width:560px){.site-info-shell{padding-left:14px;padding-right:14px}.site-info-header{margin-bottom:24px}.site-info-card{padding:25px 22px;border-radius:24px}.site-info-sections{grid-template-columns:minmax(0,1fr);gap:23px;margin-top:31px}.site-info-footer{gap:16px}}
+
+/* Shared narrow, phone-like chrome for non-camera pages. */
+.entry-site-header{position:fixed;z-index:220;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(100%,430px);height:42px;padding:0 17px;display:flex;align-items:center;justify-content:space-between;pointer-events:none;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.entry-logo-slot{display:block;width:28px;height:28px;flex:0 0 28px;text-decoration:none;pointer-events:auto}
+.entry-site-menu{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;pointer-events:auto}
+.entry-site-menu>summary{width:34px;height:34px;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.entry-site-menu>summary svg{width:19px;height:19px;stroke-width:1.65}
+.entry-site-menu-panel{left:auto!important;right:0!important;top:calc(100% + 8px)!important}
+.entry-overlay .entry-auth-panel{width:min(100%,390px)}
+.entry-overlay .entry-product-panel{width:min(100%,390px)!important;max-width:390px!important}
+.entry-overlay .entry-products{grid-template-columns:minmax(0,1fr)!important}
+.entry-overlay .entry-product-card{width:100%;min-width:0}
+body.site-info-body .site-info-shell{width:min(100%,430px);left:50%;right:auto;transform:translateX(-50%);padding-top:70px}
+body.site-info-body .site-info-header{display:none}
+body.site-info-body .site-info-card{width:100%}

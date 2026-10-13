@@ -322,4 +322,14 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(script).toContain("peak: 0.058");
     expect(script).toContain('window.setTimeout(() => window.location.replace("/"), 570)');
   });
+
+  it("keeps non-camera pages narrow with an empty logo slot and hamburger aligned right", () => {
+    expect(workerSource).toContain("entry-site-header");
+    expect(workerSource).toContain("entry-logo-slot");
+    expect(css).toContain(".entry-site-header{");
+    expect(css).toContain("width:min(100%,430px)");
+    expect(css).toContain(".entry-overlay .entry-products{grid-template-columns:minmax(0,1fr)!important}");
+    expect(css).toContain("body.site-info-body .site-info-shell{width:min(100%,430px)");
+  });
+
 });
