@@ -1339,7 +1339,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                     console.info("[AskMoina] Grounded ranked-list fallback card ready", JSON.stringify({
                       requestedCount: validation.card.details.length,
                       verifiedRows: validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length,
-                      complete: validation.card.summary.startsWith("Complete ranked list")
+                      complete: String(validation.card.summary || "").startsWith("Complete ranked list")
                     }));
                   } catch (_) {}
                 }
