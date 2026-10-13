@@ -4,6 +4,7 @@
 Sends a top-10 IPL ranking request without explicitly asking for a card, then
 asserts that grounding runs and the Live model proactively creates ten rows.
 """
+import base64
 import json
 import os
 import time
