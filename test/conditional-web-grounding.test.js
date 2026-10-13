@@ -23,7 +23,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("slice(0, 240)");
     expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 21_000;");
-    expect(workerSource).toContain("Math.min(GROUNDED_SEARCH_TIMEOUT_MS, remainingBudget)");
+    expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("const groundingBudgetStartedAt = Date.now();");
     expect(workerSource).toContain("Date.now() - groundingBudgetStartedAt");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
