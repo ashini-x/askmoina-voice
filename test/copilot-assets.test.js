@@ -385,8 +385,12 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain('url.pathname === "/account" || url.pathname === "/account.html"');
   });
 
-  it("uses a no-network illustrative donation counter and a compact Apple-style card", () => {
-    expect(workerSource).toContain("entry-donation-card");
+  it("uses a no-network illustrative donation counter and balanced Apple-style pill links", () => {
+    expect(workerSource).toContain("entry-support-links");
+    expect(workerSource).toContain("entry-quick-link");
+    expect(workerSource).not.toContain("entry-donation-card");
+    expect(workerSource).toContain("Support");
+    expect(workerSource).toContain("₹1.09L");
     expect(workerSource).toContain("data-donation-counter");
     expect(workerSource).toContain("Illustrative demo total");
     expect(workerSource).toContain("illustrative demo counter, not a verified total of money received");
@@ -395,21 +399,22 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
     expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("fetch(");
     expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("localStorage");
-    expect(siteChromeCss).toContain(".entry-donation-content{");
+    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-support-links{");
+    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-amount{");
     expect(siteChromeCss).toContain("box-shadow:none");
     expect(workerSource).not.toContain("entry-donation-status");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
     expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
   });
 
-  it("places the Live donations card below Hardware, not in the header", () => {
+  it("places the Donations and Support pill links below Hardware, not in the header", () => {
     expect(workerSource).not.toContain("entry-header-donation");
     expect(workerSource).not.toContain("entry-donation-status-dot");
     expect(workerSource).not.toContain("entry-site-header-actions");
     expect(siteChromeCss).not.toContain(".entry-site-header-actions{");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-pulse");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
-    expect(workerSource.indexOf("Hardware")).toBeLessThan(workerSource.indexOf("entry-donation-card"));
+    expect(workerSource.indexOf("Hardware")).toBeLessThan(workerSource.indexOf("entry-support-links"));
   });
 
   it("caches reusable static CSS briefly but leaves personalized HTML uncached", () => {
