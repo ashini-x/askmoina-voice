@@ -510,8 +510,8 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   // Only explicit requests for at least eight entries receive this longer bounded budget.
   const requestedListCountForBudget = getRequestedRankedListCount(query);
   const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;
-  const searchTimeoutMs = rankedListSearchBudget ? 16_000 : GROUNDED_SEARCH_TIMEOUT_MS;
-  const searchBudgetMs = rankedListSearchBudget ? 28_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
+  const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
   const groundingPrompt = [
       `Search the public web for: ${query}`,
