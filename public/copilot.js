@@ -185,8 +185,8 @@
     if (liveSearchTitle) liveSearchTitle.textContent = "Got it";
     if (liveSearchMessage) liveSearchMessage.textContent = "One moment";
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    // Safety valve for requests the model answers without actually calling live search.
-    liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000);
+    liveSearchAcknowledgementTimer = null;
+    // Keep this acknowledgement visible until the Worker confirms real search start.
   }
 
   function hideLiveSearchAcknowledgement() {
@@ -203,13 +203,12 @@
   function handleTranscriptAcknowledgement(role, text) {
     if (role === "user") {
       if (isLikelyLiveSearchRequest(text)) showLiveSearchAcknowledgement();
+      else if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
       return;
     }
-    if (role !== "assistant" || !liveSearchAcknowledgementActive) return;
-    const reply = String(text || "").trim();
-    // Keep a short spoken acknowledgement visible until the server confirms search start.
-    if (reply.length < 90 && LIVE_SEARCH_ACKNOWLEDGEMENT.test(reply)) return;
-    if (reply.length >= 18) hideLiveSearchAcknowledgement();
+    // Interim assistant transcription can arrive before the Live API's function call.
+    // Do not hide the acknowledgement here: only the Worker search-start event should
+    // transition it to the searching state; completed non-search turns are handled below.
   }
 
   function readOptedInMemoryContext() {
@@ -2435,7 +2434,6 @@
     const messageToolCalls = getToolCalls(message);
     const hasSearchCallOnThisMessage = messageToolCalls.some((call) => call && call.name === "search_current_web");
     if (hasSearchCallOnThisMessage) startLiveSearchProgress();
-    else if (liveSearchAcknowledgementActive && messageToolCalls.length > 0) hideLiveSearchAcknowledgement();
 
     const transcriptionCandidates = [
       ["user", message.input_transcription],
