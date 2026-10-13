@@ -74,3 +74,17 @@ describe("Grounded ranked-list completeness and recovery", () => {
     expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 });
+
+describe("Adaptive grounded-list search budget", () => {
+  it("keeps ordinary lookups bounded while giving full ranked tables a longer retry window", () => {
+    expect(workerSource).toContain("const requestedListCountForBudget = getRequestedRankedListCount(query);");
+    expect(workerSource).toContain("const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;");
+    expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 16_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 28_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
+    expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
+    expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 21_000;");
+  });
+});
