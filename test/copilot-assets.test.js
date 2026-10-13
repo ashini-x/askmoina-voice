@@ -60,6 +60,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
     expect(script).toContain("function renderGroundedDetails(card)");
+    expect(script).toContain("message.grounded_response_card");
+    expect(script).toContain("The grounded list is ready; finishing the spoken summary");
+    expect(workerSource).toContain("Grounded ranked list was incomplete; retrying for the full requested count");
+    expect(workerSource).toContain("grounded_response_card: validation.card");
     expect(script).toContain("value.details.length > 10");
     expect(script).toContain("value.slice(0, 10)");
     expect(script).toContain("new window.SpeechSynthesisUtterance");
@@ -562,6 +566,8 @@ describe("Proactive ranked-list UX", () => {
     expect(workerSource).toContain("PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS");
     expect(workerSource).toContain("do not stop at four just because only a few rows appeared");
     expect(workerSource).toContain("For 'IPL 2025 top rankers' without a metric");
+    expect(workerSource).toContain("one distinct entry for every requested rank");
+    expect(workerSource).toContain("full-screen, translucent Apple-style answer sheet");
     expect(workerSource).toContain("M39 — DETAIL WITHOUT EXTRA FRICTION");
   });
 });
