@@ -1,0 +1,33 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const grounding = readFileSync(new URL("../scripts/live-grounding-smoke.py", import.meta.url), "utf8");
+const memory = readFileSync(new URL("../scripts/live-memory-voice-smoke.py", import.meta.url), "utf8");
+const session = readFileSync(new URL("../scripts/synthetic-passkey-session.mjs", import.meta.url), "utf8");
+const deploy = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
+
+describe("authenticated live synthetic verification", () => {
+  it("refuses to run either websocket test with anonymous access", () => {
+    for (const source of [grounding, memory]) {
+      expect(source).toContain("ASKMOINA_SYNTHETIC_COOKIE");
+      expect(source).toContain('AUTH_COOKIE.startswith("moina_session=")');
+      expect(source).toContain("cookie=AUTH_COOKIE");
+    }
+  });
+
+  it("creates its session through the actual passkey signup and identity endpoints", () => {
+    expect(session).toContain("WebAuthn.addVirtualAuthenticator");
+    expect(session).toContain("/api/auth/passkey/register/options");
+    expect(session).toContain("/api/auth/passkey/register/verify");
+    expect(session).toContain("/api/auth/me");
+    expect(session).toContain("moina_session=");
+  });
+
+  it("runs both live tests after deployment and revokes the test session", () => {
+    expect(deploy).toContain("node scripts/synthetic-passkey-session.mjs");
+    expect(deploy).toContain("python scripts/live-grounding-smoke.py");
+    expect(deploy).toContain("python scripts/live-memory-voice-smoke.py");
+    expect(deploy).toContain("ASKMOINA_SYNTHETIC_COOKIE");
+    expect(deploy).toContain("/api/auth/logout");
+  });
+});

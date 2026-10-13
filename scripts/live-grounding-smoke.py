@@ -13,6 +13,7 @@ import time
 import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
+AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
     "Search the web for the latest official Android release. "
     "Tell me the version number, its release date, and the name of one official source."
@@ -60,7 +61,9 @@ def main() -> int:
     ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
     if not ws_url.startswith("wss://"):
         raise RuntimeError("BASE_URL must use https://")
-    ws = websocket.create_connection(ws_url, origin=BASE_URL, timeout=12, enable_multithread=True)
+    if not AUTH_COOKIE.startswith("moina_session="):
+        raise RuntimeError("Authenticated synthetic session missing; refusing anonymous voice access.")
+    ws = websocket.create_connection(ws_url, origin=BASE_URL, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
     tool_called = False
     transcript = ""
     turn_complete = False
