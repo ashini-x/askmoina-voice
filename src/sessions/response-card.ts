@@ -65,7 +65,7 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
 
   if (type === "key_details") {
     if (!exactKeys(value, ["type", "title", "summary", "details"])) return invalid("unexpected_key_details_fields");
-    if (!Array.isArray(value.details) || value.details.length < 1 || value.details.length > 8) return invalid("invalid_details_count");
+    if (!Array.isArray(value.details) || value.details.length < 1 || value.details.length > 10) return invalid("invalid_details_count");
     const details: Array<{ label: string; value: string; unit?: string }> = [];
     for (const item of value.details) {
       if (!isRecord(item) || !exactKeys(item, ["label", "value", "unit"])) return invalid("invalid_detail_shape");
@@ -106,7 +106,7 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
 
 export const DISPLAY_RESPONSE_CARD_FUNCTION = {
   name: "display_response_card",
-  description: "Mandatory for an explicit request such as 'make a response card with three steps for organizing pens': call this function with type=steps and 2–5 short, safe actions. Use also for useful multi-step plans, exact reference details, or grounded comparisons. The client displays validated data in a compact generic response-card tray; after acknowledgement, continue with concise spoken guidance. Never imply that a rendered card means the user completed an action. Separate from camera overlays. Keep values concise and safe. Do not call for greetings or one-line factual answers.",
+  description: "Mandatory for an explicit request such as 'make a response card with three steps for organizing pens': call this function with type=steps and 2–5 short, safe actions. Use also for useful multi-step plans, exact reference details, grounded comparisons, and proactive ranked/top-10 lists; a top-10 list should use type=key_details with one entry per rank. The client displays validated data in a compact generic response-card tray; after acknowledgement, continue with concise spoken guidance. Never imply that a rendered card means the user completed an action. Separate from camera overlays. Keep values concise and safe. Do not call for greetings or one-line factual answers.",
   parameters: {
     type: "OBJECT",
     properties: {
@@ -123,7 +123,7 @@ export const DISPLAY_RESPONSE_CARD_FUNCTION = {
       },
       details: {
         type: "ARRAY",
-        description: "For type=key_details only: 1–8 labelled facts or values.",
+        description: "For type=key_details only: 1–10 labelled facts, ranking rows, or values.",
         items: { type: "OBJECT", properties: {
           label: { type: "STRING", description: "Field label, maximum 60 characters." },
           value: { type: "STRING", description: "Plain-text value, maximum 180 characters." },

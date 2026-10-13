@@ -169,7 +169,7 @@
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
   }
 
-  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release))\b/i;
+  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top\s+\d+|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
   const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
 
   function isLikelyLiveSearchRequest(text) {
@@ -2446,6 +2446,11 @@
     }
     const serverContent = message.server_content || message.serverContent;
     if (serverContent) {
+      const interimUserTranscription = serverContent.interim_input_transcription || serverContent.interimInputTranscription;
+      if (interimUserTranscription && typeof interimUserTranscription.text === "string" &&
+          isLikelyLiveSearchRequest(interimUserTranscription.text)) {
+        showLiveSearchAcknowledgement();
+      }
       if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);
       if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);
       const wasInterrupted = serverContent.interrupted === true;

@@ -32,6 +32,22 @@ describe("RC2 bounded response-card contract", () => {
     if (result.valid) expect(result.card.type).toBe("key_details");
   });
 
+  it("accepts a complete ten-row ranked leaderboard", () => {
+    const result = validateResponseCard({
+      type: "key_details",
+      title: "IPL 2025 — Top 10 run scorers",
+      details: Array.from({ length: 10 }, (_, i) => ({
+        label: String(i + 1) + ". Player " + (i + 1),
+        value: String(759 - i * 20) + " runs"
+      }))
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.card.type).toBe("key_details");
+      if (result.card.type === "key_details") expect(result.card.details).toHaveLength(10);
+    }
+  });
+
   it("accepts aligned comparison attributes and an optional takeaway", () => {
     const result = validateResponseCard({
       type: "comparison", title: "Two choices",
@@ -79,7 +95,7 @@ describe("RC2 bounded response-card contract", () => {
     }).valid).toBe(false);
     expect(validateResponseCard({
       type: "key_details", title: "Large",
-      details: Array.from({ length: 9 }, (_, i) => ({ label: "Label" + i, value: "Value" }))
+      details: Array.from({ length: 11 }, (_, i) => ({ label: "Label" + i, value: "Value" }))
     }).valid).toBe(false);
   });
 

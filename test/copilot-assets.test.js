@@ -502,6 +502,11 @@ describe("Apple-style live-search progress", () => {
 describe("Immediate live-search acknowledgement", () => {
   it("acknowledges likely search requests as soon as speech is transcribed, before waiting for the search tool event", () => {
     expect(script).toContain("function isLikelyLiveSearchRequest(text)");
+    expect(script).toContain("interim_input_transcription");
+    expect(script).toContain("interimInputTranscription");
+    expect(script).toContain("top\\s+\\d+");
+    expect(script).toContain("rank(?:ed|ing|ers?)");
+    expect(script).toContain("orange cap|purple cap");
     expect(script).toContain("function showLiveSearchAcknowledgement()");
     expect(script).toContain("handleTranscriptAcknowledgement(role, entry.text)");
     expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
@@ -530,5 +535,15 @@ describe("Grounded search resilience", () => {
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
     expect(workerSource).toContain('temperature: 0.0');
     expect(workerSource).toContain('reason: timedOut ? "timeout" : "network"');
+  });
+});
+
+
+describe("Proactive ranked-list UX", () => {
+  it("instructs Co-Pilot to ground and proactively display complete top-N list cards", () => {
+    expect(workerSource).toContain("PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS");
+    expect(workerSource).toContain("do not stop at four just because only a few rows appeared");
+    expect(workerSource).toContain("For 'IPL 2025 top rankers' without a metric");
+    expect(workerSource).toContain("M39 — DETAIL WITHOUT EXTRA FRICTION");
   });
 });
