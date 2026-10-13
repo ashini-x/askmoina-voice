@@ -15,6 +15,7 @@ import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
+import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
 
@@ -521,7 +522,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_100 }
   });
   const requestBody = makeGroundingRequestBody(groundingPrompt);
-  const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The prior request did not produce verifiable grounding source URLs or failed transiently. Run a distinct, more specific Google Search query (for example, search for the full official/reputable leaderboard table), and return source-backed results with URLs. Do not answer from memory or give up because the first query was unhelpful.");
+  const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The prior attempt was incomplete or not verifiable. Run a DISTINCT, more specific alternate Google Search query for the complete official/reputable table, not just snippets. For any requested top-N list, return one numbered entry on each separate line in exactly this shape: 1. Name — team or category — requested statistic. Continue sequentially through the requested rank N; keep every supported row and its requested values. Return HTTPS source URLs. Do not answer from memory, shorten the list, or stop after the first few entries.");
   let candidate: {
     content?: { parts?: Array<{ text?: string }> };
     groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
@@ -566,6 +567,18 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
         throw failure;
       }
       candidate = payload.candidates?.[0];
+      const requestedListCount = getRequestedRankedListCount(query);
+      if (requestedListCount && attempt < GROUNDED_SEARCH_MAX_ATTEMPTS) {
+        const candidateText = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
+        const rankedRows = extractGroundedRankedRows(candidateText, requestedListCount);
+        if (rankedRows.length < requestedListCount) {
+          console.warn("[AskMoina] Grounded ranked list was incomplete; retrying for the full requested count", JSON.stringify({
+            requestedCount: requestedListCount, recoveredRows: rankedRows.length, attempt, retrying: true
+          }));
+          await new Promise<void>((resolve) => setTimeout(resolve, 250));
+          continue;
+        }
+      }
       const hasGroundingUrls = (candidate?.groundingMetadata?.groundingChunks || []).some((chunk) => {
         const uri = chunk.web?.uri;
         return typeof uri === "string" && (uri.startsWith("https://") || uri.startsWith("http://"));
@@ -1315,6 +1328,21 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               }
             }
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              const fallbackCard = buildGroundedListCard(query, result);
+              if (fallbackCard) {
+                const validation = validateResponseCard(fallbackCard);
+                if (validation.valid && validation.card.type === "key_details") {
+                  try {
+                    workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+                    console.info("[AskMoina] Grounded ranked-list fallback card ready", JSON.stringify({
+                      requestedCount: validation.card.details.length,
+                      verifiedRows: validation.card.summary.startsWith("Complete ranked list")
+                        ? validation.card.details.length
+                        : validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length
+                    }));
+                  } catch (_) {}
+                }
+              }
               try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
             responses.push({ id: call.id, name: "search_current_web", response: { result } });
