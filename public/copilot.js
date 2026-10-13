@@ -43,6 +43,12 @@
   const responseCardStatus = $("#responseCardStatus");
   const responseCardCollapseButton = $("#responseCardCollapse");
   const responseCardDismissButton = $("#responseCardDismiss");
+  const liveSearchStatus = $("#liveSearchStatus");
+  const liveSearchTitle = $("#liveSearchTitle");
+  const liveSearchMessage = $("#liveSearchMessage");
+  const liveSearchPercent = $("#liveSearchPercent");
+  const liveSearchProgress = $("#liveSearchProgress");
+  const liveSearchProgressBar = $("#liveSearchProgressBar");
   const emptyTranscript = $("#emptyTranscript");
   const focusMarker = $("#focusMarker");
   const focusLabel = $("#focusLabel");
@@ -56,6 +62,98 @@
   let responseCardExpanded = true;
   if (responseCardCollapseButton) responseCardCollapseButton.addEventListener("click", () => setResponseCardExpanded(!responseCardExpanded));
   if (responseCardDismissButton) responseCardDismissButton.addEventListener("click", dismissResponseCard);
+
+  let liveSearchActive = false;
+  let liveSearchFinishing = false;
+  let liveSearchProgressValue = 0;
+  let liveSearchProgressInterval = null;
+  let liveSearchCompletionTimer = null;
+  let pendingResponseCards = [];
+
+  function updateLiveSearchProgress(value) {
+    const next = Math.max(0, Math.min(100, Math.round(value)));
+    liveSearchProgressValue = next;
+    if (liveSearchPercent) liveSearchPercent.textContent = String(next) + "%";
+    if (liveSearchProgress) liveSearchProgress.setAttribute("aria-valuenow", String(next));
+    if (liveSearchProgressBar) liveSearchProgressBar.style.width = String(next) + "%";
+  }
+
+  function startLiveSearchProgress() {
+    if (!liveSearchStatus) return;
+    if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
+    if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
+    liveSearchCompletionTimer = null;
+    liveSearchProgressInterval = null;
+    liveSearchActive = true;
+    liveSearchFinishing = false;
+    liveSearchStatus.hidden = false;
+    if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
+    if (liveSearchMessage) liveSearchMessage.textContent = "Checking current sources";
+    if (transcriptNode) transcriptNode.classList.add("is-searching");
+    if (responseCardTray && !responseCardTray.hidden) dismissResponseCard();
+    updateLiveSearchProgress(8);
+
+    // This is estimated progress, so it stops below 100% until the actual live answer turn finishes.
+    liveSearchProgressInterval = window.setInterval(() => {
+      if (!liveSearchActive || liveSearchFinishing) return;
+      const increment = liveSearchProgressValue < 35 ? 6 : liveSearchProgressValue < 65 ? 3 : liveSearchProgressValue < 82 ? 1.5 : 0.5;
+      updateLiveSearchProgress(Math.min(92, liveSearchProgressValue + increment));
+    }, 420);
+  }
+
+  function sendDeferredResponseCardResult(id, rendered) {
+    if (!id || !socket || socket.readyState !== WebSocket.OPEN) return;
+    const result = rendered
+      ? "The validated response card is now visible in the on-screen response-card tray. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
+      : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible.";
+    try {
+      socket.send(JSON.stringify({
+        tool_response: {
+          function_responses: [{
+            id,
+            name: "display_response_card",
+            response: { result }
+          }]
+        }
+      }));
+    } catch (_) {}
+  }
+
+  function completeLiveSearchProgress() {
+    if (!liveSearchActive || liveSearchFinishing) return;
+    liveSearchFinishing = true;
+    if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
+    liveSearchProgressInterval = null;
+    if (liveSearchTitle) liveSearchTitle.textContent = "Done";
+    if (liveSearchMessage) liveSearchMessage.textContent = "Preparing your answer";
+    updateLiveSearchProgress(100);
+
+    // Show 100% briefly, then remove the loader before revealing final text and any response card.
+    liveSearchCompletionTimer = window.setTimeout(() => {
+      liveSearchCompletionTimer = null;
+      if (liveSearchStatus) liveSearchStatus.hidden = true;
+      if (transcriptNode) transcriptNode.classList.remove("is-searching");
+      liveSearchActive = false;
+      liveSearchFinishing = false;
+      const queuedCards = pendingResponseCards.splice(0);
+      for (const queued of queuedCards) {
+        const rendered = renderResponseCard(queued.args);
+        sendDeferredResponseCardResult(queued.id, rendered);
+      }
+    }, 420);
+  }
+
+  function cancelLiveSearchProgress() {
+    if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
+    if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
+    liveSearchProgressInterval = null;
+    liveSearchCompletionTimer = null;
+    liveSearchActive = false;
+    liveSearchFinishing = false;
+    pendingResponseCards = [];
+    if (liveSearchStatus) liveSearchStatus.hidden = true;
+    if (transcriptNode) transcriptNode.classList.remove("is-searching");
+  }
 
   function readOptedInMemoryContext() {
     try {
@@ -1840,6 +1938,7 @@
   }
 
   function cleanupMedia() {
+    cancelLiveSearchProgress();
     recordRealityLoopEvent("session_stopped");
     hideSafetyPauseNotice();
     setupReady = false;
@@ -2132,12 +2231,18 @@
     return true;
   }
 
-  function handleToolCalls(message) {
+  function handleToolCalls(message, hasSearchCallOnThisMessage = false) {
     const responses = [];
     for (const call of getToolCalls(message)) {
       if (!call || typeof call !== "object") continue;
+      if (call.name === "search_current_web") continue;
       if (call.name === "display_response_card") {
         const id = typeof call.id === "string" ? call.id : "";
+        if (liveSearchActive) {
+          if (!hasSearchCallOnThisMessage) completeLiveSearchProgress();
+          pendingResponseCards.push({ id, args: call.args });
+          continue;
+        }
         const rendered = renderResponseCard(call.args);
         if (id) {
           responses.push({
@@ -2228,6 +2333,7 @@
     if (socket !== sessionSocket) return;
 
     if (message.connection_status && message.connection_status.state === "ended") {
+      if (liveSearchActive) cancelLiveSearchProgress();
       stopCopilot(false, message.connection_status.message || "The live session ended. Start again to continue.", "warning");
       return;
     }
@@ -2255,6 +2361,10 @@
       return;
     }
 
+    const messageToolCalls = getToolCalls(message);
+    const hasSearchCallOnThisMessage = messageToolCalls.some((call) => call && call.name === "search_current_web");
+    if (hasSearchCallOnThisMessage) startLiveSearchProgress();
+
     const transcriptionCandidates = [
       ["user", message.input_transcription],
       ["assistant", message.output_transcription],
@@ -2270,6 +2380,7 @@
       if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);
       const wasInterrupted = serverContent.interrupted === true;
       if (wasInterrupted) {
+        if (liveSearchActive) cancelLiveSearchProgress();
         stopPlayback();
         setStatus("Listening — go ahead.");
       }
@@ -2284,13 +2395,14 @@
         }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
+        if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
         finalizeTurn();
         if (greetingTurnPending) beginListeningAfterGreeting();
         else if (active && processor) setStatus("Listening — show me the next thing you want help with.");
       }
     }
 
-    handleToolCalls(message);
+    handleToolCalls(message, hasSearchCallOnThisMessage);
 
     if (message.go_away || message.goAway) {
       stopCopilot(false, "The voice session is ending. Start the Co-Pilot again to continue.", "warning");
@@ -2298,6 +2410,7 @@
     }
 
     if (message.error) {
+      if (liveSearchActive) cancelLiveSearchProgress();
       const messageText = message.error && typeof message.error.message === "string"
         ? message.error.message.trim().slice(0, 180)
         : "The voice service returned an error.";
