@@ -295,6 +295,11 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY.replace(");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
+  it("inserts a real newline, never literal backslash-n text, before the menu on both entry surfaces", () => {
+    expect(workerSource.match(/>\\n" \+ ENTRY_SITE_MENU/g)).toHaveLength(2);
+    expect(workerSource).not.toContain(">\\\\n\" + ENTRY_SITE_MENU");
+  });
+
     for (const label of ["Profile", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
       expect(workerSource).toContain(label);
     }

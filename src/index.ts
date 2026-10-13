@@ -1286,7 +1286,7 @@ export default {
         html = html.replace("<body>", '<body data-page="entry" data-entry-state="products">');
         const productsOverlay = ENTRY_PRODUCTS_OVERLAY.replace(
           "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">",
-          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\\n" + ENTRY_SITE_MENU,
+          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n" + ENTRY_SITE_MENU,
         );
         html = html.replace("</body>", productsOverlay + "<script src=\"/entry-menu.js\" defer></script></body>");
       } else {
@@ -1294,7 +1294,7 @@ export default {
         html = html.replace("<body>", '<body data-page="login" data-entry-state="login">');
         const authOverlay = ENTRY_AUTH_OVERLAY.replace(
           "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">",
-          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\\n" + ENTRY_SITE_MENU,
+          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n" + ENTRY_SITE_MENU,
         );
         html = html.replace("</body>", authOverlay + "<script src=\"/auth.js\" defer></script><script src=\"/entry-menu.js\" defer></script></body>");
       }
