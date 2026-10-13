@@ -21,9 +21,9 @@ export { UserState } from "./sessions/user-state";
 const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"AskMoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"AskMoina home\"><img src=\"/askmoina-bird-final.png\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
 
 function renderSiteMenu(authenticated: boolean): string {
-  const memorySection = authenticated ? "<section class=\"entry-menu-section entry-menu-memory\" aria-labelledby=\"entry-menu-memory-title\"><h2 id=\"entry-menu-memory-title\">Your Memory</h2><a href=\"/vault\">Key memories <span aria-hidden=\"true\">›</span></a></section><div class=\"entry-site-menu-divider\" role=\"separator\"></div>" : "";
-  const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About AskMoina\"><a href=\"/about\">About us <span aria-hidden=\"true\">›</span></a><a href=\"/developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/help\">Help &amp; Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
-  const pricingSection = "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-pricing\"><a href=\"/pricing\">Pricing <span aria-hidden=\"true\">›</span></a></section>";
+  const memorySection = authenticated ? "<section class=\"entry-menu-section entry-menu-memory\" aria-labelledby=\"entry-menu-memory-title\"><h2 id=\"entry-menu-memory-title\">Your Memory</h2><a href=\"/vault\">Key Memories <span aria-hidden=\"true\">›</span></a></section><div class=\"entry-site-menu-divider\" role=\"separator\"></div>" : "";
+  const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About askMoina\"><a href=\"/about\">About askMoina <span aria-hidden=\"true\">›</span></a><a href=\"/developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/help\">Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
+  const pricingSection = "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-pricing\"><a href=\"/pricing\"><strong>Investor Relations</strong> <span aria-hidden=\"true\">›</span></a></section>";
   const signOutSection = authenticated ? "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-account\"><button type=\"button\" class=\"entry-menu-logout\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg><span>Sign out</span></button></section>" : "";
   const sections = [memorySection, publicPages, pricingSection, signOutSection].filter(Boolean).join("");
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
@@ -34,84 +34,21 @@ const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Ch
 
 const ENTRY_FOOTER = "<footer class=\"entry-footer\" aria-label=\"Copyright\">Copyright &copy; 2026 askMoina. All rights reserved.</footer>";
 
-const SITE_INFO_CONTENT: Record<string, { eyebrow: string; title: string; intro: string; sections: Array<{ title: string; body: string }> }> = {
-  "/about": {
-    eyebrow: "ABOUT ASKMOINA",
-    title: "A little more clarity, in the moment.",
-    intro: "AskMoina is a camera-first voice co-pilot designed to help you understand what you are seeing and work through everyday tasks, one step at a time.",
-    sections: [
-      { title: "Made to feel simple", body: "Show Moina what you are looking at and speak naturally. The aim is to give you one useful next step, without making you learn a complicated interface." },
-      { title: "Built for real life", body: "AskMoina began with Assam in mind and is being shaped for practical, everyday use across places, devices, and levels of experience." },
-      { title: "Still evolving", body: "Some visual guidance is an estimate rather than guaranteed object recognition. Check important steps yourself, especially when a task involves tools, electricity, heat, vehicles, or other hazards." }
-    ]
-  },
-  "/developer": {
-    eyebrow: "FOR BUILDERS",
-    title: "A real-time experience, built with care.",
-    intro: "AskMoina brings camera context and a live voice conversation together so guidance can feel immediate and useful.",
-    sections: [
-      { title: "Service architecture", body: "The web experience and session coordination run through Cloudflare Workers. When live voice is enabled, audio and selected camera frames are processed by Google Cloud Vertex AI." },
-      { title: "Designed for clarity", body: "The product prioritizes low-friction interaction, step-by-step guidance, clear recovery when a connection fails, and careful handling of uncertainty." },
-      { title: "For developers", body: "This page describes the product at a high level. It is not a public API specification; integration details and capabilities may change as AskMoina develops." }
-    ]
-  },
-  "/help": {
-    eyebrow: "HELP & FEEDBACK",
-    title: "Let us get you moving again.",
-    intro: "A few quick checks can solve most setup problems.",
-    sections: [
-      { title: "Camera or microphone will not start", body: "Check the browser camera and microphone permissions, then retry. On a phone, use a supported, up-to-date browser and allow access when prompted." },
-      { title: "Voice stops or takes too long", body: "Check your connection and close any other AskMoina voice session in another tab. Return to the experience chooser and start a fresh session if needed." },
-      { title: "Sharing useful feedback", body: "When reporting a problem, include the device, browser, what you were trying to do, and the exact message you saw. Do not include passwords, verification codes, or private recordings." }
-    ]
-  },
-  "/privacy": {
-    eyebrow: "PRIVACY & SECURITY",
-    title: "Your device. Your choices.",
-    intro: "AskMoina uses the permissions and session context needed to provide its live visual and voice experience.",
-    sections: [
-      { title: "Camera and microphone", body: "After you start a live session, microphone audio and selected camera frames may be sent to Google Cloud Vertex AI for processing. Keep confidential documents and other sensitive information out of view unless you are comfortable sharing them for the task." },
-      { title: "Recordings and memory", body: "Raw recordings are not saved by default. Saved memory is separate from the live conversation and should be used only with the memory options you choose." },
-      { title: "A practical reminder", body: "Always review a result before acting on it. Do not use camera guidance as a substitute for qualified advice in medical, legal, financial, or safety-critical situations." }
-    ]
-  },
-  "/pricing": {
-    eyebrow: "PRICING",
-    title: "Simple pricing, clearly explained.",
-    intro: "We are preparing a straightforward pricing model for AskMoina as the live voice and visual experience evolves.",
-    sections: [
-      { title: "Before anything is paid", body: "Plans, prices, and what each plan includes will be published here before any paid option launches. You will be able to review the details before choosing a plan." },
-      { title: "Early access", body: "AskMoina is still evolving. No purchase or payment is available on this page today." },
-      { title: "Questions", body: "For current questions or feedback about future plans, use Help & Feedback from the navigation menu." }
-    ]
-  },
-  "/donate": {
-    eyebrow: "SUPPORT ASKMOINA",
-    title: "Help keep AskMoina useful and reliable.",
-    intro: "Your support helps fund the infrastructure, live voice processing, reliability work, and security improvements behind AskMoina.",
-    sections: [
-      { title: "What support helps fund", body: "Cloud hosting and traffic capacity, live voice and camera processing, testing across devices, and ongoing reliability and security improvements." },
-      { title: "Ways to help today", body: "Try AskMoina on real tasks, share it with someone who could benefit, and send clear feedback through Help & Feedback. Useful reports help us prioritize the next improvements." },
-      { title: "Financial contributions", body: "The ₹1.09L counter shown on the home screen is an illustrative demo counter, not a verified total of money received. It advances on a simulated schedule and does not represent real contributions. Secure donation options are being prepared; this page does not accept payments or ask for payment credentials yet." }
-    ]
-  }
-};
+const SITE_INFO_PATHS = new Set([
+  "/about",
+  "/developer",
+  "/help",
+  "/privacy",
+  "/pricing",
+  "/donate",
+]);
 
 function renderSiteInfoPage(pathname: string): string | null {
-  const page = SITE_INFO_CONTENT[pathname];
-  if (!page) return null;
-  const sections = page.sections.map((section) =>
-    "<section class=\"site-info-section\"><h2>" + section.title + "</h2><p>" + section.body + "</p></section>"
-  ).join("");
+  if (!SITE_INFO_PATHS.has(pathname)) return null;
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
-    "<meta name=\"theme-color\" content=\"#f5f5f7\"><meta name=\"description\" content=\"AskMoina information and support.\">" +
-    "<title>" + page.eyebrow + " · AskMoina</title><link rel=\"stylesheet\" href=\"/copilot.css\"></head>" +
-    "<body class=\"site-info-body\"><main class=\"site-info-shell\">" +
-    "<header class=\"site-info-header\"><a class=\"site-info-wordmark\" href=\"/\" aria-label=\"AskMoina home\">AskMoina</a><a class=\"site-info-back\" href=\"/\">Back to AskMoina</a></header>" +
-    "<article class=\"site-info-card\"><p class=\"site-info-eyebrow\">" + page.eyebrow + "</p><h1>" + page.title + "</h1>" +
-    "<p class=\"site-info-intro\">" + page.intro + "</p><div class=\"site-info-sections\">" + sections + "</div></article>" +
-    "<footer class=\"site-info-footer\"><span>AskMoina</span><a href=\"/privacy\">Privacy</a><a href=\"/help\">Help</a></footer></main></body></html>";
+    "<meta name=\"theme-color\" content=\"#f5f5f7\"><title>AskMoina</title></head>" +
+    "<body class=\"site-info-body\"></body></html>";
 }
 
 

@@ -297,11 +297,11 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Donations", "Illustrative demo total", "Your Memory", "Key memories", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign out"]) {
+    for (const label of ["Donations", "Illustrative demo total", "Your Memory", "Key Memories", "About askMoina", "Developer", "Feedback", "Privacy &amp; Security", "Investor Relations", "Sign out"]) {
       expect(workerSource).toContain(label);
     }
-    for (const route of ["/about", "/developer", "/help", "/privacy"]) {
-      expect(workerSource).toContain('"' + route + '":');
+    for (const route of ["/about", "/developer", "/help", "/privacy", "/pricing", "/donate"]) {
+      expect(workerSource).toContain('"' + route + '"');
     }
     expect(workerSource).toContain('url.pathname === "/entry-menu.js"');
     expect(workerSource).toContain("renderSiteInfoPage(url.pathname)");
@@ -374,10 +374,10 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("function renderSiteMenu(authenticated: boolean)");
     expect(workerSource).toContain("authenticated ? ");
     expect(workerSource).toContain("<!-- ASKMOINA_MENU_CONTENT -->");
-    expect(workerSource).toContain('"/donate":');
-    expect(workerSource).toContain('"/pricing":');
+    expect(workerSource).toContain('"/donate"');
+    expect(workerSource).toContain('"/pricing"');
     expect(workerSource).not.toContain("entry-header-donation");
-    expect(workerSource).toContain("Key memories");
+    expect(workerSource).toContain("Key Memories");
     expect(workerSource).toContain("entry-menu-logout");
     expect(siteChromeCss).toContain("color:#ff3b30");
     expect(siteChromeCss).toContain("border-top:0");
@@ -393,7 +393,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("₹1.09L");
     expect(workerSource).toContain("data-donation-counter");
     expect(workerSource).toContain("Illustrative demo total");
-    expect(workerSource).toContain("illustrative demo counter, not a verified total of money received");
+    expect(workerSource).not.toContain("illustrative demo counter, not a verified total of money received");
     expect(entryMenuScript).toContain("const baseAmount = 109000");
     expect(entryMenuScript).toContain("const startAt = Date.UTC(2026, 9, 13, 4, 0, 0)");
     expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
@@ -429,14 +429,17 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain('headers.set("Cache-Control", "no-store")');
   });
 
-  it("builds the requested auth-aware menu groups and a public Pricing page", () => {
+  it("builds the requested auth-aware menu groups and blank static page placeholders", () => {
     expect(workerSource).toContain("entry-menu-memory");
     expect(workerSource).toContain("entry-menu-public");
     expect(workerSource).toContain("entry-menu-pricing");
     expect(workerSource).toContain("entry-menu-account");
     expect(workerSource).toContain("Your Memory");
     expect(workerSource).toContain("aria-hidden");
-    expect(workerSource).toContain('"/pricing":');
-    expect(workerSource).toContain("No purchase or payment is available on this page today.");
+    expect(workerSource).toContain('"/pricing"');
+    expect(workerSource).toContain("const SITE_INFO_PATHS = new Set([");
+    expect(workerSource).toContain("if (!SITE_INFO_PATHS.has(pathname)) return null;");
+    expect(workerSource).not.toContain("No purchase or payment is available on this page today.");
+    expect(workerSource).not.toContain("Financial contributions");
   });
 });
