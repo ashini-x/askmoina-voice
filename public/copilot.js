@@ -1941,7 +1941,21 @@
   function handleToolCalls(message) {
     const responses = [];
     for (const call of getToolCalls(message)) {
-      if (!call || typeof call !== "object" || call.name !== "display_screen_overlay") continue;
+      if (!call || typeof call !== "object") continue;
+      if (call.name === "display_response_card") {
+        const id = typeof call.id === "string" ? call.id : "";
+        if (id) {
+          responses.push({
+            id,
+            name: "display_response_card",
+            response: {
+              result: "The RC2 response-card payload passed server schema validation. The card tray is not part of this release yet; continue with concise spoken guidance and do not say that a card is visible."
+            }
+          });
+        }
+        continue;
+      }
+      if (call.name !== "display_screen_overlay") continue;
       const args = call.args && typeof call.args === "object" ? call.args : {};
       const rawTaskState = args.task_world_state && typeof args.task_world_state === "object" ? args.task_world_state : {};
       const safety = assessSafetyAndUncertainty({
