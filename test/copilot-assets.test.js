@@ -401,6 +401,12 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("localStorage");
     expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-support-links{");
     expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-amount{");
+    expect(workerSource).toContain("entry-quick-link-icon");
+    expect(workerSource).toContain("Copyright &copy; 2026 AskMoina. All rights reserved.");
+    expect(siteChromeCss).toContain("margin-top:14px");
+    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-icon{");
+    expect(siteChromeCss).toContain(".entry-footer{position:fixed;");
+    expect(css).toContain("box-shadow:0 2px 8px #1d1d1f08,0 8px 24px #1d1d1f0a");
     expect(siteChromeCss).toContain("box-shadow:none");
     expect(workerSource).not.toContain("entry-donation-status");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
