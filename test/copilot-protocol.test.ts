@@ -41,7 +41,7 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ target_selection: { x: "0.5", y: 0.5 } }, true)).toBeNull();
   });
 
-  it("accepts bounded text turns only in normal voice mode for grounded smoke/fallback turns", () => {
+  it("accepts bounded text turns in normal voice and Co-Pilot sessions", () => {
     expect(parseLiveClientInput({ text_input: "Search the web for the latest Android release." }, false)).toEqual({
       kind: "text_input",
       text: "Search the web for the latest Android release.",
@@ -49,7 +49,10 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ text_input: "  " }, false)).toBeNull();
     expect(parseLiveClientInput({ text_input: "x".repeat(1_501) }, false)).toBeNull();
     expect(parseLiveClientInput({ text_input: "find" + String.fromCharCode(0) + "something" }, false)).toBeNull();
-    expect(parseLiveClientInput({ text_input: "test" }, true)).toBeNull();
+    expect(parseLiveClientInput({ text_input: "Please make a response card with three steps." }, true)).toEqual({
+      kind: "text_input",
+      text: "Please make a response card with three steps.",
+    });
     expect(parseLiveClientInput({ text_input: "test", extra: true }, false)).toBeNull();
   });
 
