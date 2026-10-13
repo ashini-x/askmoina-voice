@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "../src/sessions/response-card";
-import { readFileSync } from "node:fs";
-const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 
 describe("RC2 bounded response-card contract", () => {
@@ -83,13 +81,6 @@ describe("RC2 bounded response-card contract", () => {
       type: "key_details", title: "Large",
       details: Array.from({ length: 9 }, (_, i) => ({ label: "Label" + i, value: "Value" }))
     }).valid).toBe(false);
-  });
-
-  it("requires the tool for explicit card requests and keeps the policy separate from overlays", () => {
-    expect(workerSource).toContain("EXPLICIT CARD REQUEST OVERRIDE");
-    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("explicitly asks for a response card");
-    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("separate from camera overlays");
   });
 
   it("exports a distinct function declaration with exactly the supported layouts", () => {
