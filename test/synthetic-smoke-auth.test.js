@@ -35,7 +35,8 @@ describe("authenticated live synthetic verification", () => {
   it("ignores non-JSON binary media frames without hiding malformed text frames", () => {
     expect(responseCardSmoke).toContain("def recv_json_message(ws):");
     expect(responseCardSmoke).toContain("if isinstance(frame, bytes):");
-    expect(responseCardSmoke).toContain("time.sleep(len(chunk) / 32_000)");
+    expect(responseCardSmoke).toContain('ws.send(json.dumps({"text_input": PROMPT}))');
+    expect(responseCardSmoke).not.toContain("def synthesize_pcm_16k() -> bytes:");
     expect(responseCardSmoke).toContain("def send_silence_keepalive(ws) -> None:");
     expect(responseCardSmoke).toContain("time.monotonic() - last_keepalive_at >= 10");
     expect(responseCardSmoke).toContain("if message is None:");
