@@ -27,6 +27,7 @@ describe("authenticated live synthetic verification", () => {
   it("ignores non-JSON binary media frames without hiding malformed text frames", () => {
     expect(responseCardSmoke).toContain("def recv_json_message(ws):");
     expect(responseCardSmoke).toContain("if isinstance(frame, bytes):");
+    expect(responseCardSmoke).toContain("time.sleep(len(chunk) / 32_000)");
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
     expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
     expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");
