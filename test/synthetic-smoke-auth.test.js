@@ -60,7 +60,8 @@ describe("authenticated live synthetic verification", () => {
     expect(workerSource).toContain("even though the current UI does not render the tray yet");
 
     expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).toContain("The current release validates response-card calls but does not yet render the card tray.");
+    expect(workerSource).toContain("The client renders validated RC3 response-card payloads as a compact generic reference tray using text-only DOM nodes.");
+    expect(workerSource).toContain("Do not imply that showing a card completes any action.");
   });
 
   it("creates its session through the actual passkey signup and identity endpoints", () => {
