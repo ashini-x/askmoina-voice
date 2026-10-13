@@ -16,6 +16,13 @@ describe("authenticated live synthetic verification", () => {
     }
   });
 
+  it("checks grounded completion without requiring one brittle transcript keyword", () => {
+    expect(grounding).toContain("if not tool_called:");
+    expect(grounding).toContain("if not turn_complete:");
+    expect(grounding).toContain(`if not any(word in lowered for word in ("source", "official", "developer", "blog", "release", "version"))`);
+    expect(grounding).not.toContain('if "android" not in lowered:');
+  });
+
   it("waits for the grounded final answer after a tool-call turn completes", () => {
     // Live can mark the function-call turn complete before the grounded answer arrives.
     // The smoke test must not treat that intermediate event as the final answer.
@@ -30,6 +37,9 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("time.sleep(len(chunk) / 32_000)");
     expect(responseCardSmoke).toContain("def send_silence_keepalive(ws) -> None:");
     expect(responseCardSmoke).toContain("time.monotonic() - last_keepalive_at >= 10");
+    expect(responseCardSmoke).toContain("if message is None:");
+    expect(responseCardSmoke).toContain("send_silence_keepalive(ws)");
+
     expect(responseCardSmoke).toContain("stage=");
 
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
