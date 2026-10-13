@@ -393,7 +393,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("₹1.09L");
     expect(workerSource).toContain("data-donation-counter");
     expect(workerSource).toContain("Illustrative demo total");
-    expect(workerSource).toContain("illustrative demo counter, not a verified total of money received");
+    expect(workerSource).not.toContain("illustrative demo counter, not a verified total of money received");
     expect(entryMenuScript).toContain("const baseAmount = 109000");
     expect(entryMenuScript).toContain("const startAt = Date.UTC(2026, 9, 13, 4, 0, 0)");
     expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
