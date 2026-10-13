@@ -984,3 +984,58 @@ body.site-info-body{height:100%;overflow:hidden;background:#f5f5f7;color:#1d1d1f
 body.site-info-body .site-info-shell{width:min(100%,430px);left:50%;right:auto;transform:translateX(-50%);padding-top:70px}
 body.site-info-body .site-info-header{display:none}
 body.site-info-body .site-info-card{width:100%}
+
+
+/* RC3 — compact, accessible response-card tray. Model values are rendered as text nodes. */
+.response-card-tray[hidden]{display:none!important}
+.response-card-tray{
+  position:absolute;z-index:7;left:50%;
+  bottom:calc(max(104px,env(safe-area-inset-bottom) + 96px) + 31vh + 12px);
+  transform:translateX(-50%);width:min(470px,calc(100% - 28px));
+  max-height:min(29vh,290px);display:flex;flex-direction:column;gap:9px;
+  padding:13px 14px 10px;border:1px solid rgba(255,255,255,.32);border-radius:17px;
+  background:rgba(12,14,18,.94);color:#f5f5f7;
+  -webkit-backdrop-filter:blur(24px) saturate(130%);backdrop-filter:blur(24px) saturate(130%);
+  box-shadow:0 12px 35px rgba(0,0,0,.2);text-align:left;touch-action:pan-y;overflow:hidden;
+}
+.response-card-header{display:flex;align-items:center;justify-content:space-between;gap:13px;flex:0 0 auto}
+.response-card-heading{min-width:0;flex:1}
+.response-card-eyebrow{display:block;margin-bottom:4px;color:#c6c6cc;font-size:.55rem;font-weight:700;letter-spacing:.12em}
+.response-card-heading h2{margin:0;color:#fff;font-size:.96rem;line-height:1.25;font-weight:650;letter-spacing:-.025em;overflow-wrap:anywhere}
+.response-card-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.response-card-actions button{display:grid;place-items:center;width:29px;height:29px;padding:0;border:1px solid #ffffff24;border-radius:50%;background:#ffffff0c;color:#fff;font-size:1rem;line-height:1}
+.response-card-actions button:focus-visible{outline:2px solid #d8fff2;outline-offset:2px}
+.response-card-details{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;touch-action:pan-y}
+.response-card-details[hidden]{display:none!important}
+.response-card-summary{margin:0 0 9px;color:#e2e3e7;font-size:.73rem;line-height:1.45;overflow-wrap:anywhere}
+.response-card-content{display:flex;flex-direction:column;gap:7px}
+.response-card-field{display:grid;grid-template-columns:minmax(58px,.28fr) minmax(0,1fr);align-items:start;gap:8px;min-width:0}
+.response-card-field-label{color:#bfc2ca;font-size:.59rem;font-weight:650;line-height:1.45;overflow-wrap:anywhere}
+.response-card-field-value{color:#f7f7f9;font-size:.72rem;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.response-card-group{display:flex;flex-direction:column;gap:6px;min-width:0}
+.response-card-item{min-width:0;padding:5px 0 5px 9px;border-left:1px solid #ffffff30}
+.response-card-item>.response-card-field{margin-top:4px}
+.response-card-item>.response-card-field:first-child{margin-top:0}
+.response-card-status{flex:0 0 auto;padding-top:7px;border-top:1px solid #ffffff1b;color:#bfc2ca;font-size:.57rem;line-height:1.35;letter-spacing:.01em}
+.camera-stage.has-response-card{touch-action:pan-y}
+@media(min-width:900px){
+  .response-card-tray{bottom:calc(116px + 29vh + 14px);width:min(470px,calc(100% - 56px));max-height:min(28vh,300px)}
+}
+@media(max-width:430px){
+  .response-card-tray{width:calc(100% - 24px);padding:11px 11px 9px;border-radius:15px;gap:7px;max-height:min(29vh,265px)}
+  .response-card-heading h2{font-size:.9rem}
+  .response-card-summary{font-size:.69rem}
+  .response-card-field{grid-template-columns:minmax(48px,.27fr) minmax(0,1fr);gap:7px}
+  .response-card-field-label{font-size:.56rem}
+  .response-card-field-value{font-size:.68rem}
+  .response-card-item{padding-left:7px}
+}
+@media(max-height:590px){
+  .response-card-tray{bottom:calc(83px + 25vh + 10px);max-height:min(23vh,190px);padding:8px 10px;gap:6px}
+  .response-card-heading h2{font-size:.84rem}
+  .response-card-content{gap:5px}
+  .response-card-status{padding-top:5px}
+}
+@media(prefers-reduced-transparency:reduce){
+  .response-card-tray{background:#101216}
+}
