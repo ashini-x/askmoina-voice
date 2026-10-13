@@ -497,3 +497,25 @@ describe("Apple-style live-search progress", () => {
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
   });
 });
+
+
+describe("Immediate live-search acknowledgement", () => {
+  it("acknowledges likely search requests as soon as speech is transcribed, before waiting for the search tool event", () => {
+    expect(script).toContain("function isLikelyLiveSearchRequest(text)");
+    expect(script).toContain("function showLiveSearchAcknowledgement()");
+    expect(script).toContain("handleTranscriptAcknowledgement(role, entry.text)");
+    expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
+    expect(script).toContain('liveSearchTitle.textContent = "Got it"');
+    expect(script).toContain('liveSearchMessage.textContent = "One moment"');
+    expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
+    expect(script).toContain("liveSearchStatus.classList.remove(\"is-acknowledging\")");
+    expect(css).toContain(".live-search-status.is-acknowledging .live-search-track{display:none!important}");
+  });
+
+  it("transitions to real progress when the Worker confirms lookup start and clears unused acknowledgements", () => {
+    expect(script).toContain("function hideLiveSearchAcknowledgement()");
+    expect(script).toContain("liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000)");
+    expect(script).toContain("if (hasSearchCallOnThisMessage) startLiveSearchProgress()");
+    expect(script).toContain("else if (liveSearchAcknowledgementActive && messageToolCalls.length > 0) hideLiveSearchAcknowledgement()");
+  });
+});

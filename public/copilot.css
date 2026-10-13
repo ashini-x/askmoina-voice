@@ -1040,6 +1040,15 @@ body.site-info-body .site-info-card{width:100%}
   .response-card-tray{background:#101216}
 }
 
+
+/* Immediate, optimistic acknowledgement shown as soon as a clearly search-oriented user transcript arrives. */
+.live-search-status.is-acknowledging{width:min(260px,calc(100% - 32px));padding:10px 12px;border-radius:14px}
+.live-search-status.is-acknowledging .live-search-percent,
+.live-search-status.is-acknowledging .live-search-track{display:none!important}
+.live-search-status.is-acknowledging .live-search-status-top{grid-template-columns:18px minmax(0,1fr);gap:9px}
+.live-search-status.is-acknowledging .live-search-title{font-size:.76rem}
+.live-search-status.is-acknowledging .live-search-message{font-size:.66rem}
+
 /* Live grounding acknowledgement: compact and shown only for a real search tool call. */
 .live-search-status[hidden]{display:none!important}
 .live-search-status{
