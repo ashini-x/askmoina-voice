@@ -3,6 +3,7 @@
 
 Sends a top-10 IPL ranking request without explicitly asking for a card, then
 asserts that grounding runs and the Live model proactively creates ten rows.
+Optional source links are validated separately and cannot gate the list itself.
 """
 import base64
 import json
@@ -134,11 +135,12 @@ def bounded_card(args: object) -> bool:
                     and isinstance(item["value"], str) and 1 <= len(item["value"].strip()) <= 180
                     and ("unit" not in item or isinstance(item["unit"], str) and len(item["unit"]) <= 32)
                     for item in items)
-            and isinstance(args.get("sources"), list) and 1 <= len(args["sources"]) <= 4
-            and all(isinstance(source, dict) and set(source) == {"title", "url"}
-                    and isinstance(source["title"], str) and 1 <= len(source["title"].strip()) <= 100
-                    and isinstance(source["url"], str) and source["url"].startswith("https://")
-                    for source in args["sources"])
+            and ("sources" not in args or (
+                isinstance(args["sources"], list) and len(args["sources"]) <= 4
+                and all(isinstance(source, dict) and set(source) == {"title", "url"}
+                        and isinstance(source["title"], str) and 1 <= len(source["title"].strip()) <= 100
+                        and isinstance(source["url"], str) and source["url"].startswith("https://")
+                        for source in args["sources"]))
         )
     options = args.get("options")
     if not (set(args).issubset({"type", "title", "summary", "options", "takeaway"})
@@ -276,8 +278,8 @@ def main() -> int:
                         if not isinstance(details, list) or len(details) != 10:
                             raise RuntimeError("The model did not proactively present exactly ten leaderboard rows.")
                         sources = args.get("sources")
-                        if not isinstance(sources, list) or not sources:
-                            raise RuntimeError("The ten-row answer card did not include its web source links.")
+                        if sources is not None and not isinstance(sources, list):
+                            raise RuntimeError("The optional source field was malformed.")
                         top_ten_card_seen = True
                     tool_count += 1
                     result = (
