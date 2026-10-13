@@ -15,6 +15,14 @@ describe("authenticated live synthetic verification", () => {
     }
   });
 
+  it("waits for the grounded final answer after a tool-call turn completes", () => {
+    // Live can mark the function-call turn complete before the grounded answer arrives.
+    // The smoke test must not treat that intermediate event as the final answer.
+    expect(grounding).toContain("message_has_tool_call = has_grounding_tool_call(message)");
+    expect(grounding).toContain("and not message_has_tool_call");
+    expect(grounding).toContain("turn_complete = True");
+  });
+
   it("creates its session through the actual passkey signup and identity endpoints", () => {
     expect(session).toContain("WebAuthn.addVirtualAuthenticator");
     expect(session).toContain("/api/auth/passkey/register/options");
