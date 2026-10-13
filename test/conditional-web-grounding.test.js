@@ -21,8 +21,8 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).not.toContain("groundedSearchCount >= 2");
     expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 30_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 21_000;");
     expect(workerSource).toContain("Math.min(GROUNDED_SEARCH_TIMEOUT_MS, remainingBudget)");
     expect(workerSource).toContain("const groundingBudgetStartedAt = Date.now();");
     expect(workerSource).toContain("Date.now() - groundingBudgetStartedAt");
@@ -66,11 +66,11 @@ describe("Grounded ranked-list completeness and recovery", () => {
     expect(workerSource).toContain("no_grounding_sources");
     expect(workerSource).toContain("hasGroundingUrls");
     expect(workerSource).toContain("attempt < GROUNDED_SEARCH_MAX_ATTEMPTS");
-    expect(workerSource).toContain("RETRY: The prior request did not produce verifiable grounding source URLs");
+    expect(workerSource).toContain("RETRY: The first attempt was incomplete or not verifiable");
   });
   it("instructs grounded search to return a complete top-N table when sources support it", () => {
-    expect(workerSource).toContain("Do not truncate a top-10 list to three or four entries");
-    expect(workerSource).toContain("Prefer official league/statistics tables or reputable full-table reports");
+    expect(workerSource).toContain("Do not stop early for concision or invent missing data");
+    expect(workerSource).toContain("Prefer official tables or reputable full-table reports");
     expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 });
