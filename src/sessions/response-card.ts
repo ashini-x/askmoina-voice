@@ -106,7 +106,7 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
 
 export const DISPLAY_RESPONSE_CARD_FUNCTION = {
   name: "display_response_card",
-  description: "Mandatory for an explicit request such as 'make a response card with three steps for organizing pens': call this function with type=steps and 2–5 short, safe actions. Use also for useful multi-step plans, exact reference details, or grounded comparisons. The tool validates structured data; after the acknowledgement, continue speaking without claiming the card is visible before the tray ships. Separate from camera overlays. Keep values concise and safe. Do not call for greetings or one-line factual answers.",
+  description: "Mandatory for an explicit request such as 'make a response card with three steps for organizing pens': call this function with type=steps and 2–5 short, safe actions. Use also for useful multi-step plans, exact reference details, or grounded comparisons. The client displays validated data in a compact generic response-card tray; after acknowledgement, continue with concise spoken guidance. Never imply that a rendered card means the user completed an action. Separate from camera overlays. Keep values concise and safe. Do not call for greetings or one-line factual answers.",
   parameters: {
     type: "OBJECT",
     properties: {
