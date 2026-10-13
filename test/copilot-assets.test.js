@@ -402,7 +402,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-support-links{");
     expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-amount{");
     expect(workerSource).toContain("entry-quick-link-icon");
-    expect(workerSource).toContain("Copyright &copy; 2026 AskMoina. All rights reserved.");
+    expect(workerSource).toContain("Copyright &copy; 2026 askMoina. All rights reserved.");
     expect(siteChromeCss).toContain("margin-top:14px");
     expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-icon{");
     expect(siteChromeCss).toContain(".entry-footer{position:fixed;");
