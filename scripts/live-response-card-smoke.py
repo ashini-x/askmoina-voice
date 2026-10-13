@@ -166,15 +166,17 @@ def bounded_card(args: object) -> bool:
 
 
 def send_speech(ws, pcm: bytes) -> None:
-    chunk_bytes = 1600 * 2
+    chunk_bytes = 1600 * 2  # 100 ms of mono PCM16 at 16 kHz
     for offset in range(0, len(pcm), chunk_bytes):
+        chunk = pcm[offset:offset + chunk_bytes]
         ws.send(json.dumps({
             "realtime_input": {"audio": {
-                "data": base64.b64encode(pcm[offset:offset + chunk_bytes]).decode("ascii"),
+                "data": base64.b64encode(chunk).decode("ascii"),
                 "mime_type": "audio/pcm;rate=16000",
             }}
         }))
-        time.sleep(0.07)
+        # Pace frames to their real duration instead of sending faster than real time.
+        time.sleep(len(chunk) / 32_000)
     ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
 
 
