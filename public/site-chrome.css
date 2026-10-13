@@ -41,4 +41,4 @@ body.site-info-body .site-info-card{width:100%}
 
 /* Small, quiet details to keep the entry screen balanced. */
 .entry-overlay .entry-products .entry-quick-link-icon{display:block;width:14px;height:14px;flex:0 0 14px;fill:none;stroke:#86868b;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
-.entry-footer{position:fixed;z-index:202;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 28px),390px);color:#86868b;text-align:center;font:400 10px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.005em;pointer-events:none}
+.entry-footer{position:fixed;z-index:202;left:max(14px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));width:min(calc(100% - 28px),390px);color:#a1a1a6;text-align:left;font:400 10px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.005em;pointer-events:none}
