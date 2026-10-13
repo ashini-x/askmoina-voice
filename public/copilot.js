@@ -2622,7 +2622,10 @@
     const answer = String(assistantText || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ").trim();
     if (!answer) return null;
     const prompt = String(userText || "").replace(/\s+/g, " ").trim();
-    const title = (prompt ? "Answer · " + prompt : "Moina's answer").slice(0, 80);
+    // The opening greeting has no user request to answer; keep the camera clean until the first question.
+    if (!prompt) return null;
+    if (/^(?:hi|hello|hey|yo|thanks|thank you|ok|okay|sure|got it|good morning|good evening|good night|bye)[.!?\s]*$/i.test(prompt) && answer.length < 180) return null;
+    const title = ("Answer · " + prompt).slice(0, 80);
     const sentenceMatch = answer.match(/^.{1,180}?(?:[.!?](?=\s|$)|$)/);
     const firstSentence = (sentenceMatch ? sentenceMatch[0] : answer.slice(0, 180)).trim().slice(0, 180);
     const sentences = answer.split(/(?<=[.!?])\s+|\s+[•·]\s+/).map((item) => item.trim()).filter(Boolean);
