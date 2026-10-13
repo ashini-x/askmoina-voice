@@ -71,7 +71,7 @@ describe("Live Co-Pilot input protocol", () => {
     const response = { tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay" }] } };
     expect(parseLiveClientInput(response, true)).toEqual({
       kind: "tool_response",
-      responses: [{ id: "tool_call_1", result: "The on-screen target prompt or approximate overlay was handled by the client." }]
+      responses: [{ id: "tool_call_1", name: "display_screen_overlay", result: "The on-screen target prompt or approximate overlay was handled by the client." }]
     });
     expect(parseLiveClientInput({
       tool_response: { function_responses: [{
@@ -81,11 +81,20 @@ describe("Live Co-Pilot input protocol", () => {
       }] }
     }, true)).toEqual({
       kind: "tool_response",
-      responses: [{ id: "tool_call_1", result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }]
+      responses: [{ id: "tool_call_1", name: "display_screen_overlay", result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }]
     });
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { arbitrary: "data" } }] } }, true)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { result: "x".repeat(3_001) } }] } }, true)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "external_purchase" }] } }, true)).toBeNull();
+    expect(parseLiveClientInput({
+      tool_response: { function_responses: [{ id: "card_call_1", name: "display_response_card", response: { result: "The card payload passed validation; rendering is not enabled yet." } }] }
+    }, true)).toEqual({
+      kind: "tool_response",
+      responses: [{ id: "card_call_1", name: "display_response_card", result: "The card payload passed validation; rendering is not enabled yet." }]
+    });
+    expect(parseLiveClientInput({
+      tool_response: { function_responses: [{ id: "card_call_1", name: "display_response_card", response: { result: "ok" } }] }
+    }, false)).toBeNull();
   });
 
   it("recognizes the explicit audio-stream end signal and rejects unknown message shapes", () => {

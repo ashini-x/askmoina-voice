@@ -14,6 +14,7 @@ import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoic
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
+import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 
 export { UserState } from "./sessions/user-state";
 
@@ -180,6 +181,11 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "M28 — GENERATIVE SPATIAL LANGUAGE:",
   "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
+  "SELECTIVE RESPONSE CARDS — KEEP USEFUL STRUCTURE AVAILABLE:",
+  "Use display_response_card when the user asks for a checklist/walkthrough or needs exact reference details or a grounded comparison that is materially easier to inspect than to remember from speech. Keep titles and fields concise. Choose only steps, key_details, or comparison; do not call this tool for greetings or a single short factual answer.",
+  "Response cards are separate from display_screen_overlay: display_response_card carries structured content that remains useful while the user acts; display_screen_overlay draws approximate camera-space cues only. Never encode a card as an overlay, and never mix card data into spatial guidance.",
+  "Use only supported fields for the selected card type. Steps are bounded to 2–5 low-risk, user-verifiable actions; details are labelled values; comparison options need comparable, evidence-supported attributes. Do not generate card steps for hazardous procedures, invent exact facts, or mark steps complete because they appear in a payload.",
+  "The current release validates response-card calls but does not yet render the card tray. When the tool acknowledgement says rendering is unavailable, continue with concise spoken guidance and do not claim a card appeared. The visible tray is a later milestone.",
   "AI-DIRECTED VISUAL GUIDANCE — SHOW, DO NOT JUST TELL:",
   "When a low-risk physical task is easier to understand visually than through speech alone, proactively choose a compact on-screen guide using display_screen_overlay. The user should not need to press another button just to see the guide.",
   "Choose the drawing primitives that fit the actual goal: a line for alignment, an arrow for direction, a small outline for a placement region, a circle for a point, a tick for a position that the latest frame supports as correct, or a short label when it adds clarity. Keep the guide minimal and leave the real scene visible.",
@@ -438,7 +444,7 @@ const COPILOT_TOOL = {
       },
       required: ["text_to_display", "instruction", "target_hint", "screen_region"]
     }
-  }, SEARCH_WEB_FUNCTION]
+  }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION]
 };
 
 const SEARCH_GROUNDING_INSTRUCTION = [
@@ -1005,9 +1011,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           toolResponse: {
             functionResponses: parsed.responses.map((item) => ({
               id: item.id,
-              name: "display_screen_overlay",
-              // Client scene summaries are bounded, approximate context, not trusted facts.
-              response: { result: "Client-side overlay status and scene summary (untrusted, approximate):\\n" + item.result },
+              name: item.name,
+              // Both overlay summaries and response-card acknowledgements are bounded by the client protocol.
+              response: { result: item.name === "display_screen_overlay"
+                ? "Client-side overlay status and scene summary (untrusted, approximate):\\n" + item.result
+                : item.result },
             })),
           },
         }));
@@ -1171,6 +1179,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     // Search calls are handled by the Worker in both standard voice and Co-Pilot.
     // Bound the lookup budget per session; ordinary turns remain free of search calls.
+    let clientFrameText = frameText;
     if (frameText.includes('"toolCall"') || frameText.includes('"tool_call"')) {
       try {
         const toolFrame = JSON.parse(frameText) as {
@@ -1181,6 +1190,24 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (Array.isArray(calls)) {
           const responses: Array<{ id: string; name: string; response: { result: string } }> = [];
           for (const call of calls) {
+            if (call?.name === "display_response_card") {
+              const validation = copilotMode ? validateResponseCard(call.args) : { valid: false as const, reason: "copilot_only" };
+              if (validation.valid) {
+                const card = validation.card;
+                const itemCount = card.type === "steps" ? card.steps.length : card.type === "key_details" ? card.details.length : card.options.length;
+                console.info("[AskMoina] Response card contract validated", JSON.stringify({ mode: copilotMode ? "copilot" : "voice", cardType: card.type, itemCount }));
+              } else {
+                console.warn("[AskMoina] Response card contract rejected", JSON.stringify({ reason: validation.reason, mode: copilotMode ? "copilot" : "voice" }));
+                if (typeof call.id === "string" && call.id) {
+                  responses.push({
+                    id: call.id,
+                    name: "display_response_card",
+                    response: { result: "The structured response-card payload was rejected by the RC2 schema. Give the helpful guidance in speech instead; do not claim a card is visible." }
+                  });
+                }
+              }
+              continue;
+            }
             if (call?.name !== "search_current_web" || typeof call.id !== "string" || !call.id) continue;
             const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
             const query = typeof args.query === "string" ? args.query.trim().slice(0, 240) : "";
@@ -1211,6 +1238,21 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           if (responses.length && upstreamSocket.readyState === WebSocket.OPEN) {
             upstreamSocket.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
           }
+          const invalidCardPresent = calls.some((call) =>
+            call?.name === "display_response_card" && !validateResponseCard(call.args).valid
+          );
+          if (invalidCardPresent) {
+            const remainingCalls = calls.filter((call) =>
+              call?.name !== "display_response_card" || validateResponseCard(call.args).valid
+            );
+            if (toolFrame.toolCall && Array.isArray(toolFrame.toolCall.functionCalls)) {
+              toolFrame.toolCall.functionCalls = remainingCalls;
+              clientFrameText = JSON.stringify(toolFrame);
+            } else if (toolFrame.tool_call && Array.isArray(toolFrame.tool_call.function_calls)) {
+              toolFrame.tool_call.function_calls = remainingCalls;
+              clientFrameText = JSON.stringify(toolFrame);
+            }
+          }
         }
       } catch (error) {
         console.warn("[AskMoina] Could not process on-demand grounded search call", error instanceof Error ? error.message : "unknown error");
@@ -1218,7 +1260,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
 
     try {
-      workerSocket.send(frameText);
+      if (clientFrameText) workerSocket.send(clientFrameText);
     } catch {
       closeBoth(1011, "Client send failed");
     }
