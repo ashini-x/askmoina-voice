@@ -78,6 +78,36 @@ def get_calls(message: dict) -> list:
     return calls if isinstance(calls, list) else []
 
 
+def recv_json_message(ws):
+    """Read a JSON text frame, ignoring non-JSON binary media frames.
+
+    Gemini Live may send binary media frames between structured tool/control
+    messages. Tool calls and acknowledgements are JSON text, so only binary
+    frames that cannot be parsed as JSON are skipped; malformed text frames
+    remain a hard failure so the smoke test does not hide protocol regressions.
+    """
+    frame = ws.recv()
+    if frame == "":
+        return None
+    if isinstance(frame, bytes):
+        try:
+            frame_text = frame.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+        try:
+            message = json.loads(frame_text)
+        except json.JSONDecodeError:
+            return None
+    else:
+        try:
+            message = json.loads(frame)
+        except json.JSONDecodeError:
+            raise RuntimeError("Live WebSocket sent an invalid JSON text frame.") from None
+    if not isinstance(message, dict):
+        raise RuntimeError("Live WebSocket JSON message was not an object.")
+    return message
+
+
 def is_turn_complete(message: dict) -> bool:
     content = message.get("serverContent") or message.get("server_content") or {}
     return isinstance(content, dict) and bool(content.get("turnComplete") or content.get("turn_complete"))
@@ -161,7 +191,9 @@ def main() -> int:
         deadline = time.time() + SETUP_WAIT_SECONDS
         while time.time() < deadline:
             try:
-                message = json.loads(ws.recv())
+                message = recv_json_message(ws)
+                if message is None:
+                    continue
             except websocket.WebSocketTimeoutException:
                 continue
             if message.get("error"):
@@ -175,7 +207,9 @@ def main() -> int:
         deadline = time.time() + GREETING_WAIT_SECONDS
         while time.time() < deadline:
             try:
-                message = json.loads(ws.recv())
+                message = recv_json_message(ws)
+                if message is None:
+                    continue
             except websocket.WebSocketTimeoutException:
                 continue
             if message.get("error"):
@@ -192,7 +226,9 @@ def main() -> int:
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
             try:
-                message = json.loads(ws.recv())
+                message = recv_json_message(ws)
+                if message is None:
+                    continue
             except websocket.WebSocketTimeoutException:
                 continue
             if message.get("error"):
