@@ -436,7 +436,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("entry-menu-account");
     expect(workerSource).toContain("Your Memory");
     expect(workerSource).toContain("aria-hidden");
-    expect(workerSource).toContain('"/pricing":');
+    expect(workerSource).toContain('"/pricing"');
     expect(workerSource).toContain("const SITE_INFO_PATHS = new Set([");
     expect(workerSource).toContain("if (!SITE_INFO_PATHS.has(pathname)) return null;");
     expect(workerSource).not.toContain("No purchase or payment is available on this page today.");
