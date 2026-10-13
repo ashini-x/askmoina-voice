@@ -184,7 +184,7 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
   "SELECTIVE RESPONSE CARDS — KEEP USEFUL STRUCTURE AVAILABLE:",
   "EXPLICIT CARD REQUEST OVERRIDE: If the user asks for a response card, checklist card, or asks you to put a checklist/walkthrough in a card or on screen, you MUST call display_response_card during that same turn. Example: 'Make a response card with three steps for organizing pens' means call display_response_card with type=steps and 2–5 concise, safe, user-verifiable steps. RC3 renders validated card data in a compact on-screen tray; after acknowledgement, continue with concise spoken guidance and orient the user to the card only when helpful. Do not imply that showing a card completes any action. Do not substitute speech-only guidance or a camera overlay for an explicit card request. If no card was requested, use this tool only when a persistent structured view materially helps; never call it for greetings or one-line factual answers.",
-  "PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS: When the user asks for a top-N list, leaderboard, rankings, season statistics, or another factual list with five or more entries, proactively search for reliable sources and call display_response_card in the same turn; do not wait for a separate request to show the list. For ranked sports lists, put each rank and player/team in the label and the verified stat in the value. Fill the requested number of rows (up to 10) whenever sources support it; do not stop at four just because only a few rows appeared in a search snippet. If results are incomplete, search a specific alternate query before falling back, and never invent missing rows. Give one brief spoken summary and tell the user the complete list is on screen rather than reading all rows aloud. For 'IPL 2025 top rankers' without a metric, use the standard most-runs batting leaderboard by default, briefly state that interpretation, and do not ask a needless clarification.",
+  "PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS: When the user asks for a top-N list, leaderboard, rankings, season statistics, or another factual list with five or more entries, proactively search for reliable sources and call display_response_card in the same turn; do not wait for a separate request to show the list. For ranked sports lists, put each rank and player/team in the label and the verified stat in the value. Fill the requested number of rows (up to 10) whenever sources support it; do not stop at four just because only a few rows appeared in a search snippet. After web search, include 1–3 source title/URL records in the card sources field when URLs were returned. Never invent a source or missing row. Give one brief spoken summary and tell the user the complete designed list is on screen rather than reading all rows aloud. For 'IPL 2025 top rankers' without a metric, use the standard most-runs batting leaderboard by default, briefly state that interpretation, and do not ask a needless clarification.",
   "Response cards are separate from display_screen_overlay: display_response_card carries structured content that remains useful while the user acts; display_screen_overlay draws approximate camera-space cues only. Never encode a card as an overlay, and never mix card data into spatial guidance.",
   "Use only supported fields for the selected card type. Steps are bounded to 2–5 low-risk, user-verifiable actions; details are labelled values; comparison options need comparable, evidence-supported attributes. Do not generate card steps for hazardous procedures, invent exact facts, or mark steps complete because they appear in a payload.",
   "The client renders validated RC3 response-card payloads as a compact generic reference tray using text-only DOM nodes. If the client reports rendering unavailable, continue with concise spoken guidance and do not claim a card appeared. The generic tray does not mark steps complete; richer type-specific layouts and interaction refinements are later work.",
@@ -456,7 +456,7 @@ const SEARCH_GROUNDING_INSTRUCTION = [
   "Never present a procedure from a different model/version as applicable. If source titles/URLs do not establish the model match, say the match is unverified, ask for the exact identifier, or stay at a safe generic level. A source is a reference, not proof that the camera has identified the product or that a repair is safe.",
   "When results include model IDs, compare them with the requested model/variant; distinguish exact match, mismatch, and unknown. If no exact matching source is found, state that limitation clearly instead of filling gaps with a similar guide.",
   "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the AskMoina server using Gemini with Google Search grounding.",
-  "Before invoking search_current_web, briefly acknowledge in natural speech (for example, “I’ll look that up for you.”), then perform the lookup. Keep the acknowledgement to one short phrase and never say you are searching unless you actually invoke the tool.",
+  "The browser immediately displays and speaks a short acknowledgement as soon as it recognizes a search-oriented request. Do not spend a separate spoken turn repeating the acknowledgement; invoke search_current_web promptly, then give a concise spoken summary after the results return.",
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current or historical sports leaderboard/season statistic, a ranked top-N list, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "For a top-N list, return the requested number of distinct ranked entries whenever sources support them. Search for a full leaderboard/table, not only preview snippets. If only a few results appear, run a more targeted alternate query or consult another credible source before concluding that the full list is unavailable. For a vague IPL 'rankers' request, default to IPL 2025 most-run scorers unless the context specifies wickets or another metric.",
   "If asked whether you have live search, answer truthfully that search is available and demonstrate it when the user also asks for information. Never claim that you lack web access while this tool is configured.",
@@ -486,6 +486,7 @@ function hasVertexCredentials(env: Env): boolean {
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
 const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;
+const GROUNDED_SEARCH_BUDGET_MS = 20_000;
 const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
@@ -517,7 +518,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   const makeGroundingRequestBody = (prompt: string) => JSON.stringify({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     tools: [{ googleSearch: {} }],
-    generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
+    generationConfig: { temperature: 0.0, maxOutputTokens: 1_100 }
   });
   const requestBody = makeGroundingRequestBody(groundingPrompt);
   const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The prior request did not produce verifiable grounding source URLs or failed transiently. Run a distinct, more specific Google Search query (for example, search for the full official/reputable leaderboard table), and return source-backed results with URLs. Do not answer from memory or give up because the first query was unhelpful.");
@@ -529,8 +530,12 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   let attemptsUsed = 0;
   for (let attempt = 1; attempt <= GROUNDED_SEARCH_MAX_ATTEMPTS; attempt++) {
     attemptsUsed = attempt;
+    const elapsedBeforeAttempt = Date.now() - searchStartedAt;
+    const remainingBudget = GROUNDED_SEARCH_BUDGET_MS - elapsedBeforeAttempt;
+    if (remainingBudget <= 0) break;
+    const attemptTimeoutMs = Math.min(GROUNDED_SEARCH_TIMEOUT_MS, remainingBudget);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), GROUNDED_SEARCH_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), attemptTimeoutMs);
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -583,7 +588,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           model,
           location,
           attempt,
-          timeoutMs: GROUNDED_SEARCH_TIMEOUT_MS,
+          timeoutMs: attemptTimeoutMs,
           reason: timedOut ? "timeout" : "network",
           retrying: true
         }));
@@ -591,7 +596,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
         continue;
       }
       if (timedOut) {
-        throw new Error(`Grounded search timed out after ${GROUNDED_SEARCH_TIMEOUT_MS}ms on ${model} (${attempt} attempt${attempt === 1 ? "" : "s"}).`);
+        throw new Error(`Grounded search timed out after ${attemptTimeoutMs}ms on ${model} (${attempt} attempt${attempt === 1 ? "" : "s"}).`);
       }
       throw error;
     } finally {

@@ -1,6 +1,6 @@
 export type ResponseCard =
   | { type: "steps"; title: string; summary?: string; steps: Array<{ label: string; instruction: string }> }
-  | { type: "key_details"; title: string; summary?: string; details: Array<{ label: string; value: string; unit?: string }> }
+  | { type: "key_details"; title: string; summary?: string; details: Array<{ label: string; value: string; unit?: string }>; sources?: Array<{ title: string; url: string }> }
   | { type: "comparison"; title: string; summary?: string; options: Array<{ name: string; attributes: Array<{ label: string; value: string }> }>; takeaway?: string };
 
 export type ResponseCardValidation =
@@ -64,7 +64,7 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
   }
 
   if (type === "key_details") {
-    if (!exactKeys(value, ["type", "title", "summary", "details"])) return invalid("unexpected_key_details_fields");
+    if (!exactKeys(value, ["type", "title", "summary", "details", "sources"])) return invalid("unexpected_key_details_fields");
     if (!Array.isArray(value.details) || value.details.length < 1 || value.details.length > 10) return invalid("invalid_details_count");
     const details: Array<{ label: string; value: string; unit?: string }> = [];
     for (const item of value.details) {
@@ -75,7 +75,23 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
       if (label === null || detailValue === null || !unit.ok) return invalid("invalid_detail_text");
       details.push({ label, value: detailValue, ...(unit.value ? { unit: unit.value } : {}) });
     }
-    return { valid: true, card: { type, ...base, details } };
+    const sources: Array<{ title: string; url: string }> = [];
+    if (value.sources !== undefined) {
+      if (!Array.isArray(value.sources) || value.sources.length < 1 || value.sources.length > 4) {
+        return invalid("invalid_sources_count");
+      }
+      for (const item of value.sources) {
+        if (!isRecord(item) || !exactKeys(item, ["title", "url"])) return invalid("invalid_source_shape");
+        const sourceTitle = cleanText(item.title, 100);
+        const sourceUrl = cleanText(item.url, 500);
+        if (sourceTitle === null || sourceUrl === null) return invalid("invalid_source_text");
+        let parsedUrl: URL;
+        try { parsedUrl = new URL(sourceUrl); } catch { return invalid("invalid_source_url"); }
+        if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) return invalid("invalid_source_url");
+        sources.push({ title: sourceTitle, url: parsedUrl.href });
+      }
+    }
+    return { valid: true, card: { type, ...base, details, ...(sources.length ? { sources } : {}) } };
   }
 
   if (type === "comparison") {
@@ -129,6 +145,14 @@ export const DISPLAY_RESPONSE_CARD_FUNCTION = {
           value: { type: "STRING", description: "Plain-text value, maximum 180 characters." },
           unit: { type: "STRING", description: "Optional unit, maximum 32 characters." }
         }, required: ["label", "value"] }
+      },
+      sources: {
+        type: "ARRAY",
+        description: "Optional for type=key_details only: 1–4 grounded source records. When a web search was used, include source titles and full HTTPS URLs returned by the search tool. Do not invent URLs.",
+        items: { type: "OBJECT", properties: {
+          title: { type: "STRING", description: "Readable source title, maximum 100 characters." },
+          url: { type: "STRING", description: "Full HTTPS URL returned by the search tool, maximum 500 characters." }
+        }, required: ["title", "url"] }
       },
       options: {
         type: "ARRAY",
