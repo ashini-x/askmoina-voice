@@ -18,11 +18,8 @@ import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded
 export { UserState } from "./sessions/user-state";
 
 
-const ENTRY_SITE_MENU = "<header class=\\\"entry-site-header\\\" aria-label=\\\"AskMoina navigation\\\"><a class=\\\"entry-logo-slot\\\" href=\\\"/\\\" aria-label=\\\"AskMoina home\\\"></a><details class=\"entry-site-menu\">\n  <summary aria-label=\"Open navigation menu\" title=\"Menu\">\n    <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg>\n  </summary>\n  <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\">\n    <a href=\"/account\">Profile <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/vault\">Memory Vault <span aria-hidden=\"true\">›</span></a>\n    <div class=\"entry-site-menu-divider\" role=\"separator\"></div>\n    <a href=\"/about\">About us <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/developer\">Developer <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/help\">Help &amp; Feedback <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a>\n  </nav>\n</details></header>";
-
-const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
-const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n  <button type=\"button\" class=\"entry-signout\" data-logout aria-label=\"Sign out\" title=\"Sign out\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg></button>\n  <div class=\"entry-product-panel\">\n    <h1 class=\"sr-only\">Choose an experience</h1>\n    <div class=\"entry-products\">\n      <a class=\"entry-product-card\" href=\"/copilot?product=0.4.0\" aria-label=\"Open Vision, version 0.4.0\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7.2\"/><circle cx=\"12\" cy=\"12\" r=\"3.1\"/><path d=\"M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2\"/></svg></span>\n        <span><span class=\"entry-product-name\">Vision</span><span class=\"entry-product-meta\">0.4.0</span></span>\n        <span class=\"entry-product-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n      </a>\n      <div class=\"entry-product-card is-disabled\" role=\"img\" aria-disabled=\"true\" aria-label=\"Hardware, under development\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7.5\" y=\"7.5\" width=\"9\" height=\"9\" rx=\"1.5\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/></svg></span>\n        <span><span class=\"entry-product-name\">Hardware</span><span class=\"entry-product-meta\">Under development</span></span>\n      </div>\n    </div>\n  </div>\n</section>";
-const ENTRY_LAUNCH_OVERLAY = "<section class=\"auth-launch-screen\" role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></section>";
+const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"AskMoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"AskMoina home\"><img src=\"/askmoina-bird-64.png\" alt=\"\" width=\"24\" height=\"24\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\">\n      <a href=\"/account\">Profile <span aria-hidden=\"true\">›</span></a>\n      <a href=\"/vault\">Memory Vault <span aria-hidden=\"true\">›</span></a>\n      <div class=\"entry-site-menu-divider\" role=\"separator\"></div>\n      <a href=\"/about\">About us <span aria-hidden=\"true\">›</span></a>\n      <a href=\"/developer\">Developer <span aria-hidden=\"true\">›</span></a>\n      <a href=\"/help\">Help &amp; Feedback <span aria-hidden=\"true\">›</span></a>\n      <a href=\"/privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a>\n      <button type=\"button\" class=\"entry-menu-logout\" hidden>Sign out</button>\n    </nav>\n  </details>\n</header>";const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
+const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n  <div class=\"entry-product-panel\"><h1 class=\"sr-only\">Choose an experience</h1>\n    <div class=\"entry-products\">\n      <a class=\"entry-product-card\" href=\"/copilot?product=0.4.0\" aria-label=\"Open Vision, version 0.4.0\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7.2\"/><circle cx=\"12\" cy=\"12\" r=\"3.1\"/><path d=\"M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2\"/></svg></span>\n        <span><span class=\"entry-product-name\">Vision</span><span class=\"entry-product-meta\">0.4.0</span></span>\n        <span class=\"entry-product-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n      </a>\n      <div class=\"entry-product-card is-disabled\" role=\"img\" aria-disabled=\"true\" aria-label=\"Hardware, under development\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7.5\" y=\"7.5\" width=\"9\" height=\"9\" rx=\"1.5\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/></svg></span>\n        <span><span class=\"entry-product-name\">Hardware</span><span class=\"entry-product-meta\">Under development</span></span>\n      </div>\n    </div>\n  </div>\n</section>";const ENTRY_LAUNCH_OVERLAY = "<section class=\"auth-launch-screen\" role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></section>";
 
 const SITE_INFO_CONTENT: Record<string, { eyebrow: string; title: string; intro: string; sections: Array<{ title: string; body: string }> }> = {
   "/about": {
@@ -82,6 +79,50 @@ function renderSiteInfoPage(pathname: string): string | null {
     "<article class=\"site-info-card\"><p class=\"site-info-eyebrow\">" + page.eyebrow + "</p><h1>" + page.title + "</h1>" +
     "<p class=\"site-info-intro\">" + page.intro + "</p><div class=\"site-info-sections\">" + sections + "</div></article>" +
     "<footer class=\"site-info-footer\"><span>AskMoina</span><a href=\"/privacy\">Privacy</a><a href=\"/help\">Help</a></footer></main></body></html>";
+}
+
+
+function shouldUseSiteChrome(pathname: string): boolean {
+  return pathname !== "/copilot" && pathname !== "/copilot.html" &&
+    pathname !== "/copilot.css" && !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/api/");
+}
+
+function withSiteChrome(html: string): string {
+  if (html.includes('class="camera-app"') || html.includes('class="entry-site-header"')) return html;
+  let start = html.indexOf("<body");
+  let end = start >= 0 ? html.indexOf(">", start) : -1;
+  if (start < 0 || end < 0) return html;
+  if (!html.includes('href="/site-chrome.css"')) html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
+  start = html.indexOf("<body");
+  end = html.indexOf(">", start);
+  let bodyTag = html.slice(start, end + 1);
+  const classStart = bodyTag.indexOf('class="');
+  if (classStart >= 0) {
+    const valueStart = classStart + 7;
+    const valueEnd = bodyTag.indexOf('"', valueStart);
+    if (valueEnd >= 0 && !bodyTag.slice(valueStart, valueEnd).split(/\\s+/).includes("site-chrome-page")) {
+      bodyTag = bodyTag.slice(0, valueEnd) + " site-chrome-page" + bodyTag.slice(valueEnd);
+    }
+  } else {
+    bodyTag = bodyTag.slice(0, -1) + ' class="site-chrome-page">';
+  }
+  html = html.slice(0, start) + bodyTag + html.slice(end + 1);
+  end = html.indexOf(">", html.indexOf("<body"));
+  return html.slice(0, end + 1) + ENTRY_SITE_MENU + '<script src="/entry-menu.js" defer></script>' + html.slice(end + 1);
+}
+
+async function withSiteChromeResponse(response: Response, pathname: string): Promise<Response> {
+  if (!shouldUseSiteChrome(pathname) || response.status !== 200 ||
+      !response.headers.get("Content-Type")?.toLowerCase().includes("text/html")) return response;
+  const html = await response.text();
+  const decorated = withSiteChrome(html);
+  if (decorated === html) return new Response(html, { status: response.status, statusText: response.statusText, headers: response.headers });
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  headers.set("Cache-Control", "no-store");
+  return new Response(decorated, { status: response.status, statusText: response.statusText, headers });
 }
 
 const providerFrameDecoder = new TextDecoder();
@@ -1249,11 +1290,12 @@ export default {
     const url = new URL(request.url);
 
     const authResponse = await handleAuthRequest(request, env);
-    if (authResponse) return authResponse;
+    if (authResponse) return await withSiteChromeResponse(authResponse, url.pathname);
     if (request.method === "GET" || request.method === "HEAD") {
       const infoPage = renderSiteInfoPage(url.pathname);
       if (infoPage) {
-        return new Response(request.method === "HEAD" ? null : infoPage, {
+        const pageHtml = withSiteChrome(infoPage);
+        return new Response(request.method === "HEAD" ? null : pageHtml, {
           status: 200,
           headers: {
             "Content-Type": "text/html; charset=utf-8",
@@ -1284,20 +1326,15 @@ export default {
         html = html.replace("</body>", ENTRY_LAUNCH_OVERLAY + '<script src="/auth.js" defer></script></body>');
       } else if (accountId || adminAccess) {
         html = html.replace("<body>", '<body data-page="entry" data-entry-state="products">');
-        const productsOverlay = ENTRY_PRODUCTS_OVERLAY.replace(
-          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">",
-          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n" + ENTRY_SITE_MENU,
-        );
-        html = html.replace("</body>", productsOverlay + "<script src=\"/entry-menu.js\" defer></script></body>");
+        const productsOverlay = ENTRY_PRODUCTS_OVERLAY;
+        html = html.replace("</body>", ENTRY_SITE_MENU + productsOverlay + "<script src=\\\"/entry-menu.js\\\" defer></script></body>");
       } else {
         html = html.replace('<script src="/session-ui.js" defer></script>', "");
         html = html.replace("<body>", '<body data-page="login" data-entry-state="login">');
-        const authOverlay = ENTRY_AUTH_OVERLAY.replace(
-          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">",
-          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n" + ENTRY_SITE_MENU,
-        );
-        html = html.replace("</body>", authOverlay + "<script src=\"/auth.js\" defer></script><script src=\"/entry-menu.js\" defer></script></body>");
+        const authOverlay = ENTRY_AUTH_OVERLAY;
+        html = html.replace("</body>", ENTRY_SITE_MENU + authOverlay + "<script src=\\\"/auth.js\\\" defer></script><script src=\\\"/entry-menu.js\\\" defer></script></body>");
       }
+      html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
       const headers = new Headers({
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
@@ -1355,7 +1392,8 @@ export default {
       labUrl.pathname = "/voice-lab";
       const labRequest = new Request(labUrl.toString(), request);
       const labResponse = await env.ASSETS.fetch(labRequest);
-      const headers = new Headers(labResponse.headers);
+      const decoratedLabResponse = await withSiteChromeResponse(labResponse, labUrl.pathname);
+      const headers = new Headers(decoratedLabResponse.headers);
       headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("X-Frame-Options", "DENY");
@@ -1363,15 +1401,15 @@ export default {
       headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
       headers.set("Cross-Origin-Resource-Policy", "same-origin");
       headers.set("Cache-Control", "no-store");
-      return new Response(labResponse.body, {
-        status: labResponse.status,
-        statusText: labResponse.statusText,
+      return new Response(decoratedLabResponse.body, {
+        status: decoratedLabResponse.status,
+        statusText: decoratedLabResponse.statusText,
         headers,
       });
     }
 
 
-    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-bird-64.png" || url.pathname.startsWith("/api/auth/");
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = await isAdmin(request, env);
@@ -1382,7 +1420,7 @@ export default {
       }
     }
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
-    if (continuityResponse) return continuityResponse;
+    if (continuityResponse) return await withSiteChromeResponse(continuityResponse, url.pathname);
 
     if (url.pathname === "/api/health") {
       return json({
@@ -1421,6 +1459,11 @@ export default {
       }
       html = html.replace("</body>", "<script src=/continuity.js defer></script></body>");
       responseBody = html;
+      headers.delete("Content-Length");
+      headers.delete("ETag");
+    } else if (request.method === "GET" && assetResponse.status === 200 &&
+        shouldUseSiteChrome(url.pathname) && headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
+      responseBody = withSiteChrome(await assetResponse.text());
       headers.delete("Content-Length");
       headers.delete("ETag");
     }

@@ -102,7 +102,7 @@ function sameOrigin(request: Request): boolean {
 function htmlResponse(html: string, status = 200, cookie?: string): Response {
   const headers = new Headers({
     "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
-    "Content-Security-Policy": "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:",
+    "Content-Security-Policy": "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:",
     "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()", "Cross-Origin-Resource-Policy": "same-origin",
   });

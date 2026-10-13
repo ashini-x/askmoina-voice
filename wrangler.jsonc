@@ -23,6 +23,8 @@
       "/account",
       "/account.html",
       "/auth.js",
+      "/site-chrome.css",
+      "/askmoina-bird-64.png",
       "/admin",
       "/admin/*",
       "/admin.js",

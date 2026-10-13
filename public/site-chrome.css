@@ -1,0 +1,23 @@
+/* Apple-inspired mobile-width navigation used on every standard AskMoina page. */
+.site-chrome-page{--site-chrome-width:430px}
+.entry-site-header{position:fixed;z-index:5000;top:0;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(100%,var(--site-chrome-width,430px));height:44px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(245,245,247,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08);color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.entry-logo-slot{display:flex;align-items:center;justify-content:flex-start;flex:0 0 24px;width:24px;height:30px;text-decoration:none;pointer-events:auto}
+.entry-logo-slot img{display:block;width:22px;height:22px;object-fit:contain;object-position:center}
+.entry-site-menu{position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;z-index:1;display:block;margin:0 0 0 auto;padding:0;color:#1d1d1f;pointer-events:auto}
+.entry-site-menu>summary{display:grid;place-items:center;width:28px;height:32px;margin:0;padding:0;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#1d1d1f;list-style:none;cursor:pointer;user-select:none}
+.entry-site-menu>summary::-webkit-details-marker{display:none}.entry-site-menu>summary::marker{content:""}
+.entry-site-menu>summary svg{display:block;width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round}
+.entry-site-menu>summary:active{transform:scale(.96)}
+.entry-site-menu-panel{position:absolute!important;top:calc(100% + 6px)!important;right:0!important;left:auto!important;width:min(286px,calc(100vw - 32px));max-height:min(72dvh,520px);overflow:auto;padding:7px;border:1px solid rgba(0,0,0,.08);border-radius:16px;background:rgba(250,250,250,.96);color:#1d1d1f;box-shadow:0 16px 44px rgba(0,0,0,.15);-webkit-backdrop-filter:blur(26px) saturate(155%);backdrop-filter:blur(26px) saturate(155%);animation:entry-menu-in .18s cubic-bezier(.2,.8,.2,1) both}
+.entry-site-menu-panel a,.entry-site-menu-panel .entry-menu-logout{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;min-height:42px;margin:0;padding:0 12px;border:0;border-radius:10px;background:transparent;color:#1d1d1f;text-decoration:none;text-align:left;font:450 14px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.012em;cursor:pointer}
+.entry-site-menu-panel a span{font-size:20px;line-height:1;color:#86868b;font-weight:300}
+.entry-site-menu-panel a:hover,.entry-site-menu-panel a:focus-visible,.entry-site-menu-panel .entry-menu-logout:hover{background:rgba(118,118,128,.11);outline:none}
+.entry-site-menu-panel .entry-menu-logout{border-top:1px solid rgba(60,60,67,.13);border-radius:0;margin-top:5px;padding-top:3px;color:#b42318}
+.entry-site-menu-panel .entry-menu-logout[hidden]{display:none!important}
+@keyframes entry-menu-in{from{opacity:0;transform:translateY(-4px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.site-chrome-page>main:not(.camera-app):not(.site-info-shell){box-sizing:border-box;width:min(100%,430px)!important;max-width:430px!important;margin-left:auto!important;margin-right:auto!important}
+.site-chrome-page>main>header.top,.site-chrome-page>main>header.brand{display:none!important}
+body.site-info-body .site-info-shell{box-sizing:border-box;width:min(100%,430px);left:50%;right:auto;transform:translateX(-50%);padding:70px 14px 24px}
+body.site-info-body .site-info-header{display:none!important}
+body.site-info-body .site-info-card{width:100%}
+@media(prefers-reduced-motion:reduce){.entry-site-menu>summary,.entry-site-menu-panel{animation:none!important;transition:none!important}}

@@ -7,6 +7,8 @@ const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "u
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
+const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
+const logo = readFileSync(new URL("../public/askmoina-bird-64.png", import.meta.url));
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -293,8 +295,8 @@ describe("Live Co-Pilot browser assets", () => {
 describe("Apple-style entry navigation and disconnect cue", () => {
   it("adds the menu only to the sign-in and experience chooser surfaces", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
-    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY.replace(");
-    expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
+    expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
     for (const label of ["Profile", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
       expect(workerSource).toContain(label);
     }
@@ -311,8 +313,10 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 
 
   it("inserts a real newline, never literal backslash-n text, before the menu on both entry surfaces", () => {
-    expect(workerSource.match(/>\\n" \+ ENTRY_SITE_MENU/g)).toHaveLength(2);
-    expect(workerSource).not.toContain(">\\\\n\" + ENTRY_SITE_MENU");
+    expect(workerSource).toContain("ENTRY_SITE_MENU + productsOverlay");
+    expect(workerSource).toContain("ENTRY_SITE_MENU + authOverlay");
+    expect(workerSource).not.toContain("ENTRY_AUTH_OVERLAY.replace(");
+    expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
   });
 
   it("keeps the disconnect tone distinct and lets it finish before returning to the chooser", () => {
@@ -330,6 +334,21 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(css).toContain("width:min(100%,430px)");
     expect(css).toContain(".entry-overlay .entry-products{grid-template-columns:minmax(0,1fr)!important}");
     expect(css).toContain("body.site-info-body .site-info-shell{width:min(100%,430px)");
+  });
+
+
+  it("keeps the Apple-style header at the page root with bird logo left and hamburger right", () => {
+    expect(workerSource).toContain("askmoina-bird-64.png");
+    expect(workerSource).toContain("function withSiteChrome(html: string)");
+    expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname)");
+    expect(workerSource).toContain("ENTRY_SITE_MENU + productsOverlay");
+    expect(workerSource).toContain("ENTRY_SITE_MENU + authOverlay");
+    expect(siteChromeCss).toContain("background:rgba(245,245,247,.88)");
+    expect(siteChromeCss).toContain("justify-content:space-between");
+    expect(siteChromeCss).toContain("width:min(100%,var(--site-chrome-width,430px))");
+    expect(siteChromeCss).toContain("right:0!important;left:auto!important");
+    expect(siteChromeCss).toContain("site-chrome-page>main:not(.camera-app)");
+    expect(logo.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   });
 
 });
