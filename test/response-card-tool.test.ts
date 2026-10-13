@@ -123,5 +123,7 @@ describe("RC4 bounded response-card contract", () => {
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.properties.type.enum).toEqual(["steps", "key_details", "comparison"]);
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.properties.sources.description).toContain("full HTTPS URLs");
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.required).toEqual(["type", "title"]);
+    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("one distinct entry for every requested rank");
+    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("full-screen, translucent Apple-style answer sheet");
   });
 });
