@@ -48,7 +48,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".entry-passkey-trailing");
   });
 
-  it("renders RC3 response cards in a compact, dismissible, text-only tray", () => {
+  it("renders RC4 full-screen answer sheets with ten rows and source links", () => {
     expect(html).toContain('id="responseCardTray"');
     expect(html).toContain('id="responseCardTitle"');
     expect(html).toContain('id="responseCardContent"');
@@ -58,9 +58,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function renderResponseCard(value)");
     expect(script).toContain("function dismissResponseCard()");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
-    expect(script).toContain("The validated response card is now visible in the on-screen response-card tray.");
-    expect(script).toContain("Reference only · No actions marked complete.");
+    expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
+    expect(script).toContain("function renderGroundedDetails(card)");
+    expect(script).toContain("value.details.length > 10");
+    expect(script).toContain("value.slice(0, 10)");
+    expect(script).toContain("new window.SpeechSynthesisUtterance");
+    expect(script).toContain('link.rel = "noopener noreferrer"');
     expect(css).toContain(".response-card-tray[hidden]{display:none!important}");
+    expect(css).toContain("position:fixed;inset:0;z-index:120");
+    expect(css).toContain(".response-card-row-check");
+    expect(css).toContain(".response-card-source-link");
     expect(css).toContain(".response-card-details[hidden]{display:none!important}");
     expect(css).toContain("@media(prefers-reduced-transparency:reduce)");
   });
@@ -462,7 +469,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 });
 
 describe("Apple-style live-search progress", () => {
-  it("shows a compact accessible loader only when the live search tool is actually invoked", () => {
+  it("shows an immediate acknowledgement and staged loader for live search", () => {
     expect(html).toContain('id="liveSearchStatus" hidden');
     expect(html).toContain('id="liveSearchTitle"');
     expect(html).toContain('id="liveSearchPercent"');
@@ -472,7 +479,7 @@ describe("Apple-style live-search progress", () => {
     expect(script).toContain("function startLiveSearchProgress()");
     expect(script).toContain("Checking current sources");
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
-    expect(workerSource).toContain("briefly acknowledge in natural speech");
+    expect(workerSource).toContain("The browser immediately displays and speaks a short acknowledgement");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
     expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
     const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
@@ -511,7 +518,9 @@ describe("Immediate live-search acknowledgement", () => {
     expect(script).toContain("handleTranscriptAcknowledgement(role, entry.text)");
     expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
     expect(script).toContain('liveSearchTitle.textContent = "Got it"');
-    expect(script).toContain('liveSearchMessage.textContent = "One moment"');
+    expect(script).toContain('liveSearchMessage.textContent = "I\'m preparing your search."');
+    expect(script).toContain('liveSearchTitle.textContent = stageItem.title');
+    expect(script).toContain('liveSearchTitle.textContent = "Building your answer"');
     expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
     expect(script).toContain("liveSearchStatus.classList.remove(\"is-acknowledging\")");
     expect(css).toContain(".live-search-status.is-acknowledging .live-search-track{display:none!important}");
