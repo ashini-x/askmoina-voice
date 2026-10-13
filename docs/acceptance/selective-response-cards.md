@@ -10,7 +10,7 @@ AskMoina has three distinct ways to help:
 - **Response card:** durable, scannable information worth keeping on screen while the user acts, compares, or checks exact details.
 - **Camera guide:** a pointer, line, outline, or other bounded visual overlay when spatial placement or direction materially helps.
 
-These are complementary, not interchangeable. Captions are not response cards, and response cards must not be implemented by extending the camera-overlay tool.
+These are complementary, not interchangeable. Captions are not response cards, and response cards must not be implemented by extending the camera-overlay tool. The card interaction should use the familiar rich-response grammar people recognize from ChatGPT (clear titles, checkmarks/checklists, helpful icons, expandable detail, and aligned comparisons), while remaining unmistakably AskMoina and following Apple's restrained visual principles rather than copying every pixel.
 
 ## Decision rule
 
@@ -60,6 +60,19 @@ Camera overlays remain separate. Add a camera guide only when spatial guidance h
 
 These examples define intended behaviour, not claims about current live-model performance.
 
+## Visual and interaction design requirements
+
+The UI should combine ChatGPT-like response usefulness with Apple-level restraint:
+
+- Use clear card titles, small meaningful icons, checkmarks for confirmed checklist items, readable hierarchy, compact progress, and well-aligned comparison rows where the content calls for them.
+- Keep the default card small and calm. Reveal detail progressively with an explicit expand/collapse control. Do not cover the camera, the primary call control, or a safety notice.
+- Prefer Apple's minimal visual language: generous spacing, native-feeling typography, subtle dividers, precise alignment, quiet monochrome surfaces, and restrained use of accent color. No shimmer, glitter, noisy gradients, stacks of unnecessary panels, or decorative icon overload.
+- Cards/details should be rendered as normal semantic HTML in a translucent, camera-friendly surface so the live scene remains visible through the surface where contrast permits. Use a restrained blur/tint and a solid-enough fallback when transparency would make text hard to read. Respect reduced-transparency preferences where available.
+- "Transparent HTML" means an understandable, inspectable HTML UI with translucent styling; it does **not** mean allowing the model to return arbitrary HTML. The model sends structured JSON-like data only; the client creates DOM nodes and inserts all model-supplied text using safe text APIs. No model-authored markup, inline script, or executable content.
+- The searching/thinking status belongs at the bottom of the Co-Pilot/card tray, above the device safe-area edge. Use a small label ("Searching…" or "Thinking…"), a quiet progress bar, and a percentage only when it has a defensible progress basis. The label should reflect the actual operation (for example, web retrieval vs. general processing), not appear for ordinary instantaneous responses.
+- Never fabricate an exact provider-completion percentage. If measurable substeps exist, show a clearly approximate stage estimate driven by those substeps and cap/transition it honestly; if no meaningful progress signal exists, show an indeterminate loader and omit the percentage until the response arrives. The UI must not claim that the model is "82% done" when that number is only a guess.
+- End or change the loader promptly when a tool result arrives, the answer starts streaming, the request is cancelled, or an error/retry state occurs. Do not leave a permanent "Thinking…" animation.
+
 ## Card-type boundaries for the first release
 
 - **steps:** a bounded sequence or checklist. Emphasize the current action; additional steps may be collapsed.
@@ -76,6 +89,9 @@ Do not add a fourth card type as an RC1 workaround. Complex code, rich diagrams,
 - Do not claim camera observation or verification from stale or unavailable frames.
 - Keep cards compact by default and expandable on demand; avoid obscuring the camera, primary call controls, or critical safety state.
 - Use readable text, visible labels, keyboard-accessible controls, and semantic structure. Card content is data, never model-authored executable HTML.
+- Use checkmarks only for user-confirmed steps or steps supported by adequate current evidence; a card being rendered is not evidence that a task step was completed.
+- Use translucent styling only while text contrast remains accessible; prefer readability over the see-through effect.
+- Show the bottom Searching/Thinking indicator only when work is actually underway; never invent a precise completion percentage.
 
 ## RC1 acceptance checklist
 
@@ -88,6 +104,10 @@ Do not add a fourth card type as an RC1 workaround. Complex code, rich diagrams,
 - [ ] Task changes clear obsolete content; follow-ups do not create duplicate cards.
 - [ ] Assamese-English prompts follow the same intent-based policy.
 - [ ] Response-card policy remains separate from caption rendering and camera-overlay tools.
+- [ ] Card interactions support appropriate checkmarks, icons, expansion, and aligned comparisons while remaining visually restrained.
+- [ ] Card surfaces use accessible translucent HTML styling and a readable fallback.
+- [ ] Searching/Thinking status appears in the bottom tray when applicable, with no fabricated exact progress percentages.
+- [ ] Step checkmarks reflect confirmation or evidence, not mere presentation.
 
 ## Next steps after RC1 acceptance
 
