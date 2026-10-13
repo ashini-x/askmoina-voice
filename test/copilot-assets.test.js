@@ -8,7 +8,7 @@ const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
-const logo = readFileSync(new URL("../public/askmoina-bird-mark.png", import.meta.url));
+const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -297,7 +297,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Live Donation", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security"]) {
+    for (const label of ["Live donations", "Your Memory", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign Out"]) {
       expect(workerSource).toContain(label);
     }
     for (const route of ["/about", "/developer", "/help", "/privacy"]) {
@@ -337,8 +337,8 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   });
 
 
-  it("keeps the Apple-style header at the page root with bird logo left and hamburger right", () => {
-    expect(workerSource).toContain("askmoina-bird-mark.png");
+  it("keeps the Apple-style header at the page root with final bird logo, donation link, and hamburger", () => {
+    expect(workerSource).toContain("askmoina-bird-final.png");
     expect(workerSource).toContain("function withSiteChrome(html: string, authenticated = false)");
     expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu)");
     expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
@@ -373,9 +373,10 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).not.toContain('>Profile <span aria-hidden="true">›</span></a>');
     expect(workerSource).toContain("function renderSiteMenu(authenticated: boolean)");
     expect(workerSource).toContain("authenticated ? ");
-    expect(workerSource).toContain("<!-- ASKMOINA_AUTHENTICATED_MENU -->");
+    expect(workerSource).toContain("<!-- ASKMOINA_MENU_CONTENT -->");
     expect(workerSource).toContain('"/donate":');
-    expect(workerSource).toContain("entry-menu-donation");
+    expect(workerSource).toContain('"/pricing":');
+    expect(workerSource).toContain("entry-header-donation");
     expect(workerSource).toContain("Memory Vault");
     expect(workerSource).toContain("entry-menu-logout");
     expect(workerSource).toContain("Sign Out");
@@ -383,10 +384,33 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   });
 
   it("uses a one-line donation shimmer and honors reduced-motion preferences", () => {
-    expect(siteChromeCss).toContain(".entry-site-menu-panel a.entry-menu-donation");
+    expect(siteChromeCss).toContain(".entry-header-donation");
     expect(siteChromeCss).toContain("white-space:nowrap");
     expect(siteChromeCss).toContain("@keyframes live-donation-shimmer");
-    expect(siteChromeCss).toContain("@media(prefers-reduced-motion:reduce){.entry-site-menu-panel a.entry-menu-donation");
+    expect(siteChromeCss).toContain("@media(prefers-reduced-motion:reduce){.entry-header-donation-label");
     expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
+  });
+  it("places Live donations beside the hamburger with a pulsing violet dot", () => {
+    expect(workerSource).toContain("askmoina-bird-final.png");
+    expect(workerSource).toContain("entry-header-donation");
+    expect(workerSource).toContain("entry-live-dot");
+    expect(workerSource).toContain("entry-site-header-actions");
+    expect(siteChromeCss).toContain(".entry-site-header-actions{");
+    expect(siteChromeCss).toContain("@keyframes live-donation-pulse");
+    expect(siteChromeCss).toContain("@keyframes live-donation-shimmer");
+    expect(logo.readUInt32BE(16)).toBe(128);
+    expect(logo.readUInt32BE(20)).toBe(128);
+    expect(logo[25]).toBe(6);
+  });
+
+  it("builds the requested auth-aware menu groups and a public Pricing page", () => {
+    expect(workerSource).toContain("entry-menu-memory");
+    expect(workerSource).toContain("entry-menu-public");
+    expect(workerSource).toContain("entry-menu-pricing");
+    expect(workerSource).toContain("entry-menu-account");
+    expect(workerSource).toContain("Your Memory");
+    expect(workerSource).toContain("aria-hidden");
+    expect(workerSource).toContain('"/pricing":');
+    expect(workerSource).toContain("No purchase or payment is available on this page today.");
   });
 });
