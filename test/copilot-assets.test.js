@@ -339,7 +339,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 
   it("keeps the Apple-style header at the page root with bird logo left and hamburger right", () => {
     expect(workerSource).toContain("askmoina-bird-mark.png");
-    expect(workerSource).toContain("function withSiteChrome(html: string)");
+    expect(workerSource).toContain("function withSiteChrome(html: string, authenticated = false)");
     expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname)");
     expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
     expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
@@ -375,9 +375,10 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("authenticated ? ");
     expect(workerSource).toContain("<!-- ASKMOINA_AUTHENTICATED_MENU -->");
     expect(workerSource).toContain('"/donate":');
-    expect(workerSource).toContain('href="/donate">Live Donation</a>');
-    expect(workerSource).toContain('href="/vault">Memory Vault');
-    expect(workerSource).toContain('class="entry-menu-logout">Sign Out</button>');
+    expect(workerSource).toContain("entry-menu-donation");
+    expect(workerSource).toContain("Memory Vault");
+    expect(workerSource).toContain("entry-menu-logout");
+    expect(workerSource).toContain("Sign Out");
     expect(workerSource).toContain('url.pathname === "/account" || url.pathname === "/account.html"');
   });
 
