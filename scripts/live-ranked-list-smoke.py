@@ -126,7 +126,7 @@ def bounded_card(args: object) -> bool:
     if kind == "key_details":
         items = args.get("details")
         return (
-            set(args).issubset({"type", "title", "summary", "details"})
+            set(args).issubset({"type", "title", "summary", "details", "sources"})
             and isinstance(items, list) and 1 <= len(items) <= 10
             and all(isinstance(item, dict) and set(item).issubset({"label", "value", "unit"})
                     and {"label", "value"}.issubset(item)
@@ -134,6 +134,11 @@ def bounded_card(args: object) -> bool:
                     and isinstance(item["value"], str) and 1 <= len(item["value"].strip()) <= 180
                     and ("unit" not in item or isinstance(item["unit"], str) and len(item["unit"]) <= 32)
                     for item in items)
+            and isinstance(args.get("sources"), list) and 1 <= len(args["sources"]) <= 4
+            and all(isinstance(source, dict) and set(source) == {"title", "url"}
+                    and isinstance(source["title"], str) and 1 <= len(source["title"].strip()) <= 100
+                    and isinstance(source["url"], str) and source["url"].startswith("https://")
+                    for source in args["sources"])
         )
     options = args.get("options")
     if not (set(args).issubset({"type", "title", "summary", "options", "takeaway"})
@@ -270,10 +275,13 @@ def main() -> int:
                         details = args.get("details")
                         if not isinstance(details, list) or len(details) != 10:
                             raise RuntimeError("The model did not proactively present exactly ten leaderboard rows.")
+                        sources = args.get("sources")
+                        if not isinstance(sources, list) or not sources:
+                            raise RuntimeError("The ten-row answer card did not include its web source links.")
                         top_ten_card_seen = True
                     tool_count += 1
                     result = (
-                        "The validated response card is visible in the on-screen tray. Continue with a concise "
+                        "The complete designed response card is visible as a full-screen answer sheet. Continue with a concise "
                         "spoken summary; do not read every row aloud."
                     )
                 else:
