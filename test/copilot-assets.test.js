@@ -590,7 +590,7 @@ describe("RC6 grounded list visibility regressions", () => {
 describe("RC7 zero-gap search-status feedback", () => {
   it("shows a generic status on the first detected user speech before transcription or search start", () => {
     expect(script).toContain('showLiveSearchAcknowledgement("", false)');
-    expect(script).toContain('if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing)');
+    expect(script).toContain('if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive)');
     expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
   });
