@@ -208,7 +208,7 @@
   }
 
   const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top[\s-]*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:all|every)\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:full|complete|entire|whole)\s+(?:ranked\s+)?list|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
-  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
+  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:got it[, .]+(?:i(?:'m| am) (?:looking|checking)|i(?:'ll| will) (?:look|check)|let me (?:check|look))|i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
 
   function isLikelyLiveSearchRequest(text) {
     const normalized = String(text || "").replace(/\s+/g, " ").trim();
@@ -1852,7 +1852,7 @@
         lastMicVoiceAt = now;
         const wasListening = stage.classList.contains("is-listening");
         stage.classList.add("is-listening");
-        if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing) {
+        if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive) {
           showLiveSearchAcknowledgement("", false);
         }
       } else if (now - lastMicVoiceAt > 145) {
