@@ -175,7 +175,7 @@
         excludeCredentials: (options.excludeCredentials || []).map((item) => ({ ...item, id: decode(item.id) }))
       };
       delete publicKey.challengeId;
-      showSheet("Confirm on your device", "Use your device’s secure prompt to create a passkey. Your face or fingerprint never leaves the device.");
+      // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.create({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled passkey creation.");
       hideSheet();
@@ -213,7 +213,7 @@
         allowCredentials: (options.allowCredentials || []).map((item) => ({ ...item, id: decode(item.id) }))
       };
       delete publicKey.challengeId;
-      showSheet("Confirm your identity", "Choose the passkey saved for AskMoina. Your browser may use Face ID, Touch ID, Windows Hello or another device.");
+      // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.get({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled sign-in.");
       hideSheet();

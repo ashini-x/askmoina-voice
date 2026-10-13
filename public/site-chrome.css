@@ -2,7 +2,7 @@
 .site-chrome-page{--site-chrome-width:430px}
 .entry-site-header{position:fixed;z-index:5000;top:0;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(100%,var(--site-chrome-width,430px));height:44px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(245,245,247,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08);color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
 .entry-logo-slot{display:flex;align-items:center;justify-content:flex-start;flex:0 0 24px;width:24px;height:30px;text-decoration:none;pointer-events:auto}
-.entry-logo-slot img{display:block;width:22px;height:22px;object-fit:contain;object-position:center}
+.entry-logo-slot img{display:block;width:24px;height:24px;object-fit:contain;object-position:center}
 .entry-site-menu{position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;z-index:1;display:block;margin:0 0 0 auto;padding:0;color:#1d1d1f;pointer-events:auto}
 .entry-site-menu>summary{display:grid;place-items:center;width:28px;height:32px;margin:0;padding:0;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#1d1d1f;list-style:none;cursor:pointer;user-select:none}
 .entry-site-menu>summary::-webkit-details-marker{display:none}.entry-site-menu>summary::marker{content:""}

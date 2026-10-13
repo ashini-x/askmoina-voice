@@ -8,7 +8,7 @@ const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
-const logo = readFileSync(new URL("../public/askmoina-bird-64.png", import.meta.url));
+const logo = readFileSync(new URL("../public/askmoina-bird-mark.png", import.meta.url));
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -338,7 +338,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 
 
   it("keeps the Apple-style header at the page root with bird logo left and hamburger right", () => {
-    expect(workerSource).toContain("askmoina-bird-64.png");
+    expect(workerSource).toContain("askmoina-bird-mark.png");
     expect(workerSource).toContain("function withSiteChrome(html: string)");
     expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname)");
     expect(workerSource).toContain("ENTRY_SITE_MENU + productsOverlay");
@@ -359,6 +359,14 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(authInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
     expect(productInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
     expect(authInjection).not.toContain(String.raw`src=\\\\"/auth.js`);
+  });
+
+
+  it("does not flash a custom confirmation sheet before the native passkey prompt", () => {
+    expect(authScript).not.toContain('showSheet("Confirm your identity"');
+    expect(authScript).not.toContain('showSheet("Confirm on your device"');
+    expect(authScript).toContain("navigator.credentials.get({ publicKey, signal: controller.signal })");
+    expect(authScript).toContain("navigator.credentials.create({ publicKey, signal: controller.signal })");
   });
 
 });
