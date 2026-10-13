@@ -272,6 +272,8 @@ def main() -> int:
                         details = args.get("details")
                         if not isinstance(details, list) or len(details) != 10:
                             raise RuntimeError("The model did not proactively present exactly ten leaderboard rows.")
+                        if any(not isinstance(row, dict) or not str(row.get("label", "")).strip() or "not verified" in str(row.get("label", "")).lower() for row in details):
+                            raise RuntimeError("The model's ten-row card contained an empty or unverified entry.")
                         sources = args.get("sources")
                         if sources is not None and not isinstance(sources, list):
                             raise RuntimeError("The optional source field was malformed.")
