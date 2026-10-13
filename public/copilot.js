@@ -66,6 +66,8 @@
   let liveSearchActive = false;
   let liveSearchFinishing = false;
   let liveSearchLookupCompleted = false;
+  let liveSearchAcknowledgementActive = false;
+  let liveSearchAcknowledgementTimer = null;
   let liveSearchProgressValue = 0;
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
@@ -82,6 +84,10 @@
   function startLiveSearchProgress() {
     if (!liveSearchStatus) return;
     if (liveSearchActive && !liveSearchFinishing) return;
+    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
+    liveSearchAcknowledgementTimer = null;
+    liveSearchAcknowledgementActive = false;
+    liveSearchStatus.classList.remove("is-acknowledging");
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchCompletionTimer = null;
@@ -148,6 +154,9 @@
   }
 
   function cancelLiveSearchProgress() {
+    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
+    liveSearchAcknowledgementTimer = null;
+    liveSearchAcknowledgementActive = false;
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     liveSearchProgressInterval = null;
@@ -158,6 +167,49 @@
     pendingResponseCards = [];
     if (liveSearchStatus) liveSearchStatus.hidden = true;
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
+  }
+
+  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release))\b/i;
+  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
+
+  function isLikelyLiveSearchRequest(text) {
+    const normalized = String(text || "").replace(/\s+/g, " ").trim();
+    return normalized.length >= 8 && LIVE_SEARCH_INTENT.test(normalized);
+  }
+
+  function showLiveSearchAcknowledgement() {
+    if (!liveSearchStatus || liveSearchActive || liveSearchFinishing) return;
+    liveSearchAcknowledgementActive = true;
+    liveSearchStatus.hidden = false;
+    liveSearchStatus.classList.add("is-acknowledging");
+    if (liveSearchTitle) liveSearchTitle.textContent = "Got it";
+    if (liveSearchMessage) liveSearchMessage.textContent = "One moment";
+    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
+    // Safety valve for requests the model answers without actually calling live search.
+    liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000);
+  }
+
+  function hideLiveSearchAcknowledgement() {
+    if (liveSearchActive || liveSearchFinishing) return;
+    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
+    liveSearchAcknowledgementTimer = null;
+    liveSearchAcknowledgementActive = false;
+    if (liveSearchStatus) {
+      liveSearchStatus.classList.remove("is-acknowledging");
+      liveSearchStatus.hidden = true;
+    }
+  }
+
+  function handleTranscriptAcknowledgement(role, text) {
+    if (role === "user") {
+      if (isLikelyLiveSearchRequest(text)) showLiveSearchAcknowledgement();
+      return;
+    }
+    if (role !== "assistant" || !liveSearchAcknowledgementActive) return;
+    const reply = String(text || "").trim();
+    // Keep a short spoken acknowledgement visible until the server confirms search start.
+    if (reply.length < 90 && LIVE_SEARCH_ACKNOWLEDGEMENT.test(reply)) return;
+    if (reply.length >= 18) hideLiveSearchAcknowledgement();
   }
 
   function readOptedInMemoryContext() {
@@ -1512,6 +1564,7 @@
     entry.text = merged;
     entry.body.textContent = entry.text;
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
+    handleTranscriptAcknowledgement(role, entry.text);
   }
 
   function finalizeTurn() {
@@ -2382,6 +2435,7 @@
     const messageToolCalls = getToolCalls(message);
     const hasSearchCallOnThisMessage = messageToolCalls.some((call) => call && call.name === "search_current_web");
     if (hasSearchCallOnThisMessage) startLiveSearchProgress();
+    else if (liveSearchAcknowledgementActive && messageToolCalls.length > 0) hideLiveSearchAcknowledgement();
 
     const transcriptionCandidates = [
       ["user", message.input_transcription],
@@ -2414,6 +2468,12 @@
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
         if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
+        else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
+          const assistantEntry = currentTranscriptNodes.assistant;
+          if (!assistantEntry || !LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantEntry.text.trim()) || assistantEntry.text.trim().length >= 90) {
+            hideLiveSearchAcknowledgement();
+          }
+        }
         finalizeTurn();
         if (greetingTurnPending) beginListeningAfterGreeting();
         else if (active && processor) setStatus("Listening — show me the next thing you want help with.");
