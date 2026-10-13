@@ -32,10 +32,9 @@ body.site-info-body .site-info-card{width:100%}
 .entry-site-menu-panel .entry-menu-logout{justify-content:flex-start;gap:10px;min-height:42px;margin:0;padding:0 12px;border:0;border-top:0;border-radius:10px;color:#ff3b30}
 .entry-site-menu-panel .entry-menu-logout svg{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .entry-site-menu-divider{height:1px;margin:5px 0;background:rgba(60,60,67,.14)}
-/* Donations uses the same quiet hierarchy as the other product cards. */
-.entry-donation-card{min-height:0!important;gap:10px;padding:14px 16px;background:rgba(255,255,255,.96);border-color:rgba(60,60,67,.10);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
-.entry-donation-content{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0}
-.entry-donation-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
-.entry-donation-total{flex:0 0 auto;margin-right:20px;color:#86868b;font-size:13px;font-weight:500;line-height:1.25;letter-spacing:-.015em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.entry-donation-card .entry-product-arrow{top:50%;right:13px;bottom:auto;transform:translateY(-50%)}
-@media(max-width:360px){.entry-donation-card{padding-left:14px;padding-right:14px}.entry-donation-total{font-size:12px;margin-right:18px}}
+/* Quiet, Apple-inspired pill links below the product choices. */
+.entry-overlay .entry-products .entry-support-links{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;margin-top:2px}
+.entry-overlay .entry-products .entry-quick-link{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;min-height:48px;padding:0 17px;border:1px solid rgba(60,60,67,.12);border-radius:999px;background:rgba(255,255,255,.82);color:#1d1d1f;text-decoration:none;font:500 14px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.015em;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:background .18s ease,border-color .18s ease}
+.entry-overlay .entry-products .entry-quick-link:hover,.entry-overlay .entry-products .entry-quick-link:focus-visible{background:#fff;border-color:rgba(60,60,67,.22);outline:none}
+.entry-overlay .entry-products .entry-quick-link-amount{flex:0 0 auto;color:#86868b;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em}
+@media(max-width:360px){.entry-overlay .entry-products .entry-support-links{gap:8px}.entry-overlay .entry-products .entry-quick-link{padding:0 12px;font-size:13px}.entry-overlay .entry-products .entry-quick-link-amount{font-size:11px}}
