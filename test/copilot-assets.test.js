@@ -496,7 +496,12 @@ describe("Apple-style live-search progress", () => {
   });
 
   it("holds estimated progress below completion, reaches 100%, then removes the loader before revealing cards and final text", () => {
-    expect(script).toContain("Math.min(92, liveSearchProgressValue + increment)");
+    expect(script).toContain("const searchStages = [");
+    expect(script).toContain("liveSearchMessage.textContent = searchStages[liveSearchProgressStageIndex]");
+    expect(script).toContain('liveSearchProgress.removeAttribute("aria-valuenow")');
+    expect(script).not.toContain("Math.min(92, liveSearchProgressValue + increment)");
+    expect(script).toContain('liveSearchStatus.classList.add("is-complete")');
+    expect(css).toContain(".live-search-status.is-complete .live-search-track>span");
     expect(script).toContain("updateLiveSearchProgress(100)");
     expect(script).toContain("liveSearchStatus.hidden = true");
     expect(script).toContain("pendingResponseCards.push({ id, args: call.args })");
@@ -526,7 +531,8 @@ describe("Immediate live-search acknowledgement", () => {
     expect(script).toContain('liveSearchTitle.textContent = "Building your answer"');
     expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
     expect(script).toContain("liveSearchStatus.classList.remove(\"is-acknowledging\")");
-    expect(css).toContain(".live-search-status.is-acknowledging .live-search-track{display:none!important}");
+    expect(css).toContain(".live-search-status.is-acknowledging .live-search-percent{display:none!important}");
+    expect(css).toContain("@keyframes live-search-sweep");
   });
 
   it("transitions to real progress when the Worker confirms lookup start and clears unused acknowledgements", () => {
