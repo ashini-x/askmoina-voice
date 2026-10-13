@@ -5,7 +5,7 @@ export type ParsedLiveClientInput =
   | { kind: "initial_greeting" }
   | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
-  | { kind: "tool_response"; responses: Array<{ id: string; result: string }> };
+  | { kind: "tool_response"; responses: Array<{ id: string; name: "display_screen_overlay" | "display_response_card"; result: string }> };
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const MAX_MEDIA_BASE64_CHARS = 12_000;
@@ -40,9 +40,11 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
         rawResponse.id.length < 1 ||
         rawResponse.id.length > 128 ||
         /[\u0000-\u001f\u007f]/.test(rawResponse.id) ||
-        rawResponse.name !== "display_screen_overlay"
+        (rawResponse.name !== "display_screen_overlay" && rawResponse.name !== "display_response_card")
       ) return null;
-      let result = "The on-screen target prompt or approximate overlay was handled by the client.";
+      let result = rawResponse.name === "display_response_card"
+        ? "The response-card payload passed the RC2 contract; visual rendering is not available in this release."
+        : "The on-screen target prompt or approximate overlay was handled by the client.";
       if (rawResponse.response !== undefined) {
         if (!isRecord(rawResponse.response) ||
             Object.keys(rawResponse.response).some((key) => key !== "result") ||
@@ -53,7 +55,7 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
         result.length > 3_000 ||
         /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result)
       ) return null;
-      responses.push({ id: rawResponse.id, result });
+      responses.push({ id: rawResponse.id, name: rawResponse.name, result });
     }
     return { kind: "tool_response", responses };
   }
