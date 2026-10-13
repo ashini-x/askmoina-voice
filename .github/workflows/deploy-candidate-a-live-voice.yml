@@ -1,8 +1,9 @@
-name: Deploy Candidate A Live voice (guarded)
+name: Production deployment and live synthetic verification
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,8 +14,8 @@ concurrency:
 
 jobs:
   deploy:
-    # Only the explicitly tagged Candidate A merge commit can trigger this deployment.
-    if: contains(github.event.head_commit.message, '[deploy-candidate-a-voice]')
+    # This is the single production deploy path: every validated main push, or an explicit manual run.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -51,6 +52,25 @@ jobs:
           npm run check
           npm test
           npx wrangler deploy --dry-run --outdir=dist
+
+
+      - name: Validate benchmarks and release bundle contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run benchmark:validate
+          grep -R -q 'normalizeGroundedDeviceContext' dist/
+          grep -R -q 'assessGroundedSource' dist/
+          grep -R -q 'MODEL MATCH NOT ESTABLISHED' dist/
+          grep -R -q 'task_world_state' dist/
+          grep -R -q 'assessSafetyAndUncertainty' dist/
+          grep -R -q 'transitionRealityLoopState' dist/
+          grep -R -q 'UNIVERSAL TASK ENGINE' dist/
+          grep -R -q 'ZERO-LEARNING CAMERA-FIRST UX' dist/
+          grep -R -q 'EFFICIENT INTELLIGENCE' dist/
+          grep -R -q 'PERMISSION-BASED CONTINUITY' dist/
+          grep -R -q 'ASSAMESE SPEECH EVALUATION CONTRACT' dist/
+          echo "Benchmarks and M29–M37 release bundle contracts: OK"
 
       - name: Upload validated AskMoina version without changing triggers
         id: upload
@@ -124,3 +144,89 @@ jobs:
             cat "$body"
             exit 1
           fi
+
+      - name: Verify critical routes and no-guest access after deployment
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch_status() {
+            curl --silent --show-error --max-time 25 --output "$2" --write-out "%{http_code}" "$BASE_URL$1"
+          }
+          status="$(fetch_status /api/health /tmp/moina-health.json)"
+          test "$status" = "200"
+          grep -q '"ok":true' /tmp/moina-health.json
+          grep -q '"app":"askmoina-voice"' /tmp/moina-health.json
+          echo "Health endpoint: OK"
+
+          status="$(fetch_status /login.html /tmp/moina-login.html)"
+          test "$status" = "200"
+          grep -q 'Face ID' /tmp/moina-login.html
+          grep -q 'Touch ID' /tmp/moina-login.html
+          grep -q 'Phone number + OTP' /tmp/moina-login.html
+          status="$(fetch_status /auth.js /tmp/moina-auth.js)"
+          test "$status" = "200"
+          grep -q 'navigator.credentials.create' /tmp/moina-auth.js
+          grep -q 'navigator.credentials.get' /tmp/moina-auth.js
+          node --check /tmp/moina-auth.js
+          echo "Passkey client and login page: OK"
+
+          status="$(fetch_status /session-ui.js /tmp/moina-session-ui.js)"
+          test "$status" = "302"
+          echo "Unauthenticated shared session UI denied: OK"
+
+          status="$(fetch_status /api/auth/me /tmp/moina-auth-me.json)"
+          test "$status" = "200"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const me = JSON.parse(readFileSync("/tmp/moina-auth-me.json", "utf8"));
+          if (me.authenticated !== false) throw new Error("Anonymous request unexpectedly resolved to an account.");
+          console.log("No-guest identity endpoint: OK");
+          NODE
+
+          status="$(fetch_status /api/voice/status /tmp/moina-voice-status.json)"
+          test "$status" = "401"
+          echo "Anonymous voice status denied: OK"
+          status="$(fetch_status / /tmp/moina-home.html)"
+          test "$status" = "200"
+          grep -q 'Continue with Face ID or Touch ID' /tmp/moina-home.html
+          grep -q 'OR USE YOUR PHONE' /tmp/moina-home.html
+          if grep -Eq 'modeCreate|modeSignin|Signup or login' /tmp/moina-home.html; then
+            echo "Login entry exposes a removed account-mode switch." >&2
+            exit 1
+          fi
+          echo "Anonymous home serves the sign-in entry: OK"
+
+          status="$(fetch_status /copilot /tmp/moina-copilot.html)"
+          test "$status" = "302"
+          echo "Anonymous Co-Pilot access denied: OK"
+          status="$(fetch_status /vault /tmp/moina-vault.html)"
+          test "$status" = "302"
+          echo "Anonymous Memory Vault access denied: OK"
+
+          status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
+          test "$status" = "200"
+          grep -q 'AskMoina Admin' /tmp/moina-admin-login.html
+          echo "Admin login page: OK"
+          status="$(fetch_status /admin /tmp/moina-admin.html)"
+          test "$status" = "302"
+          echo "Unauthenticated admin redirect: OK"
+          status="$(fetch_status /admin/api/overview /tmp/moina-admin-api.json)"
+          test "$status" = "401"
+          echo "Unauthenticated admin API denied: OK"
+
+      - name: Synthetic live web-grounding and voice-memory verification
+        shell: bash
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng
+          python3 -m venv .venv-production-smoke
+          . .venv-production-smoke/bin/activate
+          python -m pip install --quiet --disable-pip-version-check websocket-client
+          python scripts/live-grounding-smoke.py
+          python scripts/live-memory-voice-smoke.py
+
