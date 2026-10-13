@@ -223,6 +223,7 @@ def main() -> int:
         top_ten_card_seen = False
         final_complete = False
         saw_final_text = False
+        saw_post_tool_spoken_text = False
         input_transcription_received = False
         card_keyword_observed = False
         steps_keyword_observed = False
@@ -296,8 +297,10 @@ def main() -> int:
                         top_ten_card_seen = True
                     tool_count += 1
                     result = (
-                        "The complete designed response card is visible as a full-screen answer sheet. Continue with a concise "
-                        "spoken summary; do not read every row aloud."
+                        "The complete ten-row answer sheet is visible. Continue speaking the full natural answer: "
+                        "summarize what the leaderboard means, explain the important context, and mention the row-level "
+                        "details that help the user understand it. The card is a companion, not a replacement for speech. "
+                        "Do not stop at a short summary or wait for another user request."
                     )
                 else:
                     result = "Synthetic overlay acknowledgement; no physical action was taken."
@@ -305,8 +308,11 @@ def main() -> int:
             if responses:
                 ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
                 last_keepalive_at = time.monotonic()
-            if get_text(message):
+            spoken_text = get_text(message).strip()
+            if spoken_text:
                 saw_final_text = True
+                if tool_count > 0 and not calls:
+                    saw_post_tool_spoken_text = True
             turn_complete_now = is_turn_complete(message)
             # The real browser keeps sending microphone frames. Match that behavior
             # while waiting for Live instead of letting the relay idle watchdog expire.
@@ -321,6 +327,8 @@ def main() -> int:
             raise RuntimeError("The Co-Pilot failed to ground the IPL ranking request with live web search.")
         if not top_ten_card_seen:
             raise RuntimeError("The Co-Pilot did not proactively display a ten-row ranked response card.")
+        if not saw_post_tool_spoken_text:
+            raise RuntimeError("The model did not continue speaking after the ten-row answer card was acknowledged.")
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
         PHASE = "verified"
