@@ -120,7 +120,7 @@ export function validateResponseCard(value: unknown): ResponseCardValidation {
 
 export const DISPLAY_RESPONSE_CARD_FUNCTION = {
   name: "display_response_card",
-  description: "Mandatory for an explicit request such as 'make a response card with three steps for organizing pens': call this function with type=steps and 2–5 short, safe actions. Use also for useful multi-step plans, exact reference details, grounded comparisons, and proactive ranked/top-10 lists; a top-10 list should use type=key_details with one entry per rank. The client displays validated data in a compact generic response-card tray; after acknowledgement, continue with concise spoken guidance. Never imply that a rendered card means the user completed an action. Separate from camera overlays. Keep values concise and safe. Do not call for greetings or one-line factual answers.",
+  description: "For an explicit response-card request, you MUST call this function in the same turn. After grounded web search returns a list, use type=key_details with one distinct entry for each supported requested rank (up to 10), plus grounded HTTPS source links when returned. If the user follows up with 'show me all 10', 'show the full list', 'display every entry', or asks for the remaining items, do not answer with names by speech alone: render the complete prior grounded list, and if any positions are missing or unverified, search the same topic again before answering. Never fabricate a name, statistic, or source. The client renders a full-screen translucent Apple-style answer sheet with a concise spoken summary. Do not imply a rendered card means an action was completed. Keep response cards separate from camera overlays."
   parameters: {
     type: "OBJECT",
     properties: {
