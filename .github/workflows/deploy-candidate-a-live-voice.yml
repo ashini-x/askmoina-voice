@@ -222,11 +222,35 @@ jobs:
           BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
         run: |
           set -euo pipefail
+          set +x
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends espeak-ng
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
           python3 -m venv .venv-production-smoke
           . .venv-production-smoke/bin/activate
           python -m pip install --quiet --disable-pip-version-check websocket-client
+
+          # Register through the real passkey endpoint, using Chromium's
+          # virtual authenticator. Never log the session token.
+          SMOKE_COOKIE="$(node scripts/synthetic-passkey-session.mjs)"
+          if [[ ! "$SMOKE_COOKIE" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
+            echo "::error::Synthetic passkey setup did not return a valid session."
+            exit 1
+          fi
+          echo "::add-mask::$SMOKE_COOKIE"
+          export ASKMOINA_SYNTHETIC_COOKIE="$SMOKE_COOKIE"
+          cleanup() {
+            curl --silent --show-error --max-time 12 --output /dev/null \
+              --request POST "$BASE_URL/api/auth/logout" \
+              --header "Origin: $BASE_URL" \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              --header "Content-Type: application/json" --data '{}' || true
+          }
+          trap cleanup EXIT
           python scripts/live-grounding-smoke.py
           python scripts/live-memory-voice-smoke.py
+          cleanup
+          trap - EXIT
+          echo "Synthetic session revoked: OK"
 

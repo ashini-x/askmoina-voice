@@ -16,6 +16,7 @@ import wave
 import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
+AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = "Please tell me the name I asked you to call me."
 MEMORY = "My name is Raaz, so call me Raaz when you interact with me."
 MAX_WAIT_SECONDS = 35
@@ -78,7 +79,9 @@ def main() -> int:
     if ws_url == BASE_URL + "/api/voice/socket":
         raise RuntimeError("BASE_URL must use https://")
     pcm = synthesize_pcm_16k()
-    ws = websocket.create_connection(ws_url, origin=base_origin, timeout=12, enable_multithread=True)
+    if not AUTH_COOKIE.startswith("moina_session="):
+        raise RuntimeError("Authenticated synthetic session missing; refusing anonymous voice access.")
+    ws = websocket.create_connection(ws_url, origin=base_origin, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
     try:
         ws.send(json.dumps({"setup": {}, "memory_context": MEMORY}))
         setup_deadline = time.time() + 18
