@@ -1114,3 +1114,11 @@ body.site-info-body .site-info-card{width:100%}
   .live-search-mark{animation:none}
   .live-search-track>span{animation:none;transform:translateX(0)}
 }
+
+
+/* Minimal restore affordance: return to the live camera without dismissing the answer. */
+.response-card-restore[hidden]{display:none!important}
+.response-card-restore{position:fixed;z-index:30;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(20,22,26,.76);color:#f5f5f7;font-size:.82rem;font-weight:600;letter-spacing:-.01em;-webkit-backdrop-filter:blur(18px) saturate(130%);backdrop-filter:blur(18px) saturate(130%);box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.response-card-restore:focus-visible{outline:2px solid #9be9b8;outline-offset:3px}
+.response-card-restore:hover{background:rgba(38,41,46,.92)}
+@media(prefers-reduced-transparency:reduce){.response-card-restore{background:#17191d;-webkit-backdrop-filter:none;backdrop-filter:none}}

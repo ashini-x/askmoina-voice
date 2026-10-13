@@ -30,6 +30,7 @@
       <h2 id="responseCardTitle">Reference</h2>
     </div>
     <div class="response-card-actions">
+      <button type="button" id="responseCardMinimize" aria-label="Minimize answer sheet to camera" title="Back to camera">↓</button>
       <button type="button" id="responseCardCollapse" aria-expanded="true" aria-controls="responseCardDetails" aria-label="Collapse card details" title="Collapse card">−</button>
       <button type="button" id="responseCardDismiss" aria-label="Dismiss response card" title="Dismiss card">×</button>
     </div>
@@ -40,6 +41,7 @@
   </div>
   <div id="responseCardStatus" class="response-card-status" role="status" aria-live="polite">Keep this reference visible while you work.</div>
 </section>
+<button type="button" id="responseCardRestore" class="response-card-restore" hidden aria-label="Reopen answer sheet">↑ <span>Show answer</span></button>
 <section class="live-search-status" id="liveSearchStatus" hidden aria-labelledby="liveSearchTitle" aria-describedby="liveSearchMessage">
   <div class="live-search-status-top">
     <span class="live-search-mark" aria-hidden="true"><span></span></span>

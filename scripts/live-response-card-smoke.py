@@ -218,6 +218,7 @@ def main() -> int:
         tool_count = 0
         final_complete = False
         saw_final_text = False
+        saw_post_tool_spoken_text = False
         input_transcription_received = False
         card_keyword_observed = False
         steps_keyword_observed = False
@@ -261,8 +262,10 @@ def main() -> int:
                         raise RuntimeError("Live response-card call failed the bounded schema assertion.")
                     tool_count += 1
                     result = (
-                        "The RC2 response-card payload passed schema validation. The card tray is not part "
-                        "of RC2 yet; continue with concise spoken guidance and do not say that a card is visible."
+                        "The response-card payload passed schema validation and has been displayed to the user. "
+                        "Continue speaking the full natural answer without pausing because the card is visible. "
+                        "Explain every step, what to look for, why it matters, key details, and relevant safety limits. "
+                        "Do not stop at a short summary, only read the card title, or wait for another user request."
                     )
                 else:
                     result = "Synthetic overlay acknowledgement; no physical action was taken."
@@ -270,8 +273,11 @@ def main() -> int:
             if responses:
                 ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
                 last_keepalive_at = time.monotonic()
-            if get_text(message):
+            spoken_text = get_text(message).strip()
+            if spoken_text:
                 saw_final_text = True
+                if tool_count > 0 and not calls:
+                    saw_post_tool_spoken_text = True
             turn_complete_now = is_turn_complete(message)
             # The real browser keeps sending microphone frames. Match that behavior
             # while waiting for Live instead of letting the relay idle watchdog expire.
@@ -289,6 +295,8 @@ def main() -> int:
                 + ", card_keyword_observed=" + str(card_keyword_observed).lower()
                 + ", steps_keyword_observed=" + str(steps_keyword_observed).lower() + ")."
             )
+        if not saw_post_tool_spoken_text:
+            raise RuntimeError("The model did not resume a spoken/text answer after the response-card tool was acknowledged.")
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
         PHASE = "verified"

@@ -43,6 +43,8 @@
   const responseCardStatus = $("#responseCardStatus");
   const responseCardCollapseButton = $("#responseCardCollapse");
   const responseCardDismissButton = $("#responseCardDismiss");
+  const responseCardMinimizeButton = $("#responseCardMinimize");
+  const responseCardRestoreButton = $("#responseCardRestore");
   // Keep the answer sheet viewport-sized rather than bounded by the camera-stage layout.
   if (responseCardTray && responseCardTray.parentElement !== document.body) document.body.appendChild(responseCardTray);
   const liveSearchStatus = $("#liveSearchStatus");
@@ -62,8 +64,11 @@
   const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
 
   let responseCardExpanded = true;
+  let responseCardRenderedForTurn = false;
   if (responseCardCollapseButton) responseCardCollapseButton.addEventListener("click", () => setResponseCardExpanded(!responseCardExpanded));
   if (responseCardDismissButton) responseCardDismissButton.addEventListener("click", dismissResponseCard);
+  if (responseCardMinimizeButton) responseCardMinimizeButton.addEventListener("click", minimizeResponseCard);
+  if (responseCardRestoreButton) responseCardRestoreButton.addEventListener("click", restoreResponseCard);
 
   let liveSearchActive = false;
   let liveSearchFinishing = false;
@@ -73,6 +78,7 @@
   let liveSearchProgressValue = 0;
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
+  let liveSearchWatchdogTimer = null;
   let pendingResponseCards = [];
   let lastGroundedRankedListCard = null;
   let protectGroundedListForTurn = false;
@@ -108,6 +114,20 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     liveSearchProgressStageIndex = 0;
+    if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
+    liveSearchWatchdogTimer = window.setTimeout(() => {
+      liveSearchWatchdogTimer = null;
+      if (!liveSearchActive || liveSearchFinishing) return;
+      if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
+      liveSearchProgressInterval = null;
+      liveSearchActive = false;
+      liveSearchFinishing = false;
+      liveSearchLookupCompleted = false;
+      if (liveSearchStatus) { liveSearchStatus.hidden = true; liveSearchStatus.classList.remove("is-complete", "is-acknowledging"); }
+      if (transcriptNode) transcriptNode.classList.remove("is-searching");
+      hideLiveSearchAcknowledgement();
+      if (statusNode) setStatus("The live lookup is taking longer than expected. You can keep talking while I recover.", "warning");
+    }, 38_000);
     liveSearchStatus.hidden = false;
     if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
     if (liveSearchMessage) liveSearchMessage.textContent = "Finding relevant sources";
@@ -153,6 +173,8 @@
   function completeLiveSearchProgress() {
     if (!liveSearchActive || liveSearchFinishing) return;
     liveSearchFinishing = true;
+    if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
+    liveSearchWatchdogTimer = null;
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchProgressInterval = null;
     if (liveSearchTitle) liveSearchTitle.textContent = "Finishing";
@@ -187,6 +209,8 @@
   }
 
   function cancelLiveSearchProgress() {
+    if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
+    liveSearchWatchdogTimer = null;
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
@@ -409,6 +433,10 @@
       showLiveSearchAcknowledgement(normalized, searchIntent);
       if (searchIntent) speakImmediateSearchAcknowledgement(normalized);
       return;
+    }
+
+    if (role === "assistant" && liveSearchActive && liveSearchLookupCompleted && String(text || "").trim().length >= 18) {
+      completeLiveSearchProgress();
     }
 
     if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
@@ -1766,6 +1794,7 @@
     const text = String(incomingText || "").trim();
     if (!text) return;
     const entry = getTranscriptEntry(role);
+    if (role === "user" && !entry.text) responseCardRenderedForTurn = false;
     const mergeTranscript = window.AskMoinaTranscript && window.AskMoinaTranscript.merge;
     const merged = typeof mergeTranscript === "function"
       ? mergeTranscript(entry.text, text)
@@ -1853,7 +1882,8 @@
         const wasListening = stage.classList.contains("is-listening");
         stage.classList.add("is-listening");
         if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive) {
-          showLiveSearchAcknowledgement("", false);
+          responseCardRenderedForTurn = false;
+      showLiveSearchAcknowledgement("", false);
         }
       } else if (now - lastMicVoiceAt > 145) {
         stage.classList.remove("is-listening");
@@ -2560,9 +2590,25 @@
     }
   }
 
+  function minimizeResponseCard() {
+    if (!responseCardTray || responseCardTray.hidden) return;
+    // Minimize only the visual sheet. Do not pause, clear, or restart live audio.
+    responseCardTray.hidden = true;
+    if (stage) stage.classList.remove("has-response-card");
+    if (responseCardRestoreButton) responseCardRestoreButton.hidden = false;
+  }
+
+  function restoreResponseCard() {
+    if (!responseCardTray) return;
+    responseCardTray.hidden = false;
+    if (stage) stage.classList.add("has-response-card");
+    if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
+  }
+
   function dismissResponseCard() {
     if (!responseCardTray) return;
     responseCardTray.hidden = true;
+    if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
     if (responseCardContent) responseCardContent.replaceChildren();
     if (responseCardSummary) {
       responseCardSummary.textContent = "";
@@ -2572,10 +2618,41 @@
     setResponseCardExpanded(true);
   }
 
+  function createTranscriptFallbackCard(userText, assistantText) {
+    const answer = String(assistantText || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!answer) return null;
+    const prompt = String(userText || "").replace(/\s+/g, " ").trim();
+    // The opening greeting has no user request to answer; keep the camera clean until the first question.
+    if (!prompt) return null;
+    if (/^(?:hi|hello|hey|yo|thanks|thank you|ok|okay|sure|got it|good morning|good evening|good night|bye)[.!?\s]*$/i.test(prompt) && answer.length < 180) return null;
+    const title = ("Answer · " + prompt).slice(0, 80);
+    const sentenceMatch = answer.match(/^.{1,180}?(?:[.!?](?=\s|$)|$)/);
+    const firstSentence = (sentenceMatch ? sentenceMatch[0] : answer.slice(0, 180)).trim().slice(0, 180);
+    const sentences = answer.split(/(?<=[.!?])\s+|\s+[•·]\s+/).map((item) => item.trim()).filter(Boolean);
+    const chunks = [];
+    for (const sentence of (sentences.length ? sentences : [answer])) {
+      let rest = sentence;
+      while (rest.length > 180) {
+        let cut = rest.lastIndexOf(" ", 180);
+        if (cut < 90) cut = 180;
+        chunks.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+      }
+      if (rest) chunks.push(rest);
+    }
+    const details = chunks.slice(0, 10).map((value, index) => ({ label: index === 0 ? "Answer" : "Key point " + (index + 1), value: value.slice(0, 180) }));
+    return normalizeResponseCardPayload({ type: "key_details", title: title || "Moina's answer", summary: firstSentence || answer.slice(0, 180), details: details.length ? details : [{ label: "Answer", value: answer.slice(0, 180) }] });
+  }
+
   function renderResponseCard(value, force = false) {
     const card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
-    if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") return true;
+    if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") {
+      responseCardRenderedForTurn = true;
+      return true;
+    }
+    responseCardRenderedForTurn = true;
+    if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
 
     responseCardType.textContent = card.type === "key_details" ? "A GROUNDED ANSWER" :
       card.type === "steps" ? "YOUR GUIDE" : "SIDE-BY-SIDE";
@@ -2805,10 +2882,16 @@
         liveSearchSpokenAcknowledgementText = "";
         if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
         else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
-          const assistantEntry = currentTranscriptNodes.assistant;
-          if (!assistantEntry || !LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantEntry.text.trim()) || assistantEntry.text.trim().length >= 90) {
-            hideLiveSearchAcknowledgement();
-          }
+          // A preflight acknowledgement is not evidence of an active search. Never leave it up after a completed turn.
+          hideLiveSearchAcknowledgement();
+        } else if (liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
+          hideLiveSearchAcknowledgement();
+        }
+        if (!responseCardRenderedForTurn && pendingResponseCards.length === 0) {
+          const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text || "";
+          const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text || "";
+          const fallbackCard = createTranscriptFallbackCard(userText, assistantText);
+          if (fallbackCard) renderResponseCard(fallbackCard, true);
         }
         finalizeTurn();
         if (greetingTurnPending) beginListeningAfterGreeting();
