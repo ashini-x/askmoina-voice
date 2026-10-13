@@ -491,11 +491,18 @@ const GROUNDED_SEARCH_BUDGET_MS = 21_000;
 const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
+/** Detect a grounded-table query even when the voice model drops the user's requested count. */
+function isLikelyRankedTableSearchQuery(query: string): boolean {
+  const normalized = String(query || "").replace(/\\s+/g, " ").trim().toLowerCase();
+  if (/\\b(?:leaderboards?|standings|rank(?:ed|ing|ers?)|most runs|run scorers?|wicket takers?|orange cap|purple cap)\\b/i.test(normalized)) return true;
+  return /\\bipl\\b/i.test(normalized) && /\\b(?:runs?|scorers?|rankers?|leaderboard|batting|wickets?)\\b/i.test(normalized);
+}
+
 /**
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
-async function performGroundedWebSearch(env: Env, query: string, rawDeviceContext?: unknown): Promise<string> {
+async function performGroundedWebSearch(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
   // Gemini 3.8 Flash supports Google Search grounding; use the global endpoint
   // for this separate lookup instead of the regional endpoint selected by Live voice.
   const location = "global";
@@ -509,7 +516,8 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   // Full ranked tables need more retrieval time than ordinary current-fact lookups.
   // Only explicit requests for at least eight entries receive this longer bounded budget.
   const requestedListCountForBudget = getRequestedRankedListCount(query);
-  const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;
+  const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);
+  const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
   const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
   const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
@@ -612,6 +620,8 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           timeoutMs: attemptTimeoutMs,
           totalBudgetMs: searchBudgetMs,
           requestedListCount: requestedListCountForBudget,
+          inferredRankedTableQuery,
+          rankedListSearchBudget,
           reason: timedOut ? "timeout" : "network",
           retrying: true
         }));
@@ -651,6 +661,10 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
     sourceCount: sources.length,
     attempts: attemptsUsed,
     elapsedMs: Date.now() - searchStartedAt,
+    requestedListCount: requestedListCountForBudget,
+    inferredRankedTableQuery,
+    rankedListSearchBudget,
+    totalBudgetMs: searchBudgetMs,
   }));
   if (!sources.length) return "The web lookup returned no verifiable source URLs after a retry. State plainly that the result could not be verified; do not claim current facts or a completed search result.";
   const matchCaveat = noVisibleExactMatch
@@ -1331,7 +1345,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               groundedSearchCount += 1;
               lastGroundedSearchAt = now;
               try {
-                result = await performGroundedWebSearch(env, query, deviceContext);
+                result = await performGroundedWebSearch(env, query, deviceContext, copilotMode);
               } catch (error) {
                 console.warn("[AskMoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
                 result = "The live web lookup is temporarily unavailable. Be transparent about this and do not present current or device-specific claims as verified.";
