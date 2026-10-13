@@ -493,9 +493,9 @@ const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503
 
 /** Detect a grounded-table query even when the voice model drops the user's requested count. */
 function isLikelyRankedTableSearchQuery(query: string): boolean {
-  const normalized = String(query || "").replace(/\\s+/g, " ").trim().toLowerCase();
-  if (/\\b(?:leaderboards?|standings|rank(?:ed|ing|ers?)|most runs|run scorers?|wicket takers?|orange cap|purple cap)\\b/i.test(normalized)) return true;
-  return /\\bipl\\b/i.test(normalized) && /\\b(?:runs?|scorers?|rankers?|leaderboard|batting|wickets?)\\b/i.test(normalized);
+  const normalized = String(query || "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (/\b(?:leaderboards?|standings|rank(?:ed|ing|ers?)|most runs|run scorers?|wicket takers?|orange cap|purple cap)\b/i.test(normalized)) return true;
+  return /\bipl\b/i.test(normalized) && /\b(?:runs?|scorers?|rankers?|leaderboard|batting|wickets?)\b/i.test(normalized);
 }
 
 /**
