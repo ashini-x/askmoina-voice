@@ -48,6 +48,23 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".entry-passkey-trailing");
   });
 
+  it("renders RC3 response cards in a compact, dismissible, text-only tray", () => {
+    expect(html).toContain('id="responseCardTray"');
+    expect(html).toContain('id="responseCardTitle"');
+    expect(html).toContain('id="responseCardContent"');
+    expect(html).toContain('id="responseCardCollapse"');
+    expect(html).toContain('id="responseCardDismiss"');
+    expect(script).toContain("function normalizeResponseCardPayload(value)");
+    expect(script).toContain("function renderResponseCard(value)");
+    expect(script).toContain("function dismissResponseCard()");
+    expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
+    expect(script).toContain("The validated response card is now visible in the on-screen response-card tray.");
+    expect(script).toContain("Reference only · No actions marked complete.");
+    expect(css).toContain(".response-card-tray[hidden]{display:none!important}");
+    expect(css).toContain(".response-card-details[hidden]{display:none!important}");
+    expect(css).toContain("@media(prefers-reduced-transparency:reduce)");
+  });
+
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
     expect(() => new Function(script)).not.toThrow();
     expect(script).toContain("copilot_mode: true");

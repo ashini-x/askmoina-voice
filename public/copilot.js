@@ -34,6 +34,15 @@
   const availabilityNode = $("#availability");
   const connectionPill = $("#connectionPill");
   const transcriptNode = $("#transcript");
+  const responseCardTray = $("#responseCardTray");
+  const responseCardType = $("#responseCardType");
+  const responseCardTitle = $("#responseCardTitle");
+  const responseCardSummary = $("#responseCardSummary");
+  const responseCardDetails = $("#responseCardDetails");
+  const responseCardContent = $("#responseCardContent");
+  const responseCardStatus = $("#responseCardStatus");
+  const responseCardCollapseButton = $("#responseCardCollapse");
+  const responseCardDismissButton = $("#responseCardDismiss");
   const emptyTranscript = $("#emptyTranscript");
   const focusMarker = $("#focusMarker");
   const focusLabel = $("#focusLabel");
@@ -43,6 +52,10 @@
   const clearTranscriptButton = $("#clearTranscript");
   const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
   const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
+
+  let responseCardExpanded = true;
+  if (responseCardCollapseButton) responseCardCollapseButton.addEventListener("click", () => setResponseCardExpanded(!responseCardExpanded));
+  if (responseCardDismissButton) responseCardDismissButton.addEventListener("click", dismissResponseCard);
 
   function readOptedInMemoryContext() {
     try {
@@ -1938,18 +1951,202 @@
     return Array.isArray(calls) ? calls : [];
   }
 
+  const RESPONSE_CARD_CONTROL_CHARACTERS = /[\x00-\x1f\x7f]/;
+
+  function responseCardCleanText(value, maxLength) {
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    if (!text || text.length > maxLength || RESPONSE_CARD_CONTROL_CHARACTERS.test(text)) return null;
+    return text;
+  }
+
+  function responseCardOptionalText(value, maxLength) {
+    if (value === undefined) return { ok: true };
+    const text = responseCardCleanText(value, maxLength);
+    return text === null ? { ok: false } : { ok: true, value: text };
+  }
+
+  function responseCardExactKeys(value, allowed) {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).every((key) => allowed.includes(key)));
+  }
+
+  // Re-check the bounded server contract before building DOM nodes. Model content is always text, never markup.
+  function normalizeResponseCardPayload(value) {
+    try {
+      if (!value || typeof value !== "object" || Array.isArray(value) || JSON.stringify(value).length > 8000) return null;
+      const title = responseCardCleanText(value.title, 80);
+      const summary = responseCardOptionalText(value.summary, 180);
+      if (!title || !summary.ok) return null;
+      const base = { title, ...(summary.value ? { summary: summary.value } : {}) };
+
+      if (value.type === "steps") {
+        if (!responseCardExactKeys(value, ["type", "title", "summary", "steps"]) ||
+            !Array.isArray(value.steps) || value.steps.length < 2 || value.steps.length > 5) return null;
+        const steps = [];
+        for (const item of value.steps) {
+          if (!responseCardExactKeys(item, ["label", "instruction"])) return null;
+          const label = responseCardCleanText(item.label, 60);
+          const instruction = responseCardCleanText(item.instruction, 180);
+          if (!label || !instruction) return null;
+          steps.push({ label, instruction });
+        }
+        return { type: "steps", ...base, steps };
+      }
+
+      if (value.type === "key_details") {
+        if (!responseCardExactKeys(value, ["type", "title", "summary", "details"]) ||
+            !Array.isArray(value.details) || value.details.length < 1 || value.details.length > 8) return null;
+        const details = [];
+        for (const item of value.details) {
+          if (!responseCardExactKeys(item, ["label", "value", "unit"])) return null;
+          const label = responseCardCleanText(item.label, 60);
+          const detailValue = responseCardCleanText(item.value, 180);
+          const unit = responseCardOptionalText(item.unit, 32);
+          if (!label || !detailValue || !unit.ok) return null;
+          details.push({ label, value: detailValue, ...(unit.value ? { unit: unit.value } : {}) });
+        }
+        return { type: "key_details", ...base, details };
+      }
+
+      if (value.type === "comparison") {
+        if (!responseCardExactKeys(value, ["type", "title", "summary", "options", "takeaway"]) ||
+            !Array.isArray(value.options) || value.options.length < 2 || value.options.length > 4) return null;
+        const takeaway = responseCardOptionalText(value.takeaway, 180);
+        if (!takeaway.ok) return null;
+        const options = [];
+        for (const option of value.options) {
+          if (!responseCardExactKeys(option, ["name", "attributes"]) ||
+              !Array.isArray(option.attributes) || option.attributes.length < 1 || option.attributes.length > 8) return null;
+          const name = responseCardCleanText(option.name, 70);
+          if (!name) return null;
+          const attributes = [];
+          for (const attribute of option.attributes) {
+            if (!responseCardExactKeys(attribute, ["label", "value"])) return null;
+            const label = responseCardCleanText(attribute.label, 50);
+            const attributeValue = responseCardCleanText(attribute.value, 120);
+            if (!label || !attributeValue) return null;
+            attributes.push({ label, value: attributeValue });
+          }
+          options.push({ name, attributes });
+        }
+        return { type: "comparison", ...base, options, ...(takeaway.value ? { takeaway: takeaway.value } : {}) };
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function responseCardPrettyLabel(key) {
+    const known = {
+      steps: "Steps", details: "Details", options: "Options", attributes: "Attributes",
+      label: "Label", instruction: "Instruction", value: "Value", unit: "Unit",
+      name: "Option", takeaway: "Takeaway", summary: "Summary"
+    };
+    if (known[key]) return known[key];
+    return String(key).replace(/_/g, " ").replace(/(^| )\w/g, (match) => match.toUpperCase());
+  }
+
+  function appendResponseCardValue(parent, label, value, depth = 0) {
+    if (depth > 4) return;
+    const wrapper = document.createElement("div");
+    wrapper.className = "response-card-field";
+    const labelNode = document.createElement("span");
+    labelNode.className = "response-card-field-label";
+    labelNode.textContent = responseCardPrettyLabel(label);
+    wrapper.appendChild(labelNode);
+
+    if (Array.isArray(value)) {
+      const group = document.createElement("div");
+      group.className = "response-card-group";
+      value.slice(0, 8).forEach((item, index) => {
+        const itemNode = document.createElement("div");
+        itemNode.className = "response-card-item";
+        if (item && typeof item === "object" && !Array.isArray(item)) {
+          for (const [key, child] of Object.entries(item)) appendResponseCardValue(itemNode, key, child, depth + 1);
+        } else if (typeof item === "string") {
+          itemNode.textContent = item;
+        } else {
+          itemNode.textContent = "Item " + String(index + 1);
+        }
+        group.appendChild(itemNode);
+      });
+      wrapper.appendChild(group);
+    } else if (value && typeof value === "object") {
+      const group = document.createElement("div");
+      group.className = "response-card-group";
+      for (const [key, child] of Object.entries(value)) appendResponseCardValue(group, key, child, depth + 1);
+      wrapper.appendChild(group);
+    } else {
+      const valueNode = document.createElement("span");
+      valueNode.className = "response-card-field-value";
+      valueNode.textContent = typeof value === "string" ? value : "";
+      wrapper.appendChild(valueNode);
+    }
+    parent.appendChild(wrapper);
+  }
+
+  function setResponseCardExpanded(expanded) {
+    responseCardExpanded = Boolean(expanded);
+    if (responseCardDetails) responseCardDetails.hidden = !responseCardExpanded;
+    if (responseCardCollapseButton) {
+      responseCardCollapseButton.setAttribute("aria-expanded", String(responseCardExpanded));
+      responseCardCollapseButton.setAttribute("aria-label", responseCardExpanded ? "Collapse card details" : "Expand card details");
+      responseCardCollapseButton.title = responseCardExpanded ? "Collapse card" : "Expand card";
+      responseCardCollapseButton.textContent = responseCardExpanded ? "−" : "+";
+    }
+  }
+
+  function dismissResponseCard() {
+    if (!responseCardTray) return;
+    responseCardTray.hidden = true;
+    if (responseCardContent) responseCardContent.replaceChildren();
+    if (responseCardSummary) {
+      responseCardSummary.textContent = "";
+      responseCardSummary.hidden = true;
+    }
+    if (stage) stage.classList.remove("has-response-card");
+    setResponseCardExpanded(true);
+  }
+
+  function renderResponseCard(value) {
+    const card = normalizeResponseCardPayload(value);
+    if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
+
+    responseCardType.textContent = card.type.replace(/_/g, " ").toUpperCase();
+    responseCardTitle.textContent = card.title;
+    if (responseCardSummary) {
+      responseCardSummary.textContent = card.summary || "";
+      responseCardSummary.hidden = !card.summary;
+    }
+    responseCardContent.replaceChildren();
+    for (const [key, fieldValue] of Object.entries(card)) {
+      if (key === "type" || key === "title" || key === "summary") continue;
+      appendResponseCardValue(responseCardContent, key, fieldValue);
+    }
+    if (responseCardStatus) responseCardStatus.textContent = "Reference only · No actions marked complete.";
+    responseCardTray.hidden = false;
+    if (stage) stage.classList.add("has-response-card");
+    setResponseCardExpanded(true);
+    return true;
+  }
+
   function handleToolCalls(message) {
     const responses = [];
     for (const call of getToolCalls(message)) {
       if (!call || typeof call !== "object") continue;
       if (call.name === "display_response_card") {
         const id = typeof call.id === "string" ? call.id : "";
+        const rendered = renderResponseCard(call.args);
         if (id) {
           responses.push({
             id,
             name: "display_response_card",
             response: {
-              result: "The RC2 response-card payload passed server schema validation. The card tray is not part of this release yet; continue with concise spoken guidance and do not say that a card is visible."
+              result: rendered
+                ? "The validated response card is now visible in the on-screen response-card tray. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
+                : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible."
             }
           });
         }
