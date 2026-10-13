@@ -79,8 +79,8 @@ describe("Adaptive grounded-list search budget", () => {
   it("keeps ordinary lookups bounded while giving full ranked tables a longer retry window", () => {
     expect(workerSource).toContain("const requestedListCountForBudget = getRequestedRankedListCount(query);");
     expect(workerSource).toContain("const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;");
-    expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 16_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
-    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 28_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
