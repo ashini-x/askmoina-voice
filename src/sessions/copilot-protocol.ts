@@ -31,7 +31,7 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
     if (!copilotMode) return null;
     const rawResponses = value.tool_response.function_responses;
     if (!Array.isArray(rawResponses) || rawResponses.length < 1 || rawResponses.length > 4) return null;
-    const responses: Array<{ id: string; result: string }> = [];
+    const responses: Array<{ id: string; name: "display_screen_overlay" | "display_response_card"; result: string }> = [];
     for (const rawResponse of rawResponses) {
       if (!isRecord(rawResponse)) return null;
       if (
