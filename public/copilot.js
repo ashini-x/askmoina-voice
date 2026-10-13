@@ -80,6 +80,7 @@
 
   function startLiveSearchProgress() {
     if (!liveSearchStatus) return;
+    if (liveSearchActive && !liveSearchFinishing) return;
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchCompletionTimer = null;
@@ -2331,6 +2332,11 @@
       return;
     }
     if (socket !== sessionSocket) return;
+
+    if (message.live_search_status && message.live_search_status.state === "started") {
+      startLiveSearchProgress();
+      return;
+    }
 
     if (message.connection_status && message.connection_status.state === "ended") {
       if (liveSearchActive) cancelLiveSearchProgress();

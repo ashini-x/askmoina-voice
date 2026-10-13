@@ -1220,6 +1220,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               requestedMaterial: deviceContext.requested_material || "unspecified",
               searchIndex: groundedSearchCount + 1,
             }));
+            // Notify Co-Pilot before awaiting the grounded lookup; the tool-call frame itself is forwarded only afterward.
+            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+            }
             let result: string;
             const now = Date.now();
             if (!query) {

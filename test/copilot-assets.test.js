@@ -472,6 +472,12 @@ describe("Apple-style live-search progress", () => {
     expect(script).toContain("Checking current sources");
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
     expect(workerSource).toContain("briefly acknowledge in natural speech");
+    expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
+    expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
+    const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
+    const searchAwait = workerSource.indexOf("result = await performGroundedWebSearch(env, query, deviceContext)");
+    expect(workerStart).toBeGreaterThanOrEqual(0);
+    expect(searchAwait).toBeGreaterThan(workerStart);
   });
 
   it("holds estimated progress below completion, reaches 100%, then removes the loader before revealing cards and final text", () => {
