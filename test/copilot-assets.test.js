@@ -297,7 +297,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Live donations", "Your Memory", "Key memories", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign out", "DEMO COUNTER"]) {
+    for (const label of ["Donations", "Illustrative demo total", "Your Memory", "Key memories", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign out"]) {
       expect(workerSource).toContain(label);
     }
     for (const route of ["/about", "/developer", "/help", "/privacy"]) {
