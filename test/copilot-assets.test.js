@@ -62,6 +62,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function minimizeResponseCard()");
     expect(script).toContain("function restoreResponseCard()");
     expect(script).toContain("function createTranscriptFallbackCard(userText, assistantText)");
+    expect(script).toContain("if (!prompt) return null;");
     expect(script).toContain("A preflight acknowledgement is not evidence of an active search.");
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
