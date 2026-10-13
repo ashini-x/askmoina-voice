@@ -61,7 +61,7 @@ describe("authenticated live synthetic verification", () => {
     expect(workerSource).toContain("RC4 renders validated card data as a full-screen translucent, type-specific answer sheet");
 
     expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).toContain("The client renders validated RC3 response-card payloads as a compact generic reference tray using text-only DOM nodes.");
+    expect(workerSource).toContain("The client renders validated RC4 response-card payloads as a full-screen translucent, Apple-minimal answer sheet");
     expect(workerSource).toContain("Do not imply that showing a card completes any action.");
   });
 
