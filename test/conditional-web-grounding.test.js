@@ -24,7 +24,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
-    expect(workerSource).toContain("maxOutputTokens: 650");
+    expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 
   it("routes bounded normal voice test text to a complete Live client-content turn", () => {
@@ -53,5 +53,20 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("never treat web results as proof that a component in the camera view has been identified");
     expect(workerSource).toContain("The web lookup did not return verifiable source URLs");
     expect(workerSource).toContain("do not present current or device-specific claims as verified");
+  });
+});
+
+
+describe("Grounded ranked-list completeness and recovery", () => {
+  it("retries successful provider responses that contain no source URLs", () => {
+    expect(workerSource).toContain("no_grounding_sources");
+    expect(workerSource).toContain("hasGroundingUrls");
+    expect(workerSource).toContain("attempt < GROUNDED_SEARCH_MAX_ATTEMPTS");
+    expect(workerSource).toContain("RETRY: The prior request did not produce verifiable grounding source URLs");
+  });
+  it("instructs grounded search to return a complete top-N table when sources support it", () => {
+    expect(workerSource).toContain("Do not truncate a top-10 list to three or four entries");
+    expect(workerSource).toContain("Prefer official league/statistics tables or reputable full-table reports");
+    expect(workerSource).toContain("maxOutputTokens: 1_400");
   });
 });
