@@ -64,9 +64,21 @@ def main() -> int:
     if not AUTH_COOKIE.startswith("moina_session="):
         raise RuntimeError("Authenticated synthetic session missing; refusing anonymous voice access.")
     ws = websocket.create_connection(ws_url, origin=BASE_URL, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
-    tool_called = False
-    transcript = ""
-    turn_complete = False
+    prompts = [
+        (
+            "Use web search to verify the latest stable Android version from an official Android source. "
+            "In one short sentence, give the current version or release detail and name the official source."
+        ),
+        (
+            "Use web search to verify the latest stable Python release from python.org. "
+            "In one short sentence, give the current version and name python.org as the source."
+        ),
+        (
+            "Use web search to verify the latest stable Google Chrome desktop release from an official Chrome source. "
+            "In one short sentence, give the current version or release detail and name the official source."
+        ),
+    ]
+    completed_searches = 0
     try:
         ws.send(json.dumps({"setup": {}}))
         setup_deadline = time.time() + SETUP_WAIT_SECONDS
@@ -82,47 +94,48 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for Live setup completion.")
 
-        # This is a synthetic text turn carried through the production Live
-        # WebSocket, not a direct call to the grounding helper.
-        ws.send(json.dumps({"text_input": PROMPT}))
-        deadline = time.time() + TURN_WAIT_SECONDS
-        while time.time() < deadline:
-            try:
-                message = json.loads(ws.recv())
-            except websocket.WebSocketTimeoutException:
-                continue
-            if message.get("error"):
-                raise RuntimeError("The Live session returned a protocol/provider error.")
-            # A Live function-call turn can itself be marked turnComplete. That
-            # only ends the model's request for a tool; it is not the grounded
-            # user-facing answer. Wait for a subsequent completed turn that
-            # does not itself contain the search function call.
-            message_has_tool_call = has_grounding_tool_call(message)
-            tool_called = tool_called or message_has_tool_call
-            transcript += " " + extract_text(message)
-            content = message.get("serverContent") or message.get("server_content") or {}
-            if (
-                isinstance(content, dict)
-                and (content.get("turnComplete") or content.get("turn_complete"))
-                and tool_called
-                and not message_has_tool_call
-            ):
-                turn_complete = True
-                break
+        # Exercise repeated searches in one real production session. Each explicit
+        # current-information turn must invoke the web tool and receive a grounded answer
+        # before the next turn begins; only status and counters are printed, never queries.
+        for search_index, prompt in enumerate(prompts, start=1):
+            ws.send(json.dumps({"text_input": prompt}))
+            tool_called = False
+            transcript = ""
+            turn_complete = False
+            deadline = time.time() + TURN_WAIT_SECONDS
+            while time.time() < deadline:
+                try:
+                    message = json.loads(ws.recv())
+                except websocket.WebSocketTimeoutException:
+                    continue
+                if message.get("error"):
+                    raise RuntimeError(f"The Live session returned a protocol/provider error on search {search_index}.")
+                message_has_tool_call = has_grounding_tool_call(message)
+                tool_called = tool_called or message_has_tool_call
+                transcript += " " + extract_text(message)
+                content = message.get("serverContent") or message.get("server_content") or {}
+                if (
+                    isinstance(content, dict)
+                    and (content.get("turnComplete") or content.get("turn_complete"))
+                    and tool_called
+                    and not message_has_tool_call
+                ):
+                    turn_complete = True
+                    break
 
-        lowered = transcript.lower()
-        if not tool_called:
-            raise RuntimeError("Live API did not call search_current_web for the explicit current-information request.")
-        if not turn_complete:
-            raise RuntimeError("Timed out waiting for the grounded Live answer to complete.")
-        if any(phrase in lowered for phrase in ("temporarily unavailable", "could not be verified", "no live search")):
-            raise RuntimeError("Grounded search returned an unavailable/unverified response.")
-        # Live speech phrasing varies. Require a substantive readable final response,
-        # while grounding/tool invocation, completed turn, and fallback rejection are
-        # asserted independently above; don't gate on a fixed keyword list.
-        if len(lowered.strip()) < 16:
-            raise RuntimeError("Completed grounded answer did not contain enough readable response text.")
-        print("Synthetic live web grounding test: PASS (Live tool invoked and grounded answer completed).")
+            lowered = transcript.lower()
+            if not tool_called:
+                raise RuntimeError(f"Live API did not call search_current_web for explicit search {search_index}.")
+            if not turn_complete:
+                raise RuntimeError(f"Timed out waiting for grounded answer {search_index} to complete.")
+            if any(phrase in lowered for phrase in ("temporarily unavailable", "could not be verified", "no live search")):
+                raise RuntimeError(f"Grounded search {search_index} returned an unavailable/unverified response.")
+            if len(lowered.strip()) < 16:
+                raise RuntimeError(f"Grounded answer {search_index} did not contain enough readable response text.")
+            completed_searches += 1
+            print(f"Synthetic grounded search {search_index}/3: PASS")
+
+        print(f"Synthetic live web grounding test: PASS ({completed_searches} sequential searches in one authenticated Live session).")
         return 0
     finally:
         try:
