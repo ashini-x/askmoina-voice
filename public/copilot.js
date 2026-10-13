@@ -43,6 +43,8 @@
   const responseCardStatus = $("#responseCardStatus");
   const responseCardCollapseButton = $("#responseCardCollapse");
   const responseCardDismissButton = $("#responseCardDismiss");
+  // Keep the answer sheet viewport-sized rather than bounded by the camera-stage layout.
+  if (responseCardTray && responseCardTray.parentElement !== document.body) document.body.appendChild(responseCardTray);
   const liveSearchStatus = $("#liveSearchStatus");
   const liveSearchTitle = $("#liveSearchTitle");
   const liveSearchMessage = $("#liveSearchMessage");
@@ -72,6 +74,9 @@
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
   let pendingResponseCards = [];
+  let liveSearchStageIndex = 0;
+  let liveSearchSpokenAcknowledgementText = "";
+  let liveSearchProgressStageIndex = 0;
 
   function updateLiveSearchProgress(value) {
     const next = Math.max(0, Math.min(100, Math.round(value)));
@@ -95,25 +100,37 @@
     liveSearchActive = true;
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
+    liveSearchProgressStageIndex = 0;
     liveSearchStatus.hidden = false;
     if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
-    if (liveSearchMessage) liveSearchMessage.textContent = "Checking current sources";
+    if (liveSearchMessage) liveSearchMessage.textContent = "Finding relevant sources";
     if (transcriptNode) transcriptNode.classList.add("is-searching");
     if (responseCardTray && !responseCardTray.hidden) dismissResponseCard();
     updateLiveSearchProgress(8);
 
-    // This is estimated progress, so it stops below 100% until the actual live answer turn finishes.
+    const searchStages = [
+      "Finding relevant sources",
+      "Checking useful source details",
+      "Collecting supporting evidence"
+    ];
+    let stageTick = 0;
+    // The progress rail is deliberately indeterminate: it does not pretend to measure provider completion.
     liveSearchProgressInterval = window.setInterval(() => {
-      if (!liveSearchActive || liveSearchFinishing) return;
-      const increment = liveSearchProgressValue < 35 ? 6 : liveSearchProgressValue < 65 ? 3 : liveSearchProgressValue < 82 ? 1.5 : 0.5;
-      updateLiveSearchProgress(Math.min(92, liveSearchProgressValue + increment));
+      if (!liveSearchActive || liveSearchFinishing || liveSearchLookupCompleted) return;
+      const increment = liveSearchProgressValue < 70 ? 2 : 0.5;
+      updateLiveSearchProgress(Math.min(88, liveSearchProgressValue + increment));
+      stageTick += 1;
+      if (stageTick % 5 === 0 && liveSearchMessage) {
+        liveSearchProgressStageIndex = (liveSearchProgressStageIndex + 1) % searchStages.length;
+        liveSearchMessage.textContent = searchStages[liveSearchProgressStageIndex];
+      }
     }, 420);
   }
 
   function sendDeferredResponseCardResult(id, rendered) {
     if (!id || !socket || socket.readyState !== WebSocket.OPEN) return;
     const result = rendered
-      ? "The validated response card is now visible in the on-screen response-card tray. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
+      ? "The complete designed response card is now visible as a full-screen answer sheet. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
       : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible.";
     try {
       socket.send(JSON.stringify({
@@ -182,11 +199,29 @@
     liveSearchAcknowledgementActive = true;
     liveSearchStatus.hidden = false;
     liveSearchStatus.classList.add("is-acknowledging");
+    liveSearchStageIndex = 0;
     if (liveSearchTitle) liveSearchTitle.textContent = "Got it";
-    if (liveSearchMessage) liveSearchMessage.textContent = "One moment";
+    if (liveSearchMessage) liveSearchMessage.textContent = "I'm preparing your search.";
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    liveSearchAcknowledgementTimer = null;
-    // Keep this acknowledgement visible until the Worker confirms real search start.
+    const preflightStages = [
+      { title: "Preparing your search", message: "Finding the right way to verify the answer." },
+      { title: "Getting the lookup ready", message: "Keeping the answer focused on your request." },
+      { title: "Preparing your answer", message: "Gathering the information needed for a useful response." }
+    ];
+    const advancePreflightStage = () => {
+      if (!liveSearchAcknowledgementActive || liveSearchActive || liveSearchFinishing) {
+        liveSearchAcknowledgementTimer = null;
+        return;
+      }
+      const stageItem = preflightStages[liveSearchStageIndex % preflightStages.length];
+      if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
+      if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
+      liveSearchStageIndex += 1;
+      liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1700);
+    };
+    liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1500);
+    updateLiveSearchProgress(1);
+    // Keep the stage indicator visible until the Worker confirms that a real lookup has begun.
   }
 
   function hideLiveSearchAcknowledgement() {
@@ -200,10 +235,33 @@
     }
   }
 
+  function speakImmediateSearchAcknowledgement(text) {
+    const normalized = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!normalized || normalized === liveSearchSpokenAcknowledgementText) return;
+    liveSearchSpokenAcknowledgementText = normalized;
+    if (typeof window.SpeechSynthesisUtterance !== "function" || !window.speechSynthesis) return;
+    try {
+      const speech = window.speechSynthesis;
+      const utterance = new window.SpeechSynthesisUtterance("Got it. I'm looking that up now.");
+      utterance.lang = "en-IN";
+      utterance.rate = 1.02;
+      utterance.pitch = 1.04;
+      const voices = speech.getVoices();
+      const preferredVoice = voices.find((voice) => /^en-IN$/i.test(voice.lang)) ||
+        voices.find((voice) => /^en-(GB|US)$/i.test(voice.lang));
+      if (preferredVoice) utterance.voice = preferredVoice;
+      speech.speak(utterance);
+    } catch (_) {
+      // Browser speech output is an enhancement; the live voice route remains available.
+    }
+  }
+
   function handleTranscriptAcknowledgement(role, text) {
     if (role === "user") {
-      if (isLikelyLiveSearchRequest(text)) showLiveSearchAcknowledgement();
-      else if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
+      if (isLikelyLiveSearchRequest(text)) {
+        showLiveSearchAcknowledgement();
+        speakImmediateSearchAcknowledgement(text);
+      } else if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
       return;
     }
     // Interim assistant transcription can arrive before the Live API's function call.
@@ -2151,8 +2209,8 @@
       }
 
       if (value.type === "key_details") {
-        if (!responseCardExactKeys(value, ["type", "title", "summary", "details"]) ||
-            !Array.isArray(value.details) || value.details.length < 1 || value.details.length > 8) return null;
+        if (!responseCardExactKeys(value, ["type", "title", "summary", "details", "sources"]) ||
+            !Array.isArray(value.details) || value.details.length < 1 || value.details.length > 10) return null;
         const details = [];
         for (const item of value.details) {
           if (!responseCardExactKeys(item, ["label", "value", "unit"])) return null;
@@ -2162,7 +2220,21 @@
           if (!label || !detailValue || !unit.ok) return null;
           details.push({ label, value: detailValue, ...(unit.value ? { unit: unit.value } : {}) });
         }
-        return { type: "key_details", ...base, details };
+        const sources = [];
+        if (value.sources !== undefined) {
+          if (!Array.isArray(value.sources) || value.sources.length < 1 || value.sources.length > 4) return null;
+          for (const item of value.sources) {
+            if (!responseCardExactKeys(item, ["title", "url"])) return null;
+            const sourceTitle = responseCardCleanText(item.title, 100);
+            const sourceUrl = responseCardCleanText(item.url, 500);
+            if (!sourceTitle || !sourceUrl) return null;
+            let parsedUrl;
+            try { parsedUrl = new URL(sourceUrl); } catch (_) { return null; }
+            if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) return null;
+            sources.push({ title: sourceTitle, url: parsedUrl.href });
+          }
+        }
+        return { type: "key_details", ...base, details, ...(sources.length ? { sources } : {}) };
       }
 
       if (value.type === "comparison") {
@@ -2216,7 +2288,7 @@
     if (Array.isArray(value)) {
       const group = document.createElement("div");
       group.className = "response-card-group";
-      value.slice(0, 8).forEach((item, index) => {
+      value.slice(0, 10).forEach((item, index) => {
         const itemNode = document.createElement("div");
         itemNode.className = "response-card-item";
         if (item && typeof item === "object" && !Array.isArray(item)) {
@@ -2241,6 +2313,83 @@
       wrapper.appendChild(valueNode);
     }
     parent.appendChild(wrapper);
+  }
+
+  function createCardNode(tagName, className, text) {
+    const node = document.createElement(tagName);
+    if (className) node.className = className;
+    if (typeof text === "string") node.textContent = text;
+    return node;
+  }
+
+  function renderGroundedDetails(card) {
+    const list = createCardNode("ol", "response-card-ranking-list");
+    list.setAttribute("aria-label", "Answer details");
+    card.details.forEach((item, index) => {
+      const row = createCardNode("li", "response-card-ranking-row");
+      const check = createCardNode("span", "response-card-row-check", "✓");
+      check.setAttribute("aria-hidden", "true");
+      const match = item.label.match(/^\s*(\d{1,2})[.)\s:—-]+/);
+      const rank = match ? match[1] : String(index + 1);
+      const rankNode = createCardNode("span", "response-card-row-index", rank.padStart(2, "0"));
+      rankNode.setAttribute("aria-label", "Rank " + rank);
+      const main = createCardNode("div", "response-card-row-main");
+      const label = match ? item.label.replace(/^\s*\d{1,2}[.)\s:—-]+/, "").trim() : item.label;
+      main.appendChild(createCardNode("h3", "response-card-row-label", label));
+      const statText = [item.value, item.unit].filter(Boolean).join(" ");
+      main.appendChild(createCardNode("p", "response-card-row-value", statText));
+      row.append(check, rankNode, main);
+      list.appendChild(row);
+    });
+    responseCardContent.appendChild(list);
+    if (card.sources && card.sources.length) {
+      const sources = createCardNode("section", "response-card-sources");
+      sources.appendChild(createCardNode("h3", "response-card-sources-title", "Sources"));
+      const sourceList = createCardNode("ul", "response-card-source-list");
+      for (const source of card.sources) {
+        const item = createCardNode("li", "response-card-source-item");
+        const link = createCardNode("a", "response-card-source-link", source.title);
+        link.href = source.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.appendChild(createCardNode("span", "response-card-source-arrow", "↗"));
+        item.appendChild(link);
+        sourceList.appendChild(item);
+      }
+      sources.appendChild(sourceList);
+      responseCardContent.appendChild(sources);
+    }
+  }
+
+  function renderStepsCard(card) {
+    const list = createCardNode("ol", "response-card-steps-list");
+    card.steps.forEach((step, index) => {
+      const row = createCardNode("li", "response-card-step-row");
+      row.appendChild(createCardNode("span", "response-card-step-index", String(index + 1).padStart(2, "0")));
+      const main = createCardNode("div", "response-card-step-main");
+      main.appendChild(createCardNode("h3", "response-card-step-label", step.label));
+      main.appendChild(createCardNode("p", "response-card-step-instruction", step.instruction));
+      row.appendChild(main);
+      list.appendChild(row);
+    });
+    responseCardContent.appendChild(list);
+  }
+
+  function renderComparisonCard(card) {
+    const grid = createCardNode("div", "response-card-comparison-grid");
+    for (const option of card.options) {
+      const panel = createCardNode("section", "response-card-option");
+      panel.appendChild(createCardNode("h3", "response-card-option-title", option.name));
+      for (const attribute of option.attributes) {
+        const row = createCardNode("div", "response-card-option-attribute");
+        row.appendChild(createCardNode("span", "response-card-option-label", attribute.label));
+        row.appendChild(createCardNode("span", "response-card-option-value", attribute.value));
+        panel.appendChild(row);
+      }
+      grid.appendChild(panel);
+    }
+    responseCardContent.appendChild(grid);
+    if (card.takeaway) responseCardContent.appendChild(createCardNode("p", "response-card-takeaway", card.takeaway));
   }
 
   function setResponseCardExpanded(expanded) {
@@ -2270,18 +2419,22 @@
     const card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
 
-    responseCardType.textContent = card.type.replace(/_/g, " ").toUpperCase();
+    responseCardType.textContent = card.type === "key_details" ? "A GROUNDED ANSWER" :
+      card.type === "steps" ? "YOUR GUIDE" : "SIDE-BY-SIDE";
     responseCardTitle.textContent = card.title;
     if (responseCardSummary) {
       responseCardSummary.textContent = card.summary || "";
       responseCardSummary.hidden = !card.summary;
     }
     responseCardContent.replaceChildren();
-    for (const [key, fieldValue] of Object.entries(card)) {
-      if (key === "type" || key === "title" || key === "summary") continue;
-      appendResponseCardValue(responseCardContent, key, fieldValue);
+    if (card.type === "key_details") renderGroundedDetails(card);
+    else if (card.type === "steps") renderStepsCard(card);
+    else renderComparisonCard(card);
+    if (responseCardStatus) {
+      responseCardStatus.textContent = card.type === "key_details"
+        ? (card.sources && card.sources.length ? "SOURCE LINKS INCLUDED · Structured answer, not a task checklist." : "STRUCTURED ANSWER · Review important details.")
+        : "REFERENCE ONLY · No actions marked complete.";
     }
-    if (responseCardStatus) responseCardStatus.textContent = "Reference only · No actions marked complete.";
     responseCardTray.hidden = false;
     if (stage) stage.classList.add("has-response-card");
     setResponseCardExpanded(true);
@@ -2307,7 +2460,7 @@
             name: "display_response_card",
             response: {
               result: rendered
-                ? "The validated response card is now visible in the on-screen response-card tray. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
+                ? "The complete designed response card is now visible as a full-screen answer sheet. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
                 : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible."
             }
           });
@@ -2396,8 +2549,8 @@
     if (message.live_search_status && message.live_search_status.state === "lookup_complete") {
       liveSearchLookupCompleted = true;
       if (liveSearchActive && !liveSearchFinishing) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Thinking through results";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Preparing a clear answer";
+        if (liveSearchTitle) liveSearchTitle.textContent = "Building your answer";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Organizing the response and source links";
       }
       return;
     }
@@ -2470,6 +2623,7 @@
         }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
+        liveSearchSpokenAcknowledgementText = "";
         if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
         else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
           const assistantEntry = currentTranscriptNodes.assistant;
