@@ -108,6 +108,23 @@ def recv_json_message(ws):
     return message
 
 
+def get_input_text(message: dict) -> str:
+    texts = []
+    for key in ("serverContent", "server_content"):
+        content = message.get(key)
+        if not isinstance(content, dict):
+            continue
+        for transcript_key in ("inputTranscription", "input_transcription"):
+            item = content.get(transcript_key)
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                texts.append(item["text"])
+    for key in ("input_transcription", "inputTranscription"):
+        item = message.get(key)
+        if isinstance(item, dict) and isinstance(item.get("text"), str):
+            texts.append(item["text"])
+    return " ".join(texts)
+
+
 def is_turn_complete(message: dict) -> bool:
     content = message.get("serverContent") or message.get("server_content") or {}
     return isinstance(content, dict) and bool(content.get("turnComplete") or content.get("turn_complete"))
@@ -244,6 +261,7 @@ def main() -> int:
         tool_count = 0
         final_complete = False
         saw_final_text = False
+        input_intent_observed = False
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
             try:
@@ -260,6 +278,9 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
+            input_text = get_input_text(message).lower()
+            if any(term in input_text for term in ("response card", "checklist card", "card with three", "steps for organizing")):
+                input_intent_observed = True
             calls = get_calls(message)
             responses = []
             supported_tool_call = False
@@ -299,7 +320,10 @@ def main() -> int:
                 if saw_final_text:
                     break
         if tool_count == 0:
-            raise RuntimeError("The live model did not call display_response_card for the explicit checklist request.")
+            raise RuntimeError(
+                "The live model did not call display_response_card for the explicit checklist request "
+                "(explicit_card_intent_transcribed=" + str(input_intent_observed).lower() + ")."
+            )
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
         PHASE = "verified"

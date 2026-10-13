@@ -42,6 +42,9 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("send_silence_keepalive(ws)");
 
     expect(responseCardSmoke).toContain("stage=");
+    expect(responseCardSmoke).toContain("def get_input_text(message: dict) -> str:");
+    expect(responseCardSmoke).toContain("explicit_card_intent_transcribed=");
+
 
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
     expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
@@ -50,6 +53,8 @@ describe("authenticated live synthetic verification", () => {
 
   it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
     expect(workerSource).toContain("EXPLICIT CARD REQUEST OVERRIDE");
+    expect(workerSource).toContain("even though the current UI does not render the tray yet");
+
     expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
     expect(workerSource).toContain("The current release validates response-card calls but does not yet render the card tray.");
   });
