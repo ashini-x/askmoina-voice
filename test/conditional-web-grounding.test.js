@@ -21,7 +21,9 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).not.toContain("groundedSearchCount >= 2");
     expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
-    expect(workerSource).toContain("controller.abort(), 12_000");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
+    expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
     expect(workerSource).toContain("maxOutputTokens: 650");
   });
 
