@@ -2162,12 +2162,12 @@
   function playDisconnectSound() {
     if (!audioContext || audioContext.state !== "running") return;
     const baseTime = audioContext.currentTime + 0.012;
-    disconnectToneUntil = performance.now() + 520;
+    disconnectToneUntil = performance.now() + 560;
     // Different, warmer descending two-step release tone for leaving a live session.
     const notes = [
-      { frequency: 587.33, offset: 0, duration: 0.15, peak: 0.038, type: "sine" },
-      { frequency: 440.0, offset: 0.075, duration: 0.21, peak: 0.043, type: "sine" },
-      { frequency: 349.23, offset: 0.17, duration: 0.26, peak: 0.031, type: "triangle" }
+      { frequency: 587.33, offset: 0, duration: 0.17, peak: 0.052, type: "sine" },
+      { frequency: 440.0, offset: 0.075, duration: 0.23, peak: 0.058, type: "sine" },
+      { frequency: 349.23, offset: 0.17, duration: 0.28, peak: 0.044, type: "triangle" }
     ];
     for (const note of notes) {
       const oscillator = audioContext.createOscillator();
@@ -2995,7 +2995,7 @@
       stopCopilot(true);
       stage.classList.add("is-returning");
       // Let the distinct end tone finish before returning to the Vision card chooser.
-      window.setTimeout(() => window.location.replace("/"), 455);
+      window.setTimeout(() => window.location.replace("/"), 570);
     } else {
       void startCopilot();
     }

@@ -18,9 +18,72 @@ import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded
 export { UserState } from "./sessions/user-state";
 
 
+const ENTRY_SITE_MENU = "<details class=\"entry-site-menu\">\n  <summary aria-label=\"Open navigation menu\" title=\"Menu\">\n    <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg>\n  </summary>\n  <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\">\n    <a href=\"/account\">Profile <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/vault\">Memory Vault <span aria-hidden=\"true\">›</span></a>\n    <div class=\"entry-site-menu-divider\" role=\"separator\"></div>\n    <a href=\"/about\">About us <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/developer\">Developer <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/help\">Help &amp; Feedback <span aria-hidden=\"true\">›</span></a>\n    <a href=\"/privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a>\n  </nav>\n</details>";
+
 const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
 const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n  <button type=\"button\" class=\"entry-signout\" data-logout aria-label=\"Sign out\" title=\"Sign out\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg></button>\n  <div class=\"entry-product-panel\">\n    <h1 class=\"sr-only\">Choose an experience</h1>\n    <div class=\"entry-products\">\n      <a class=\"entry-product-card\" href=\"/copilot?product=0.4.0\" aria-label=\"Open Vision, version 0.4.0\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7.2\"/><circle cx=\"12\" cy=\"12\" r=\"3.1\"/><path d=\"M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2\"/></svg></span>\n        <span><span class=\"entry-product-name\">Vision</span><span class=\"entry-product-meta\">0.4.0</span></span>\n        <span class=\"entry-product-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n      </a>\n      <div class=\"entry-product-card is-disabled\" role=\"img\" aria-disabled=\"true\" aria-label=\"Hardware, under development\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7.5\" y=\"7.5\" width=\"9\" height=\"9\" rx=\"1.5\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/></svg></span>\n        <span><span class=\"entry-product-name\">Hardware</span><span class=\"entry-product-meta\">Under development</span></span>\n      </div>\n    </div>\n  </div>\n</section>";
 const ENTRY_LAUNCH_OVERLAY = "<section class=\"auth-launch-screen\" role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></section>";
+
+const SITE_INFO_CONTENT: Record<string, { eyebrow: string; title: string; intro: string; sections: Array<{ title: string; body: string }> }> = {
+  "/about": {
+    eyebrow: "ABOUT ASKMOINA",
+    title: "A little more clarity, in the moment.",
+    intro: "AskMoina is a camera-first voice co-pilot designed to help you understand what you are seeing and work through everyday tasks, one step at a time.",
+    sections: [
+      { title: "Made to feel simple", body: "Show Moina what you are looking at and speak naturally. The aim is to give you one useful next step, without making you learn a complicated interface." },
+      { title: "Built for real life", body: "AskMoina began with Assam in mind and is being shaped for practical, everyday use across places, devices, and levels of experience." },
+      { title: "Still evolving", body: "Some visual guidance is an estimate rather than guaranteed object recognition. Check important steps yourself, especially when a task involves tools, electricity, heat, vehicles, or other hazards." }
+    ]
+  },
+  "/developer": {
+    eyebrow: "FOR BUILDERS",
+    title: "A real-time experience, built with care.",
+    intro: "AskMoina brings camera context and a live voice conversation together so guidance can feel immediate and useful.",
+    sections: [
+      { title: "Service architecture", body: "The web experience and session coordination run through Cloudflare Workers. When live voice is enabled, audio and selected camera frames are processed by Google Cloud Vertex AI." },
+      { title: "Designed for clarity", body: "The product prioritizes low-friction interaction, step-by-step guidance, clear recovery when a connection fails, and careful handling of uncertainty." },
+      { title: "For developers", body: "This page describes the product at a high level. It is not a public API specification; integration details and capabilities may change as AskMoina develops." }
+    ]
+  },
+  "/help": {
+    eyebrow: "HELP & FEEDBACK",
+    title: "Let us get you moving again.",
+    intro: "A few quick checks can solve most setup problems.",
+    sections: [
+      { title: "Camera or microphone will not start", body: "Check the browser camera and microphone permissions, then retry. On a phone, use a supported, up-to-date browser and allow access when prompted." },
+      { title: "Voice stops or takes too long", body: "Check your connection and close any other AskMoina voice session in another tab. Return to the experience chooser and start a fresh session if needed." },
+      { title: "Sharing useful feedback", body: "When reporting a problem, include the device, browser, what you were trying to do, and the exact message you saw. Do not include passwords, verification codes, or private recordings." }
+    ]
+  },
+  "/privacy": {
+    eyebrow: "PRIVACY & SECURITY",
+    title: "Your device. Your choices.",
+    intro: "AskMoina uses the permissions and session context needed to provide its live visual and voice experience.",
+    sections: [
+      { title: "Camera and microphone", body: "After you start a live session, microphone audio and selected camera frames may be sent to Google Cloud Vertex AI for processing. Keep confidential documents and other sensitive information out of view unless you are comfortable sharing them for the task." },
+      { title: "Recordings and memory", body: "Raw recordings are not saved by default. Saved memory is separate from the live conversation and should be used only with the memory options you choose." },
+      { title: "A practical reminder", body: "Always review a result before acting on it. Do not use camera guidance as a substitute for qualified advice in medical, legal, financial, or safety-critical situations." }
+    ]
+  }
+};
+
+function renderSiteInfoPage(pathname: string): string | null {
+  const page = SITE_INFO_CONTENT[pathname];
+  if (!page) return null;
+  const sections = page.sections.map((section) =>
+    "<section class=\"site-info-section\"><h2>" + section.title + "</h2><p>" + section.body + "</p></section>"
+  ).join("");
+  return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
+    "<meta name=\"theme-color\" content=\"#f5f5f7\"><meta name=\"description\" content=\"AskMoina information and support.\">" +
+    "<title>" + page.eyebrow + " · AskMoina</title><link rel=\"stylesheet\" href=\"/copilot.css\"></head>" +
+    "<body class=\"site-info-body\"><main class=\"site-info-shell\">" +
+    "<header class=\"site-info-header\"><a class=\"site-info-wordmark\" href=\"/\" aria-label=\"AskMoina home\">AskMoina</a><a class=\"site-info-back\" href=\"/\">Back to AskMoina</a></header>" +
+    "<article class=\"site-info-card\"><p class=\"site-info-eyebrow\">" + page.eyebrow + "</p><h1>" + page.title + "</h1>" +
+    "<p class=\"site-info-intro\">" + page.intro + "</p><div class=\"site-info-sections\">" + sections + "</div></article>" +
+    "<footer class=\"site-info-footer\"><span>AskMoina</span><a href=\"/privacy\">Privacy</a><a href=\"/help\">Help</a></footer></main></body></html>";
+}
+
 const providerFrameDecoder = new TextDecoder();
 
 function configuredTokenRate(value?: string): number | null {
@@ -1187,6 +1250,24 @@ export default {
 
     const authResponse = await handleAuthRequest(request, env);
     if (authResponse) return authResponse;
+    if (request.method === "GET" || request.method === "HEAD") {
+      const infoPage = renderSiteInfoPage(url.pathname);
+      if (infoPage) {
+        return new Response(request.method === "HEAD" ? null : infoPage, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Referrer-Policy": "no-referrer",
+            "Permissions-Policy": "microphone=(), camera=(), geolocation=()",
+            "Cross-Origin-Resource-Policy": "same-origin",
+          },
+        });
+      }
+    }
     if (url.pathname.startsWith("/admin")) {
       const adminResponse = await handleContinuityRequest(request, env, ctx);
       if (adminResponse) return adminResponse;
@@ -1203,11 +1284,19 @@ export default {
         html = html.replace("</body>", ENTRY_LAUNCH_OVERLAY + '<script src="/auth.js" defer></script></body>');
       } else if (accountId || adminAccess) {
         html = html.replace("<body>", '<body data-page="entry" data-entry-state="products">');
-        html = html.replace("</body>", ENTRY_PRODUCTS_OVERLAY + "</body>");
+        const productsOverlay = ENTRY_PRODUCTS_OVERLAY.replace(
+          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">",
+          "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\\n" + ENTRY_SITE_MENU,
+        );
+        html = html.replace("</body>", productsOverlay + "<script src=\"/entry-menu.js\" defer></script></body>");
       } else {
         html = html.replace('<script src="/session-ui.js" defer></script>', "");
         html = html.replace("<body>", '<body data-page="login" data-entry-state="login">');
-        html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js" defer></script></body>');
+        const authOverlay = ENTRY_AUTH_OVERLAY.replace(
+          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">",
+          "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\\n" + ENTRY_SITE_MENU,
+        );
+        html = html.replace("</body>", authOverlay + "<script src=\"/auth.js\" defer></script><script src=\"/entry-menu.js\" defer></script></body>");
       }
       const headers = new Headers({
         "Content-Type": "text/html; charset=utf-8",
@@ -1282,7 +1371,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname.startsWith("/api/auth/");
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = await isAdmin(request, env);
