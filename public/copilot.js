@@ -2229,16 +2229,16 @@
           details.push({ label, value: detailValue, ...(unit.value ? { unit: unit.value } : {}) });
         }
         const sources = [];
-        if (value.sources !== undefined) {
-          if (!Array.isArray(value.sources) || value.sources.length < 1 || value.sources.length > 4) return null;
-          for (const item of value.sources) {
-            if (!responseCardExactKeys(item, ["title", "url"])) return null;
+        // Optional source links are best-effort; safely omit invalid links, not the answer rows.
+        if (Array.isArray(value.sources)) {
+          for (const item of value.sources.slice(0, 4)) {
+            if (!responseCardExactKeys(item, ["title", "url"])) continue;
             const sourceTitle = responseCardCleanText(item.title, 100);
             const sourceUrl = responseCardCleanText(item.url, 500);
-            if (!sourceTitle || !sourceUrl) return null;
+            if (!sourceTitle || !sourceUrl) continue;
             let parsedUrl;
-            try { parsedUrl = new URL(sourceUrl); } catch (_) { return null; }
-            if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) return null;
+            try { parsedUrl = new URL(sourceUrl); } catch (_) { continue; }
+            if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) continue;
             sources.push({ title: sourceTitle, url: parsedUrl.href });
           }
         }
