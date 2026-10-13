@@ -466,6 +466,7 @@ describe("Apple-style live-search progress", () => {
     expect(html).toContain('id="liveSearchStatus" hidden');
     expect(html).toContain('id="liveSearchTitle"');
     expect(html).toContain('id="liveSearchPercent"');
+    expect(html).toContain('class="live-search-copy" role="status" aria-live="polite" aria-atomic="true"');
     expect(html).toContain('role="progressbar"');
     expect(script).toContain('call.name === "search_current_web"');
     expect(script).toContain("function startLiveSearchProgress()");
