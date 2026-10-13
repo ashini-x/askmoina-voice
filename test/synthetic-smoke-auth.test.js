@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const grounding = readFileSync(new URL("../scripts/live-grounding-smoke.py", import.meta.url), "utf8");
 const memory = readFileSync(new URL("../scripts/live-memory-voice-smoke.py", import.meta.url), "utf8");
+const responseCardSmoke = readFileSync(new URL("../scripts/live-response-card-smoke.py", import.meta.url), "utf8");
 const session = readFileSync(new URL("../scripts/synthetic-passkey-session.mjs", import.meta.url), "utf8");
 const deploy = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
 
@@ -21,6 +22,14 @@ describe("authenticated live synthetic verification", () => {
     expect(grounding).toContain("message_has_tool_call = has_grounding_tool_call(message)");
     expect(grounding).toContain("and not message_has_tool_call");
     expect(grounding).toContain("turn_complete = True");
+  });
+
+  it("ignores non-JSON binary media frames without hiding malformed text frames", () => {
+    expect(responseCardSmoke).toContain("def recv_json_message(ws):");
+    expect(responseCardSmoke).toContain("if isinstance(frame, bytes):");
+    expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
+    expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
+    expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");
   });
 
   it("creates its session through the actual passkey signup and identity endpoints", () => {
