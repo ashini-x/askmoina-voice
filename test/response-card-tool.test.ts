@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "../src/sessions/response-card";
 
+
 describe("RC2 bounded response-card contract", () => {
   it("accepts and normalizes ordered steps", () => {
     expect(validateResponseCard({

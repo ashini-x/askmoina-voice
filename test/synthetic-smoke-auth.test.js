@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const grounding = readFileSync(new URL("../scripts/live-grounding-smoke.py", import.meta.url), "utf8");
 const memory = readFileSync(new URL("../scripts/live-memory-voice-smoke.py", import.meta.url), "utf8");
 const responseCardSmoke = readFileSync(new URL("../scripts/live-response-card-smoke.py", import.meta.url), "utf8");
+const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const session = readFileSync(new URL("../scripts/synthetic-passkey-session.mjs", import.meta.url), "utf8");
 const deploy = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
 
@@ -45,6 +46,12 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
     expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
     expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");
+  });
+
+  it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
+    expect(workerSource).toContain("EXPLICIT CARD REQUEST OVERRIDE");
+    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).toContain("The current release validates response-card calls but does not yet render the card tray.");
   });
 
   it("creates its session through the actual passkey signup and identity endpoints", () => {
