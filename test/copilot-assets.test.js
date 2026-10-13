@@ -54,9 +54,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="responseCardContent"');
     expect(html).toContain('id="responseCardCollapse"');
     expect(html).toContain('id="responseCardDismiss"');
+    expect(html).toContain('id="responseCardMinimize"');
+    expect(html).toContain('id="responseCardRestore"');
     expect(script).toContain("function normalizeResponseCardPayload(value)");
     expect(script).toContain("function renderResponseCard(value, force = false)");
     expect(script).toContain("function dismissResponseCard()");
+    expect(script).toContain("function minimizeResponseCard()");
+    expect(script).toContain("function restoreResponseCard()");
+    expect(script).toContain("function createTranscriptFallbackCard(userText, assistantText)");
+    expect(script).toContain("A preflight acknowledgement is not evidence of an active search.");
+    expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
     expect(script).toContain("function renderGroundedDetails(card)");
@@ -565,6 +572,8 @@ describe("Grounded search resilience", () => {
 
 describe("Proactive ranked-list UX", () => {
   it("instructs Co-Pilot to ground and proactively display complete top-N list cards", () => {
+    expect(workerSource).toContain("M41 — ALWAYS-AVAILABLE ANSWER SHEET, CONTINUOUS VOICE");
+    expect(workerSource).toContain("continue the voice response and explain every recommended step");
     expect(workerSource).toContain("PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS");
     expect(workerSource).toContain("Include every supported requested rank");
     expect(workerSource).toContain("For 'IPL 2025 top rankers' without a metric");
