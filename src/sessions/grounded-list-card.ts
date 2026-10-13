@@ -119,7 +119,7 @@ export function buildGroundedListCard(query: string, groundedResult: string): Gr
   const rows = extractGroundedRankedRows(groundedResult, requestedCount);
   if (!rows.length) return null;
 
-  const byRank = new Map(rows.map((row) => [row.rank, row]));
+  const byRank = new Map<number, GroundedRankedRow>(rows.map((row): [number, GroundedRankedRow] => [row.rank, row]));
   const details = Array.from({ length: requestedCount }, (_, index) => {
     const rank = index + 1;
     const row = byRank.get(rank);
