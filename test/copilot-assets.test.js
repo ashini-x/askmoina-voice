@@ -490,7 +490,7 @@ describe("Apple-style live-search progress", () => {
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
     expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
     const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
-    const searchAwait = workerSource.indexOf("result = await performGroundedWebSearch(env, query, deviceContext)");
+    const searchAwait = workerSource.indexOf("result = await performGroundedWebSearch(env, query, deviceContext, copilotMode)");
     expect(workerStart).toBeGreaterThanOrEqual(0);
     expect(searchAwait).toBeGreaterThan(workerStart);
     const lookupComplete = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');

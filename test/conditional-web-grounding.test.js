@@ -78,12 +78,32 @@ describe("Grounded ranked-list completeness and recovery", () => {
 describe("Adaptive grounded-list search budget", () => {
   it("keeps ordinary lookups bounded while giving full ranked tables a longer retry window", () => {
     expect(workerSource).toContain("const requestedListCountForBudget = getRequestedRankedListCount(query);");
-    expect(workerSource).toContain("const rankedListSearchBudget = requestedListCountForBudget !== null && requestedListCountForBudget >= 8;");
+    expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
+    expect(workerSource).toContain("(requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
     expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 21_000;");
+  });
+});
+
+describe("Ranked-table budget inference when Live simplifies the query", () => {
+  it("recognizes a ranked-table intent after the requested numeric count is omitted", () => {
+    expect(workerSource).toContain("function isLikelyRankedTableSearchQuery(query: string)");
+    expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
+    expect(workerSource).toContain("(requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery");
+    expect(workerSource).toContain("performGroundedWebSearch(env, query, deviceContext, copilotMode)");
+    expect(workerSource).toContain("inferredRankedTableQuery,");
+    expect(workerSource).toContain("rankedListSearchBudget,");
+  });
+
+  it("keeps the higher budget restricted to recognized Co-Pilot ranked-table requests or explicit large counts", () => {
+    expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
+    expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 21_000;");
   });
