@@ -477,7 +477,10 @@ describe("Apple-style live-search progress", () => {
     expect(html).toContain('role="progressbar"');
     expect(script).toContain('call.name === "search_current_web"');
     expect(script).toContain("function startLiveSearchProgress()");
-    expect(script).toContain("Checking current sources");
+    expect(script).toContain("Finding relevant sources");
+    expect(script).toContain("Checking useful source details");
+    expect(script).toContain("Collecting supporting evidence");
+    expect(css).toContain("@keyframes live-search-sweep");
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
     expect(workerSource).toContain("The browser immediately displays and speaks a short acknowledgement");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
