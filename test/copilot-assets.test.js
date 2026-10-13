@@ -297,7 +297,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Live donations", "Your Memory", "Memory Vault", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign Out"]) {
+    for (const label of ["Live donations", "Your Memory", "Key memories", "About us", "Developer", "Help &amp; Feedback", "Privacy &amp; Security", "Pricing", "Sign out", "DEMO COUNTER"]) {
       expect(workerSource).toContain(label);
     }
     for (const route of ["/about", "/developer", "/help", "/privacy"]) {
@@ -337,7 +337,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   });
 
 
-  it("keeps the Apple-style header at the page root with final bird logo, donation link, and hamburger", () => {
+  it("keeps the Apple-style header at the page root with final bird logo and hamburger only", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
     expect(workerSource).toContain("function withSiteChrome(html: string, authenticated = false)");
     expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu)");
@@ -376,31 +376,45 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("<!-- ASKMOINA_MENU_CONTENT -->");
     expect(workerSource).toContain('"/donate":');
     expect(workerSource).toContain('"/pricing":');
-    expect(workerSource).toContain("entry-header-donation");
-    expect(workerSource).toContain("Memory Vault");
+    expect(workerSource).not.toContain("entry-header-donation");
+    expect(workerSource).toContain("Key memories");
     expect(workerSource).toContain("entry-menu-logout");
-    expect(workerSource).toContain("Sign Out");
+    expect(siteChromeCss).toContain("color:#ff3b30");
+    expect(siteChromeCss).toContain("border-top:0");
+    expect(workerSource).toContain("Sign out");
     expect(workerSource).toContain('url.pathname === "/account" || url.pathname === "/account.html"');
   });
 
-  it("uses a one-line donation shimmer and honors reduced-motion preferences", () => {
-    expect(siteChromeCss).toContain(".entry-header-donation");
-    expect(siteChromeCss).toContain("white-space:nowrap");
-    expect(siteChromeCss).toContain("@keyframes live-donation-shimmer");
-    expect(siteChromeCss).toContain("@media(prefers-reduced-motion:reduce){.entry-header-donation-label");
+  it("uses a no-network illustrative donation counter and a compact Apple-style card", () => {
+    expect(workerSource).toContain("entry-donation-card");
+    expect(workerSource).toContain("data-donation-counter");
+    expect(workerSource).toContain("Illustrative only — not a verified donation total.");
+    expect(workerSource).toContain("illustrative demo counter, not a verified total of money received");
+    expect(entryMenuScript).toContain("const baseAmount = 109000");
+    expect(entryMenuScript).toContain("const startAt = Date.UTC(2026, 9, 13, 4, 0, 0)");
+    expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
+    expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("fetch(");
+    expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("localStorage");
+    expect(siteChromeCss).toContain(".entry-donation-status{");
+    expect(siteChromeCss).toContain("background:#1d1d1f");
+    expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
     expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
   });
-  it("places Live donations beside the hamburger with a pulsing violet dot", () => {
-    expect(workerSource).toContain("askmoina-bird-final.png");
-    expect(workerSource).toContain("entry-header-donation");
-    expect(workerSource).toContain("entry-live-dot");
-    expect(workerSource).toContain("entry-site-header-actions");
-    expect(siteChromeCss).toContain(".entry-site-header-actions{");
-    expect(siteChromeCss).toContain("@keyframes live-donation-pulse");
-    expect(siteChromeCss).toContain("@keyframes live-donation-shimmer");
-    expect(logo.readUInt32BE(16)).toBe(128);
-    expect(logo.readUInt32BE(20)).toBe(128);
-    expect(logo[25]).toBe(6);
+
+  it("places the Live donations card below Hardware, not in the header", () => {
+    expect(workerSource).not.toContain("entry-header-donation");
+    expect(workerSource).toContain("entry-donation-status-dot");
+    expect(workerSource).not.toContain("entry-site-header-actions");
+    expect(siteChromeCss).not.toContain(".entry-site-header-actions{");
+    expect(siteChromeCss).not.toContain("@keyframes live-donation-pulse");
+    expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
+    expect(workerSource.indexOf("Hardware")).toBeLessThan(workerSource.indexOf("entry-donation-card"));
+  });
+
+  it("caches reusable static CSS briefly but leaves personalized HTML uncached", () => {
+    expect(workerSource).toContain('"Cache-Control": "public, max-age=300, stale-while-revalidate=3600"');
+    expect(workerSource).toContain('"Cache-Control": isScript ? "private, max-age=300" : "no-store"');
+    expect(workerSource).toContain('headers.set("Cache-Control", "no-store")');
   });
 
   it("builds the requested auth-aware menu groups and a public Pricing page", () => {
