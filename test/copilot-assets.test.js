@@ -55,7 +55,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="responseCardCollapse"');
     expect(html).toContain('id="responseCardDismiss"');
     expect(script).toContain("function normalizeResponseCardPayload(value)");
-    expect(script).toContain("function renderResponseCard(value)");
+    expect(script).toContain("function renderResponseCard(value, force = false)");
     expect(script).toContain("function dismissResponseCard()");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
@@ -552,7 +552,7 @@ describe("Immediate live-search acknowledgement", () => {
 describe("Grounded search resilience", () => {
   it("keeps the supported fast grounding model and retries slow/transient provider failures", () => {
     expect(workerSource).toContain('const model = "gemini-3.8-flash";');
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
     expect(workerSource).toContain('temperature: 0.0');
@@ -564,8 +564,23 @@ describe("Grounded search resilience", () => {
 describe("Proactive ranked-list UX", () => {
   it("instructs Co-Pilot to ground and proactively display complete top-N list cards", () => {
     expect(workerSource).toContain("PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS");
-    expect(workerSource).toContain("do not stop at four just because only a few rows appeared");
+    expect(workerSource).toContain("Include every supported requested rank");
     expect(workerSource).toContain("For 'IPL 2025 top rankers' without a metric");
     expect(workerSource).toContain("M39 — DETAIL WITHOUT EXTRA FRICTION");
+  });
+});
+
+describe("RC6 grounded list visibility regressions", () => {
+  it("prioritizes server-grounded list cards over shorter model cards", () => {
+    expect(script).toContain("const groundedFallback = [...queuedCards].reverse().find");
+    expect(script).toContain("Grounded results found · designing your list");
+    expect(script).toContain("protectGroundedListForTurn && lastGroundedRankedListCard");
+  });
+
+  it("recognizes a full-list follow-up and immediately reopens cached grounded data", () => {
+    expect(script).toContain("function isListDisplayFollowup(text)");
+    expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
+    expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
+    expect(script).toContain("if (!normalized || liveSearchSpokenAcknowledgementText) return");
   });
 });

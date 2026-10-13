@@ -74,6 +74,8 @@
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
   let pendingResponseCards = [];
+  let lastGroundedRankedListCard = null;
+  let protectGroundedListForTurn = false;
   let liveSearchStageIndex = 0;
   let liveSearchSpokenAcknowledgementText = "";
   let liveSearchProgressStageIndex = 0;
@@ -168,9 +170,16 @@
       liveSearchFinishing = false;
       liveSearchLookupCompleted = false;
       const queuedCards = pendingResponseCards.splice(0);
-      for (const queued of queuedCards) {
-        const rendered = renderResponseCard(queued.args);
-        sendDeferredResponseCardResult(queued.id, rendered);
+      const groundedFallback = [...queuedCards].reverse().find((queued) => !queued.id && isGroundedRankedListCard(queued.args));
+      const selectedCard = groundedFallback ||
+        [...queuedCards].reverse().find((queued) => Boolean(queued.id)) ||
+        queuedCards[queuedCards.length - 1];
+      if (selectedCard) {
+        const rendered = renderResponseCard(selectedCard.args, !selectedCard.id || isGroundedRankedListCard(selectedCard.args));
+        // A model card can acknowledge the visible, more complete grounded card but cannot replace it.
+        for (const queued of queuedCards) {
+          if (queued.id) sendDeferredResponseCardResult(queued.id, rendered);
+        }
       }
     }, 420);
   }
@@ -194,7 +203,7 @@
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
   }
 
-  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top\s+\d+|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
+  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top[\s-]*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:all|every)\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:full|complete|entire|whole)\s+(?:ranked\s+)?list|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
   const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
 
   function isLikelyLiveSearchRequest(text) {
@@ -245,7 +254,7 @@
 
   function speakImmediateSearchAcknowledgement(text) {
     const normalized = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (!normalized || normalized === liveSearchSpokenAcknowledgementText) return;
+    if (!normalized || liveSearchSpokenAcknowledgementText) return;
     liveSearchSpokenAcknowledgementText = normalized;
     if (typeof window.SpeechSynthesisUtterance !== "function" || !window.speechSynthesis) return;
     try {
@@ -264,17 +273,75 @@
     }
   }
 
+  function requestedListCountFromTranscript(text) {
+    const value = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const countPattern = "(\\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)";
+    const words = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
+    const patterns = [
+      new RegExp("\\btop[\\s-]*" + countPattern + "\\b", "i"),
+      new RegExp("\\b(?:all|every|first)\\s+(?:the\\s+)?" + countPattern + "\\b", "i"),
+      new RegExp("\\b(?:full|complete|entire|whole)\\s+(?:ranked\\s+)?list(?:\\s+of)?\\s+(?:all\\s+)?" + countPattern + "\\b", "i")
+    ];
+    for (const pattern of patterns) {
+      const match = value.match(pattern);
+      if (!match) continue;
+      for (let index = 1; index < match.length; index += 1) {
+        const token = String(match[index] || "").trim().toLowerCase();
+        const count = /^\d+$/.test(token) ? Number(token) : words[token];
+        if (Number.isInteger(count) && count >= 2 && count <= 10) return count;
+      }
+    }
+    return null;
+  }
+
+  function isListDisplayFollowup(text) {
+    const value = String(text || "").replace(/\s+/g, " ").trim();
+    const count = requestedListCountFromTranscript(value);
+    return Boolean(count && /\b(?:show|display|give|list|print|put)\b/i.test(value) &&
+      /\b(?:all|every|full|complete|entire|whole|remaining|rest)\b/i.test(value)) ||
+      /\b(?:show|display|give|list)\s+me\s+(?:the\s+)?(?:full|whole|complete|entire)\s+list\b/i.test(value) ||
+      /\b(?:show|display|give|list)\s+me\s+all\s+the\s+entries\b/i.test(value);
+  }
+
+  function isGroundedRankedListCard(value) {
+    const card = normalizeResponseCardPayload(value);
+    return Boolean(card && card.type === "key_details" &&
+      /^top\s+\d+\s+results$/i.test(card.title) &&
+      Array.isArray(card.details) && card.details.length >= 2 &&
+      Array.isArray(card.sources) && card.sources.length > 0);
+  }
+
   function handleTranscriptAcknowledgement(role, text) {
     if (role === "user") {
-      if (isLikelyLiveSearchRequest(text)) {
+      const normalized = String(text || "").replace(/\s+/g, " ").trim();
+      const expansion = isListDisplayFollowup(normalized);
+      const count = requestedListCountFromTranscript(normalized);
+      if (expansion && lastGroundedRankedListCard) {
+        protectGroundedListForTurn = true;
+        renderResponseCard(lastGroundedRankedListCard, true);
+        const complete = /^complete ranked list/i.test(String(lastGroundedRankedListCard.summary || "")) &&
+          Array.isArray(lastGroundedRankedListCard.details) &&
+          lastGroundedRankedListCard.details.length >= (count || lastGroundedRankedListCard.details.length) &&
+          lastGroundedRankedListCard.details.every((item) => !String(item.label || "").endsWith("Not verified"));
+        if (complete) {
+          hideLiveSearchAcknowledgement();
+          return;
+        }
+      } else {
+        protectGroundedListForTurn = false;
+        lastGroundedRankedListCard = null;
+      }
+
+      if (isLikelyLiveSearchRequest(normalized)) {
         showLiveSearchAcknowledgement();
-        speakImmediateSearchAcknowledgement(text);
-      } else if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
+        speakImmediateSearchAcknowledgement(normalized);
+      } else if (liveSearchAcknowledgementActive) {
+        hideLiveSearchAcknowledgement();
+      }
       return;
     }
     // Interim assistant transcription can arrive before the Live API's function call.
-    // Do not hide the acknowledgement here: only the Worker search-start event should
-    // transition it to the searching state; completed non-search turns are handled below.
+    // Only a real search-start event advances the acknowledgement to the searching state.
   }
 
   function readOptedInMemoryContext() {
@@ -2423,9 +2490,10 @@
     setResponseCardExpanded(true);
   }
 
-  function renderResponseCard(value) {
+  function renderResponseCard(value, force = false) {
     const card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
+    if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") return true;
 
     responseCardType.textContent = card.type === "key_details" ? "A GROUNDED ANSWER" :
       card.type === "steps" ? "YOUR GUIDE" : "SIDE-BY-SIDE";
@@ -2550,6 +2618,26 @@
     }
     if (socket !== sessionSocket) return;
 
+    if (message.grounded_response_card && typeof message.grounded_response_card === "object") {
+      const fallbackCard = normalizeResponseCardPayload(message.grounded_response_card);
+      if (fallbackCard && fallbackCard.type === "key_details") {
+        if (isGroundedRankedListCard(fallbackCard)) {
+          lastGroundedRankedListCard = fallbackCard;
+          protectGroundedListForTurn = true;
+        }
+        if (liveSearchActive) {
+          pendingResponseCards = pendingResponseCards.filter((queued) => queued.id !== "");
+          pendingResponseCards.push({ id: "", args: fallbackCard });
+          if (liveSearchTitle) liveSearchTitle.textContent = "Building your answer";
+          if (liveSearchMessage) liveSearchMessage.textContent = "Grounded results found · designing your list";
+          completeLiveSearchProgress();
+        } else {
+          renderResponseCard(fallbackCard, true);
+        }
+      }
+      return;
+    }
+
     if (message.live_search_status && message.live_search_status.state === "started") {
       startLiveSearchProgress();
       return;
@@ -2610,7 +2698,7 @@
       const interimUserTranscription = serverContent.interim_input_transcription || serverContent.interimInputTranscription;
       if (interimUserTranscription && typeof interimUserTranscription.text === "string" &&
           isLikelyLiveSearchRequest(interimUserTranscription.text)) {
-        showLiveSearchAcknowledgement();
+        handleTranscriptAcknowledgement("user", interimUserTranscription.text);
       }
       if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);
       if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);

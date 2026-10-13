@@ -130,3 +130,10 @@ describe("RC4 bounded response-card contract", () => {
     expect(DISPLAY_RESPONSE_CARD_FUNCTION.parameters.required).toEqual(["type", "title"]);
   });
 });
+
+describe("RC6 full-list follow-up contract", () => {
+  it("requires follow-up list requests to be shown in a complete card rather than speech alone", () => {
+    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("do not answer with names by speech alone");
+    expect(DISPLAY_RESPONSE_CARD_FUNCTION.description).toContain("search the same topic again");
+  });
+});

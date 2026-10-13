@@ -15,6 +15,7 @@ import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
+import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
 
@@ -184,7 +185,7 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
   "SELECTIVE RESPONSE CARDS — KEEP USEFUL STRUCTURE AVAILABLE:",
   "EXPLICIT CARD REQUEST OVERRIDE: If the user asks for a response card, checklist card, or asks you to put a checklist/walkthrough in a card or on screen, you MUST call display_response_card during that same turn. Example: 'Make a response card with three steps for organizing pens' means call display_response_card with type=steps and 2–5 concise, safe, user-verifiable steps. RC4 renders validated card data as a full-screen translucent, type-specific answer sheet; after acknowledgement, continue with concise spoken guidance and orient the user to the card only when helpful. Do not imply that showing a card completes any action. Do not substitute speech-only guidance or a camera overlay for an explicit card request. If no card was requested, use this tool only when a persistent structured view materially helps; never call it for greetings or one-line factual answers.",
-  "PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS: When the user asks for a top-N list, leaderboard, rankings, season statistics, or another factual list with five or more entries, proactively search for reliable sources and call display_response_card in the same turn; do not wait for a separate request to show the list. For ranked sports lists, put each rank and player/team in the label and the verified stat in the value. Fill the requested number of rows (up to 10) whenever sources support it; do not stop at four just because only a few rows appeared in a search snippet. Add 1–3 source title/URL records when valid HTTPS URLs are available, but source links are optional metadata and must never prevent displaying the complete supported list. Never invent a source or missing row. Give one brief spoken summary and tell the user the complete designed list is on screen rather than reading all rows aloud. For 'IPL 2025 top rankers' without a metric, use the standard most-runs batting leaderboard by default, briefly state that interpretation, and do not ask a needless clarification.",
+  "PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS: When the user asks for a top-N list, leaderboard, rankings, season statistics, or a factual list that benefits from structure, proactively search reliable sources and display the complete list in a response card during the same turn. Include every supported requested rank, not just the first few items returned by a snippet. Provide source title/URL records when returned, but never invent a missing row or a source. Speak a concise summary while keeping the full designed list visible. FOLLOW-UP OVERRIDE: If the user says 'show me all 10', 'show the full list', 'display every entry', or asks for remaining entries, do not answer with names by voice alone. Reuse complete prior grounded results in a card; if any ranks are missing or unverified, repeat the search for the previous topic's full table and show all available source-backed rows. Preserve the prior topic and requested count. For 'IPL 2025 top rankers' without a metric, use the standard most-runs batting leaderboard by default, briefly state that interpretation, and do not ask a needless clarification.",
   "Response cards are separate from display_screen_overlay: display_response_card carries structured content that remains useful while the user acts; display_screen_overlay draws approximate camera-space cues only. Never encode a card as an overlay, and never mix card data into spatial guidance.",
   "Use only supported fields for the selected card type. Steps are bounded to 2–5 low-risk, user-verifiable actions; details are labelled values; comparison options need comparable, evidence-supported attributes. Do not generate card steps for hazardous procedures, invent exact facts, or mark steps complete because they appear in a payload.",
   "The client renders validated RC4 response-card payloads as a full-screen translucent, Apple-minimal answer sheet with type-specific lists, green checks, clear hierarchy, and text-only DOM nodes. When a user requests or clearly benefits from a complete ranked list, prioritize displaying every supported requested row; optional source links must not prevent the card from rendering. If a card payload is rejected, correct it and retry the display_response_card tool rather than falling back to speech-only guidance. Do not claim a card appeared unless accepted by the client. The card is informational and does not mark physical actions complete.",
@@ -485,8 +486,8 @@ function hasVertexCredentials(env: Env): boolean {
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
-const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;
-const GROUNDED_SEARCH_BUDGET_MS = 30_000;
+const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;
+const GROUNDED_SEARCH_BUDGET_MS = 21_000;
 const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
@@ -510,7 +511,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
       `Search the public web for: ${query}`,
       `Device context explicitly supplied by the user or clearly legible from a label: ${JSON.stringify(deviceContext)}`,
       "Answer the user's actual request, not merely the search-snippet preview. Use only facts supported by grounded web results, flag uncertainty, and never invent data.",
-      "For top-N rankings, leaderboard requests, sports statistics, or other requested lists, identify the requested count and return that many distinct ranked entries whenever the sources support them. Prefer official league/statistics tables or reputable full-table reports over short news snippets. If a first result only exposes the first few rows, search for the complete table or a more specific alternate query. Include each rank, name, team/association where relevant, and requested statistic. Do not truncate a top-10 list to three or four entries for concision.",
+      "For rankings, leaderboards, sports statistics, and other requested lists, identify the count and return one distinct numbered row per rank whenever supported by sources. Prefer official tables or reputable full-table reports over short snippets. Put every row on its own line with rank, name, team/category, and the requested statistic before a concise Sources section. If only a few rows are visible, search for the full table. Do not stop early for concision or invent missing data.",
       "For an underspecified IPL 'rankers' request, interpret this as the IPL 2025 most-runs batting leaderboard unless the user explicitly mentions wickets or another metric. State this interpretation briefly; do not ask a follow-up when that default is useful.",
       "When device context is provided, search for the exact manufacturer, model ID, variant/revision, and part number. Prefer the manufacturer's official manual, service documentation, labelled diagrams, compatibility notes, and safety/recall notices appropriate to the requested material.",
       "Compare model/variant identifiers visible in source titles and URLs with the supplied identifiers. Call a source exact-match only when evidence supports it; if ambiguous or from a neighbouring model, say so and do not transplant its steps. A title or URL is not a substitute for inspecting the page content.",
@@ -523,7 +524,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
   });
   const requestBody = makeGroundingRequestBody(groundingPrompt);
-  const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The prior request did not produce verifiable grounding source URLs or failed transiently. Run a distinct, more specific Google Search query (for example, search for the full official/reputable leaderboard table), and return source-backed results with URLs. Do not answer from memory or give up because the first query was unhelpful.");
+  const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.");
   let candidate: {
     content?: { parts?: Array<{ text?: string }> };
     groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
@@ -568,6 +569,18 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
         throw failure;
       }
       candidate = payload.candidates?.[0];
+      const requestedListCount = getRequestedRankedListCount(query);
+      if (requestedListCount && attempt < GROUNDED_SEARCH_MAX_ATTEMPTS) {
+        const candidateText = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
+        const rankedRows = extractGroundedRankedRows(candidateText, requestedListCount);
+        if (rankedRows.length < requestedListCount) {
+          console.warn("[AskMoina] Grounded ranked list is incomplete; retrying for requested rows", JSON.stringify({
+            requestedCount: requestedListCount, recoveredRows: rankedRows.length, attempt, retrying: true
+          }));
+          await new Promise<void>((resolve) => setTimeout(resolve, 250));
+          continue;
+        }
+      }
       const hasGroundingUrls = (candidate?.groundingMetadata?.groundingChunks || []).some((chunk) => {
         const uri = chunk.web?.uri;
         return typeof uri === "string" && (uri.startsWith("https://") || uri.startsWith("http://"));
@@ -1317,6 +1330,20 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               }
             }
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              const fallbackCard = buildGroundedListCard(query, result);
+              if (fallbackCard) {
+                const validation = validateResponseCard(fallbackCard);
+                if (validation.valid && validation.card.type === "key_details") {
+                  try {
+                    workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+                    console.info("[AskMoina] Grounded ranked-list fallback card ready", JSON.stringify({
+                      requestedCount: validation.card.details.length,
+                      verifiedRows: validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length,
+                      complete: String(validation.card.summary || "").startsWith("Complete ranked list")
+                    }));
+                  } catch (_) {}
+                }
+              }
               try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
             responses.push({ id: call.id, name: "search_current_web", response: { result } });
