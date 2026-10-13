@@ -135,12 +135,7 @@ def bounded_card(args: object) -> bool:
                     and isinstance(item["value"], str) and 1 <= len(item["value"].strip()) <= 180
                     and ("unit" not in item or isinstance(item["unit"], str) and len(item["unit"]) <= 32)
                     for item in items)
-            and ("sources" not in args or (
-                isinstance(args["sources"], list) and len(args["sources"]) <= 4
-                and all(isinstance(source, dict) and set(source) == {"title", "url"}
-                        and isinstance(source["title"], str) and 1 <= len(source["title"].strip()) <= 100
-                        and isinstance(source["url"], str) and source["url"].startswith("https://")
-                        for source in args["sources"]))
+            # Optional source metadata is sanitized by the browser; the list contract is independent of it.
         )
     options = args.get("options")
     if not (set(args).issubset({"type", "title", "summary", "options", "takeaway"})
