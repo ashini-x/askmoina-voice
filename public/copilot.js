@@ -168,9 +168,12 @@
       liveSearchFinishing = false;
       liveSearchLookupCompleted = false;
       const queuedCards = pendingResponseCards.splice(0);
-      for (const queued of queuedCards) {
-        const rendered = renderResponseCard(queued.args);
-        sendDeferredResponseCardResult(queued.id, rendered);
+      // Prefer a model-issued card when present; otherwise show the grounded server fallback.
+      const selectedCard = [...queuedCards].reverse().find((queued) => Boolean(queued.id)) ||
+        queuedCards[queuedCards.length - 1];
+      if (selectedCard) {
+        const rendered = renderResponseCard(selectedCard.args);
+        if (selectedCard.id) sendDeferredResponseCardResult(selectedCard.id, rendered);
       }
     }, 420);
   }
@@ -2549,6 +2552,21 @@
       return;
     }
     if (socket !== sessionSocket) return;
+
+    if (message.grounded_response_card && typeof message.grounded_response_card === "object") {
+      const fallbackCard = normalizeResponseCardPayload(message.grounded_response_card);
+      if (fallbackCard && fallbackCard.type === "key_details") {
+        if (liveSearchActive) {
+          pendingResponseCards = pendingResponseCards.filter((queued) => queued.id !== "");
+          pendingResponseCards.push({ id: "", args: fallbackCard });
+          if (liveSearchTitle) liveSearchTitle.textContent = "Building your answer";
+          if (liveSearchMessage) liveSearchMessage.textContent = "The grounded list is ready; finishing the spoken summary";
+        } else {
+          renderResponseCard(fallbackCard);
+        }
+      }
+      return;
+    }
 
     if (message.live_search_status && message.live_search_status.state === "started") {
       startLiveSearchProgress();
