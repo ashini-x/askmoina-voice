@@ -82,7 +82,10 @@
     const next = Math.max(0, Math.min(100, Math.round(value)));
     liveSearchProgressValue = next;
     if (liveSearchPercent) liveSearchPercent.textContent = String(next) + "%";
-    if (liveSearchProgress) liveSearchProgress.setAttribute("aria-valuenow", String(next));
+    if (liveSearchProgress) {
+      if (next >= 100) liveSearchProgress.setAttribute("aria-valuenow", "100");
+      else liveSearchProgress.removeAttribute("aria-valuenow");
+    }
     if (liveSearchProgressBar) liveSearchProgressBar.style.width = String(next) + "%";
   }
 
@@ -92,7 +95,7 @@
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
-    liveSearchStatus.classList.remove("is-acknowledging");
+    liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchCompletionTimer = null;
@@ -106,7 +109,7 @@
     if (liveSearchMessage) liveSearchMessage.textContent = "Finding relevant sources";
     if (transcriptNode) transcriptNode.classList.add("is-searching");
     if (responseCardTray && !responseCardTray.hidden) dismissResponseCard();
-    updateLiveSearchProgress(8);
+    updateLiveSearchProgress(0);
 
     const searchStages = [
       "Finding relevant sources",
@@ -117,8 +120,6 @@
     // The progress rail is deliberately indeterminate: it does not pretend to measure provider completion.
     liveSearchProgressInterval = window.setInterval(() => {
       if (!liveSearchActive || liveSearchFinishing || liveSearchLookupCompleted) return;
-      const increment = liveSearchProgressValue < 70 ? 2 : 0.5;
-      updateLiveSearchProgress(Math.min(88, liveSearchProgressValue + increment));
       stageTick += 1;
       if (stageTick % 5 === 0 && liveSearchMessage) {
         liveSearchProgressStageIndex = (liveSearchProgressStageIndex + 1) % searchStages.length;
@@ -150,14 +151,18 @@
     liveSearchFinishing = true;
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchProgressInterval = null;
-    if (liveSearchTitle) liveSearchTitle.textContent = "Done";
+    if (liveSearchTitle) liveSearchTitle.textContent = "Finishing";
     if (liveSearchMessage) liveSearchMessage.textContent = "Preparing your answer";
+    if (liveSearchStatus) liveSearchStatus.classList.add("is-complete");
     updateLiveSearchProgress(100);
 
     // Show 100% briefly, then remove the loader before revealing final text and any response card.
     liveSearchCompletionTimer = window.setTimeout(() => {
       liveSearchCompletionTimer = null;
-      if (liveSearchStatus) liveSearchStatus.hidden = true;
+      if (liveSearchStatus) {
+        liveSearchStatus.hidden = true;
+        liveSearchStatus.classList.remove("is-complete");
+      }
       if (transcriptNode) transcriptNode.classList.remove("is-searching");
       liveSearchActive = false;
       liveSearchFinishing = false;
@@ -182,7 +187,10 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     pendingResponseCards = [];
-    if (liveSearchStatus) liveSearchStatus.hidden = true;
+    if (liveSearchStatus) {
+      liveSearchStatus.hidden = true;
+      liveSearchStatus.classList.remove("is-complete");
+    }
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
   }
 
@@ -220,7 +228,7 @@
       liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1700);
     };
     liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1500);
-    updateLiveSearchProgress(1);
+    updateLiveSearchProgress(0);
     // Keep the stage indicator visible until the Worker confirms that a real lookup has begun.
   }
 
