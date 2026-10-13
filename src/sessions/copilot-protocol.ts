@@ -15,9 +15,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Parse the deliberately small browser-to-live-session protocol. Normal voice
- * sessions accept PCM audio or bounded text turns; camera frames and the
- * display-only overlay tool are available only in explicit Co-Pilot mode.
+ * Parse the deliberately small browser-to-live-session protocol. Authenticated
+ * voice and Co-Pilot sessions accept bounded text turns as well as PCM audio;
+ * camera frames, target selection, and display-only tools remain Co-Pilot-only.
  */
 export function parseLiveClientInput(value: unknown, copilotMode: boolean): ParsedLiveClientInput | null {
   if (!isRecord(value)) return null;
@@ -76,7 +76,6 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
   }
 
   if (keys.length === 1 && typeof value.text_input === "string") {
-    if (copilotMode) return null;
     const text = value.text_input.trim();
     if (
       !text ||
