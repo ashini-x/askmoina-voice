@@ -64,8 +64,8 @@ RC1–RC8 is a separate, additive track for selecting and rendering useful respo
 
 - **RC1 — Selective response-card policy:** acceptance examples define when to speak, when to show a card, and when to use both. Policy only; no feature implementation implied. See [selective response-card acceptance](acceptance/selective-response-cards.md).
 - **RC2 — Structured live tool:** add a bounded `display_response_card` tool separate from `display_screen_overlay`, with strict schema and protocol validation.
-- **RC3 — Responsive card area:** add an on-demand compact card tray to the existing Co-Pilot; preserve camera visibility and call controls.
-- **RC4 — Three safe renderers:** render `steps`, `key_details`, and `comparison` cards from validated data using safe DOM text handling, not model-generated HTML.
+- **RC3 — Responsive card area:** add an on-demand compact card tray to the existing Co-Pilot; preserve camera visibility and call controls. Match ChatGPT-style rich-response interactions (useful icons, checkmarks, expandable details) within Apple's restrained minimalism; use translucent semantic HTML surfaces that preserve readability, and a bottom Searching/Thinking status with honest progress signalling.
+- **RC4 — Three safe renderers:** render `steps`, `key_details`, and `comparison` cards from validated data using safe DOM text handling, not model-generated HTML. Render checkmarks only for confirmed/evidence-supported progress, and include accessible translucent styling plus a readable fallback.
 - **RC5 — Speech/card lifecycle:** coordinate concise speech with persistent details; update the current task card, avoid duplicates, handle interruptions, and clear stale cards on task changes.
 - **RC6 — Camera and safety integration:** keep response cards distinct from spatial overlays; preserve safety gating and current-evidence requirements.
 - **RC7 — Automated regression coverage:** test policy, schemas, rendering, lifecycle, accessibility, safety, and parity between public assets and embedded Worker assets.
