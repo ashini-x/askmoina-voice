@@ -502,6 +502,8 @@ describe("Apple-style live-search progress", () => {
 describe("Immediate live-search acknowledgement", () => {
   it("acknowledges likely search requests as soon as speech is transcribed, before waiting for the search tool event", () => {
     expect(script).toContain("function isLikelyLiveSearchRequest(text)");
+    expect(script).toContain("interim_input_transcription");
+    expect(script).toContain("interimInputTranscription");
     expect(script).toContain("top\\s+\\d+");
     expect(script).toContain("rank(?:ed|ing|ers?)");
     expect(script).toContain("orange cap|purple cap");
