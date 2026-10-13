@@ -28,6 +28,10 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("def recv_json_message(ws):");
     expect(responseCardSmoke).toContain("if isinstance(frame, bytes):");
     expect(responseCardSmoke).toContain("time.sleep(len(chunk) / 32_000)");
+    expect(responseCardSmoke).toContain("def send_silence_keepalive(ws) -> None:");
+    expect(responseCardSmoke).toContain("time.monotonic() - last_keepalive_at >= 10");
+    expect(responseCardSmoke).toContain("stage=");
+
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
     expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
     expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");

@@ -21,6 +21,7 @@ PROMPT = (
 SETUP_WAIT_SECONDS = 18
 GREETING_WAIT_SECONDS = 22
 TURN_WAIT_SECONDS = 65
+PHASE = "startup"
 
 
 def synthesize_pcm_16k() -> bytes:
@@ -180,15 +181,30 @@ def send_speech(ws, pcm: bytes) -> None:
     ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
 
 
+def send_silence_keepalive(ws) -> None:
+    """Keep the authenticated Co-Pilot relay alive during a long synthetic turn."""
+    silence = bytes(3200)  # 100 ms of mono PCM16 silence at 16 kHz
+    ws.send(json.dumps({
+        "realtime_input": {"audio": {
+            "data": base64.b64encode(silence).decode("ascii"),
+            "mime_type": "audio/pcm;rate=16000",
+        }}
+    }))
+
+
 def main() -> int:
+    global PHASE
     if not BASE_URL.startswith("https://") or not AUTH_COOKIE.startswith("moina_session="):
         raise RuntimeError("HTTPS base URL and authenticated synthetic session are required.")
+    PHASE = "synthesize_prompt"
     pcm = synthesize_pcm_16k()
+    PHASE = "connect_websocket"
     ws = websocket.create_connection(
         BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket",
         origin=BASE_URL, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE,
     )
     try:
+        PHASE = "setup_live_copilot"
         ws.send(json.dumps({"setup": {}, "copilot_mode": True}))
         deadline = time.time() + SETUP_WAIT_SECONDS
         while time.time() < deadline:
@@ -205,6 +221,7 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for Co-Pilot setup completion.")
 
+        PHASE = "wait_for_initial_greeting"
         ws.send(json.dumps({"initial_greeting": True}))
         deadline = time.time() + GREETING_WAIT_SECONDS
         while time.time() < deadline:
@@ -221,7 +238,10 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for the Co-Pilot greeting turn.")
 
+        PHASE = "send_synthetic_prompt_audio"
         send_speech(ws, pcm)
+        PHASE = "wait_for_response_card_tool"
+        last_keepalive_at = time.monotonic()
         tool_count = 0
         final_complete = False
         saw_final_text = False
@@ -232,6 +252,9 @@ def main() -> int:
                 if message is None:
                     continue
             except websocket.WebSocketTimeoutException:
+                if time.monotonic() - last_keepalive_at >= 10:
+                    send_silence_keepalive(ws)
+                    last_keepalive_at = time.monotonic()
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
@@ -260,9 +283,16 @@ def main() -> int:
                 responses.append({"id": call_id, "name": name, "response": {"result": result}})
             if responses:
                 ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
+                last_keepalive_at = time.monotonic()
             if get_text(message):
                 saw_final_text = True
-            if is_turn_complete(message) and tool_count > 0 and not supported_tool_call:
+            turn_complete_now = is_turn_complete(message)
+            # The real browser keeps sending microphone frames. Match that behavior
+            # while waiting for Live instead of letting the relay idle watchdog expire.
+            if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:
+                send_silence_keepalive(ws)
+                last_keepalive_at = time.monotonic()
+            if turn_complete_now and tool_count > 0 and not supported_tool_call:
                 final_complete = True
                 if saw_final_text:
                     break
@@ -270,6 +300,7 @@ def main() -> int:
             raise RuntimeError("The live model did not call display_response_card for the explicit checklist request.")
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
+        PHASE = "verified"
         print("Synthetic live response-card test: PASS (tool called, payload bounded, protocol acknowledged, final turn completed).")
         return 0
     finally:
@@ -283,5 +314,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print("Synthetic live response-card test: FAIL (" + type(exc).__name__ + ": " + str(exc)[:180] + ")")
+        print("Synthetic live response-card test: FAIL (stage=" + PHASE + ", " + type(exc).__name__ + ": " + str(exc)[:160] + ")")
         raise SystemExit(1)
