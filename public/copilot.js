@@ -65,6 +65,7 @@
 
   let liveSearchActive = false;
   let liveSearchFinishing = false;
+  let liveSearchLookupCompleted = false;
   let liveSearchProgressValue = 0;
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
@@ -87,6 +88,7 @@
     liveSearchProgressInterval = null;
     liveSearchActive = true;
     liveSearchFinishing = false;
+    liveSearchLookupCompleted = false;
     liveSearchStatus.hidden = false;
     if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
     if (liveSearchMessage) liveSearchMessage.textContent = "Checking current sources";
@@ -136,6 +138,7 @@
       if (transcriptNode) transcriptNode.classList.remove("is-searching");
       liveSearchActive = false;
       liveSearchFinishing = false;
+      liveSearchLookupCompleted = false;
       const queuedCards = pendingResponseCards.splice(0);
       for (const queued of queuedCards) {
         const rendered = renderResponseCard(queued.args);
@@ -151,6 +154,7 @@
     liveSearchCompletionTimer = null;
     liveSearchActive = false;
     liveSearchFinishing = false;
+    liveSearchLookupCompleted = false;
     pendingResponseCards = [];
     if (liveSearchStatus) liveSearchStatus.hidden = true;
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
@@ -2240,7 +2244,7 @@
       if (call.name === "display_response_card") {
         const id = typeof call.id === "string" ? call.id : "";
         if (liveSearchActive) {
-          if (!hasSearchCallOnThisMessage) completeLiveSearchProgress();
+          if (!hasSearchCallOnThisMessage || liveSearchLookupCompleted) completeLiveSearchProgress();
           pendingResponseCards.push({ id, args: call.args });
           continue;
         }
@@ -2335,6 +2339,14 @@
 
     if (message.live_search_status && message.live_search_status.state === "started") {
       startLiveSearchProgress();
+      return;
+    }
+    if (message.live_search_status && message.live_search_status.state === "lookup_complete") {
+      liveSearchLookupCompleted = true;
+      if (liveSearchActive && !liveSearchFinishing) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Thinking through results";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Preparing a clear answer";
+      }
       return;
     }
 

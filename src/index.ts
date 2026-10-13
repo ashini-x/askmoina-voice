@@ -1238,6 +1238,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 result = "The live web lookup is temporarily unavailable. Be transparent about this and do not present current or device-specific claims as verified.";
               }
             }
+            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+            }
             responses.push({ id: call.id, name: "search_current_web", response: { result } });
           }
           if (responses.length && upstreamSocket.readyState === WebSocket.OPEN) {
