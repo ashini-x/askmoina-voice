@@ -81,7 +81,7 @@ describe("Live Co-Pilot input protocol", () => {
       }] }
     }, true)).toEqual({
       kind: "tool_response",
-      responses: [{ id: "tool_call_1", result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }]
+      responses: [{ id: "tool_call_1", name: "display_screen_overlay", result: "Scene evidence: blue cup; confidence 0.92.\\nUse only if fresh." }]
     });
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { arbitrary: "data" } }] } }, true)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { result: "x".repeat(3_001) } }] } }, true)).toBeNull();
