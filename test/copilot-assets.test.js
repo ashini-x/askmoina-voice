@@ -388,22 +388,23 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   it("uses a no-network illustrative donation counter and a compact Apple-style card", () => {
     expect(workerSource).toContain("entry-donation-card");
     expect(workerSource).toContain("data-donation-counter");
-    expect(workerSource).toContain("Illustrative only — not a verified donation total.");
+    expect(workerSource).toContain("Illustrative demo total");
     expect(workerSource).toContain("illustrative demo counter, not a verified total of money received");
     expect(entryMenuScript).toContain("const baseAmount = 109000");
     expect(entryMenuScript).toContain("const startAt = Date.UTC(2026, 9, 13, 4, 0, 0)");
     expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
     expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("fetch(");
     expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("localStorage");
-    expect(siteChromeCss).toContain(".entry-donation-status{");
-    expect(siteChromeCss).toContain("background:#1d1d1f");
+    expect(siteChromeCss).toContain(".entry-donation-content{");
+    expect(siteChromeCss).toContain("box-shadow:none");
+    expect(workerSource).not.toContain("entry-donation-status");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
     expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
   });
 
   it("places the Live donations card below Hardware, not in the header", () => {
     expect(workerSource).not.toContain("entry-header-donation");
-    expect(workerSource).toContain("entry-donation-status-dot");
+    expect(workerSource).not.toContain("entry-donation-status-dot");
     expect(workerSource).not.toContain("entry-site-header-actions");
     expect(siteChromeCss).not.toContain(".entry-site-header-actions{");
     expect(siteChromeCss).not.toContain("@keyframes live-donation-pulse");
