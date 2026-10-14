@@ -19,6 +19,7 @@ let context;
 let page;
 const liveSockets = [];
 const closedSockets = [];
+let assistantAudioFrames = 0;
 try {
   browser = await chromium.launch({
     headless: true,
@@ -64,6 +65,22 @@ try {
       if (new URL(ws.url()).pathname !== "/api/voice/socket") return;
       liveSockets.push(ws);
       ws.on("close", () => closedSockets.push(ws.url()));
+      // Count audio-bearing replies without storing or logging audio/transcripts.
+      ws.on("framereceived", (payload) => {
+        try {
+          const frameText = typeof payload === "string" ? payload : payload.toString();
+          const frame = JSON.parse(frameText);
+          const serverContent = frame.serverContent || frame.server_content;
+          const modelTurn = serverContent?.modelTurn || serverContent?.model_turn;
+          const parts = modelTurn?.parts;
+          if (Array.isArray(parts) && parts.some((part) => {
+            const inline = part?.inlineData || part?.inline_data;
+            const mimeType = inline?.mimeType || inline?.mime_type;
+            return typeof inline?.data === "string" &&
+              typeof mimeType === "string" && mimeType.startsWith("audio/pcm");
+          })) assistantAudioFrames += 1;
+        } catch { /* Ignore non-JSON or non-audio frames. */ }
+      });
     } catch { /* Ignore unrelated WebSockets. */ }
   });
 
@@ -120,6 +137,7 @@ try {
   // Keep media active, then send a real user turn before the old cutoff. Compression
   // is triggered before turns; a silent fake microphone alone cannot verify that path.
   await page.waitForTimeout(95_000);
+  const assistantAudioFramesBeforeTurn = assistantAudioFrames;
   const turnDispatch = await page.evaluate(() => {
     const sockets = window.__askmoinaContinuitySockets || [];
     const ws = [...sockets].reverse().find((candidate) => candidate.readyState === WebSocket.OPEN);
@@ -136,13 +154,12 @@ try {
   });
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the continuity turn");
 
-  await page.waitForFunction(() => {
-    const pill = document.querySelector("#connectionPill");
-    const before = window.__askmoinaContinuityAssistantBaseline || "";
-    const after = [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
-      .map((node) => node.textContent || "").join(" ").trim();
-    return pill?.dataset.state === "live" && after.length > before.length;
-  }, null, { timeout: 30_000 });
+  const replyDeadline = Date.now() + 30_000;
+  while (Date.now() < replyDeadline && assistantAudioFrames <= assistantAudioFramesBeforeTurn) {
+    await page.waitForTimeout(250);
+  }
+  assert.ok(assistantAudioFrames > assistantAudioFramesBeforeTurn,
+    "the assistant must transmit a new audio response after the mid-session test turn");
 
   // Keep the same audiovisual session alive through the full 155-second window.
   const remainingMs = Math.max(0, 155_000 - (Date.now() - sessionStartedAt));
@@ -158,6 +175,8 @@ try {
     noticeKind: document.querySelector("#connectionNotice")?.dataset.kind || "none",
     assistantTranscriptChars: [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
       .reduce((sum, node) => sum + (node.textContent || "").length, 0),
+    assistantAudioFrames,
+    continuityReplyAudioFrames: assistantAudioFrames - assistantAudioFramesBeforeTurn,
     timeline: (window.__askmoinaContinuityTimeline || []).slice(-24),
     socketCount: (window.__askmoinaContinuitySockets || []).length,
   }));
@@ -166,6 +185,8 @@ try {
     browserLiveSocketCount: liveSockets.length,
     closedBrowserSockets: closedSockets.length,
     continuityTurnDispatched: turnDispatch.sent,
+    assistantAudioFrames,
+    continuityReplyAudioFrames: assistantAudioFrames - assistantAudioFramesBeforeTurn,
   }));
   assert.equal(finalState, "live", "Live session should still be active after 155 seconds");
   assert.equal(buttonPressed, "true", "call controls should remain in active state");
@@ -194,6 +215,7 @@ try {
       socketCount: (window.__askmoinaContinuitySockets || []).length,
       assistantTranscriptChars: [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
         .reduce((sum, node) => sum + (node.textContent || "").length, 0),
+      assistantAudioFrames,
     })).catch(() => null);
     if (diagnostic) console.error("Production audiovisual Live continuity diagnostics: " + JSON.stringify({
       ...diagnostic, browserLiveSocketCount: liveSockets.length, closedBrowserSockets: closedSockets.length,
