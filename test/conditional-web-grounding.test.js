@@ -21,8 +21,8 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).not.toContain("groundedSearchCount >= 2");
     expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 60_000;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("const groundingBudgetStartedAt = searchStartedAt;");
     expect(workerSource).toContain("const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);");
@@ -74,9 +74,9 @@ describe("Milestone 13 conditional web grounding", () => {
   });
 
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
-    expect(workerSource).toContain(String.raw`const isIpl2025RunsLeaderboard = /\bipl\b/i.test(query) && /\b2025\b/i.test(query) &&`);
-    expect(workerSource).toContain(String.raw`/\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(query);`);
-    expect(workerSource).toContain(String.raw`].join("\n\n")`);
+    expect(workerSource).toContain(String.raw\`const isIpl2025RunsLeaderboard = /\bipl\b/i.test(query) && /\b2025\b/i.test(query) &&\`);
+    expect(workerSource).toContain(String.raw\`/\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(query);\`);
+    expect(workerSource).toContain('].join("\\n\\n")');
     const requestedLeaderboard = "IPL 2025 top rankers most runs";
     expect(/\bipl\b/i.test(requestedLeaderboard) && /\b2025\b/i.test(requestedLeaderboard) && /\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(requestedLeaderboard)).toBe(true);
     expect(workerSource).toContain("https://www.ipl.com/series/indian-premier-league-2025-129413/stats");
@@ -114,6 +114,9 @@ describe("Milestone 13 conditional web grounding", () => {
 
 describe("Grounded ranked-list completeness and recovery", () => {
   it("retries successful provider responses that contain no source URLs", () => {
+    expect(workerSource).toContain("const rankedRetryPrompt = [");
+    expect(workerSource).toContain("RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE");
+    expect(workerSource).toContain("requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt");
     expect(workerSource).toContain("no_grounding_sources");
     expect(workerSource).toContain("hasGroundingUrls");
     expect(workerSource).toContain("attempt < searchMaxAttempts");
@@ -152,8 +155,8 @@ describe("Adaptive grounded-list search budget", () => {
     expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 60_000;");
   });
 });
 
@@ -171,7 +174,7 @@ describe("Ranked-table budget inference when Live simplifies the query", () => {
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 32_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
     expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 100_000 : GROUNDED_SEARCH_BUDGET_MS;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 60_000;");
   });
 });
