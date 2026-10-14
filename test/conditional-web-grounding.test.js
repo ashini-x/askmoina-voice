@@ -52,7 +52,7 @@ describe("Milestone 13 conditional web grounding", () => {
   it("prioritizes explicit response-card requests before speech-only answers", () => {
     expect(workerSource).toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
     expect(workerSource).toContain("The user explicitly requested a visible response card");
-    expect(workerSource).toContain("call display_response_card now with a valid complete payload");
+    expect(workerSource).toContain("Call display_response_card now with a valid complete payload");
     expect(workerSource).toContain("const explicitCardRequest =");
   });
 
