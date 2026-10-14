@@ -32,10 +32,6 @@
     .passkey-symbol svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .passkey-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}.passkey-copy strong{font-size:.98rem;letter-spacing:-.02em;font-weight:690}.passkey-copy span{font-size:.76rem;color:rgba(255,255,255,.82);line-height:1.35}.arrow{font-size:1.35rem;font-weight:400;opacity:.9}
     .device-hint{display:flex;justify-content:center;align-items:center;gap:7px;margin:12px 0 21px;color:#77777d;font-size:.75rem;line-height:1.4;text-align:center}
-    .guest-demo-action{display:flex;align-items:center;justify-content:center;width:100%;min-height:47px;margin:13px 0 0;padding:0 16px;border:1px solid rgba(60,60,67,.17);border-radius:14px;background:rgba(255,255,255,.72);color:#1d1d1f;font-size:.9rem;font-weight:650;letter-spacing:-.015em;cursor:pointer;transition:background .16s ease,border-color .16s ease}
-    .guest-demo-action:hover:not(:disabled){background:#fff;border-color:rgba(60,60,67,.28)}
-    .guest-demo-action:disabled{opacity:.6;cursor:wait}
-    .guest-demo-note{margin:7px 0 0;text-align:center;color:#85858b;font-size:.72rem;line-height:1.45}
     .device-dot{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#34c759}
     .divider{display:flex;align-items:center;gap:12px;margin:0 0 16px;color:#86868b;font-size:.68rem;font-weight:700;letter-spacing:.08em}.divider:before,.divider:after{content:"";height:1px;flex:1;background:var(--line)}
     .phone-title{font-size:.94rem;font-weight:700;letter-spacing:-.015em;margin:0 0 12px}
@@ -145,8 +141,6 @@
         <span class="arrow" aria-hidden="true">›</span>
       </button>
       <button type="button" class="passkey-alternative" id="createPasskeyAlternative" data-passkey="register" hidden>Set up a passkey on this device</button>
-      <button type="button" class="guest-demo-action" id="guestDemoStart">Try a 2-minute demo</button>
-      <p class="guest-demo-note">No account needed · Personal memories stay off</p>
       <p class="device-hint" id="deviceHint"><span class="device-dot" aria-hidden="true"></span><span>Face ID · Touch ID · Windows Hello · other passkeys</span></p>
       <div class="divider"><span>OR USE YOUR PHONE</span></div>
       <section class="phone-block" aria-labelledby="phoneTitle">
