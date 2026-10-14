@@ -3027,8 +3027,21 @@
         liveSearchSpokenAcknowledgementText = "";
         if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
         else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
-          // A preflight acknowledgement is not evidence of an active search. Never leave it up after a completed turn.
-          hideLiveSearchAcknowledgement();
+          // A preflight acknowledgement is not evidence of an active search. Preserve it across acknowledgement-only turns.
+          const assistantTurnText = currentTranscriptNodes.assistant && typeof currentTranscriptNodes.assistant.text === "string"
+            ? currentTranscriptNodes.assistant.text.trim()
+            : "";
+          const shortAcknowledgement = assistantTurnText.length > 0 &&
+            assistantTurnText.length < 90 &&
+            LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantTurnText);
+          if (liveSearchPreflightIntent && (!assistantTurnText || shortAcknowledgement)) {
+            // Live sessions can finish a brief spoken acknowledgement as a separate turn before the tool call.
+            // Keep the on-screen preflight alive until a real lookup starts or a substantive answer arrives.
+            if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
+            if (liveSearchMessage) liveSearchMessage.textContent = "The request is received. Waiting for the live-source check to start.";
+          } else {
+            hideLiveSearchAcknowledgement();
+          }
         } else if (liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
           hideLiveSearchAcknowledgement();
         }
