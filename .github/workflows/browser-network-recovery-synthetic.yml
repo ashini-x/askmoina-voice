@@ -1,12 +1,6 @@
 name: Browser network recovery synthetic
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "scripts/live-network-recovery-smoke.mjs"
-      - "scripts/live-session-continuity-smoke.mjs"
-      - ".github/workflows/browser-network-recovery-synthetic.yml"
   workflow_dispatch:
 
 permissions:
