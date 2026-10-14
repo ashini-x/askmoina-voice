@@ -54,7 +54,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("VISIBLE RESPONSE CARD HAS ALREADY BEEN RENDERED");
     expect(workerSource).toContain("Continue speaking naturally now");
     expect(workerSource).toContain("const modelFacingSearchResult = completeRankedFallbackCardSent");
-    expect(workerSource).toContain("verifiedRowCount === validation.card.details.length && validation.card.sources.length > 0");
+    expect(workerSource).toContain("verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0");
   });
 
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
