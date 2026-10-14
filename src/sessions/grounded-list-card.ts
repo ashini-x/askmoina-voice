@@ -123,8 +123,19 @@ export function mergeGroundedRankedListAttempts(firstAttempt: string, retryAttem
 }
 
 /** Build a designed fallback card from grounded results; missing positions remain explicitly unverified. */
-export function buildGroundedListCard(query: string, groundedResult: string): GroundedListCard | null {
-  const requestedCount = getRequestedRankedListCount(query);
+export function buildGroundedListCard(
+  query: string,
+  groundedResult: string,
+  requestedCountOverride?: number | null
+): GroundedListCard | null {
+  const inferredOverride = Number.isInteger(requestedCountOverride) &&
+    Number(requestedCountOverride) >= 2 && Number(requestedCountOverride) <= 10
+      ? Number(requestedCountOverride)
+      : null;
+  // The Live model can shorten "top 10 IPL rankers" to "IPL 2025 most runs".
+  // Honor an explicit count from the original user request when it was carried
+  // through by the Worker, instead of reparsing only the shortened tool query.
+  const requestedCount = getRequestedRankedListCount(query) ?? inferredOverride;
   if (!requestedCount) return null;
   const sources = extractGroundedSources(groundedResult);
   if (!sources.length) return null;
