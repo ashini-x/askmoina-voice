@@ -800,11 +800,9 @@
     if (!video) return;
     if (recoveryPreviewClear && !(active && setupReady)) {
       video.style.setProperty("filter", "none", "important");
-      video.style.setProperty("transform", "none", "important");
       return;
     }
     video.style.removeProperty("filter");
-    video.style.removeProperty("transform");
     if (active && setupReady) recoveryPreviewClear = false;
   }
 
