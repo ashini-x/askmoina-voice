@@ -73,6 +73,15 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0");
   });
 
+  it("queues mandatory ranked speech until the active progress turn completes", () => {
+    expect(workerSource).toContain("let pendingForcedRankedAnswerContinuation: string | null = null;");
+    expect(workerSource).toContain("Queued mandatory ranked-list spoken continuation behind the active progress turn");
+    expect(workerSource).toContain("else if (pendingForcedRankedAnswerContinuation !== null)");
+    expect(workerSource).toContain("Resumed queued ranked-list spoken continuation after progress turn completed");
+    expect(workerSource).toContain("Keep it set until that progress sentence reaches turnComplete.");
+    expect(workerSource).toContain("pendingForcedRankedAnswerContinuation = null;");
+  });
+
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
     expect(workerSource).toContain('const isIpl2025RunsLeaderboard = /\\bipl\\b/i.test(query) && /\\b2025\\b/i.test(query) &&');
     expect(workerSource).toContain('/\\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\\b/i.test(query);');
