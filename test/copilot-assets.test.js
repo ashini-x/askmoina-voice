@@ -607,7 +607,7 @@ describe("RC6 grounded list visibility regressions", () => {
     expect(script).toContain("function isListDisplayFollowup(text)");
     expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
-    expect(script).toContain("if (!normalized || liveSearchSpokenAcknowledgementText) return");
+    expect(script).toContain("pendingUserProgressContext = normalized");
   });
 });
 
