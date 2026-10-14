@@ -707,8 +707,8 @@ describe("Voice-turn status visibility", () => {
     expect(script).toContain("if (__moinaLastUserSpeech) {");
     expect(script).toContain('showLiveSearchAcknowledgement("", false);');
     expect(script).toContain('title: "Thinking through your request"');
-    expect(script).toContain('message: "Preparing a useful answer. I\\'ll show live-source checks if needed."');
-    expect(script).toContain('liveSearchMessage.textContent = "Take your time. I\\'ll show live-source checks if needed."');
+    expect(script).toContain(`message: "Preparing a useful answer. I'll show live-source checks if needed."`);
+    expect(script).toContain(`liveSearchMessage.textContent = "Take your time. I'll show live-source checks if needed."`);
     expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);", script.indexOf("function startAudioCapture()")))
       .toBeLessThan(script.lastIndexOf("sendAudioChunk(samples);"));
     expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
