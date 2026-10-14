@@ -42,7 +42,9 @@ jobs:
       - name: Simulate a real browser network interruption and user-driven reconnect
         env:
           ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}
-        run: node scripts/live-network-recovery-smoke.mjs
+        run: |
+          node scripts/live-session-continuity-smoke.mjs
+          node scripts/live-network-recovery-smoke.mjs
       - name: Revoke synthetic session
         if: always()
         shell: bash

@@ -73,7 +73,9 @@ try {
       navigator.onLine === false;
   }, null, { timeout: 15_000 });
   assert.equal(await page.locator("#connectionNoticeAction").textContent(), "Reconnect now");
-  console.log("Browser network recovery: active session stopped and offline notice shown.");
+  const offlinePreviewFilter = await page.locator("#videoPreview").evaluate((element) => getComputedStyle(element).filter);
+  assert.equal(offlinePreviewFilter, "none", "camera preview should not remain blurred after the session is stopped and reconnect requires user action");
+  console.log("Browser network recovery: active session stopped, camera remains clear, and offline notice shown.");
 
   await context.setOffline(false);
   await page.waitForFunction(() => {
