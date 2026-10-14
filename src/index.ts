@@ -16,7 +16,7 @@ import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
-import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount } from "./sessions/grounded-list-card";
+import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
 
@@ -567,7 +567,9 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
   });
   const requestBody = makeGroundingRequestBody(groundingPrompt);
-  const retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.");
+  let retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.");
+  let partialRankedListText = "";
+  let partialRankedListChunks: Array<{ web?: { uri?: string; title?: string } }> = [];
   let candidate: {
     content?: { parts?: Array<{ text?: string }> };
     groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
@@ -611,14 +613,66 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
         }
         throw failure;
       }
-      candidate = payload.candidates?.[0];
+      const receivedCandidate = payload.candidates?.[0];
+      candidate = receivedCandidate;
       const requestedListCount = getRequestedRankedListCount(query);
+      let candidateText = (receivedCandidate?.content?.parts || [])
+        .map((part) => part.text || "")
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+
+      // A targeted second search may return only ranks missed by the first answer.
+      // Merge both attempts, preferring retry values for duplicate ranks, and
+      // union their real grounding metadata so the fallback card remains source-backed.
+      if (requestedListCount && partialRankedListText && receivedCandidate) {
+        candidateText = mergeGroundedRankedListAttempts(partialRankedListText, candidateText);
+        const chunkCandidates = [
+          ...(receivedCandidate.groundingMetadata?.groundingChunks || []),
+          ...partialRankedListChunks
+        ];
+        const seenUrls = new Set<string>();
+        const mergedChunks = chunkCandidates.filter((chunk) => {
+          const uri = String(chunk.web?.uri || "");
+          if (!uri || seenUrls.has(uri)) return false;
+          seenUrls.add(uri);
+          return true;
+        });
+        candidate = {
+          ...receivedCandidate,
+          content: { parts: [{ text: candidateText }] },
+          groundingMetadata: { groundingChunks: mergedChunks }
+        };
+      }
+
       if (requestedListCount && attempt < GROUNDED_SEARCH_MAX_ATTEMPTS) {
-        const candidateText = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
         const rankedRows = extractGroundedRankedRows(candidateText, requestedListCount);
         if (rankedRows.length < requestedListCount) {
-          console.warn("[AskMoina] Grounded ranked list is incomplete; retrying for requested rows", JSON.stringify({
-            requestedCount: requestedListCount, recoveredRows: rankedRows.length, attempt, retrying: true
+          const presentRanks = new Set(rankedRows.map((row) => row.rank));
+          const missingRanks = Array.from({ length: requestedListCount }, (_, index) => index + 1)
+            .filter((rank) => !presentRanks.has(rank));
+          partialRankedListText = candidateText
+            .split(/\n\s*(?:sources?|source links):/i)[0]
+            .trim();
+          partialRankedListChunks = receivedCandidate?.groundingMetadata?.groundingChunks || [];
+          const targetedQuery = query.toLowerCase().includes("ipl") && query.includes("2025")
+            ? "IPL 2025 most runs Orange Cap full batting leaderboard player team runs ranks " + missingRanks.join(", ")
+            : query + " missing ranked entries " + missingRanks.join(", ");
+          retryRequestBody = makeGroundingRequestBody([
+            groundingPrompt,
+            "TARGETED RETRY FOR MISSING RANKS ONLY.",
+            "The first attempt produced only " + rankedRows.length + " of " + requestedListCount + " requested rows.",
+            "Missing rank positions to retrieve: " + missingRanks.join(", ") + ".",
+            "Run a distinct Google Search focused on this specific missing-rank query: " + targetedQuery + ".",
+            "Return newly found rows using their ORIGINAL rank numbers. For each missing rank, return one separate line in the exact format: rank. Player or item name — team/category — requested statistic.",
+            "Do not repeat earlier rows unless needed for context. Do not substitute another leaderboard or season. Do not guess missing ranks. Include full HTTPS source URLs from Google Search grounding in a final Sources section."
+          ].join("\n\n"));
+          console.warn("[AskMoina] Grounded ranked list is incomplete; retrying specifically for missing ranks", JSON.stringify({
+            requestedCount: requestedListCount,
+            recoveredRows: rankedRows.length,
+            missingRanks,
+            attempt,
+            retrying: true
           }));
           if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
           continue;

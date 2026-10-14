@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildGroundedListCard,
   extractGroundedRankedRows,
-  getRequestedRankedListCount
+  getRequestedRankedListCount,
+  mergeGroundedRankedListAttempts
 } from "../src/sessions/grounded-list-card";
 
 describe("grounded ranked-list fallback cards", () => {
@@ -35,6 +36,45 @@ describe("grounded ranked-list fallback cards", () => {
     ].join("\n"), 10);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual({ rank: 1, label: "1. Person One — Group A", value: "700 points" });
+  });
+
+  it("merges a targeted retry with earlier source-backed ranks and prefers retry duplicates", () => {
+    const first = [
+      "1. First attempt winner — Team A — 759 runs",
+      "2. Player Two — Team B — 717 runs",
+      "3. Player Three — Team C — 657 runs",
+      "4. Player Four — Team D — 650 runs",
+      "5. Player Five — Team E — 600 runs",
+      "",
+      "Sources:",
+      "- First source: https://example.com/first"
+    ].join("\n");
+    const retry = [
+      "5. Retry player five — Team E — 600 runs",
+      "6. Player Six — Team F — 590 runs",
+      "7. Player Seven — Team G — 580 runs",
+      "8. Player Eight — Team H — 570 runs",
+      "9. Player Nine — Team I — 560 runs",
+      "10. Player Ten — Team J — 550 runs",
+      "",
+      "Sources:",
+      "- Retry source: https://example.com/retry"
+    ].join("\n");
+    const merged = mergeGroundedRankedListAttempts(first, retry);
+    const rows = extractGroundedRankedRows(merged, 10);
+    expect(rows).toHaveLength(10);
+    expect(rows[4].label).toContain("Retry player five");
+    expect(rows[9].label).toContain("Player Ten");
+    expect(merged).not.toContain("Sources:");
+
+    const card = buildGroundedListCard(
+      "top 10 IPL 2025 most runs",
+      merged + "\n\nSources:\n- IPL leaderboard: https://example.com/ipl"
+    );
+    expect(card?.details).toHaveLength(10);
+    expect(card?.details.every((row) => !row.label.endsWith("Not verified"))).toBe(true);
+    expect(card?.summary).toContain("Complete ranked list");
+    expect(card?.sources?.[0].url).toBe("https://example.com/ipl");
   });
 
   it("creates a ten-row visual card while honestly identifying missing source-backed ranks", () => {
