@@ -74,7 +74,11 @@ describe("Milestone 13 conditional web grounding", () => {
   });
 
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
-    expect(workerSource).toContain("const isIpl2025RunsLeaderboard =");
+    expect(workerSource).toContain(String.raw`const isIpl2025RunsLeaderboard = /\bipl\b/i.test(query) && /\b2025\b/i.test(query) &&`);
+    expect(workerSource).toContain(String.raw`/\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(query);`);
+    expect(workerSource).toContain(String.raw`].join("\n\n")`);
+    const requestedLeaderboard = "IPL 2025 top rankers most runs";
+    expect(/\bipl\b/i.test(requestedLeaderboard) && /\b2025\b/i.test(requestedLeaderboard) && /\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(requestedLeaderboard)).toBe(true);
     expect(workerSource).toContain("https://www.ipl.com/series/indian-premier-league-2025-129413/stats");
     expect(workerSource).toContain("compact section named Top Run Scorers containing only three featured players");
     expect(workerSource).toContain("Read the longer main batting stats table");
