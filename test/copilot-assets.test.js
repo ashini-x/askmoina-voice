@@ -568,7 +568,7 @@ describe("Immediate live-search acknowledgement", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.18"');
+    expect(html).toContain('src="/copilot.js?v=0.4.19"');
   });
 });
 
@@ -643,7 +643,7 @@ describe("RC11 bounded search latency", () => {
     expect(workerSource).toContain("const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);");
     expect(workerSource).toContain("const attemptTimeoutMs = Math.min(searchTimeoutMs, remainingBudget);");
     expect(workerSource).toContain("Grounded search exceeded its");
-    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("waitForGroundedRetry(delayMs: number, budgetStartedAt: number, budgetMs: number)");
     expect(workerSource).toContain("budgetMs - (Date.now() - budgetStartedAt) <= delayMs + 500");
   });
