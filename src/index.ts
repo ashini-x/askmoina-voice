@@ -1412,7 +1412,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         // tool selection independently of speech recognition and VAD variability.
         // Preserve the user's request verbatim, but elevate an explicit card request
         // so Live does not silently answer speech-only after a card was requested.
-        const explicitCardRequest = /\\b(?:response card|checklist card|put .{0,80} in (?:a )?card|show .{0,40} in a card)\\b/i.test(parsed.text);
+        const explicitCardRequest = /\b(?:response card|checklist card|put .{0,80} in (?:a )?card|show .{0,40} in a card)\b/i.test(parsed.text);
         const textForLive = explicitCardRequest
           ? "MANDATORY TOOL ACTION: The user explicitly requested a visible response card. Call display_response_card now with a valid complete payload before answering out loud; do not substitute speech-only guidance or a camera overlay. After the tool acknowledgement, continue speaking naturally. User request: " + parsed.text
           : parsed.text;
