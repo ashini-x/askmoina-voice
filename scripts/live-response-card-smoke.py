@@ -4,6 +4,7 @@
 This isolates tool selection and the bounded tool protocol from speech-recognition
 and VAD variability. The separate voice-memory smoke test still exercises audio.
 """
+import base64
 import json
 import os
 import time
