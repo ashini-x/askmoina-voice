@@ -64,9 +64,11 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");
   });
 
-  it("keeps a quiet-work loader, hides it while the user speaks, and creates a card for ordinary answers", () => {
-    expect(copilot).toContain("function startQuietThinkingLoader()");
+  it("keeps the loader search-specific, hides it while the user speaks, and creates cards for ordinary answers", () => {
+    expect(copilot).not.toContain("function startQuietThinkingLoader()");
     expect(copilot).toContain("liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive)");
+    expect(copilot).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(copilot).toContain('call.name === "search_current_web"');
     expect(copilot).toContain("if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);");
     expect(copilot).toContain("function createTranscriptFallbackCard(userText, assistantText)");
   });
