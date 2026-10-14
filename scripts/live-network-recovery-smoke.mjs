@@ -46,8 +46,9 @@ try {
   const response = await page.goto(baseUrl + "/copilot", { waitUntil: "domcontentloaded", timeout: 30_000 });
   assert.equal(response?.status(), 200, "authenticated Co-Pilot route should load");
   await page.waitForSelector("#showProblemButton", { timeout: 15_000 });
-  await page.waitForSelector("#connectionPill", { timeout: 15_000 });
 
+  // The connection pill is intentionally hidden before a call starts; its data-state
+  // is still observable after the call is opened, so do not wait for pre-start visibility.
   // Enter through the real keyboard-accessible start action with fake media devices.
   await page.locator("#showProblemButton").focus();
   await page.keyboard.press("Enter");
