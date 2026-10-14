@@ -487,6 +487,13 @@ function hasVertexCredentials(env: Env): boolean {
   return Boolean(env.GCP_PROJECT_ID?.trim() && (hasJson || hasSplitSecrets));
 }
 
+/** Wait before retrying only when enough wall-clock budget remains for another attempt. */
+async function waitForGroundedRetry(delayMs: number, budgetStartedAt: number, budgetMs: number): Promise<boolean> {
+  if (budgetMs - (Date.now() - budgetStartedAt) <= delayMs + 500) return false;
+  await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+  return budgetMs - (Date.now() - budgetStartedAt) > 500;
+}
+
 /**
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
@@ -599,7 +606,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
           console.warn("[AskMoina] Grounded search provider returned a retryable response", JSON.stringify({
             model, location, attempt, status: response.status, retrying: true
           }));
-          await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+          if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
           continue;
         }
         throw failure;
@@ -613,7 +620,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
           console.warn("[AskMoina] Grounded ranked list is incomplete; retrying for requested rows", JSON.stringify({
             requestedCount: requestedListCount, recoveredRows: rankedRows.length, attempt, retrying: true
           }));
-          await new Promise<void>((resolve) => setTimeout(resolve, 250));
+          if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
           continue;
         }
       }
@@ -625,7 +632,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
         console.warn("[AskMoina] Grounded search returned no source URLs; retrying with a more specific query", JSON.stringify({
           model, location, attempt, retrying: true, reason: "no_grounding_sources"
         }));
-        await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+        if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
         continue;
       }
       lastFailure = null;
@@ -647,7 +654,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
           reason: timedOut ? "timeout" : "network",
           retrying: true
         }));
-        await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+        if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
         continue;
       }
       if (timedOut) {
