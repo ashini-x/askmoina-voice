@@ -1597,7 +1597,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     // Search calls are handled by the Worker in both standard voice and Co-Pilot.
     // Bound the lookup budget per session; ordinary turns remain free of search calls.
-    let clientFrameText = (resumedSessionSetupComplete || isSessionResumptionUpdate) ? "" : frameText;
+    let clientFrameText = (resumedSessionSetupComplete || isSessionResumptionUpdate || (resumptionInProgress && providerMessage?.error)) ? "" : frameText;
     if (frameText.includes('"toolCall"') || frameText.includes('"tool_call"')) {
       try {
         const toolFrame = JSON.parse(frameText) as {

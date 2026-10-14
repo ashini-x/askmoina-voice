@@ -38,3 +38,42 @@ describe("provider audio-frame detection", () => {
     expect(isProviderAudioFrame('{"serverContent":{"outputTranscription":{"text":"Hello"}}}')).toBe(false);
   });
 });
+
+
+describe("session continuity control frames", () => {
+  it("parses camelCase resumption checkpoints without changing ordinary control shapes", () => {
+    expect(inspectProviderControlFrame(JSON.stringify({
+      sessionResumptionUpdate: {
+        newHandle: "opaque-handle",
+        resumable: true,
+        lastConsumedClientMessageIndex: "42",
+      },
+    }))).toEqual({
+      setupComplete: false,
+      error: undefined,
+      sessionResumptionUpdate: {
+        newHandle: "opaque-handle",
+        resumable: true,
+        lastConsumedClientMessageIndex: "42",
+      },
+    });
+  });
+
+  it("recognizes GoAway and snake_case provider resumption fields", () => {
+    expect(inspectProviderControlFrame(JSON.stringify({
+      go_away: { time_left: "10s" },
+      session_resumption_update: {
+        new_handle: "opaque",
+        resumable: true,
+        last_consumed_client_message_index: "3",
+      },
+    }))).toMatchObject({
+      goAway: true,
+      sessionResumptionUpdate: {
+        newHandle: "opaque",
+        resumable: true,
+        lastConsumedClientMessageIndex: "3",
+      },
+    });
+  });
+});

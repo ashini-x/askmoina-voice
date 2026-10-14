@@ -64,7 +64,8 @@ describe("Live Co-Pilot input protocol", () => {
 
   it("rejects invalid, malformed, or oversized media payloads", () => {
     expect(parseLiveClientInput(audio("not base64!"), false)).toBeNull();
-    expect(parseLiveClientInput(video("A".repeat(12_004)), true)).toBeNull();
+    expect(parseLiveClientInput(video("A".repeat(48_000)), true)).toMatchObject({ kind: "video" });
+    expect(parseLiveClientInput(video("A".repeat(48_004)), true)).toBeNull();
     expect(parseLiveClientInput({ realtime_input: { audio: { data: "AAAA", mime_type: "audio/wav" } } }, false)).toBeNull();
     expect(parseLiveClientInput({ realtime_input: { audio: { data: "AAAA", mime_type: "audio/pcm;rate=16000", url: "https://example.com" } } }, false)).toBeNull();
     expect(parseLiveClientInput({ realtime_input: { audio: { data: "AAAA", mime_type: "audio/pcm;rate=16000" }, video: { data: "AAAA", mime_type: "image/jpeg" } } }, true)).toBeNull();
