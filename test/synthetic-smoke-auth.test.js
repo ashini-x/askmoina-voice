@@ -86,6 +86,11 @@ describe("authenticated live synthetic verification", () => {
     expect(rankedList).toContain("grounded_search_count += 1");
     expect(rankedList).toContain("grounded_response_card");
     expect(rankedList).toContain("top_ten_card_seen = True");
+    expect(rankedList).toContain("def get_audio_payload_bytes(message: dict) -> int:");
+    expect(rankedList).toContain("continuation_dispatched");
+    expect(rankedList).toContain("post_continuation_audio_bytes");
+    expect(rankedList).toContain("post_continuation_turn_complete = True");
+    expect(rankedList).not.toContain("if turn_complete_now and top_ten_card_seen and not supported_tool_call:");
   });
 
   it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
