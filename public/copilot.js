@@ -81,8 +81,6 @@
   let liveSearchActive = false;
   let liveSearchFinishing = false;
   let liveSearchLookupCompleted = false;
-  let liveSearchAcknowledgementActive = false;
-  let liveSearchAcknowledgementTimer = null;
   let liveSearchProgressValue = 0;
   let liveSearchProgressInterval = null;
   let liveSearchCompletionTimer = null;
@@ -90,19 +88,8 @@
   let pendingResponseCards = [];
   let lastGroundedRankedListCard = null;
   let protectGroundedListForTurn = false;
-  let liveSearchStageIndex = 0;
-  let pendingUserProgressContext = "";
-  let pendingUserProgressSearchIntent = false;
   let liveSearchProgressStageIndex = 0;
-  let liveSearchPreflightStages = [];
-  let liveSearchPreflightContext = "";
-  let liveSearchAcknowledgementStartedAt = 0;
-  let liveSearchPreflightIntent = false;
   let liveSearchStartedAt = 0;
-  let quietThinkingStartTimer = null;
-  let quietThinkingRotationTimer = null;
-  let quietThinkingActive = false;
-  let quietThinkingMessageIndex = 0;
   let relayKeepaliveTimer = null;
 
   function updateLiveSearchProgress(value) {
@@ -125,49 +112,8 @@
 
   function syncLiveSearchStatusVisibility() {
     if (!liveSearchStatus) return;
-    const workActive = liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive || quietThinkingActive;
+    const workActive = liveSearchActive || liveSearchFinishing;
     liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive);
-  }
-
-  function stopQuietThinkingLoader() {
-    if (quietThinkingStartTimer) window.clearTimeout(quietThinkingStartTimer);
-    if (quietThinkingRotationTimer) window.clearInterval(quietThinkingRotationTimer);
-    quietThinkingStartTimer = null;
-    quietThinkingRotationTimer = null;
-    quietThinkingActive = false;
-    if (!liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive && liveSearchStatus) {
-      liveSearchStatus.hidden = true;
-      liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
-    } else {
-      syncLiveSearchStatusVisibility();
-    }
-  }
-
-  function startQuietThinkingLoader() {
-    if (!liveSearchStatus || !active || !setupReady || stopping || micSpeechGateActive ||
-        liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive || responseCardRenderedForTurn) return;
-    if (quietThinkingStartTimer) window.clearTimeout(quietThinkingStartTimer);
-    quietThinkingStartTimer = window.setTimeout(() => {
-      quietThinkingStartTimer = null;
-      if (!active || !setupReady || stopping || micSpeechGateActive || responseCardRenderedForTurn ||
-          liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive) return;
-      quietThinkingActive = true;
-      quietThinkingMessageIndex = 0;
-      liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
-      updateLiveSearchProgress(0);
-      if (liveSearchTitle) liveSearchTitle.textContent = QUIET_THINKING_STAGES[0].title;
-      if (liveSearchMessage) liveSearchMessage.textContent = QUIET_THINKING_STAGES[0].message;
-      syncLiveSearchStatusVisibility();
-      if (quietThinkingRotationTimer) window.clearInterval(quietThinkingRotationTimer);
-      quietThinkingRotationTimer = window.setInterval(() => {
-        if (!quietThinkingActive || responseCardRenderedForTurn || !active) return;
-        quietThinkingMessageIndex = (quietThinkingMessageIndex + 1) % QUIET_THINKING_STAGES.length;
-        const stage = QUIET_THINKING_STAGES[quietThinkingMessageIndex];
-        if (liveSearchTitle) liveSearchTitle.textContent = stage.title;
-        if (liveSearchMessage) liveSearchMessage.textContent = stage.message;
-        syncLiveSearchStatusVisibility();
-      }, 5_000);
-    }, 650);
   }
 
   function startRelayKeepalive(sessionSocket) {
@@ -192,12 +138,6 @@
   function startLiveSearchProgress() {
     if (!liveSearchStatus) return;
     if (liveSearchActive && !liveSearchFinishing) return;
-    stopQuietThinkingLoader();
-    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    liveSearchAcknowledgementTimer = null;
-    liveSearchAcknowledgementActive = false;
-    liveSearchPreflightIntent = false;
-    liveSearchAcknowledgementStartedAt = 0;
     liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
@@ -283,22 +223,14 @@
     liveSearchWatchdogTimer = null;
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     liveSearchProgressInterval = null;
-    if (liveSearchTitle) liveSearchTitle.textContent = "Finishing";
-    if (liveSearchMessage) liveSearchMessage.textContent = "Preparing your answer";
-    if (liveSearchStatus) liveSearchStatus.classList.add("is-complete");
-    updateLiveSearchProgress(100);
+    if (liveSearchTitle) liveSearchTitle.textContent = "Preparing your answer";
+    if (liveSearchMessage) liveSearchMessage.textContent = "Getting the answer card ready";
+    if (liveSearchStatus) liveSearchStatus.classList.remove("is-complete");
 
-    // Show 100% briefly, then remove the loader before revealing final text and any response card.
+    // A timer must never dismiss the loader on its own. Give a just-arriving card
+    // a brief chance to land; renderResponseCard() ends loading once the sheet is visible.
     liveSearchCompletionTimer = window.setTimeout(() => {
       liveSearchCompletionTimer = null;
-      if (liveSearchStatus) {
-        liveSearchStatus.hidden = true;
-        liveSearchStatus.classList.remove("is-complete");
-      }
-      if (transcriptNode) transcriptNode.classList.remove("is-searching");
-      liveSearchActive = false;
-      liveSearchFinishing = false;
-      liveSearchLookupCompleted = false;
       const queuedCards = pendingResponseCards.splice(0);
       const groundedFallback = [...queuedCards].reverse().find((queued) => !queued.id && isGroundedRankedListCard(queued.args));
       const selectedCard = groundedFallback ||
@@ -306,24 +238,28 @@
         queuedCards[queuedCards.length - 1];
       if (selectedCard) {
         const rendered = renderResponseCard(selectedCard.args, !selectedCard.id || isGroundedRankedListCard(selectedCard.args));
-        // A model card can acknowledge the visible, more complete grounded card but cannot replace it.
         for (const queued of queuedCards) {
           if (queued.id) sendDeferredResponseCardResult(queued.id, rendered);
         }
       }
+      if (responseCardTray && !responseCardTray.hidden) {
+        finishLiveSearchAfterCardShown();
+        return;
+      }
+
+      // No answer sheet is visible yet. Keep the loader active until the normal
+      // response-card or transcript-fallback path actually renders one.
+      liveSearchFinishing = false;
+      if (liveSearchStatus) liveSearchStatus.classList.remove("is-complete");
+      if (liveSearchTitle) liveSearchTitle.textContent = "Preparing your answer";
+      if (liveSearchMessage) liveSearchMessage.textContent = "Waiting for the answer card";
+      syncLiveSearchStatusVisibility();
     }, 420);
   }
 
   function cancelLiveSearchProgress() {
     if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
     liveSearchWatchdogTimer = null;
-    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    liveSearchAcknowledgementTimer = null;
-    liveSearchAcknowledgementActive = false;
-    liveSearchPreflightIntent = false;
-    liveSearchAcknowledgementStartedAt = 0;
-    liveSearchPreflightStages = [];
-    liveSearchPreflightContext = "";
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     liveSearchProgressInterval = null;
@@ -339,146 +275,7 @@
     if (transcriptNode) transcriptNode.classList.remove("is-searching");
   }
 
-  const LIVE_SEARCH_INTENT = /\b(search|look(?:ing)? up|google|latest|most recent|current|today(?:'s)?|recent|this week|news|price(?:s)?|release notes|version|recall|manual|compatib(?:le|ility)|exchange rate|weather|opening hours|availability|updated? (?:price|version|release)|top[\s-]*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:all|every)\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)|(?:full|complete|entire|whole)\s+(?:ranked\s+)?list|rank(?:ed|ing|ers?)|leaderboard|standings|stats|statistics|scorecards?|scoreboard|results?|records?|ipl|cricket|run scorers?|wicket takers?|orange cap|purple cap)\b/i;
-  const LIVE_SEARCH_ACKNOWLEDGEMENT = /^(?:okay[, ]*)?(?:got it[, .]+(?:i(?:'m| am) (?:looking|checking)|i(?:'ll| will) (?:look|check)|let me (?:check|look))|i(?:'ll| will) |let me |one moment|just a moment|i can look|i(?:'m| am) checking|i(?:'ll| will) check|i(?:'ll| will) look up|let me check|let me look up)/i;
-
-  function isLikelyLiveSearchRequest(text) {
-    const normalized = String(text || "").replace(/\s+/g, " ").trim();
-    return normalized.length >= 8 && LIVE_SEARCH_INTENT.test(normalized);
-  }
-
-  function getLiveSearchPreflightProfile(text, isSearchIntent) {
-    const normalized = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (!isSearchIntent) {
-      return {
-        key: "general",
-        stages: [
-          { title: "Thinking through your request", message: "Bujhi paisu — working out the useful bits for this question." },
-          { title: "Organizing the details", message: "Details bur milai asu so the answer stays clear." },
-          { title: "Preparing your answer sheet", message: "Answer card-tu ready kori asu." },
-          { title: "Finishing the answer", message: "Olop wait — making sure the spoken answer and card match." }
-        ]
-      };
-    }
-    if (/\b(top|rank(?:ed|ing|ers?)|leaderboard|standings|run scorers?|wicket takers?|orange cap|purple cap|all\s+(?:the\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten))\b/i.test(normalized)) {
-      return {
-        key: "ranked-list",
-        stages: [
-          { title: "Preparing your search", message: "Looking for a complete table, not just a few names." },
-          { title: "Checking ranked results", message: "Names aru rankings match kori asu against sources." },
-          { title: "Preparing your list", message: "Verified details bur organize kori asu for the full list." }
-        ]
-      };
-    }
-    if (/\b(weather|temperature|forecast|rain|traffic|nearby|near me|opening hours|open now|exchange rate|price|today|latest|current|right now)\b/i.test(normalized)) {
-      return {
-        key: "current-info",
-        stages: [
-          { title: "Preparing a live lookup", message: "Checking the latest info that matters for your question." },
-          { title: "Checking recent sources", message: "Recent sources bur compare kori asu." },
-          { title: "Preparing your answer", message: "Relevant details bur answer card-tot arrange kori asu." }
-        ]
-      };
-    }
-    if (/\b(manual|model|device|laptop|phone|compatib(?:le|ility)|recall|repair|version|release notes|specification|specs)\b/i.test(normalized)) {
-      return {
-        key: "reference-check",
-        stages: [
-          { title: "Preparing a source check", message: "Finding the official manual or exact model info." },
-          { title: "Checking the details", message: "Model details match kori asu before suggesting anything." },
-          { title: "Preparing useful guidance", message: "Verified info aru uncertainty alag kori asu." }
-        ]
-      };
-    }
-    return {
-      key: "web-search",
-      stages: [
-        { title: "Preparing your search", message: "Finding the best way to verify this." },
-        { title: "Choosing useful sources", message: "Useful source bur prioritize kori asu." },
-        { title: "Preparing your answer", message: "Useful evidence bur answer card-tot arrange kori asu." }
-      ]
-    };
-  }
-
-  function showLiveSearchAcknowledgement(text = "", isSearchIntent = false) {
-    if (!liveSearchStatus || liveSearchActive || liveSearchFinishing) return;
-    const profile = getLiveSearchPreflightProfile(text, isSearchIntent);
-    if (liveSearchAcknowledgementActive) {
-      if (isSearchIntent) liveSearchPreflightIntent = true;
-      // Do not restart the stage timer for every partial transcript update.
-      if (liveSearchPreflightContext !== profile.key) {
-        liveSearchPreflightContext = profile.key;
-        liveSearchPreflightStages = profile.stages;
-        liveSearchStageIndex = 0;
-        const stageItem = liveSearchPreflightStages[0];
-        if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
-        if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
-      }
-      return;
-    }
-
-    liveSearchAcknowledgementActive = true;
-    liveSearchAcknowledgementStartedAt = Date.now();
-    liveSearchPreflightIntent = isSearchIntent;
-    liveSearchPreflightContext = profile.key;
-    liveSearchPreflightStages = profile.stages;
-    liveSearchStageIndex = 0;
-    syncLiveSearchStatusVisibility();
-    liveSearchStatus.classList.add("is-acknowledging");
-    if (liveSearchTitle) liveSearchTitle.textContent = liveSearchPreflightStages[0].title;
-    if (liveSearchMessage) liveSearchMessage.textContent = liveSearchPreflightStages[0].message;
-    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-
-    const advancePreflightStage = () => {
-      if (!liveSearchAcknowledgementActive || liveSearchActive || liveSearchFinishing) {
-        liveSearchAcknowledgementTimer = null;
-        return;
-      }
-      const elapsed = Math.max(0, Date.now() - liveSearchAcknowledgementStartedAt);
-      if (navigator.onLine === false) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Connection tu offline mone hoi — check your internet; I will keep this status visible.";
-      } else if (micSpeechGateActive && !(stage && stage.classList.contains("is-speaking"))) {
-        liveSearchStatus.hidden = true;
-        liveSearchAcknowledgementTimer = null;
-        return;
-      } else if (elapsed >= 25_000 && liveSearchPreflightIntent) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your lookup";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Olop besi time lagise — network or the AI search service may be slow.";
-      } else if (elapsed >= 25_000) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Still working on your answer";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Answer-tu etiya ready nohoi — network or AI service slow hobo pare. I will keep you updated.";
-      } else if (elapsed >= 12_000 && liveSearchPreflightIntent) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
-        if (liveSearchMessage) liveSearchMessage.textContent = "I am still waiting for the live-search step to start. The AI service or network may be slow.";
-      } else if (elapsed >= 12_000) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your answer";
-        if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI service may be slow.";
-      } else {
-        const stages = liveSearchPreflightStages.length ? liveSearchPreflightStages : profile.stages;
-        const stageItem = stages[liveSearchStageIndex % stages.length];
-        if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
-        if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
-      }
-      liveSearchStageIndex += 1;
-      liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1650);
-    };
-    liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1650);
-    updateLiveSearchProgress(0);
-  }
-
-  function hideLiveSearchAcknowledgement() {
-    if (liveSearchActive || liveSearchFinishing) return;
-    if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-    liveSearchAcknowledgementTimer = null;
-    liveSearchAcknowledgementActive = false;
-    liveSearchPreflightStages = [];
-    liveSearchPreflightContext = "";
-    if (liveSearchStatus) {
-      liveSearchStatus.classList.remove("is-acknowledging");
-      liveSearchStatus.hidden = true;
-    }
-  }
+  const LIVE_SEARCH_PROGRESS_SPEECH = /^(?:(?:okay|ok|alright|all right|sure|got it|one moment|just a moment)[,.\s-]*)?(?:(?:i(?:['’]m| am) .{0,40}\b(?:searching|looking up|researching|checking|verifying|gathering|finding|pulling together)\b)|(?:i(?:['’]ll| will) .{0,30}\b(?:search|look up|research|check|verify|gather|find|compare)\b)|(?:let me .{0,25}\b(?:search|look up|research|check|verify|gather|find|compare)\b)|\b(?:searching|looking up|checking|verifying|researching|gathering|finding|comparing)\s+(?:the|for|current|latest|official|relevant|recent|source|web|information|details|rankings|results)\b)/i;
 
   function requestedListCountFromTranscript(text) {
     const value = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -531,44 +328,29 @@
           Array.isArray(lastGroundedRankedListCard.details) &&
           lastGroundedRankedListCard.details.length >= (count || lastGroundedRankedListCard.details.length) &&
           lastGroundedRankedListCard.details.every((item) => !String(item.label || "").endsWith("Not verified"));
-        if (complete) {
-          hideLiveSearchAcknowledgement();
-          return;
-        }
+        if (complete) return;
       } else {
         protectGroundedListForTurn = false;
         lastGroundedRankedListCard = null;
       }
-
-      const searchIntent = isLikelyLiveSearchRequest(normalized);
-      // Even if intent detection is inconclusive, keep a generic preflight visible
-      // from the first user-audio frame until an answer starts or a real lookup takes over.
-      if (micSpeechGateActive && !(stage && stage.classList.contains("is-speaking"))) {
-        pendingUserProgressContext = normalized;
-        pendingUserProgressSearchIntent = searchIntent;
-        return;
-      }
-      pendingUserProgressContext = "";
-      pendingUserProgressSearchIntent = false;
-      showLiveSearchAcknowledgement(normalized, searchIntent);
+      // A user transcript alone is not progress; keep the loader hidden until a backend
+      // search begins or Moina's own generated speech acknowledges an actual lookup.
       return;
     }
 
-    if (role === "assistant" && liveSearchActive && liveSearchLookupCompleted && String(text || "").trim().length >= 18) {
-      completeLiveSearchProgress();
+    if (role !== "assistant") return;
+    const normalized = String(text || "").replace(/\s+/g, " ").trim();
+    if (!normalized) return;
+
+    // Inspect Moina's generated voice transcript; no spoken wording is hardcoded or injected.
+    // If voice progress arrives first, it starts the same loader as the backend search event.
+    if (!responseCardRenderedForTurn && !liveSearchActive && !liveSearchFinishing &&
+        LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)) {
+      startLiveSearchProgress();
     }
 
-    if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
-      const normalized = String(text || "").replace(/\s+/g, " ").trim();
-      if (!normalized) return;
-      // For an explicit live-search request, short spoken acknowledgements can arrive long
-      // before the search tool call. Keep the preflight visible until a real lookup takes over
-      // or the assistant turn completes; never leave a silent 30-60 second gap.
-      if (liveSearchPreflightIntent || (LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) && normalized.length < 90)) return;
-      // Keep the general progress acknowledgement beside the spoken answer as well. It is
-      // dismissed when the turn completes, rather than leaving a blank UI while audio plays.
-      if (liveSearchTitle) liveSearchTitle.textContent = "Preparing your answer";
-      if (liveSearchMessage) liveSearchMessage.textContent = "Putting the details together.";
+    if (liveSearchActive && liveSearchLookupCompleted && normalized.length >= 18) {
+      completeLiveSearchProgress();
     }
   }
 
@@ -1927,8 +1709,7 @@
     if (!text) return;
     const entry = getTranscriptEntry(role);
     if (role === "user" && !entry.text) {
-      stopQuietThinkingLoader();
-      responseCardRenderedForTurn = false;
+        responseCardRenderedForTurn = false;
       responseCardWasTranscriptFallback = false;
       transcriptFallbackSourceLength = 0;
       responseCardManuallyMinimizedForTurn = false;
@@ -2057,11 +1838,9 @@
         micSpeechCandidateAt = 0;
       }
       if (micSpeechGateActive && !speechGateBeforeFrame) {
-        stopQuietThinkingLoader();
-        syncLiveSearchStatusVisibility();
+            syncLiveSearchStatusVisibility();
       } else if (!micSpeechGateActive && speechGateBeforeFrame) {
         syncLiveSearchStatusVisibility();
-        startQuietThinkingLoader();
       }
       if (micSpeechGateActive) {
         const rawVoiceLevel = Math.min(1, Math.max(0, (rms - speechThreshold * 0.85) / 0.075));
@@ -2509,7 +2288,6 @@
     stopping = true;
     const oldSocket = socket;
     stopRelayKeepalive(oldSocket);
-    stopQuietThinkingLoader();
     socket = null;
     if (oldSocket && oldSocket.readyState === WebSocket.OPEN) {
       try { oldSocket.close(1000, "Client disconnected"); } catch (_) {}
@@ -2841,7 +2619,7 @@
     const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text || "";
     const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text || "";
     if (!userText.trim() || !assistantText.trim()) return false;
-    if (LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantText.trim()) && assistantText.trim().length < 180) return false;
+    if (LIVE_SEARCH_PROGRESS_SPEECH.test(assistantText.trim()) && assistantText.trim().length < 180) return false;
     if (assistantText.trim().length < 180 &&
         /\b(?:checking|searching|looking up|finding sources|pulling together|lining up|wrapping up|preparing your answer|getting the details ready|making the answer card|organizing the answer)\b/i.test(assistantText) &&
         !/\b(?:the answer is|in short|it means|you can|you should|the result|the main point)\b/i.test(assistantText)) return false;
@@ -2863,15 +2641,35 @@
     return rendered;
   }
 
+  function finishLiveSearchAfterCardShown() {
+    if (!responseCardTray || responseCardTray.hidden) return false;
+    if (!liveSearchActive && !liveSearchFinishing) return true;
+    if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
+    if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
+    if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
+    liveSearchWatchdogTimer = null;
+    liveSearchProgressInterval = null;
+    liveSearchCompletionTimer = null;
+    liveSearchActive = false;
+    liveSearchFinishing = false;
+    liveSearchLookupCompleted = false;
+    if (liveSearchStatus) {
+      liveSearchStatus.hidden = true;
+      liveSearchStatus.classList.remove("is-complete");
+    }
+    if (transcriptNode) transcriptNode.classList.remove("is-searching");
+    return true;
+  }
+
   function renderResponseCard(value, force = false) {
     let card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
-    stopQuietThinkingLoader();
     if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") {
       const existingGroundedCardIsVisible = !responseCardTray.hidden &&
         responseCardTitle.textContent === lastGroundedRankedListCard.title && !responseCardWasTranscriptFallback;
       if (existingGroundedCardIsVisible) {
         responseCardRenderedForTurn = true;
+        finishLiveSearchAfterCardShown();
         return true;
       }
       // A protection flag must never suppress the first real render. Prefer the authoritative grounded list.
@@ -2900,6 +2698,7 @@
     if (stage) stage.classList.toggle("has-response-card", !responseCardManuallyMinimizedForTurn);
     if (responseCardRestoreButton) responseCardRestoreButton.hidden = !responseCardManuallyMinimizedForTurn;
     setResponseCardExpanded(true);
+    if (!responseCardTray.hidden) finishLiveSearchAfterCardShown();
     return true;
   }
 
@@ -2912,8 +2711,7 @@
         const id = typeof call.id === "string" ? call.id : "";
         // Make the answer sheet visible before dismissing the loader.
         const rendered = renderResponseCard(call.args);
-        if (liveSearchAcknowledgementActive && !liveSearchActive) hideLiveSearchAcknowledgement();
-        if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();
+            if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();
         if (id) {
           responses.push({
             id,
@@ -3016,7 +2814,6 @@
           renderResponseCard(fallbackCard, true);
           if (!liveSearchFinishing) completeLiveSearchProgress();
         } else {
-          hideLiveSearchAcknowledgement();
           renderResponseCard(fallbackCard, true);
         }
       }
@@ -3115,27 +2912,6 @@
       if (serverContent.turn_complete || serverContent.turnComplete) {
 
         if (liveSearchActive && liveSearchLookupCompleted && !hasSearchCallOnThisMessage && responseCardRenderedForTurn) completeLiveSearchProgress();
-        else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
-          // A preflight acknowledgement is not evidence of an active search. Preserve it across acknowledgement-only turns.
-          const assistantTurnText = currentTranscriptNodes.assistant && typeof currentTranscriptNodes.assistant.text === "string"
-            ? currentTranscriptNodes.assistant.text.trim()
-            : "";
-          const shortAcknowledgement = assistantTurnText.length > 0 &&
-            assistantTurnText.length < 90 &&
-            LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantTurnText);
-          if (liveSearchPreflightIntent && (!assistantTurnText || shortAcknowledgement)) {
-            // Live sessions can finish a brief spoken acknowledgement as a separate turn before the tool call.
-            // Keep the on-screen preflight alive until a real lookup starts or a substantive answer arrives.
-            if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
-            if (liveSearchMessage) liveSearchMessage.textContent = "The request is received. Waiting for the live-source check to start.";
-          } else {
-            if (liveSearchTitle) liveSearchTitle.textContent = "Finishing your answer sheet";
-            if (liveSearchMessage) liveSearchMessage.textContent = "Lining up the useful details so the answer is ready on screen.";
-          }
-        } else if (liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
-          if (liveSearchTitle) liveSearchTitle.textContent = "Finishing your answer sheet";
-          if (liveSearchMessage) liveSearchMessage.textContent = "Making the answer easy to scan on screen.";
-        }
         if (pendingResponseCards.length) {
           const queuedCards = pendingResponseCards.splice(0);
           const groundedFallback = [...queuedCards].reverse().find((queued) => !queued.id && isGroundedRankedListCard(queued.args));
@@ -3149,7 +2925,7 @@
         if (liveSearchActive && liveSearchLookupCompleted && responseCardRenderedForTurn && !liveSearchFinishing) completeLiveSearchProgress();
         // Keep transcript context alive across a spoken progress turn or pending tool call.
         // A turn is complete for presentation only once its answer card has actually rendered.
-        if (responseCardRenderedForTurn || (!liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive)) {
+        if (responseCardRenderedForTurn || (!liveSearchActive && !liveSearchFinishing)) {
           finalizeTurn();
         }
         if (greetingTurnPending) beginListeningAfterGreeting();
@@ -5386,35 +5162,5 @@
   void checkSpatialArSupport();
   void checkBackend();
 
-  // No status surface while the user speaks. Restore the contextual loader immediately
-  // after the mic speech gate closes and keep it present until the answer sheet is visible.
-  let __moinaLastUserSpeech = false;
-  window.setInterval(() => {
-    const assistantSpeaking = Boolean(stage && stage.classList.contains("is-speaking"));
-    const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking);
-    if (userSpeaking) {
-      __moinaLastUserSpeech = true;
-      if (liveSearchStatus) {
-        liveSearchStatus.hidden = true;
-        liveSearchStatus.classList.remove("is-acknowledging");
-      }
-      if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
-      liveSearchAcknowledgementTimer = null;
-      liveSearchAcknowledgementActive = false;
-      return;
-    }
-    if (__moinaLastUserSpeech) {
-      __moinaLastUserSpeech = false;
-      if (liveSearchActive && !liveSearchFinishing && liveSearchStatus) {
-        syncLiveSearchStatusVisibility();
-      } else if (!liveSearchFinishing && liveSearchStatus) {
-        const context = pendingUserProgressContext;
-        const searchIntent = pendingUserProgressSearchIntent;
-        pendingUserProgressContext = "";
-        pendingUserProgressSearchIntent = false;
-        showLiveSearchAcknowledgement(context, searchIntent);
-      }
-    }
-  }, 90);
 
 })();
