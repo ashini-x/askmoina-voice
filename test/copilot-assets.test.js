@@ -715,3 +715,51 @@ describe("Voice-turn status visibility", () => {
     expect(script).toContain("navigator.onLine === false");
   });
 });
+
+
+describe("long-running Live session continuity", () => {
+  const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+  const protocol = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
+  const providerFrames = readFileSync(new URL("../src/sessions/provider-frame.ts", import.meta.url), "utf8");
+
+  it("enables context compression and session resumption", () => {
+    expect(worker).toContain("contextWindowCompression: {");
+    expect(worker).toContain("triggerTokens: 96_000");
+    expect(worker).toContain("targetTokens: 64_000");
+    expect(worker).toContain("sessionResumption: { transparent: true }");
+    expect(worker).toContain("async function resumeLiveUpstream");
+    expect(worker).toContain("lastSessionResumptionHandle");
+    expect(worker).toContain("function replayUnconsumedMessages");
+    expect(worker).toContain('state: "resuming"');
+    expect(worker).toContain('state: "resumed"');
+  });
+
+  it("keeps resumption handles relay-side and understands provider checkpoints", () => {
+    expect(providerFrames).toContain("sessionResumptionUpdate");
+    expect(providerFrames).toContain("goAway");
+    expect(worker).toContain("const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate)");
+    expect(worker).toContain('(resumedSessionSetupComplete || isSessionResumptionUpdate) ? "" : frameText');
+    expect(worker).not.toContain("clientMessageIndex: index");
+  });
+
+  it("indexes actually-sent messages separately from the wire payload and buffers reconnect input", () => {
+    expect(worker).toContain("const index = nextClientMessageIndex++");
+    expect(worker).toContain("function queuePendingUpstreamMessage");
+    expect(worker).toContain("function drainPendingUpstreamMessages");
+    expect(worker).toContain("function rememberAndSendUpstreamMessage");
+    expect(worker).toContain("lastConsumedClientMessageIndex");
+  });
+
+  it("supports higher-detail, bounded camera frames", () => {
+    expect(protocol).toContain("const MAX_MEDIA_BASE64_CHARS = 48_000");
+    expect(worker).toContain("const MAX_CLIENT_FRAME_CHARS = 65_536");
+    expect(script).toContain("const maxDimension = 768");
+    expect(script).toContain("data.length <= 48_000");
+    expect(script).toContain("window.setInterval(sendVideoFrame, 1000)");
+  });
+
+  it("discloses temporary provider-side session caching", () => {
+    expect(html).toContain("temporarily cache session content for up to 24 hours");
+    expect(html).not.toContain('class="privacy-hint sr-only"');
+  });
+});

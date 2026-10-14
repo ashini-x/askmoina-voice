@@ -1009,8 +1009,8 @@ async function handleVoiceSocket(
     return json({ error: "voice_provider_unavailable" }, 502);
   }
 
-  let upstreamSocket = upstreamResponse.webSocket;
-  if (!upstreamSocket || upstreamResponse.status !== 101) {
+  const initialUpstreamSocket = upstreamResponse.webSocket;
+  if (!initialUpstreamSocket || upstreamResponse.status !== 101) {
     const responseText = await upstreamResponse.clone().text().catch(() => "");
     console.error("[AskMoina] Vertex Live handshake rejected", JSON.stringify({
       status: upstreamResponse.status,
@@ -1021,6 +1021,7 @@ async function handleVoiceSocket(
     return json({ error: "voice_provider_unavailable" }, 502);
   }
 
+  let upstreamSocket: WebSocket = initialUpstreamSocket;
   const pair = new WebSocketPair();
   const [clientSocket, workerSocket] = Object.values(pair) as [WebSocket, WebSocket];
   workerSocket.accept();
@@ -1051,7 +1052,6 @@ async function handleVoiceSocket(
   let upstreamReplayBufferChars = 0;
   let highestEvictedClientMessageIndex = -1;
   let resumptionInProgress = false;
-  let resumptionAttemptCount = 0;
   const MAX_RESUME_REPLAY_CHARS = 512 * 1024;
   let copilotMode = false;
   let groundedSearchCount = 0;
@@ -1083,6 +1083,8 @@ async function handleVoiceSocket(
       clearInterval(clientIdleWatchdog);
       clientIdleWatchdog = null;
     }
+    if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
+    if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(false); }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
     const analyticsOutcome = reason === "Session time limit reached" ? "session_timeout" :
@@ -1144,7 +1146,9 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
-  // Assign monotonic indices to post-setup messages and keep a bounded replay window.
+  // Replay indexes are local bookkeeping only: clientMessageIndex is not a field in
+  // the wire protocol. Index only messages actually sent upstream so checkpoint indexes
+  // stay aligned with the order the provider saw.
   function pruneConsumedReplayMessages() {
     while (upstreamReplayBuffer.length && upstreamReplayBuffer[0].index <= lastConsumedClientMessageIndex) {
       const removed = upstreamReplayBuffer.shift()!;
@@ -1153,9 +1157,9 @@ async function handleVoiceSocket(
     if (highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex) highestEvictedClientMessageIndex = -1;
   }
 
-  function sendUpstreamMessage(payload: Record<string, unknown>) {
+  function rememberAndSendUpstreamMessage(payload: Record<string, unknown>) {
     const index = nextClientMessageIndex++;
-    const encoded = JSON.stringify({ ...payload, clientMessageIndex: index });
+    const encoded = JSON.stringify(payload);
     upstreamReplayBuffer.push({ index, encoded });
     upstreamReplayBufferChars += encoded.length;
     while (upstreamReplayBufferChars > MAX_RESUME_REPLAY_CHARS && upstreamReplayBuffer.length > 0) {
@@ -1165,8 +1169,41 @@ async function handleVoiceSocket(
         highestEvictedClientMessageIndex = Math.max(highestEvictedClientMessageIndex, removed.index);
       }
     }
-    if (upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
-      upstreamSocket.send(encoded);
+    upstreamSocket.send(encoded);
+  }
+
+  function queuePendingUpstreamMessage(payload: Record<string, unknown>) {
+    const encoded = JSON.stringify(payload);
+    // Camera snapshots are replaceable; hold only the most recent during a reconnect.
+    if (payload.realtimeInput && typeof payload.realtimeInput === "object" && "video" in payload.realtimeInput) {
+      for (let i = pendingUpstreamMessages.length - 1; i >= 0; i -= 1) {
+        const queued = pendingUpstreamMessages[i];
+        if (queued.payload.realtimeInput && typeof queued.payload.realtimeInput === "object" && "video" in queued.payload.realtimeInput) {
+          pendingUpstreamMessages.splice(i, 1);
+          pendingUpstreamMessagesChars -= queued.chars;
+          break;
+        }
+      }
+    }
+    pendingUpstreamMessages.push({ payload, chars: encoded.length });
+    pendingUpstreamMessagesChars += encoded.length;
+    // Bound RAM during a long outage. Oldest audio packets may be shed; new input remains live.
+    while (pendingUpstreamMessagesChars > MAX_PENDING_UPSTREAM_CHARS && pendingUpstreamMessages.length > 0) {
+      const dropped = pendingUpstreamMessages.shift()!;
+      pendingUpstreamMessagesChars -= dropped.chars;
+    }
+  }
+
+  function sendUpstreamMessage(payload: Record<string, unknown>) {
+    if (closed) return;
+    if (upstreamSocket.readyState !== WebSocket.OPEN || !upstreamSetupReady || resumptionInProgress) {
+      queuePendingUpstreamMessage(payload);
+      return;
+    }
+    try {
+      rememberAndSendUpstreamMessage(payload);
+    } catch {
+      closeBoth(1011, "Failed to forward live input");
     }
   }
 
@@ -1181,6 +1218,19 @@ async function handleVoiceSocket(
       lastConsumedClientMessageIndex,
       replayWindowComplete: highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex,
     }));
+  }
+
+  function drainPendingUpstreamMessages() {
+    if (closed || resumptionInProgress || !upstreamSetupReady || upstreamSocket.readyState !== WebSocket.OPEN) return;
+    const pending = pendingUpstreamMessages.splice(0);
+    pendingUpstreamMessagesChars = 0;
+    for (const item of pending) {
+      if (closed || !upstreamSetupReady || resumptionInProgress || upstreamSocket.readyState !== WebSocket.OPEN) {
+        queuePendingUpstreamMessage(item.payload);
+        continue;
+      }
+      rememberAndSendUpstreamMessage(item.payload);
+    }
   }
 
   // A silent/disconnected browser must not leave a relay and its reservation hanging.
@@ -1506,9 +1556,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       analyticsSetupComplete = true;
       requestToSetupMs = Date.now() - analyticsStartedAt;
       if (resumedSessionSetupComplete) {
+        const oldSocket = previousUpstreamSocket;
+        previousUpstreamSocket = null;
         resumptionInProgress = false;
-        resumptionAttemptCount = 0;
+        if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
+        if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(true); }
         replayUnconsumedMessages();
+        if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
+          try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
+        }
+        drainPendingUpstreamMessages();
         try {
           workerSocket.send(JSON.stringify({ connection_status: {
             state: "resumed",
@@ -1664,7 +1721,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       code: event.code, reason: event.reason.slice(0, 300), setupForwarded, setupCompleteReceived,
       lifetimeMs: Date.now() - upstreamStartedAt,
     }));
-    if (lastSessionResumptionHandle && !resumptionInProgress) {
+    if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
+    if (lastSessionResumptionHandle) {
       void resumeLiveUpstream("provider_disconnect");
       return;
     }
@@ -1673,7 +1731,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   socketForConnection.addEventListener("error", () => {
     if (socketForConnection !== upstreamSocket || closed) return;
     console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded }));
-    if (lastSessionResumptionHandle && !resumptionInProgress) {
+    if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
+    if (lastSessionResumptionHandle) {
       void resumeLiveUpstream("provider_socket_error");
       return;
     }
@@ -1689,6 +1748,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
     const handleToResume = lastSessionResumptionHandle;
     const previousSocket = upstreamSocket;
+    previousUpstreamSocket = previousSocket;
     resumptionInProgress = true;
     upstreamSetupReady = false;
     setupCompleteReceived = false;
@@ -1700,12 +1760,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     } catch { /* browser may already be closing */ }
 
     for (let attempt = 1; attempt <= 3 && !closed; attempt += 1) {
-      resumptionAttemptCount = attempt;
       let candidate: WebSocket | null = null;
       try {
         if (attempt > 1) await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        const refreshedAccessToken = await getGoogleAccessToken(env);
         const response = await fetch(upstreamUrl, {
-          headers: { Upgrade: "websocket", Authorization: `Bearer ${accessToken}` },
+          headers: { Upgrade: "websocket", Authorization: `Bearer ${refreshedAccessToken}` },
         });
         candidate = response.webSocket;
         if (!candidate || response.status !== 101) {
@@ -1717,26 +1777,43 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         upstreamSocket = candidate;
         upstreamStartedAt = Date.now();
         attachUpstreamHandlers(candidate);
-        candidate.send(JSON.stringify({
-          setup: { ...securedSetupForResume, sessionResumption: { handle: handleToResume, transparent: true } },
-        }));
-        try {
-          if (previousSocket.readyState === WebSocket.OPEN) previousSocket.close(1000, "Live session resumed on replacement socket");
-        } catch { /* stale socket cleanup */ }
-        console.info("[AskMoina] Live session resumption requested", JSON.stringify({
-          reason, attempt, replayBufferChars: upstreamReplayBufferChars, handleAvailable: true,
-        }));
-        return;
+        const accepted = await new Promise<boolean>((resolve) => {
+          let settled = false;
+          const settle = (result: boolean) => {
+            if (settled) return;
+            settled = true;
+            if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
+            if (resolveResumeSetup === settle) resolveResumeSetup = null;
+            resolve(result);
+          };
+          resolveResumeSetup = settle;
+          resumeSetupTimeout = setTimeout(() => settle(false), 8_000);
+          candidate!.send(JSON.stringify({
+            setup: { ...securedSetupForResume!, sessionResumption: { handle: handleToResume, transparent: true } },
+          }));
+        });
+        if (accepted) return;
+        if (candidate.readyState === WebSocket.OPEN || candidate.readyState === WebSocket.CONNECTING) {
+          try { candidate.close(1011, "Resume setup was not accepted"); } catch {}
+        }
+        if (upstreamSocket === candidate) upstreamSocket = previousSocket;
+        upstreamSetupReady = false;
+        previousUpstreamSocket = previousSocket;
+        console.warn("[AskMoina] Live session resume did not complete setup", JSON.stringify({ attempt, reason }));
       } catch {
         if (candidate) { try { candidate.close(1011, "Resume attempt failed"); } catch {} }
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
+        upstreamSetupReady = false;
+        previousUpstreamSocket = previousSocket;
+        if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
+        resolveResumeSetup = null;
         console.warn("[AskMoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));
       }
     }
     resumptionInProgress = false;
+    previousUpstreamSocket = null;
     closeBoth(1011, "Live session could not be resumed. Please restart Co-Pilot.");
   }
-
   attachUpstreamHandlers(upstreamSocket);
 
   return new Response(null, { status: 101, webSocket: clientSocket });
