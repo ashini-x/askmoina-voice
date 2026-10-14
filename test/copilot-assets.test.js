@@ -78,7 +78,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("if (Array.isArray(value.sources))");
     expect(script).toContain("value.details.length > 10");
     expect(script).toContain("value.slice(0, 10)");
-    expect(script).toContain("new window.SpeechSynthesisUtterance");
+    expect(script).toContain("playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);");
     expect(script).toContain('link.rel = "noopener noreferrer"');
     expect(css).toContain(".response-card-tray[hidden]{display:none!important}");
     expect(css).toContain("position:fixed;inset:0;z-index:120");
