@@ -573,15 +573,15 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     tools: [{ googleSearch: {} }],
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
   });
-  const isIpl2025RunsLeaderboard = /\\bipl\\b/i.test(query) && /\\b2025\\b/i.test(query) &&
-    /\\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\\b/i.test(query);
+  const isIpl2025RunsLeaderboard = /\bipl\b/i.test(query) && /\b2025\b/i.test(query) &&
+    /\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(query);
   const ipl2025FullLeaderboardUrl = "https://www.ipl.com/series/indian-premier-league-2025-129413/stats";
   const ipl2025FullTableInstruction = isIpl2025RunsLeaderboard
     ? [
       "Use the full-season batting table at " + ipl2025FullLeaderboardUrl + " as the primary source for the final IPL 2025 most-runs ranking.",
       "Important: that page also has a separate compact section named Top Run Scorers containing only three featured players. Do NOT use that three-player widget as the leaderboard. Read the longer main batting stats table whose columns are Player, Matches, Inns, Runs, Avg, Sr, 4s, and 6s.",
       "Return the first ten rows of that full table in rank order, copying the exact player name, team, and Runs value for ranks 1-10. If another credible final-season table agrees, cross-check against it. Never fill a missing row from memory."
-    ].join("\\n\\n")
+    ].join("\n\n")
     : "";
   const rankedListPrompt = requestedListCountForBudget !== null
     ? [
