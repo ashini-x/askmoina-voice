@@ -57,6 +57,22 @@ describe("M30 model-aware grounded expertise", () => {
     expect(invalid.modelTextMatch).toBe("not_established");
   });
 
+  it("requires HTTPS sources and exact official-domain boundaries", async () => {
+    const { safeGroundedSourceUrl, isKnownOfficialManufacturerHost } =
+      await import("../src/grounded-expertise");
+
+    expect(safeGroundedSourceUrl("https://www.samsung.com/support/device")).toBe("https://www.samsung.com/support/device");
+    expect(safeGroundedSourceUrl("http://www.samsung.com/support")).toBeNull();
+    expect(safeGroundedSourceUrl("https://user:pass@samsung.com/support")).toBeNull();
+    expect(safeGroundedSourceUrl("https://localhost/support")).toBeNull();
+    expect(safeGroundedSourceUrl("javascript:alert(1)")).toBeNull();
+
+    expect(isKnownOfficialManufacturerHost("https://support.samsung.com/manual", "Samsung")).toBe(true);
+    expect(isKnownOfficialManufacturerHost("https://samsung.com.evil.example/manual", "Samsung")).toBe(false);
+    expect(isKnownOfficialManufacturerHost("https://example.com/samsung", "Samsung")).toBe(false);
+    expect(isKnownOfficialManufacturerHost("https://support.unknownbrand.example/manual", "UnknownBrand")).toBe(false);
+  });
+
   it("passes explicit context into grounded search and warns when exact model match is unverified", () => {
     expect(workerSource).toContain("device_context: {");
     expect(workerSource).toContain("await performGroundedWebSearch(env, query, deviceContext, copilotMode)");
