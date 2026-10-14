@@ -273,8 +273,8 @@
       return {
         key: "general",
         stages: [
-          { title: "Listening to your question", message: "Getting your request ready. I'll show live-source checks if needed." },
-          { title: "Understanding your request", message: "Working out what will help you most." },
+          { title: "Thinking through your request", message: "Preparing a useful answer. I'll show live-source checks if needed." },
+          { title: "Preparing your answer", message: "Working out what information will help most." },
           { title: "Preparing your answer", message: "Checking whether up-to-date sources would help." },
           { title: "Putting it together", message: "Keeping the answer focused on your question." }
         ]
