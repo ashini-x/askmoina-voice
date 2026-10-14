@@ -550,7 +550,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.32"');
+    expect(html).toContain('src="/copilot.js?v=0.4.33"');
   });
 });
 
@@ -696,8 +696,8 @@ describe("long-running Live session continuity", () => {
 
   it("enables context compression and session resumption", () => {
     expect(worker).toContain("contextWindowCompression: {");
-    expect(worker).toContain("triggerTokens: 96_000");
-    expect(worker).toContain("targetTokens: 64_000");
+    expect(worker).toContain("triggerTokens: 24_000");
+    expect(worker).toContain("targetTokens: 8_000");
     expect(worker).toContain("sessionResumption: { transparent: true }");
     expect(worker).toContain("async function resumeLiveUpstream");
     expect(worker).toContain("lastSessionResumptionHandle");
@@ -710,6 +710,7 @@ describe("long-running Live session continuity", () => {
     expect(providerFrames).toContain("sessionResumptionUpdate");
     expect(providerFrames).toContain("goAway");
     expect(worker).toContain("const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate)");
+    expect(worker).toContain("update.resumable === true");
     expect(worker).toContain("(resumedSessionSetupComplete || isSessionResumptionUpdate || (resumptionInProgress && providerMessage?.error)) ? \"\" : frameText");
     expect(worker).not.toContain("clientMessageIndex: index");
   });
@@ -731,6 +732,12 @@ describe("long-running Live session continuity", () => {
     expect(script).toContain("const maxDimension = 768");
     expect(script).toContain("data.length <= 48_000");
     expect(script).toContain("window.setInterval(sendVideoFrame, 1000)");
+  });
+
+  it("keeps the camera visible after bounded reconnect retries end and clears stale notice on resume", () => {
+    expect(script).toContain("automaticReconnectAttempts >= 3");
+    expect(script).toContain("hideConnectionNotice(true);");
+    expect(css).toContain(".camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important;transform:none!important}");
   });
 
   it("discloses temporary provider-side session caching", () => {
