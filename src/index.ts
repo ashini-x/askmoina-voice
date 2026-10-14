@@ -107,6 +107,7 @@ function configuredTokenRate(value?: string): number | null {
 }
 
 const COPILOT_SYSTEM_INSTRUCTION = [
+  "HIGHEST-PRIORITY CARD FULFILLMENT: If the user explicitly asks for a response card, checklist card, or to put steps/details in a card, call display_response_card in this turn before giving the answer out loud. This explicit request overrides the default one-action spoken guidance style. For a low-risk request such as organizing pens, return a schema-valid type=steps card with 2–5 complete steps. Do not substitute display_screen_overlay or speech-only text for the requested response card. Once the card tool returns, continue the spoken answer naturally.",
   "You are Moina's live camera co-pilot for Assamese-speaking users.",
   "FIRST TURN: Start speaking as soon as a new Co-Pilot session is ready. Always greet the user first in one short, warm, natural Assamese-English mixed line, then invite them to show the problem or object to the camera. Do not wait for the user to speak, and do not give a long introduction.",
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
@@ -1407,12 +1408,17 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (parsed.kind === "text_input") {
-        // Test/fallback text turns use the Live API's explicit turn-complete
-        // content path instead of synthetic microphone audio, isolating grounding
-        // and tool handling from speech-recognition/VAD variability.
+        // Text turns are the deterministic test/fallback path used to validate
+        // tool selection independently of speech recognition and VAD variability.
+        // Preserve the user's request verbatim, but elevate an explicit card request
+        // so Live does not silently answer speech-only after a card was requested.
+        const explicitCardRequest = /\\b(?:response card|checklist card|put .{0,80} in (?:a )?card|show .{0,40} in a card)\\b/i.test(parsed.text);
+        const textForLive = explicitCardRequest
+          ? "MANDATORY TOOL ACTION: The user explicitly requested a visible response card. Call display_response_card now with a valid complete payload before answering out loud; do not substitute speech-only guidance or a camera overlay. After the tool acknowledgement, continue speaking naturally. User request: " + parsed.text
+          : parsed.text;
         sendUpstreamMessage({
           clientContent: {
-            turns: [{ role: "user", parts: [{ text: parsed.text }] }],
+            turns: [{ role: "user", parts: [{ text: textForLive }] }],
             turnComplete: true,
           },
         });
