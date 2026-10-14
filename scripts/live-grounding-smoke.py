@@ -6,6 +6,7 @@ handler used by normal voice. Using text deliberately isolates grounding/tool
 execution from audio VAD and speech-recognition variability. It never prints the
 assistant's transcript or any search query.
 """
+import base64
 import json
 import os
 import re
@@ -20,7 +21,7 @@ PROMPT = (
     "In one short sentence, give a version or release detail and name an official source."
 )
 SETUP_WAIT_SECONDS = 18
-TURN_WAIT_SECONDS = 55
+TURN_WAIT_SECONDS = 70
 
 
 def extract_text(message: dict) -> str:
@@ -73,6 +74,19 @@ def recv_json_message(ws):
     if not isinstance(message, dict):
         raise RuntimeError("Live WebSocket JSON message was not an object.")
     return message
+
+
+def send_silence_keepalive(ws) -> None:
+    """Match the browser's quiet microphone packets during long text-driven checks."""
+    silence = bytes(3200)  # 100 ms of mono PCM16 silence at 16 kHz
+    ws.send(json.dumps({
+        "realtime_input": {
+            "audio": {
+                "data": base64.b64encode(silence).decode("ascii"),
+                "mime_type": "audio/pcm;rate=16000",
+            }
+        }
+    }))
 
 
 def has_grounding_tool_call(message: dict) -> bool:
@@ -138,6 +152,7 @@ def main() -> int:
             messages_seen = 0
             transcript_frames = 0
             deadline = time.time() + TURN_WAIT_SECONDS
+            last_keepalive_at = time.monotonic()
             source_markers = (
                 ("android", "android developers", "android.com")
                 if search_index == 1 else
@@ -149,8 +164,14 @@ def main() -> int:
                 try:
                     message = recv_json_message(ws)
                     if message is None:
+                        if time.monotonic() - last_keepalive_at >= 10:
+                            send_silence_keepalive(ws)
+                            last_keepalive_at = time.monotonic()
                         continue
                 except websocket.WebSocketTimeoutException:
+                    if time.monotonic() - last_keepalive_at >= 10:
+                        send_silence_keepalive(ws)
+                        last_keepalive_at = time.monotonic()
                     continue
                 except websocket.WebSocketConnectionClosedException:
                     raise RuntimeError(
@@ -159,6 +180,9 @@ def main() -> int:
                         f"transcript_frames={transcript_frames}, completed_turns={completed_turns}."
                     ) from None
                 messages_seen += 1
+                if time.monotonic() - last_keepalive_at >= 10:
+                    send_silence_keepalive(ws)
+                    last_keepalive_at = time.monotonic()
                 if message.get("error"):
                     raise RuntimeError(f"The Live session returned a protocol/provider error on search {search_index}.")
                 message_has_tool_call = has_grounding_tool_call(message)
