@@ -20,7 +20,7 @@ PROMPT = (
     "In one short sentence, give a version or release detail and name an official source."
 )
 SETUP_WAIT_SECONDS = 18
-TURN_WAIT_SECONDS = 70
+TURN_WAIT_SECONDS = 130
 
 
 def extract_text(message: dict) -> str:
