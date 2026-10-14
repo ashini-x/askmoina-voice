@@ -13,7 +13,7 @@ describe("Vertex Live voice configuration", () => {
     for (const voice of PREBUILT_LIVE_VOICES) {
       expect(isPrebuiltLiveVoiceName(voice.name)).toBe(true);
       expect(buildVoiceGenerationConfig(voice.name)).toEqual({
-        responseModalities: ["AUDIO", "TEXT"],
+        responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: voice.name } },
         },
@@ -28,10 +28,10 @@ describe("Vertex Live voice configuration", () => {
     expect(isPrebuiltLiveVoiceName(undefined)).toBe(false);
   });
 
-  it("selects the documented youthful Leda voice by default", () => {
+  it("selects the documented youthful Leda voice by default with AUDIO modality", () => {
     expect(DEFAULT_LIVE_VOICE_NAME).toBe("Leda");
     expect(buildVoiceGenerationConfig()).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName: "Leda" },
@@ -40,9 +40,9 @@ describe("Vertex Live voice configuration", () => {
     });
   });
 
-  it("trims a configured prebuilt voice name while preserving spoken audio and readable text transcription", () => {
+  it("trims a configured prebuilt voice name while keeping native speech output audio-only", () => {
     expect(buildVoiceGenerationConfig("  Aoede  ")).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName: "Aoede" },
@@ -54,7 +54,7 @@ describe("Vertex Live voice configuration", () => {
   it("uses Candidate A's tested prompted voice ID directly in Live", () => {
     expect(CANDIDATE_A_LIVE_VOICE_ID).toBe("voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05");
     expect(buildVoiceGenerationConfig("Leda", CANDIDATE_A_LIVE_VOICE_ID)).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           voice: "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
@@ -65,7 +65,7 @@ describe("Vertex Live voice configuration", () => {
 
   it("gives a nonblank prompted voice ID precedence over a prebuilt voice name", () => {
     expect(buildVoiceGenerationConfig("Aoede", " voice_custom_test ")).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           voice: "voice_custom_test",
@@ -76,7 +76,7 @@ describe("Vertex Live voice configuration", () => {
 
   it("falls back to Leda when the prebuilt voice setting is blank", () => {
     expect(buildVoiceGenerationConfig("  ")).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName: "Leda" },
@@ -87,7 +87,7 @@ describe("Vertex Live voice configuration", () => {
 
   it("falls back to the configured prebuilt voice when the custom ID is blank", () => {
     expect(buildVoiceGenerationConfig(" Aoede ", "  ")).toEqual({
-      responseModalities: ["AUDIO", "TEXT"],
+      responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName: "Aoede" },
