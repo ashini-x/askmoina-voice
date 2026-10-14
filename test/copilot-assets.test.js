@@ -550,7 +550,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.31"');
+    expect(html).toContain('src="/copilot.js?v=0.4.32"');
   });
 });
 
@@ -590,7 +590,8 @@ describe("RC6 grounded list visibility regressions", () => {
     expect(script).toContain("function isListDisplayFollowup(text)");
     expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
-    expect(script).toContain("pendingUserProgressContext = normalized");
+    expect(script).toContain("protectGroundedListForTurn = true");
+    expect(script).not.toContain("pendingUserProgressContext = normalized");
   });
 });
 
@@ -741,10 +742,10 @@ describe("long-running Live session continuity", () => {
 
 describe("Apple-style active turn contract", () => {
   it("keeps processing state contextual, continues Live progress, and requires answer cards", () => {
-    expect(script).toContain("No status surface while the user speaks.");
-    expect(script).toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
-    expect(script).toContain("Answer card-tu ready kori asu.");
-    expect(script).toContain("Names aru rankings match kori asu against sources.");
+    expect(script).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(script).toContain("liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive)");
+    expect(script).not.toContain("Thinking through your request");
+    expect(script).not.toContain("startQuietThinkingLoader");
     expect(workerSource).toContain('behavior: "NON_BLOCKING"');
     expect(workerSource).toContain('function sendLiveSearchProgressCue(cueNumber: number, requestContext = "")');
     expect(workerSource).toContain("liveSearchProgressCueCount < 8");
