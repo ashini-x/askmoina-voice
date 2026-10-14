@@ -19,6 +19,11 @@ describe("voice media backpressure without app usage caps", () => {
     expect(client).toContain("socket.bufferedAmount > 96 * 1024");
     expect(copilot).toContain("socket.bufferedAmount > 96 * 1024");
   });
+  it("starts context compression well before the Live audiovisual session ceiling", () => {
+    expect(worker).toContain("triggerTokens: 24_000");
+    expect(worker).toContain("targetTokens: 8_000");
+    expect(worker).toContain("update.resumable === true");
+  });
   it("does not impose the former app-owned session timeout", () => {
     expect(worker).not.toContain("Voice session duration limit reached");
   });

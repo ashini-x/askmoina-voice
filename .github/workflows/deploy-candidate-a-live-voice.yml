@@ -284,6 +284,7 @@ jobs:
           python scripts/live-response-card-smoke.py
           python scripts/live-ranked-list-smoke.py
           python scripts/live-memory-voice-smoke.py
+          node scripts/live-session-continuity-smoke.mjs
           cleanup
           trap - EXIT
           echo "Synthetic session revoked: OK"
