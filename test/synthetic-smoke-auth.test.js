@@ -77,6 +77,16 @@ describe("authenticated live synthetic verification", () => {
     expect(workerSource).toContain("const effectiveQuery = carryOriginalRankedIntent");
   });
 
+  it("allows the server-ranked-list lookup to finish before judging grounding", () => {
+    const rankedList = readFileSync(new URL("../scripts/live-ranked-list-smoke.py", import.meta.url), "utf8");
+    // The production ranked-list search has a 75-second total budget before speech resumes.
+    expect(rankedList).toContain("TURN_WAIT_SECONDS = 130");
+    expect(rankedList).toContain("Mandatory ranked-list");
+    expect(rankedList).toContain("grounded_search_count += 1");
+    expect(rankedList).toContain("grounded_response_card");
+    expect(rankedList).toContain("top_ten_card_seen = True");
+  });
+
   it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
     expect(workerSource).toContain("EXPLICIT CARD REQUEST OVERRIDE");
     expect(workerSource).toContain("Example: 'Make a response card with three steps for organizing pens'");
