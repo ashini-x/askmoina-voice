@@ -32,7 +32,6 @@ try {
     name: "moina_session",
     value: match[1],
     url: baseUrl,
-    path: "/",
     httpOnly: true,
     secure: true,
     sameSite: "Lax"
