@@ -1,0 +1,58 @@
+name: Browser network recovery synthetic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/live-network-recovery-smoke.mjs"
+      - ".github/workflows/browser-network-recovery-synthetic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-network-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install application and browser dependencies
+        run: |
+          npm install --no-audit --no-fund --legacy-peer-deps
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Create synthetic authenticated account
+        id: synthetic_session
+        shell: bash
+        run: |
+          set -euo pipefail
+          cookie="$(node scripts/synthetic-passkey-session.mjs)"
+          if [[ ! "$cookie" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
+            echo "::error::Synthetic passkey setup did not return a valid account session."
+            exit 1
+          fi
+          echo "::add-mask::$cookie"
+          echo "cookie=$cookie" >> "$GITHUB_OUTPUT"
+      - name: Simulate a real browser network interruption and user-driven reconnect
+        env:
+          ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}
+        run: node scripts/live-network-recovery-smoke.mjs
+      - name: Revoke synthetic session
+        if: always()
+        shell: bash
+        env:
+          ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}
+        run: |
+          if [[ -n "${ASKMOINA_SYNTHETIC_COOKIE:-}" ]]; then
+            curl --silent --show-error --max-time 12 --output /dev/null \
+              --request POST "$BASE_URL/api/auth/logout" \
+              --header "Origin: $BASE_URL" \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              --header "Content-Type: application/json" --data '{}' || true
+          fi
