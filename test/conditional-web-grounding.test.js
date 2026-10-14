@@ -49,6 +49,15 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
+  it("continues speech instead of retrying an invalid replacement after a complete grounded ranked card is visible", () => {
+    expect(workerSource).toContain("let completeRankedFallbackCardSentAt = 0");
+    expect(workerSource).toContain("if (complete) completeRankedFallbackCardSentAt = Date.now()");
+    expect(workerSource).toContain("completeRankedFallbackRecentlySent");
+    expect(workerSource).toContain("The complete source-backed ranked card is already visible");
+    expect(workerSource).toContain("Continue speaking now: briefly summarize the top entries");
+    expect(workerSource).toContain("Skipped redundant response-card replacement after complete grounded ranked list");
+  });
+
   it("prioritizes explicit response-card requests before speech-only answers", () => {
     expect(workerSource).toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
     expect(workerSource).toContain("The user explicitly requested a visible response card");
