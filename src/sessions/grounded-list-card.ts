@@ -118,8 +118,8 @@ function extractGroundedSources(text: string): Array<{ title: string; url: strin
  */
 export function mergeGroundedRankedListAttempts(firstAttempt: string, retryAttempt: string): string {
   const rankedSection = (value: string) =>
-    String(value || "").split(/\\n\\s*(?:sources?|source links):/i)[0].trim();
-  return [rankedSection(retryAttempt), rankedSection(firstAttempt)].filter(Boolean).join("\\n");
+    String(value || "").split(/\n\s*(?:sources?|source links):/i)[0].trim();
+  return [rankedSection(retryAttempt), rankedSection(firstAttempt)].filter(Boolean).join("\n");
 }
 
 /** Build a designed fallback card from grounded results; missing positions remain explicitly unverified. */
