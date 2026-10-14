@@ -51,6 +51,7 @@
   const responseCardRestoreButton = $("#responseCardRestore");
   // Keep the answer sheet viewport-sized rather than bounded by the camera-stage layout.
   if (responseCardTray && responseCardTray.parentElement !== document.body) document.body.appendChild(responseCardTray);
+  if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);
   const liveSearchStatus = $("#liveSearchStatus");
   const liveSearchTitle = $("#liveSearchTitle");
   const liveSearchMessage = $("#liveSearchMessage");
