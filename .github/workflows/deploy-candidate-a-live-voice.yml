@@ -108,7 +108,38 @@ jobs:
           echo "Validated AskMoina version is uploaded: $version_id"
 
       - name: Promote uploaded version to 100% without changing triggers
-        run: npx wrangler versions deploy "${{ steps.upload.outputs.version_id }}@100%"
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_id="${{ steps.upload.outputs.version_id }}"
+          if npx wrangler versions deploy "${version_id}@100%"; then
+            exit 0
+          fi
+
+          # In some Cloudflare API failures, a successful version upload is already
+          # automatically deployed at 100%. Continue only if production health proves
+          # the intended release is already serving traffic; never mask a stale release.
+          echo "::warning::Explicit version promotion failed; checking whether Cloudflare already deployed the uploaded release."
+          expected_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')).vars.APP_VERSION")"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          status_code="$(curl --silent --show-error --max-time 12 --output "$response_file" --write-out '%{http_code}' "$PRODUCTION_URL/api/health" || true)"
+          if [[ "$status_code" == "200" ]] && node --input-type=module - "$response_file" "$expected_version" <<'NODE'
+          import fs from "node:fs";
+          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const expectedVersion = process.argv[3];
+          if (body.ok !== true || body.app !== "askmoina-voice" || body.version !== expectedVersion) {
+            throw new Error(`Production is not serving the expected release ${expectedVersion}; refusing to continue.`);
+          }
+          console.log(JSON.stringify({alreadyServingUploadedRelease:true,version:body.version,status:body.status}));
+          NODE
+          then
+            echo "Cloudflare already serves the expected uploaded version; continuing to synthetic verification."
+          else
+            echo "::error::Promotion failed and production health does not confirm the intended release. Refusing to continue."
+            cat "$response_file"
+            exit 1
+          fi
 
       - name: Verify production health and selected voice
         shell: bash
