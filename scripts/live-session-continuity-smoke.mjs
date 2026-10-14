@@ -72,7 +72,7 @@ try {
   const finalState = await page.locator("#connectionPill").getAttribute("data-state");
   const buttonPressed = await page.locator("#toggleCopilot").getAttribute("aria-pressed");
   const states = await page.evaluate(() => window.__askmoinaContinuityStates || []);
-  assert.equal(finalState, "live", "Live session should still be active after 155 seconds");
+  assert.equal(finalState, "live", "Live session should still be active after 155 seconds; final state="+String(finalState)+", pressed="+String(buttonPressed)+", history="+states.join("->")+", sockets="+liveSockets.length+", closed="+closedSockets.length);
   assert.equal(buttonPressed, "true", "call controls should remain in active state");
   assert.deepEqual(closedSockets, [], "browser-facing Live socket must not close during the continuity window");
   assert.ok(states.length >= 1 && states.every((state) => state === "live"),
