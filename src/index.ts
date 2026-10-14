@@ -498,8 +498,8 @@ async function waitForGroundedRetry(delayMs: number, budgetStartedAt: number, bu
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
-const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;
-const GROUNDED_SEARCH_BUDGET_MS = 21_000;
+const GROUNDED_SEARCH_TIMEOUT_MS = 18_000;
+const GROUNDED_SEARCH_BUDGET_MS = 42_000;
 const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
@@ -1394,7 +1394,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 result = await performGroundedWebSearch(env, query, deviceContext, copilotMode);
               } catch (error) {
                 console.warn("[AskMoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
-                result = "The live web lookup is temporarily unavailable. Be transparent about this and do not present current or device-specific claims as verified.";
+                const timedOut = error instanceof Error && /(timed out|latency budget|exceeded its .*budget)/i.test(error.message);
+                result = timedOut
+                  ? "The live web lookup timed out before verified sources arrived. Tell the user this search attempt did not finish and do not present current or device-specific claims as verified. If appropriate, try one distinct, more focused search query; if it also fails, explain the limitation plainly."
+                  : "The live web lookup could not complete. Be transparent about this and do not present current or device-specific claims as verified.";
               }
             }
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
