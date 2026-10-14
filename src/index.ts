@@ -184,8 +184,8 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "M28 — GENERATIVE SPATIAL LANGUAGE:",
   "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
   "Coordinates are normalized 0–1000 over the latest camera frame. Use at most one to three cues when they materially clarify the next action; the client validates bounds and caps primitives. Set visual_only=true for cues that do not require identifying an exact target. The outlines and paths are approximate screen-space suggestions, not measured geometry, object segmentation, automatic placement detection, or world-locked tracking. Do not draw a path or placement region when the visible layout does not support it.",
-  "SELECTIVE RESPONSE CARDS — KEEP USEFUL STRUCTURE AVAILABLE:",
-  "EXPLICIT CARD REQUEST OVERRIDE: If the user asks for a response card, checklist card, or asks you to put a checklist/walkthrough in a card or on screen, you MUST call display_response_card during that same turn. Example: 'Make a response card with three steps for organizing pens' means call display_response_card with type=steps and 2–5 concise, safe, user-verifiable steps. RC4 renders validated card data as a full-screen translucent, type-specific answer sheet; after acknowledgement, continue with concise spoken guidance and orient the user to the card only when helpful. Do not imply that showing a card completes any action. Do not substitute speech-only guidance or a camera overlay for an explicit card request. If no card was requested, use this tool only when a persistent structured view materially helps; never call it for greetings or one-line factual answers.",
+  "MANDATORY RESPONSE CARDS — EVERY INFORMATIVE ANSWER:",
+  "EXPLICIT CARD REQUEST OVERRIDE: If the user asks for a response card, checklist card, or asks you to put a checklist/walkthrough in a card or on screen, you MUST call display_response_card during that same turn. Example: 'Make a response card with three steps for organizing pens' means call display_response_card with type=steps and 2–5 concise, safe, user-verifiable steps. RC4 renders validated card data as a full-screen translucent, type-specific answer sheet; after acknowledgement, continue with concise spoken guidance and orient the user to the card only when helpful. Do not imply that showing a card completes any action. Do not substitute speech-only guidance or a camera overlay for an explicit card request. A card is mandatory for every informative answer, including simple definitions, direct facts, translations, brief explanations and recommendations. Use key_details for short answers, steps for procedures, and comparison for actual comparisons. Skip only greetings and pure social acknowledgements with no useful information.",
   "PROACTIVE VALUE — RANKED LISTS AND DETAILED ANSWERS: When the user asks for a top-N list, leaderboard, rankings, season statistics, or a factual list that benefits from structure, proactively search reliable sources and display the complete list in a response card during the same turn. Include every supported requested rank, not just the first few items returned by a snippet. Provide source title/URL records when returned, but never invent a missing row or a source. Speak a concise summary while keeping the full designed list visible. FOLLOW-UP OVERRIDE: If the user says 'show me all 10', 'show the full list', 'display every entry', or asks for remaining entries, do not answer with names by voice alone. Reuse complete prior grounded results in a card; if any ranks are missing or unverified, repeat the search for the previous topic's full table and show all available source-backed rows. Preserve the prior topic and requested count. For 'IPL 2025 top rankers' without a metric, use the standard most-runs batting leaderboard by default, briefly state that interpretation, and do not ask a needless clarification.",
   "Response cards are separate from display_screen_overlay: display_response_card carries structured content that remains useful while the user acts; display_screen_overlay draws approximate camera-space cues only. Never encode a card as an overlay, and never mix card data into spatial guidance.",
   "Use only supported fields for the selected card type. Steps are bounded to 2–5 low-risk, user-verifiable actions; details are labelled values; comparison options need comparable, evidence-supported attributes. Do not generate card steps for hazardous procedures, invent exact facts, or mark steps complete because they appear in a payload.",
@@ -251,11 +251,13 @@ const COPILOT_SYSTEM_INSTRUCTION = [
 ,
   "M41 — ALWAYS-AVAILABLE ANSWER SHEET, CONTINUOUS VOICE: For every useful answer to a user question or task (including explanations, recommendations, troubleshooting, comparisons, current-information requests and multi-step work), call display_response_card proactively in the same turn without waiting for the user to request a card. Use steps for procedures, comparison for real comparisons, and key_details for explanations, facts and recommendations. Make the card genuinely useful and detailed, matching the user's request and including every supported requested item (up to the card schema limit); include only grounded sources returned by the search tool and never invent sources.",
   "A response card is a visual companion, not a replacement for speech. Keep speaking the full natural answer while the user can see the card. After the card tool returns, continue the voice response and explain every recommended step, what to look for, why it matters, and any important safety limit. Do not stop after a one-line summary, do not merely read the title or labels, do not wait for the user to ask again, and do not claim the task has been completed just because a card appeared.",
+  "M42 — CONTINUOUS VOICE DURING BACKGROUND WORK: When searching or building an answer card, never leave the user alone in silence if the task takes more than a brief beat. Give a short natural Assamese-English progress update that reflects the actual request and current stage; create fresh wording each time instead of memorized status phrases. If a search is running, narrate the fact that you are checking relevant information, then wait for verified results before stating facts. When the answer is ready, transition naturally into the answer, call the mandatory display_response_card, and keep the spoken explanation going until that card is visible.",
   "For a simple social acknowledgement with no useful information, avoid a noisy empty card. For any informative response, give both the complete spoken explanation and the structured on-screen reference. Rendering, minimizing, restoring or dismissing the card must never change whether or how you speak.",
   ].join("\n");
 
 const SEARCH_WEB_FUNCTION = {
   name: "search_current_web",
+  behavior: "NON_BLOCKING",
   description: "Search current public web information when explicitly requested or when current/model-specific information is needed. For device and repair questions, provide device_context when known; prefer matching manufacturer manuals, diagrams, recalls, and exact-variant documentation, and flag model mismatches.",
   parameters: {
     type: "OBJECT",
@@ -462,7 +464,7 @@ const SEARCH_GROUNDING_INSTRUCTION = [
   "Never present a procedure from a different model/version as applicable. If source titles/URLs do not establish the model match, say the match is unverified, ask for the exact identifier, or stay at a safe generic level. A source is a reference, not proof that the camera has identified the product or that a repair is safe.",
   "When results include model IDs, compare them with the requested model/variant; distinguish exact match, mismatch, and unknown. If no exact matching source is found, state that limitation clearly instead of filling gaps with a similar guide.",
   "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the AskMoina server using Gemini with Google Search grounding.",
-  "The browser immediately displays and speaks a short acknowledgement as soon as it recognizes a search-oriented request. Do not spend a separate spoken turn repeating the acknowledgement; invoke search_current_web promptly, then give a concise spoken summary after the results return.",
+  "The browser displays a contextual Apple-style loader as soon as the user finishes speaking and whenever a live lookup begins. If a lookup or answer-card preparation takes more than a brief beat, keep the voice present with a short, natural, freshly phrased Assamese-English progress line grounded in the user’s actual request. Vary the wording; do not repeat a canned acknowledgement. For live search, continue narrating naturally while the lookup runs, without claiming results until they arrive, then speak the grounded answer and show the card.",
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current or historical sports leaderboard/season statistic, a ranked top-N list, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "For a top-N list, return the requested number of distinct ranked entries whenever sources support them. Search for a full leaderboard/table, not only preview snippets. If only a few results appear, run a more targeted alternate query or consult another credible source before concluding that the full list is unavailable. For a vague IPL 'rankers' request, default to IPL 2025 most-run scorers unless the context specifies wickets or another metric.",
   "If asked whether you have live search, answer truthfully that search is available and demonstrate it when the user also asks for information. Never claim that you lack web access while this tool is configured.",
@@ -1063,6 +1065,9 @@ async function handleVoiceSocket(
   let resumeSetupTimeout: ReturnType<typeof setTimeout> | null = null;
   let copilotMode = false;
   let groundedSearchCount = 0;
+  let pendingGroundedSearches = 0;
+  let liveSearchProgressCueCount = 0;
+  let liveSearchProgressCuePending = false;
   let lastGroundedSearchAt = 0;
   let targetSelectionCount = 0;
   let lastVideoFrameAt = 0;
@@ -1213,6 +1218,31 @@ async function handleVoiceSocket(
     } catch {
       closeBoth(1011, "Failed to forward live input");
     }
+  }
+
+  function sendLiveSearchProgressCue(cueNumber: number) {
+    if (!copilotMode || closed || !upstreamSetupReady || resumptionInProgress ||
+        upstreamSocket.readyState !== WebSocket.OPEN || pendingGroundedSearches <= 0) return;
+    const phase = cueNumber <= 1
+      ? "The lookup has just started. Explain briefly what kind of information is being checked, without saying any findings have arrived."
+      : cueNumber === 2
+        ? "The lookup is still gathering sources. Reassure the user in fresh words and explain the kind of detail being verified, without inventing findings."
+        : cueNumber === 3
+          ? "The lookup is taking a little longer. Stay natural and conversational, briefly say what you are still checking, and do not state results yet."
+          : "The lookup is still in progress. Give one last short, varied update that acknowledges the wait without claiming results.";
+    sendUpstreamMessage({
+      clientContent: {
+        turns: [{
+          role: "user",
+          parts: [{
+            text: "Internal continuation cue, not a new task: the current live web lookup is running in the background. " +
+              phase +
+              " Say one short, natural, freshly phrased Assamese-English progress sentence grounded in the actual dialogue; do not use a memorized stock phrase, do not call tools, do not create a card in response to this cue, and do not go silent while the lookup continues. Wait for verified search results before giving factual findings."
+          }]
+        }],
+        turnComplete: true,
+      },
+    });
   }
 
   function replayUnconsumedMessages(reindexForNewConnection = false) {
@@ -1631,7 +1661,52 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         };
         const calls = toolFrame.toolCall?.functionCalls || toolFrame.tool_call?.function_calls;
         if (Array.isArray(calls)) {
-          const responses: Array<{ id: string; name: string; response: { result: string } }> = [];
+          const responses: Array<{
+            id: string;
+            name: string;
+            response: { result: string };
+            scheduling?: "WHEN_IDLE" | "SILENT" | "INTERRUPT";
+          }> = [];
+          const searchCallsPresent = calls.some((call) =>
+            call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
+          );
+          let forwardedToolFrameEarly = false;
+
+          // Forward the search event immediately, so the browser can show its loader
+          // before retrieval begins. Withhold any card from the same frame until the
+          // source results arrive; a pre-search card would be premature/unverifiable.
+          if (searchCallsPresent && clientFrameText && workerSocket.readyState === WebSocket.OPEN) {
+            if (copilotMode) {
+              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+            }
+            const immediateToolFrame = JSON.parse(JSON.stringify(toolFrame)) as typeof toolFrame;
+            if (immediateToolFrame.toolCall && Array.isArray(immediateToolFrame.toolCall.functionCalls)) {
+              immediateToolFrame.toolCall.functionCalls = immediateToolFrame.toolCall.functionCalls
+                .filter((call) => call?.name !== "display_response_card");
+            } else if (immediateToolFrame.tool_call && Array.isArray(immediateToolFrame.tool_call.function_calls)) {
+              immediateToolFrame.tool_call.function_calls = immediateToolFrame.tool_call.function_calls
+                .filter((call) => call?.name !== "display_response_card");
+            }
+            const immediateCalls = immediateToolFrame.toolCall?.functionCalls || immediateToolFrame.tool_call?.function_calls || [];
+            if (immediateCalls.length) {
+              try {
+                workerSocket.send(JSON.stringify(immediateToolFrame));
+                clientFrameText = "";
+                forwardedToolFrameEarly = true;
+              } catch { /* the socket close handler owns cleanup */ }
+            }
+
+            if (copilotMode && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
+              pendingGroundedSearches += calls.filter((call) =>
+                call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
+              ).length;
+              liveSearchProgressCueCount = 1;
+              liveSearchProgressCuePending = pendingGroundedSearches > 0;
+              // Use the Live model's voice—not browser TTS—to narrate a contextual status.
+              sendLiveSearchProgressCue(liveSearchProgressCueCount);
+            }
+          }
+
           for (const call of calls) {
             if (call?.name === "display_response_card") {
               const validation = copilotMode ? validateResponseCard(call.args) : { valid: false as const, reason: "copilot_only" };
@@ -1639,13 +1714,22 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 const card = validation.card;
                 const itemCount = card.type === "steps" ? card.steps.length : card.type === "key_details" ? card.details.length : card.options.length;
                 console.info("[AskMoina] Response card contract validated", JSON.stringify({ mode: copilotMode ? "copilot" : "voice", cardType: card.type, itemCount }));
+                if (searchCallsPresent && typeof call.id === "string" && call.id) {
+                  responses.push({
+                    id: call.id,
+                    name: "display_response_card",
+                    response: { result: "The requested live lookup is still running. Do not display or finalize a card from pre-search information. After search_current_web returns, call display_response_card again using the returned verified details, and keep your natural spoken progress going while waiting." },
+                    scheduling: "WHEN_IDLE",
+                  });
+                }
               } else {
                 console.warn("[AskMoina] Response card contract rejected", JSON.stringify({ reason: validation.reason, mode: copilotMode ? "copilot" : "voice" }));
                 if (typeof call.id === "string" && call.id) {
                   responses.push({
                     id: call.id,
                     name: "display_response_card",
-                    response: { result: `The response-card payload was rejected because of this schema issue: ${validation.reason}. Retry display_response_card once with the same complete supported details and correct only that issue. For a requested leaderboard, preserve all supported rows up to ten and omit optional source links if they cause a validation problem; never substitute speech-only names for the visible list. Do not claim the card is visible until the client acknowledges it.` }
+                    response: { result: `The response-card payload was rejected because of this schema issue: ${validation.reason}. Retry display_response_card once with the same complete supported details and correct only that issue. For a requested leaderboard, preserve all supported rows up to ten and omit optional source links if they cause a validation problem; never substitute speech-only names for the visible list. Do not claim the card is visible until the client acknowledges it.` },
+                    ...(searchCallsPresent ? { scheduling: "WHEN_IDLE" as const } : {}),
                   });
                 }
               }
@@ -1662,10 +1746,6 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               requestedMaterial: deviceContext.requested_material || "unspecified",
               searchIndex: groundedSearchCount + 1,
             }));
-            // Notify Co-Pilot before awaiting the grounded lookup; the tool-call frame itself is forwarded only afterward.
-            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
-              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
-            }
             let result: string;
             const now = Date.now();
             if (!query) {
@@ -1683,6 +1763,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                   : "The live web lookup could not complete. Be transparent about this and do not present current or device-specific claims as verified.";
               }
             }
+            pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
+            if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
+
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
               const fallbackRequestedCount = getRequestedRankedListCount(query) ??
                 (isLikelyRankedTableSearchQuery(query) ? 10 : null);
@@ -1702,15 +1785,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               }
               try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
-            responses.push({ id: call.id, name: "search_current_web", response: { result } });
+            responses.push({ id: call.id, name: "search_current_web", response: { result }, scheduling: "WHEN_IDLE" });
           }
-          if (responses.length && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
+          if (responses.length && !closed) {
             sendUpstreamMessage({ toolResponse: { functionResponses: responses } });
           }
           const invalidCardPresent = calls.some((call) =>
             call?.name === "display_response_card" && !validateResponseCard(call.args).valid
           );
-          if (invalidCardPresent) {
+          if (invalidCardPresent && !forwardedToolFrameEarly) {
             const remainingCalls = calls.filter((call) =>
               call?.name !== "display_response_card" || validateResponseCard(call.args).valid
             );
@@ -1732,6 +1815,24 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       if (clientFrameText) workerSocket.send(clientFrameText);
     } catch {
       closeBoth(1011, "Client send failed");
+    }
+
+    // Continue progress voice at natural turn boundaries only. Never interrupt a spoken
+    // update mid-turn; stop requesting updates immediately when all pending lookups finish.
+    const isCompletedAssistantTurn =
+      (frameText.includes('"turnComplete":true') || frameText.includes('"turnComplete": true') ||
+       frameText.includes('"turn_complete":true') || frameText.includes('"turn_complete": true')) &&
+      (frameText.includes('"modelTurn"') || frameText.includes('"model_turn"') ||
+       frameText.includes('"outputTranscription"') || frameText.includes('"output_transcription"')) &&
+      !frameText.includes('"toolCall"') && !frameText.includes('"tool_call"');
+
+    if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
+      liveSearchProgressCuePending = false;
+      if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 4) {
+        liveSearchProgressCueCount += 1;
+        liveSearchProgressCuePending = true;
+        sendLiveSearchProgressCue(liveSearchProgressCueCount);
+      }
     }
   });
 
