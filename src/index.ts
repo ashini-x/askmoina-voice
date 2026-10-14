@@ -1,5 +1,5 @@
 import type { Env } from "./config/env";
-import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
+import { deriveGuestIdentity, GUEST_DEMO_DAILY_SECONDS, GUEST_DEMO_MAX_SESSION_SECONDS, handleAuthRequest, getAuthenticatedUserId, isGuestUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
@@ -739,6 +739,7 @@ interface VoiceReservation {
   userObjectName: string;
   globalObjectName: string;
   maxDurationSeconds: number;
+  guestLimited?: boolean;
 }
 
 async function reserveVoiceSession(
@@ -749,13 +750,45 @@ async function reserveVoiceSession(
   return { sessionId: crypto.randomUUID(), userObjectName: "unlimited-app-quota-disabled", globalObjectName: "unlimited-app-quota-disabled", maxDurationSeconds: 0 };
 }
 
-async function releaseVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<void> {
-  // App-level daily and concurrency reservations are deliberately disabled.
+/** Guest trials are bounded separately; paid/member sessions keep their existing policy. */
+async function reserveGuestVoiceSession(request: Request, env: Env): Promise<VoiceReservation | null> {
+  const identity = await deriveGuestIdentity(request, env);
+  if (!identity) return null;
+  const sessionId = crypto.randomUUID();
+  const result = await callGuard(env, identity.budgetObjectName, "/session/acquire", {
+    sessionId,
+    now: Date.now(),
+    maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS,
+    maxDailySeconds: GUEST_DEMO_DAILY_SECONDS,
+    maxConcurrentSessions: 1,
+    enforceRateLimit: true,
+    enforceDailyLimit: true
+  });
+  if (!result.ok || result.allowed !== true || !result.reservedSeconds) return null;
+  return {
+    sessionId,
+    userObjectName: identity.budgetObjectName,
+    globalObjectName: identity.budgetObjectName,
+    maxDurationSeconds: Math.min(GUEST_DEMO_MAX_SESSION_SECONDS, result.reservedSeconds),
+    guestLimited: true
+  };
 }
 
-async function heartbeatVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
-  // Do not stale-lock a good conversation on an app-owned heartbeat lease.
-  return { leaseLost: false };
+async function releaseVoiceSession(env: Env, reservation: VoiceReservation): Promise<void> {
+  if (!reservation.guestLimited) return;
+  await callGuard(env, reservation.userObjectName, "/session/release", {
+    sessionId: reservation.sessionId,
+    now: Date.now()
+  });
+}
+
+async function heartbeatVoiceSession(env: Env, reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
+  if (!reservation.guestLimited) return { leaseLost: false };
+  const result = await callGuard(env, reservation.userObjectName, "/session/heartbeat", {
+    sessionId: reservation.sessionId,
+    now: Date.now()
+  });
+  return { leaseLost: !result.ok || result.allowed !== true };
 }
 
 
@@ -816,8 +849,27 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
   const accountId = await getAuthenticatedUserId(request, env);
   const admin = await isAdmin(request, env);
-  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
+  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or start the limited demo to use AskMoina.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
   if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
+  if (isGuestUserId(accountId)) {
+    const identity = await deriveGuestIdentity(request, env);
+    if (!identity) return json({ available: false, reason: "guest_demo_unavailable", message: "The demo is unavailable on this connection. Please sign in.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 }, 503);
+    const limits = await readGuardStatus(env, identity.budgetObjectName, {
+      now: Date.now(),
+      maxDailySeconds: GUEST_DEMO_DAILY_SECONDS,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: false,
+      enforceDailyLimit: true
+    });
+    if (!limits) return json({ available: false, reason: "temporarily_unavailable", message: "The demo limit could not be checked safely. Please try again.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 }, 503);
+    if (limits.dailyLimitReached || limits.dailySecondsRemaining <= 0) {
+      return json({ available: false, reason: "guest_demo_used", message: "You've used today's demo time. Sign in for your own AskMoina sessions.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 });
+    }
+    if (limits.concurrencyLimited) {
+      return json({ available: false, reason: "guest_demo_active", message: "A demo is already active from this network. Finish it before starting another.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: limits.dailySecondsRemaining });
+    }
+    return json({ available: true, reason: "guest_demo", message: "Limited demo: up to two minutes per session and three minutes per network each day. Personal memory is disabled.", maxSessionSeconds: Math.min(GUEST_DEMO_MAX_SESSION_SECONDS, limits.dailySecondsRemaining), dailyRemainingSeconds: limits.dailySecondsRemaining, guestDemo: true, memoryPersonalization: false });
+  }
   return json({ available: true, reason: "available", message: "Voice is ready. AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
@@ -850,8 +902,15 @@ async function handleVoiceSocket(
 
   const sessionUserId = await getAuthenticatedUserId(request, env);
   if (!sessionUserId && !await isAdmin(request, env)) return json({ error: "authentication_required" }, 401);
-  const reservation = await reserveVoiceSession(request, env);
-  if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
+  const reservation = isGuestUserId(sessionUserId)
+    ? await reserveGuestVoiceSession(request, env)
+    : await reserveVoiceSession(request, env);
+  if (!reservation) return json({
+    error: isGuestUserId(sessionUserId) ? "guest_demo_limit_reached" : "voice_capacity_or_daily_limit_reached",
+    message: isGuestUserId(sessionUserId)
+      ? "The demo has no time left or another demo is active from this network. Sign in for full access."
+      : "Voice is temporarily unavailable. Please try again."
+  }, 429);
 
   const analyticsStartedAt = Date.now();
   let analyticsFinished = false;
@@ -944,6 +1003,7 @@ async function handleVoiceSocket(
   let lastClientMessageAt = Date.now();
   let guardHeartbeatInFlight = false;
   let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
+  let guestSessionTimer: ReturnType<typeof setTimeout> | null = null;
   const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
@@ -960,6 +1020,10 @@ async function handleVoiceSocket(
     if (clientIdleWatchdog !== null) {
       clearInterval(clientIdleWatchdog);
       clientIdleWatchdog = null;
+    }
+    if (guestSessionTimer !== null) {
+      clearTimeout(guestSessionTimer);
+      guestSessionTimer = null;
     }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
@@ -1022,6 +1086,10 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
+  if (reservation.guestLimited && reservation.maxDurationSeconds > 0) {
+    guestSessionTimer = setTimeout(() => closeBoth(1000, "Session time limit reached"), reservation.maxDurationSeconds * 1_000);
+  }
+
   // A silent/disconnected browser must not leave a relay and its reservation hanging.
   // Normal live sessions continuously send microphone frames, even during pauses in speech.
   clientIdleWatchdog = setInterval(() => {
@@ -1062,7 +1130,12 @@ async function handleVoiceSocket(
       try {
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
         const allowedKeys = ["setup", "memory_context", "copilot_mode"];
-        const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
+        const requestedMemoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
+        const memoryContext = isGuestUserId(sessionUserId) ? "" : requestedMemoryContext;
+        if (isGuestUserId(sessionUserId) && message.copilot_mode !== true) {
+          closeBoth(1008, "Guest demo is Co-Pilot only");
+          return;
+        }
         if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string") || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
           closeBoth(1008, "First message must be a small setup object");
           return;
@@ -1072,10 +1145,13 @@ const baseInstruction = pronunciationGuidance
   ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
   : SYSTEM_INSTRUCTION;
 const enableCopilotForSetup = message.copilot_mode === true;
+const guestDemoInstruction = isGuestUserId(sessionUserId)
+  ? "\n\nGUEST DEMO BOUNDARY: This is a short, unpersonalized demo. Do not request, infer, claim to remember, or rely on personal saved memories. Help within the session and explain when the demo ends."
+  : "";
 const systemInstruction = buildPersonalizedSystemInstruction(
-  enableCopilotForSetup
+  (enableCopilotForSetup
     ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-    : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
+    : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`) + guestDemoInstruction,
   memoryContext,
 );
         copilotMode = enableCopilotForSetup;
@@ -1501,6 +1577,7 @@ export default {
 
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
       const accountId = await getAuthenticatedUserId(request, env);
+      if (isGuestUserId(accountId)) return Response.redirect(new URL("/copilot?demo=1", request.url).toString(), 302);
       const adminAccess = accountId ? false : await isAdmin(request, env);
       let html = COPILOT_HTML
         .replace('<script src="/transcript-merge.js" defer></script>', "")
@@ -1550,7 +1627,12 @@ export default {
       }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
-      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
+      let body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
+      if (!isScript && !isStyle && isGuestUserId(accountId)) {
+        body = body.replace("<body>", '<body data-guest-demo="true"><div class="guest-demo-banner" id="guestDemoBanner" role="status" aria-live="polite">DEMO · 02:00 · PERSONAL MEMORY OFF</div>');
+        // A time-limited demo must not advertise members-only Memory Vault controls.
+        body = body.replace(/<button[^>]*id="(?:memoryVaultButton|openMemoryVault|vaultButton)"[^>]*>[\s\S]*?<\/button>/gi, "");
+      }
       const contentType = isScript ? "text/javascript; charset=utf-8" :
         isStyle ? "text/css; charset=utf-8" : "text/html; charset=utf-8";
       const headers = new Headers({
@@ -1599,6 +1681,13 @@ export default {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = await isAdmin(request, env);
       authenticatedForMenu = Boolean(accountId || adminAccess);
+      if (isGuestUserId(accountId) && ![
+        "/", "/index.html", "/copilot", "/copilot.html", "/copilot.js", "/copilot.css",
+        "/transcript-merge.js", "/session-ui.js", "/api/health", "/api/voice/status", "/api/voice/socket"
+      ].includes(url.pathname)) {
+        if (url.pathname.startsWith("/api/")) return json({ error: "guest_demo_limited", message: "This feature needs a full AskMoina account. Sign up to use personal memories and account features." }, 403);
+        return Response.redirect(new URL("/copilot?demo=1", request.url).toString(), 302);
+      }
       if (!accountId && !adminAccess) {
         if (url.pathname.startsWith("/api/")) return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
         if (request.method === "GET" || request.method === "HEAD") return Response.redirect(new URL("/login", request.url).toString(), 302);
