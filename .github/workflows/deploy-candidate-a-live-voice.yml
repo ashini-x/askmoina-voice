@@ -77,7 +77,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          message="Protected Gemini Live prebuilt voice audition lab (AskMoina Voice v0.4.9)"
+          app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')).vars.APP_VERSION")"
+          message="AskMoina Voice v${app_version} production release"
           # Upload a version without syncing queue-consumer triggers; those triggers already exist.
           upload_output="$(npx wrangler versions upload --message "$message" 2>&1)" || {
             printf '%s\n' "$upload_output"
