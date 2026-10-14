@@ -21,8 +21,8 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).not.toContain("groundedSearchCount >= 2");
     expect(workerSource).not.toContain("now - lastGroundedSearchAt < 8_000");
     expect(workerSource).toContain("slice(0, 240)");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 80_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("const groundingBudgetStartedAt = searchStartedAt;");
     expect(workerSource).toContain("const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);");
@@ -148,8 +148,8 @@ describe("Adaptive grounded-list search budget", () => {
     expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 80_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
   });
 });
 
@@ -167,7 +167,7 @@ describe("Ranked-table budget inference when Live simplifies the query", () => {
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 32_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
     expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 100_000 : GROUNDED_SEARCH_BUDGET_MS;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
-    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 80_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 100_000;");
   });
 });
