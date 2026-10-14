@@ -56,6 +56,12 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("partialRankedListChunks");
   });
 
+  it("passes the inferred top-ten count into fallback-card construction", () => {
+    expect(workerSource).toContain("const fallbackRequestedCount = getRequestedRankedListCount(query) ??");
+    expect(workerSource).toContain("(isLikelyRankedTableSearchQuery(query) ? 10 : null)");
+    expect(workerSource).toContain("buildGroundedListCard(query, result, fallbackRequestedCount)");
+  });
+
   it("preserves provider diagnostics on grounding API errors", () => {
     expect(workerSource).toContain("payload.error?.message");
     expect(workerSource).toContain("Grounded search request failed");

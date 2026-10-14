@@ -1492,7 +1492,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               }
             }
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
-              const fallbackCard = buildGroundedListCard(query, result);
+              const fallbackRequestedCount = getRequestedRankedListCount(query) ??
+                (isLikelyRankedTableSearchQuery(query) ? 10 : null);
+              const fallbackCard = buildGroundedListCard(query, result, fallbackRequestedCount);
               if (fallbackCard) {
                 const validation = validateResponseCard(fallbackCard);
                 if (validation.valid && validation.card.type === "key_details") {
