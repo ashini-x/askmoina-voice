@@ -1150,3 +1150,6 @@ body.site-info-body .site-info-card{width:100%}
 @media(prefers-reduced-transparency:reduce){
  .live-search-status{background:rgba(245,246,248,.98);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
+
+/* Keep the camera usable after bounded reconnect retries end; the visible notice still offers Try again. */
+.camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important;transform:none!important}
