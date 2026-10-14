@@ -75,8 +75,11 @@ describe("Milestone 13 conditional web grounding", () => {
 
   it("queues mandatory ranked speech until the active progress turn completes", () => {
     expect(workerSource).toContain("let pendingForcedRankedAnswerContinuation: string | null = null;");
+    expect(workerSource).toContain("let forcedRankedProgressTurnOutstanding = false;");
+    expect(workerSource).toContain("forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(1, query);");
     expect(workerSource).toContain("Queued mandatory ranked-list spoken continuation behind the active progress turn");
-    expect(workerSource).toContain("else if (pendingForcedRankedAnswerContinuation !== null)");
+    expect(workerSource).toContain("if (forcedRankedProgressTurnOutstanding && isProviderTurnComplete)");
+    expect(workerSource).toContain("const isProviderTurnComplete = hasTurnCompleteSignal");
     expect(workerSource).toContain("Resumed queued ranked-list spoken continuation after progress turn completed");
     expect(workerSource).toContain("Keep it set until that progress sentence reaches turnComplete.");
     expect(workerSource).toContain("pendingForcedRankedAnswerContinuation = null;");
