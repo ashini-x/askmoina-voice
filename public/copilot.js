@@ -350,15 +350,21 @@
         return;
       }
       const elapsed = Math.max(0, Date.now() - liveSearchAcknowledgementStartedAt);
-      if (liveSearchPreflightIntent && navigator.onLine === false) {
+      if (navigator.onLine === false) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
         if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. AskMoina will keep this status visible while waiting.";
-      } else if (liveSearchPreflightIntent && elapsed >= 25_000) {
+      } else if (elapsed >= 25_000 && liveSearchPreflightIntent) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your lookup";
         if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI search service may be slow.";
-      } else if (liveSearchPreflightIntent && elapsed >= 12_000) {
+      } else if (elapsed >= 25_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Still working on your answer";
+        if (liveSearchMessage) liveSearchMessage.textContent = "I have not finished preparing a response yet. The network or AI service may be slow; I will keep this status visible.";
+      } else if (elapsed >= 12_000 && liveSearchPreflightIntent) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
         if (liveSearchMessage) liveSearchMessage.textContent = "I am still waiting for the live-search step to start. The AI service or network may be slow.";
+      } else if (elapsed >= 12_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your answer";
+        if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI service may be slow.";
       } else {
         const stages = liveSearchPreflightStages.length ? liveSearchPreflightStages : profile.stages;
         const stageItem = stages[liveSearchStageIndex % stages.length];
@@ -484,11 +490,11 @@
       // For an explicit live-search request, short spoken acknowledgements can arrive long
       // before the search tool call. Keep the preflight visible until a real lookup takes over
       // or the assistant turn completes; never leave a silent 30-60 second gap.
-      if (liveSearchPreflightIntent) return;
-      // For non-search requests, remove the generic acknowledgement when the answer starts.
-      if (!LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) || normalized.length >= 90) {
-        hideLiveSearchAcknowledgement();
-      }
+      if (liveSearchPreflightIntent || (LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) && normalized.length < 90)) return;
+      // Keep the general progress acknowledgement beside the spoken answer as well. It is
+      // dismissed when the turn completes, rather than leaving a blank UI while audio plays.
+      if (liveSearchTitle) liveSearchTitle.textContent = "Preparing your answer";
+      if (liveSearchMessage) liveSearchMessage.textContent = "Putting the details together.";
     }
   }
 
