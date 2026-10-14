@@ -8,7 +8,7 @@ export type ParsedLiveClientInput =
   | { kind: "tool_response"; responses: Array<{ id: string; name: "display_screen_overlay" | "display_response_card"; result: string }> };
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const MAX_MEDIA_BASE64_CHARS = 12_000;
+const MAX_MEDIA_BASE64_CHARS = 48_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));

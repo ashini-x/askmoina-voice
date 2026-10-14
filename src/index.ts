@@ -1009,7 +1009,7 @@ async function handleVoiceSocket(
     return json({ error: "voice_provider_unavailable" }, 502);
   }
 
-  const upstreamSocket = upstreamResponse.webSocket;
+  let upstreamSocket = upstreamResponse.webSocket;
   if (!upstreamSocket || upstreamResponse.status !== 101) {
     const responseText = await upstreamResponse.clone().text().catch(() => "");
     console.error("[AskMoina] Vertex Live handshake rejected", JSON.stringify({
@@ -1026,7 +1026,7 @@ async function handleVoiceSocket(
   workerSocket.accept();
   upstreamSocket.accept();
 
-  const upstreamStartedAt = Date.now();
+  let upstreamStartedAt = Date.now();
   let firstAudioFrameLogged = false;
   let requestToFirstAudioMs: number | null = null;
   let requestToSetupMs: number | null = null;
@@ -1042,6 +1042,17 @@ async function handleVoiceSocket(
   let setupForwarded = false;
   let setupInitializing = false;
   let setupCompleteReceived = false;
+  let upstreamSetupReady = false;
+  let securedSetupForResume: Record<string, unknown> | null = null;
+  let lastSessionResumptionHandle: string | null = null;
+  let lastConsumedClientMessageIndex = -1;
+  let nextClientMessageIndex = 0;
+  const upstreamReplayBuffer: Array<{ index: number; encoded: string }> = [];
+  let upstreamReplayBufferChars = 0;
+  let highestEvictedClientMessageIndex = -1;
+  let resumptionInProgress = false;
+  let resumptionAttemptCount = 0;
+  const MAX_RESUME_REPLAY_CHARS = 512 * 1024;
   let copilotMode = false;
   let groundedSearchCount = 0;
   let lastGroundedSearchAt = 0;
@@ -1057,7 +1068,7 @@ async function handleVoiceSocket(
   let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
   const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
-  const MAX_CLIENT_FRAME_CHARS = 16_384;
+  const MAX_CLIENT_FRAME_CHARS = 65_536;
   const MAX_AUDIO_FRAMES_PER_SECOND = 60;
   const MAX_INPUT_CHARS_PER_SECOND = 96 * 1024;
   // Smooth brief network stalls; shed excess media packets instead of closing calls.
@@ -1133,6 +1144,45 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
+  // Assign monotonic indices to post-setup messages and keep a bounded replay window.
+  function pruneConsumedReplayMessages() {
+    while (upstreamReplayBuffer.length && upstreamReplayBuffer[0].index <= lastConsumedClientMessageIndex) {
+      const removed = upstreamReplayBuffer.shift()!;
+      upstreamReplayBufferChars -= removed.encoded.length;
+    }
+    if (highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex) highestEvictedClientMessageIndex = -1;
+  }
+
+  function sendUpstreamMessage(payload: Record<string, unknown>) {
+    const index = nextClientMessageIndex++;
+    const encoded = JSON.stringify({ ...payload, clientMessageIndex: index });
+    upstreamReplayBuffer.push({ index, encoded });
+    upstreamReplayBufferChars += encoded.length;
+    while (upstreamReplayBufferChars > MAX_RESUME_REPLAY_CHARS && upstreamReplayBuffer.length > 0) {
+      const removed = upstreamReplayBuffer.shift()!;
+      upstreamReplayBufferChars -= removed.encoded.length;
+      if (removed.index > lastConsumedClientMessageIndex) {
+        highestEvictedClientMessageIndex = Math.max(highestEvictedClientMessageIndex, removed.index);
+      }
+    }
+    if (upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
+      upstreamSocket.send(encoded);
+    }
+  }
+
+  function replayUnconsumedMessages() {
+    if (upstreamSocket.readyState !== WebSocket.OPEN) return;
+    const replay = upstreamReplayBuffer.filter((item) => item.index > lastConsumedClientMessageIndex);
+    for (const item of replay) upstreamSocket.send(item.encoded);
+    console.info("[AskMoina] Resumed Live input replay", JSON.stringify({
+      replayedMessageCount: replay.length,
+      replayedChars: replay.reduce((total, item) => total + item.encoded.length, 0),
+      oldestReplayIndex: replay[0]?.index ?? null,
+      lastConsumedClientMessageIndex,
+      replayWindowComplete: highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex,
+    }));
+  }
+
   // A silent/disconnected browser must not leave a relay and its reservation hanging.
   // Normal live sessions continuously send microphone frames, even during pauses in speech.
   clientIdleWatchdog = setInterval(() => {
@@ -1142,7 +1192,7 @@ async function handleVoiceSocket(
   }, 10_000);
 
   workerSocket.addEventListener("message", async (event: MessageEvent) => {
-    if (upstreamSocket.readyState !== WebSocket.OPEN) return;
+    if (closed) return;
     lastClientMessageAt = Date.now();
     if (!guardHeartbeatInFlight && lastClientMessageAt - lastGuardHeartbeatAt >= GUARD_HEARTBEAT_INTERVAL_MS) {
       lastGuardHeartbeatAt = lastClientMessageAt;
@@ -1198,11 +1248,19 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           // Route both modes through the same server-executed grounded search function.
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
+          // Automatically compact old user turns before audio/video tokens exhaust the context.
+          contextWindowCompression: {
+            triggerTokens: 96_000,
+            slidingWindow: { targetTokens: 64_000 },
+          },
+          // Keep the current session resumable; the relay stores the handle and replay window.
+          sessionResumption: { transparent: true },
           // The UI already renders live transcript events; enable the API signals for accessibility and smoke-test verification.
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           systemInstruction: { parts: [{ text: systemInstruction }] },
         };
+        securedSetupForResume = securedSetup;
         upstreamSocket.send(JSON.stringify({ setup: securedSetup }));
         setupForwarded = true;
       } catch {
@@ -1220,12 +1278,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (parsed.kind === "initial_greeting") {
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           clientContent: {
             turns: [{ role: "user", parts: [{ text: "Begin the live camera conversation now. Say one short, warm greeting first in natural Assamese-English mixed speech, then invite the user to show you the problem or object. This is the opening turn, so speak now without waiting for user audio. Keep the greeting brief and do not mention setup, APIs, or interface mechanics." }] }],
             turnComplete: true,
           },
-        }));
+        });
         return;
       }
 
@@ -1233,12 +1291,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         // Test/fallback text turns use the Live API's explicit turn-complete
         // content path instead of synthetic microphone audio, isolating grounding
         // and tool handling from speech-recognition/VAD variability.
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           clientContent: {
             turns: [{ role: "user", parts: [{ text: parsed.text }] }],
             turnComplete: true,
           },
-        }));
+        });
         return;
       }
 
@@ -1246,19 +1304,19 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         targetSelectionCount += 1;
         const xPercent = Math.round(parsed.x * 100);
         const yPercent = Math.round(parsed.y * 100);
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           clientContent: {
             turns: [{ role: "user", parts: [{
               text: "The user tapped a point in the live camera view at approximately " + xPercent + "% from the left and " + yPercent + "% from the top of the latest camera frame. Use recent camera frames to identify the visible candidate at or near that point. Treat the tap as user-provided location, not proof of object identity. If it remains unclear, say so and ask for a closer or steadier view. Do not direct a consequential action until the target is clear."
             }] }],
             turnComplete: true,
           },
-        }));
+        });
         return;
       }
 
       if (parsed.kind === "tool_response") {
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           toolResponse: {
             functionResponses: parsed.responses.map((item) => ({
               id: item.id,
@@ -1269,11 +1327,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 : item.result },
             })),
           },
-        }));
+        });
         return;
       }
       if (parsed.kind === "audio_stream_end") {
-        upstreamSocket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+        sendUpstreamMessage({ realtimeInput: { audioStreamEnd: true } });
         return;
       }
 
@@ -1301,15 +1359,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (isVideo) {
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           realtimeInput: { video: { data: parsed.data, mimeType: "image/jpeg" } },
-        }));
+        });
         videoFramesForwarded += 1;
         forwardedMediaBytes += event.data.length;
       } else {
-        upstreamSocket.send(JSON.stringify({
+        sendUpstreamMessage({
           realtimeInput: { audio: { data: parsed.data, mimeType: "audio/pcm;rate=16000" } },
-        }));
+        });
         audioFramesForwarded += 1;
         forwardedMediaBytes += event.data.length;
       }
@@ -1319,8 +1377,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   });
 
   let upstreamFrameCount = 0;
-  upstreamSocket.addEventListener("message", async (event: MessageEvent) => {
-    if (workerSocket.readyState !== WebSocket.OPEN || closed) return;
+  function attachUpstreamHandlers(socketForConnection: WebSocket) {
+  socketForConnection.addEventListener("message", async (event: MessageEvent) => {
+    if (socketForConnection !== upstreamSocket || workerSocket.readyState !== WebSocket.OPEN || closed) return;
 
     // Workerd can expose upstream WebSocket frames as strings, ArrayBuffers, or Blobs.
     // Normalize them to JSON text before forwarding so the browser never receives an
@@ -1408,14 +1467,59 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       return;
     }
 
+    const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate);
+    const resumedSessionSetupComplete = Boolean(providerMessage?.setupComplete && resumptionInProgress);
+
+    if (providerMessage?.sessionResumptionUpdate) {
+      const update = providerMessage.sessionResumptionUpdate;
+      if (typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) lastSessionResumptionHandle = update.newHandle;
+      const consumedValue = update.lastConsumedClientMessageIndex;
+      const consumedIndex = typeof consumedValue === "number" ? consumedValue :
+        typeof consumedValue === "string" && consumedValue.trim() ? Number(consumedValue) : Number.NaN;
+      if (Number.isSafeInteger(consumedIndex) && consumedIndex >= lastConsumedClientMessageIndex) {
+        lastConsumedClientMessageIndex = consumedIndex;
+        pruneConsumedReplayMessages();
+      }
+      console.info("[AskMoina] Live session resumption checkpoint", JSON.stringify({
+        handleAvailable: Boolean(lastSessionResumptionHandle),
+        resumable: update.resumable === true,
+        pendingReplayMessages: upstreamReplayBuffer.length,
+        lastConsumedClientMessageIndex,
+      }));
+    }
+
+    if (providerMessage?.goAway) {
+      console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
+        handleAvailable: Boolean(lastSessionResumptionHandle), frameNumber,
+      }));
+      if (!lastSessionResumptionHandle) {
+        closeBoth(1011, "Live session resumption handle unavailable");
+        return;
+      }
+      void resumeLiveUpstream("provider_go_away");
+      return;
+    }
+
     if (providerMessage?.setupComplete) {
       setupCompleteReceived = true;
+      upstreamSetupReady = true;
       analyticsSetupComplete = true;
       requestToSetupMs = Date.now() - analyticsStartedAt;
+      if (resumedSessionSetupComplete) {
+        resumptionInProgress = false;
+        resumptionAttemptCount = 0;
+        replayUnconsumedMessages();
+        try {
+          workerSocket.send(JSON.stringify({ connection_status: {
+            state: "resumed",
+            message: "Back live. Your conversation is continuing.",
+          } }));
+        } catch { /* browser may already be closing */ }
+      }
       console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
-        frameNumber,
-        requestToSetupMs,
+        frameNumber, requestToSetupMs,
         upstreamConnectedToSetupMs: Date.now() - upstreamStartedAt,
+        resumed: resumedSessionSetupComplete,
       }));
     }
 
@@ -1430,7 +1534,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     // Search calls are handled by the Worker in both standard voice and Co-Pilot.
     // Bound the lookup budget per session; ordinary turns remain free of search calls.
-    let clientFrameText = frameText;
+    let clientFrameText = (resumedSessionSetupComplete || isSessionResumptionUpdate) ? "" : frameText;
     if (frameText.includes('"toolCall"') || frameText.includes('"tool_call"')) {
       try {
         const toolFrame = JSON.parse(frameText) as {
@@ -1512,8 +1616,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             }
             responses.push({ id: call.id, name: "search_current_web", response: { result } });
           }
-          if (responses.length && upstreamSocket.readyState === WebSocket.OPEN) {
-            upstreamSocket.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
+          if (responses.length && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
+            sendUpstreamMessage({ toolResponse: { functionResponses: responses } });
           }
           const invalidCardPresent = calls.some((call) =>
             call?.name === "display_response_card" && !validateResponseCard(call.args).valid
@@ -1554,22 +1658,86 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     closeBoth(event.code || 1000, "Client disconnected");
   });
   workerSocket.addEventListener("error", () => closeBoth(1011, "Client socket error"));
-  upstreamSocket.addEventListener("close", (event: CloseEvent) => {
-    if (!closed) {
-      console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
-        code: event.code,
-        reason: event.reason.slice(0, 300),
-        setupForwarded,
-        setupCompleteReceived,
-        lifetimeMs: Date.now() - upstreamStartedAt,
-      }));
+  socketForConnection.addEventListener("close", (event: CloseEvent) => {
+    if (socketForConnection !== upstreamSocket || closed) return;
+    console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
+      code: event.code, reason: event.reason.slice(0, 300), setupForwarded, setupCompleteReceived,
+      lifetimeMs: Date.now() - upstreamStartedAt,
+    }));
+    if (lastSessionResumptionHandle && !resumptionInProgress) {
+      void resumeLiveUpstream("provider_disconnect");
+      return;
     }
     closeBoth(event.code || 1000, "Voice provider disconnected");
   });
-  upstreamSocket.addEventListener("error", () => {
+  socketForConnection.addEventListener("error", () => {
+    if (socketForConnection !== upstreamSocket || closed) return;
     console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded }));
+    if (lastSessionResumptionHandle && !resumptionInProgress) {
+      void resumeLiveUpstream("provider_socket_error");
+      return;
+    }
     closeBoth(1011, "Voice provider socket error");
   });
+  }
+
+  async function resumeLiveUpstream(reason: string) {
+    if (closed || resumptionInProgress) return;
+    if (!securedSetupForResume || !lastSessionResumptionHandle) {
+      closeBoth(1011, "Live session cannot be resumed safely");
+      return;
+    }
+    const handleToResume = lastSessionResumptionHandle;
+    const previousSocket = upstreamSocket;
+    resumptionInProgress = true;
+    upstreamSetupReady = false;
+    setupCompleteReceived = false;
+    try {
+      workerSocket.send(JSON.stringify({ connection_status: {
+        state: "resuming",
+        message: "Refreshing the live connection while keeping your conversation…",
+      } }));
+    } catch { /* browser may already be closing */ }
+
+    for (let attempt = 1; attempt <= 3 && !closed; attempt += 1) {
+      resumptionAttemptCount = attempt;
+      let candidate: WebSocket | null = null;
+      try {
+        if (attempt > 1) await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        const response = await fetch(upstreamUrl, {
+          headers: { Upgrade: "websocket", Authorization: `Bearer ${accessToken}` },
+        });
+        candidate = response.webSocket;
+        if (!candidate || response.status !== 101) {
+          if (candidate) { try { candidate.close(); } catch {} }
+          candidate = null;
+          throw new Error("provider reconnect handshake rejected");
+        }
+        candidate.accept();
+        upstreamSocket = candidate;
+        upstreamStartedAt = Date.now();
+        attachUpstreamHandlers(candidate);
+        candidate.send(JSON.stringify({
+          setup: { ...securedSetupForResume, sessionResumption: { handle: handleToResume, transparent: true } },
+        }));
+        try {
+          if (previousSocket.readyState === WebSocket.OPEN) previousSocket.close(1000, "Live session resumed on replacement socket");
+        } catch { /* stale socket cleanup */ }
+        console.info("[AskMoina] Live session resumption requested", JSON.stringify({
+          reason, attempt, replayBufferChars: upstreamReplayBufferChars, handleAvailable: true,
+        }));
+        return;
+      } catch {
+        if (candidate) { try { candidate.close(1011, "Resume attempt failed"); } catch {} }
+        if (upstreamSocket === candidate) upstreamSocket = previousSocket;
+        console.warn("[AskMoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));
+      }
+    }
+    resumptionInProgress = false;
+    closeBoth(1011, "Live session could not be resumed. Please restart Co-Pilot.");
+  }
+
+  attachUpstreamHandlers(upstreamSocket);
 
   return new Response(null, { status: 101, webSocket: clientSocket });
 }

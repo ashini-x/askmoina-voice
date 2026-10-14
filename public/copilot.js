@@ -2192,7 +2192,7 @@
     }
     sendingVideo = true;
     try {
-      const maxDimension = 320;
+      const maxDimension = 768;
       const scale = Math.min(1, maxDimension / Math.max(video.videoWidth, video.videoHeight));
       let width = Math.max(1, Math.round(video.videoWidth * scale));
       let height = Math.max(1, Math.round(video.videoHeight * scale));
@@ -2200,7 +2200,7 @@
       const context = canvas.getContext("2d", { alpha: false });
       if (!context) return;
       let data = "";
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
         canvas.width = width;
         canvas.height = height;
         if (!nativeZoomSupported && zoomLevel > 1) {
@@ -2210,14 +2210,14 @@
       } else {
         context.drawImage(video, 0, 0, width, height);
       }
-        const quality = [0.42, 0.32, 0.25, 0.19][attempt];
+        const quality = [0.56, 0.46, 0.38, 0.30, 0.22][attempt];
         data = canvas.toDataURL("image/jpeg", quality).split(",")[1] || "";
-        if (data.length <= 12_000) break;
-        width = Math.max(1, Math.round(width * 0.82));
-        height = Math.max(1, Math.round(height * 0.82));
+        if (data.length <= 48_000) break;
+        width = Math.max(1, Math.round(width * 0.88));
+        height = Math.max(1, Math.round(height * 0.88));
       }
-      if (!data || data.length > 12_000) {
-        setStatus("This camera frame is too large to send safely. Move back from detail or try another camera.");
+      if (!data || data.length > 48_000) {
+        setStatus("This camera frame is too large to send safely. Move slightly farther back or steady the camera while AskMoina adjusts detail.");
         return;
       }
       // A stale camera frame is replaceable evidence. Skip it under backpressure rather than queueing old scenery.
@@ -2251,7 +2251,7 @@
     frameEfficiencyStats.encodedChars = 0;
     frameEfficiencyStats.lastMotionScore = 1;
     firstVideoTimer = window.setTimeout(sendVideoFrame, 250);
-    videoTimer = window.setInterval(sendVideoFrame, 1200);
+    videoTimer = window.setInterval(sendVideoFrame, 1000);
   }
 
   // WebXR takes ownership of the camera during immersive AR. Stop only the
@@ -2299,8 +2299,8 @@
           cameraOnlyStream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: { ideal: facingMode },
-              width: { ideal: 640 },
-              height: { ideal: 480 }
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
             },
             audio: false
           });
@@ -2958,6 +2958,16 @@
       return;
     }
 
+    if (message.connection_status && message.connection_status.state === "resuming") {
+      setConnectionState("RECONNECTING", "connecting");
+      setStatus(message.connection_status.message || "Refreshing the live connection while keeping your conversation…", "normal");
+      return;
+    }
+    if (message.connection_status && message.connection_status.state === "resumed") {
+      setConnectionState("LIVE", "live");
+      setStatus(message.connection_status.message || "Back live. Your conversation is continuing.", "normal");
+      return;
+    }
     if (message.connection_status && message.connection_status.state === "ended") {
       if (liveSearchActive) cancelLiveSearchProgress();
       stopCopilot(false, message.connection_status.message || "The live session ended. Start again to continue.", "warning");
@@ -2974,7 +2984,7 @@
       setControls("End Co-Pilot", false);
       setConnectionState("LIVE", "live");
       setStatus("Connected. Tell Moina what you want to do in your own words.");
-      setAvailability("Camera frames are sent at a reduced size about once per second; audio is streamed live.", "normal");
+      setAvailability("Camera frames stream at up to 768 px around once per second; audio is live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
       hideConnectionNotice(true);
       automaticReconnectAttempts = 0;
@@ -3065,7 +3075,8 @@
     handleToolCalls(message, hasSearchCallOnThisMessage);
 
     if (message.go_away || message.goAway) {
-      stopCopilot(false, "The voice session is ending. Start the Co-Pilot again to continue.", "warning");
+      setConnectionState("RECONNECTING", "connecting");
+      setStatus("Refreshing the live connection while keeping your conversation…", "normal");
       return;
     }
 
@@ -3093,7 +3104,7 @@
       let stream = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facingMode }, width: { ideal: 640 }, height: { ideal: 480 } },
+          video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false
         });
         if (active || stopping) {
@@ -3234,8 +3245,8 @@
       const captured = await navigator.mediaDevices.getUserMedia({
         video: previewTrack ? false : {
           facingMode: { ideal: facingMode },
-          width: { ideal: 640 },
-          height: { ideal: 480 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: {
           channelCount: 1,
@@ -3877,7 +3888,7 @@
     flipButton.disabled = true;
     try {
       const cameraOnly = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
       const newTrack = cameraOnly.getVideoTracks()[0];

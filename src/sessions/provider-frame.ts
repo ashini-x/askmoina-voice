@@ -1,6 +1,12 @@
 export interface ProviderControlFrame {
   setupComplete: boolean;
   error?: { code?: unknown; status?: unknown; message?: unknown };
+  goAway?: boolean;
+  sessionResumptionUpdate?: {
+    newHandle?: unknown;
+    resumable?: unknown;
+    lastConsumedClientMessageIndex?: unknown;
+  };
 }
 
 /**
@@ -12,7 +18,11 @@ export function inspectProviderControlFrame(frameText: string): ProviderControlF
   const mayContainControl =
     frameText.includes('"setup_complete"') ||
     frameText.includes('"setupComplete"') ||
-    frameText.includes('"error"');
+    frameText.includes('"error"') ||
+    frameText.includes('"goAway"') ||
+    frameText.includes('"go_away"') ||
+    frameText.includes('"sessionResumptionUpdate"') ||
+    frameText.includes('"session_resumption_update"');
 
   if (!mayContainControl) return null;
 
@@ -20,15 +30,36 @@ export function inspectProviderControlFrame(frameText: string): ProviderControlF
     setup_complete?: unknown;
     setupComplete?: unknown;
     error?: { code?: unknown; status?: unknown; message?: unknown };
+    goAway?: unknown;
+    go_away?: unknown;
+    sessionResumptionUpdate?: {
+      newHandle?: unknown; new_handle?: unknown; resumable?: unknown;
+      lastConsumedClientMessageIndex?: unknown; last_consumed_client_message_index?: unknown;
+    };
+    session_resumption_update?: {
+      newHandle?: unknown; new_handle?: unknown; resumable?: unknown;
+      lastConsumedClientMessageIndex?: unknown; last_consumed_client_message_index?: unknown;
+    };
   };
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new TypeError("Provider control frame is not a JSON object");
   }
 
-  return {
+  const controlFrame: ProviderControlFrame = {
     setupComplete: Boolean(parsed.setup_complete || parsed.setupComplete),
     error: parsed.error,
   };
+  if (parsed.goAway || parsed.go_away) controlFrame.goAway = true;
+  const sessionUpdate = parsed.sessionResumptionUpdate || parsed.session_resumption_update;
+  if (sessionUpdate && typeof sessionUpdate === "object") {
+    controlFrame.sessionResumptionUpdate = {
+      newHandle: sessionUpdate.newHandle ?? sessionUpdate.new_handle,
+      resumable: sessionUpdate.resumable,
+      lastConsumedClientMessageIndex:
+        sessionUpdate.lastConsumedClientMessageIndex ?? sessionUpdate.last_consumed_client_message_index,
+    };
+  }
+  return controlFrame;
 }
 
 
