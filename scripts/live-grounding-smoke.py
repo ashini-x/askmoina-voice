@@ -8,6 +8,7 @@ assistant's transcript or any search query.
 """
 import json
 import os
+import re
 import time
 
 import websocket
@@ -133,7 +134,17 @@ def main() -> int:
             tool_called = False
             transcript = ""
             turn_complete = False
+            completed_turns = 0
+            messages_seen = 0
+            transcript_frames = 0
             deadline = time.time() + TURN_WAIT_SECONDS
+            source_markers = (
+                ("android", "android developers", "android.com")
+                if search_index == 1 else
+                ("python", "python.org")
+                if search_index == 2 else
+                ("chrome", "chromium", "google chrome")
+            )
             while time.time() < deadline:
                 try:
                     message = recv_json_message(ws)
@@ -141,11 +152,21 @@ def main() -> int:
                         continue
                 except websocket.WebSocketTimeoutException:
                     continue
+                except websocket.WebSocketConnectionClosedException:
+                    raise RuntimeError(
+                        f"Live WebSocket closed during grounded search {search_index}; "
+                        f"messages={messages_seen}, tool_called={tool_called}, "
+                        f"transcript_frames={transcript_frames}, completed_turns={completed_turns}."
+                    ) from None
+                messages_seen += 1
                 if message.get("error"):
                     raise RuntimeError(f"The Live session returned a protocol/provider error on search {search_index}.")
                 message_has_tool_call = has_grounding_tool_call(message)
                 tool_called = tool_called or message_has_tool_call
-                transcript += " " + extract_text(message)
+                received_text = extract_text(message).strip()
+                if received_text:
+                    transcript_frames += 1
+                    transcript += " " + received_text
                 content = message.get("serverContent") or message.get("server_content") or {}
                 if (
                     isinstance(content, dict)
@@ -153,18 +174,31 @@ def main() -> int:
                     and tool_called
                     and not message_has_tool_call
                 ):
-                    turn_complete = True
-                    break
+                    completed_turns += 1
+                    lowered_so_far = transcript.lower().strip()
+                    has_numeric_release_detail = bool(re.search(r"\\d", lowered_so_far))
+                    names_requested_subject = any(marker in lowered_so_far for marker in source_markers)
+                    # A Live turn may finish on a short spoken acknowledgement before the
+                    # grounded answer arrives. Keep receiving rather than treating that
+                    # acknowledgement as the final verified result.
+                    if len(lowered_so_far) >= 45 and has_numeric_release_detail and names_requested_subject:
+                        turn_complete = True
+                        break
 
             lowered = transcript.lower()
             if not tool_called:
-                raise RuntimeError(f"Live API did not call search_current_web for explicit search {search_index}.")
+                raise RuntimeError(
+                    f"Live API did not call search_current_web for explicit search {search_index}; "
+                    f"messages={messages_seen}."
+                )
             if not turn_complete:
-                raise RuntimeError(f"Timed out waiting for grounded answer {search_index} to complete.")
+                raise RuntimeError(
+                    f"Timed out waiting for a readable grounded answer {search_index}; "
+                    f"messages={messages_seen}, transcript_frames={transcript_frames}, "
+                    f"completed_turns={completed_turns}, transcript_chars={len(lowered.strip())}."
+                )
             if any(phrase in lowered for phrase in ("temporarily unavailable", "could not be verified", "no live search")):
                 raise RuntimeError(f"Grounded search {search_index} returned an unavailable/unverified response.")
-            if len(lowered.strip()) < 16:
-                raise RuntimeError(f"Grounded answer {search_index} did not contain enough readable response text.")
             completed_searches += 1
             print(f"Synthetic grounded search {search_index}/3: PASS")
 
