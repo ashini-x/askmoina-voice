@@ -77,6 +77,12 @@ describe("Grounded ranked-list completeness and recovery", () => {
     expect(workerSource).toContain("attempt < searchMaxAttempts");
     expect(workerSource).toContain("RETRY: The first attempt was incomplete or not verifiable");
   });
+  it("preserves the default ten-row count when Live simplifies a ranked-list query", () => {
+    expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
+    expect(workerSource).toContain("const requestedListCountForBudget = explicitRequestedListCount ?? (inferredRankedTableQuery ? 10 : null);");
+    expect(workerSource).toContain("const requestedListCount = requestedListCountForBudget;");
+  });
+
   it("uses a third, distinct full-table search when the targeted missing-rank retry remains incomplete", () => {
     expect(workerSource).toContain("const searchMaxAttempts = rankedListSearchBudget ? 3 : GROUNDED_SEARCH_MAX_ATTEMPTS;");
     expect(workerSource).toContain("attempt <= searchMaxAttempts");
@@ -94,7 +100,9 @@ describe("Grounded ranked-list completeness and recovery", () => {
 
 describe("Adaptive grounded-list search budget", () => {
   it("keeps ordinary lookups bounded while giving full ranked tables a longer retry window", () => {
-    expect(workerSource).toContain("const requestedListCountForBudget = getRequestedRankedListCount(query);");
+    expect(workerSource).toContain("const explicitRequestedListCount = getRequestedRankedListCount(query);");
+    expect(workerSource).toContain("const requestedListCountForBudget = explicitRequestedListCount ?? (inferredRankedTableQuery ? 10 : null);");
+    expect(workerSource).toContain("const requestedListCount = requestedListCountForBudget;");
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("(requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
