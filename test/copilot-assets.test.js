@@ -738,7 +738,7 @@ describe("long-running Live session continuity", () => {
     expect(providerFrames).toContain("sessionResumptionUpdate");
     expect(providerFrames).toContain("goAway");
     expect(worker).toContain("const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate)");
-    expect(worker).toContain('(resumedSessionSetupComplete || isSessionResumptionUpdate) ? "" : frameText');
+    expect(worker).toContain("(resumedSessionSetupComplete || isSessionResumptionUpdate || (resumptionInProgress && providerMessage?.error)) ? \"\" : frameText");
     expect(worker).not.toContain("clientMessageIndex: index");
   });
 
