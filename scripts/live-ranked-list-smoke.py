@@ -5,6 +5,7 @@ Sends a top-10 IPL ranking request without explicitly asking for a card, then
 asserts that grounding runs and the Live model proactively creates ten rows.
 Optional source links are validated separately and cannot gate the list itself.
 """
+import base64
 import json
 import os
 import time
@@ -43,6 +44,32 @@ def get_text(message: dict) -> str:
     if isinstance(item, dict) and isinstance(item.get("text"), str):
         texts.append(item["text"])
     return " ".join(texts)
+
+
+def get_audio_payload_bytes(message: dict) -> int:
+    """Count actual generated audio payload bytes, not just optional transcript text."""
+    total = 0
+    for key in ("serverContent", "server_content"):
+        content = message.get(key)
+        if not isinstance(content, dict):
+            continue
+        turn = content.get("modelTurn") or content.get("model_turn")
+        parts = turn.get("parts", []) if isinstance(turn, dict) else []
+        for part in parts if isinstance(parts, list) else []:
+            if not isinstance(part, dict):
+                continue
+            inline = part.get("inlineData") or part.get("inline_data")
+            if not isinstance(inline, dict):
+                continue
+            data = inline.get("data")
+            mime_type = str(inline.get("mimeType") or inline.get("mime_type") or "").lower()
+            if isinstance(data, str) and data and mime_type.startswith("audio/"):
+                try:
+                    total += len(base64.b64decode(data, validate=True))
+                except (ValueError, base64.binascii.Error):
+                    # Malformed audio payload must not count as proof of speech.
+                    continue
+    return total
 
 
 def get_calls(message: dict) -> list:
@@ -219,6 +246,13 @@ def main() -> int:
         saw_final_text = False
         saw_post_tool_spoken_text = False
         saw_post_card_spoken_text = False
+        continuation_dispatched = False
+        continuation_dispatch_count = 0
+        post_continuation_audio_bytes = 0
+        post_continuation_audio_chunks = 0
+        post_continuation_transcript_chars = 0
+        post_continuation_turn_complete = False
+        continuation_statuses = []
         input_transcription_received = False
         card_keyword_observed = False
         steps_keyword_observed = False
@@ -238,6 +272,14 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
+            ranked_status = message.get("ranked_continuation_status")
+            if isinstance(ranked_status, dict):
+                state = ranked_status.get("state")
+                if isinstance(state, str):
+                    continuation_statuses.append(state)
+                    if state == "continuation_dispatched":
+                        continuation_dispatched = True
+                        continuation_dispatch_count += 1
             card_was_visible_before_message = top_ten_card_seen
             fallback_card = message.get("grounded_response_card")
             if isinstance(fallback_card, dict):
@@ -310,6 +352,12 @@ def main() -> int:
                 ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
                 last_keepalive_at = time.monotonic()
             spoken_text = get_text(message).strip()
+            audio_bytes = get_audio_payload_bytes(message)
+            if continuation_dispatched and audio_bytes > 0:
+                post_continuation_audio_bytes += audio_bytes
+                post_continuation_audio_chunks += 1
+            if continuation_dispatched and spoken_text:
+                post_continuation_transcript_chars += len(spoken_text)
             if spoken_text:
                 saw_final_text = True
                 if card_was_visible_before_message:
@@ -322,20 +370,43 @@ def main() -> int:
             if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:
                 send_relay_keepalive(ws)
                 last_keepalive_at = time.monotonic()
-            if turn_complete_now and top_ten_card_seen and not supported_tool_call:
+            # A progress-cue turn can complete after the card is shown. It is not
+            # the final answer. Only a turn completed after the Worker dispatches the
+            # final grounded continuation can satisfy this gate.
+            if continuation_dispatched and turn_complete_now and not supported_tool_call:
                 final_complete = True
-                if saw_final_text:
+                post_continuation_turn_complete = True
+                if post_continuation_audio_bytes > 0:
                     break
         if grounded_search_count == 0:
             raise RuntimeError("The Co-Pilot failed to ground the IPL ranking request with live web search.")
         if not top_ten_card_seen:
             raise RuntimeError("The Co-Pilot did not proactively display a ten-row ranked response card.")
-        if not saw_post_card_spoken_text and not saw_post_tool_spoken_text:
-            raise RuntimeError("The model did not continue speaking after the ten-row answer card became visible.")
-        if not final_complete:
-            raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
+        if not continuation_dispatched:
+            raise RuntimeError(
+                "The Worker did not dispatch the final ranked-list continuation; "
+                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
+            )
+        if not final_complete or not post_continuation_turn_complete:
+            raise RuntimeError(
+                "Timed out waiting for the final ranked-list continuation to complete; "
+                f"continuation_audio_chunks={post_continuation_audio_chunks}, "
+                f"continuation_transcript_chars={post_continuation_transcript_chars}, "
+                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
+            )
+        if post_continuation_audio_bytes <= 0:
+            raise RuntimeError(
+                "The final ranked-list continuation completed without audio payload; "
+                f"transcript_chars={post_continuation_transcript_chars}, "
+                f"audio_chunks={post_continuation_audio_chunks}, "
+                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
+            )
         PHASE = "verified"
-        print("Synthetic proactive ranked-list test: PASS (grounding invoked, ten source-backed rows displayed automatically, final turn completed).")
+        print(
+            "Synthetic proactive ranked-list test: PASS "
+            "(grounding verified, ten source-backed rows rendered, final continuation completed "
+            f"with {post_continuation_audio_chunks} audio chunks and {post_continuation_audio_bytes} audio bytes)."
+        )
         return 0
     finally:
         try:
