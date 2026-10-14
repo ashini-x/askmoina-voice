@@ -658,7 +658,7 @@ describe("RC7 zero-gap search-status feedback", () => {
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
   });
 
-  it("adapts preflight stages by context and hides them as soon as a non-search answer starts", () => {
+  it("adapts preflight stages by context and keeps explicit-search acknowledgements visible until the lookup or turn completes", () => {
     expect(script).toContain('key: "ranked-list"');
     expect(script).toContain('key: "current-info"');
     expect(script).toContain('key: "reference-check"');
@@ -670,5 +670,19 @@ describe("RC7 zero-gap search-status feedback", () => {
   it("removes a preflight status before revealing a card when a web search was not started", () => {
     expect(script).toContain("if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();");
     expect(script).toContain("hideLiveSearchAcknowledgement();\n          renderResponseCard(fallbackCard, true);");
+  });
+});
+
+
+describe("Persistent live-search progress", () => {
+  it("keeps the status visible through slow preflight, provider delays, and offline states", () => {
+    expect(script).toContain("liveSearchAcknowledgementStartedAt = Date.now()");
+    expect(script).toContain("liveSearchPreflightIntent");
+    expect(script).toContain("if (liveSearchPreflightIntent) return;");
+    expect(script).toContain("liveSearchStartedAt = Date.now()");
+    expect(script).toContain("navigator.onLine === false");
+    expect(script).toContain("This is taking longer than usual.");
+    expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000)");
+    expect(script).not.toContain("}, 38_000);");
   });
 });
