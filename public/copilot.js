@@ -800,8 +800,12 @@
     if (!video) return;
     if (recoveryPreviewClear && !(active && setupReady)) {
       video.style.setProperty("filter", "none", "important");
+      // The placeholder is blurred by .has-notice too; keep the fallback scene legible
+      // while the local camera preview is being reacquired.
+      stage.classList.add("recovery-preview-clear");
       return;
     }
+    stage.classList.remove("recovery-preview-clear");
     video.style.removeProperty("filter");
     if (active && setupReady) recoveryPreviewClear = false;
   }
@@ -3101,21 +3105,27 @@
     if (connectionNoticeAction) connectionNoticeAction.disabled = true;
     setStatus("Just a moment");
     showConnectionNotice("Connecting securely", "Just a moment", "connecting");
-    const preflight = await refreshAvailabilityAfterRelease();
-    if (preflight && !preflight.available) {
-      starting = false;
-      stage.classList.add("pre-start");
-      setControls("Start Co-Pilot", false);
-      setConnectionState("BUSY", "error");
-      setStatus(
-        preflight.message || "Voice isn't available right now.",
-        "error",
-      );
-      return;
-    }
-
     let sessionSocket = null;
     try {
+      // Keep preflight inside the guarded start path so a rejected fetch cannot
+      // strand the camera stage in a stale connecting/recovery state.
+      const preflight = await refreshAvailabilityAfterRelease();
+      if (preflight && !preflight.available) {
+        starting = false;
+        recoveryPreviewClear = true;
+        stage.classList.remove("is-listening", "is-speaking", "is-connecting");
+        stage.classList.add("pre-start");
+        setControls("Try again", false);
+        setConnectionState("BUSY", "error");
+        setStatus(
+          preflight.message || "Voice isn't available right now.",
+          "error",
+        );
+        syncDisconnectedPreviewAppearance();
+        void prepareCameraPreview();
+        return;
+      }
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("This browser does not support camera and microphone access.");
       }
@@ -3212,12 +3222,16 @@
       starting = false;
       active = false;
       socket = null;
+      recoveryPreviewClear = true;
+      stage.classList.remove("is-listening", "is-speaking", "is-connecting");
       stage.classList.add("pre-start");
       setControls("Try again", false);
       setConnectionState("READY", "error");
       setStatus(error && error.name === "NotAllowedError"
         ? "Camera or microphone permission was denied. Allow both permissions and try again."
         : (error && error.message ? error.message : "Couldn't start the Co-Pilot. Please try again."), "error");
+      syncDisconnectedPreviewAppearance();
+      void prepareCameraPreview();
     }
   }
 

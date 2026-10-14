@@ -1539,7 +1539,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           contextWindowCompression: {
-            triggerTokens: 24_000,
+            // Compress early enough to leave headroom for continuous audio + video frames.
+            // Keep an 8k-token suffix to limit unnecessary conversation-history loss.
+            triggerTokens: 12_000,
             slidingWindow: { targetTokens: 8_000 },
           },
           // Keep the current session resumable; the relay stores the handle and replay window.

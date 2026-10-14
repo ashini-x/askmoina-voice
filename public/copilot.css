@@ -1155,3 +1155,7 @@ body.site-info-body .site-info-card{width:100%}
 .camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important}
 /* A disconnected preview stays visible during reconnect attempts; the camera is local even when the relay is unavailable. */
 .camera-stage.has-notice:not(.voice-active):not(.is-connecting) #videoPreview{filter:none!important}
+
+/* Keep the camera or fallback scene sharp after a failed/disrupted live reconnect. */
+.camera-stage.recovery-preview-clear #videoPreview{filter:none!important}
+.camera-stage.recovery-preview-clear:not(.has-camera) .camera-placeholder{filter:none!important;opacity:1!important}

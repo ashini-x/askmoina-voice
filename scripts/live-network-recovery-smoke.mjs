@@ -77,8 +77,15 @@ try {
     filter: getComputedStyle(element).filter,
     inlineFilter: element.style.filter,
     stageClass: element.parentElement?.className || "",
+    placeholderFilter: getComputedStyle(element.parentElement?.querySelector(".camera-placeholder") || document.body).filter,
   }));
   assert.equal(previewDiagnostics.filter, "none", "camera preview should stay clear after session stop and during user-driven recovery; " + JSON.stringify(previewDiagnostics));
+  assert.ok(previewDiagnostics.stageClass.includes("recovery-preview-clear"),
+    "the fallback scene should stay in explicit clear-preview recovery mode; " + JSON.stringify(previewDiagnostics));
+  if (!previewDiagnostics.stageClass.includes("has-camera")) {
+    assert.equal(previewDiagnostics.placeholderFilter, "none",
+      "the no-camera fallback must not remain blurred; " + JSON.stringify(previewDiagnostics));
+  }
   console.log("Browser network recovery: active session stopped, camera preview is clear, and offline notice shown.");
 
   await context.setOffline(false);
@@ -99,8 +106,13 @@ try {
     null,
     { timeout: 45_000 }
   );
+  await page.waitForFunction(() => {
+    const stage = document.querySelector("#videoPreview")?.parentElement;
+    const notice = document.querySelector("#connectionNotice");
+    return Boolean(stage && !stage.classList.contains("recovery-preview-clear") && notice?.hidden);
+  }, null, { timeout: 10_000 });
   assert.ok(liveSocketEvents.length >= 2, "explicit reconnect should establish a new Live WebSocket");
-  console.log("Browser network recovery: explicit Reconnect now restored a fresh Live session.");
+  console.log("Browser network recovery: explicit Reconnect now restored a fresh Live session and cleared recovery UI.");
 
   await page.locator("#toggleCopilot").click();
   await page.waitForTimeout(700);
