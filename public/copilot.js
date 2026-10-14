@@ -3027,6 +3027,7 @@
         liveSearchSpokenAcknowledgementText = "";
         if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
         else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
+          // A preflight acknowledgement is not evidence of an active search. Preserve it across acknowledgement-only turns.
           const assistantTurnText = currentTranscriptNodes.assistant && typeof currentTranscriptNodes.assistant.text === "string"
             ? currentTranscriptNodes.assistant.text.trim()
             : "";
