@@ -49,6 +49,15 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
+  it("continues speech instead of retrying an invalid replacement after a complete grounded ranked card is visible", () => {
+    expect(workerSource).toContain("let completeRankedFallbackCardSentAt = 0");
+    expect(workerSource).toContain("if (complete) completeRankedFallbackCardSentAt = Date.now()");
+    expect(workerSource).toContain("completeRankedFallbackRecentlySent");
+    expect(workerSource).toContain("The complete source-backed ranked card is already visible");
+    expect(workerSource).toContain("Continue speaking now: briefly summarize the top entries");
+    expect(workerSource).toContain("Skipped redundant response-card replacement after complete grounded ranked list");
+  });
+
   it("prioritizes explicit response-card requests before speech-only answers", () => {
     expect(workerSource).toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
     expect(workerSource).toContain("The user explicitly requested a visible response card");
@@ -80,9 +89,9 @@ describe("Milestone 13 conditional web grounding", () => {
   });
 
   it("passes the inferred top-ten count into fallback-card construction", () => {
-    expect(workerSource).toContain("const fallbackRequestedCount = getRequestedRankedListCount(query) ??");
-    expect(workerSource).toContain("(isLikelyRankedTableSearchQuery(query) ? 10 : null)");
-    expect(workerSource).toContain("buildGroundedListCard(query, result, fallbackRequestedCount)");
+    expect(workerSource).toContain("const fallbackRequestedCount = getRequestedRankedListCount(effectiveQuery) ?? originalRequestCount ??");
+    expect(workerSource).toContain("(isLikelyRankedTableSearchQuery(effectiveQuery) || isLikelyRankedTableSearchQuery(latestUserRequestText) ? 10 : null)");
+    expect(workerSource).toContain("buildGroundedListCard(effectiveQuery, result, fallbackRequestedCount)");
   });
 
   it("preserves provider diagnostics on grounding API errors", () => {
@@ -149,7 +158,7 @@ describe("Ranked-table budget inference when Live simplifies the query", () => {
     expect(workerSource).toContain("function isLikelyRankedTableSearchQuery(query: string)");
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("(requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery");
-    expect(workerSource).toContain("performGroundedWebSearch(env, query, deviceContext, copilotMode)");
+    expect(workerSource).toContain("performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode)");
     expect(workerSource).toContain("inferredRankedTableQuery,");
     expect(workerSource).toContain("rankedListSearchBudget,");
   });
