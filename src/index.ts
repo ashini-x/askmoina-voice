@@ -542,7 +542,8 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);
   const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
   const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
-  const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const searchMaxAttempts = rankedListSearchBudget ? 3 : GROUNDED_SEARCH_MAX_ATTEMPTS;
   const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
   const accessToken = await getGoogleAccessToken(env);
   const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);
@@ -566,7 +567,18 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     tools: [{ googleSearch: {} }],
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
   });
-  const requestBody = makeGroundingRequestBody(groundingPrompt);
+  const rankedListPrompt = requestedListCountForBudget !== null
+    ? [
+      "Search the public web for the exact ranking requested by the user: " + query,
+      "REQUIRED: return a complete top " + requestedListCountForBudget + " table, with ranks 1 through " + requestedListCountForBudget + " and one distinct row per rank.",
+      "For IPL 2025 'rankers' without a different explicit metric, interpret this as the IPL 2025 most-runs batting leaderboard (Orange Cap) and include player, team, and runs.",
+      "Prioritize complete leaderboard tables from official league statistics or reputable cricket statistics publishers. Do not use a single-player profile, short snippet, or a different season as a substitute for the full table.",
+      "Output rows in this exact parseable form, one per line: 1. Player Name — Team — 759 runs. Continue through the requested final rank.",
+      "Use Google Search grounding to find the source table itself. If the source has only a partial table, search for another source with the full leaderboard instead of stopping after the first returned row.",
+      "Never guess a name, rank, team, or statistic. Include the actual HTTPS source URLs returned by grounding under a final Sources heading."
+    ].join("\n\n")
+    : groundingPrompt;
+  const requestBody = makeGroundingRequestBody(rankedListPrompt);
   let retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.");
   let partialRankedListText = "";
   let partialRankedListChunks: Array<{ web?: { uri?: string; title?: string } }> = [];
@@ -576,7 +588,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   } | undefined;
   let lastFailure: unknown = null;
   let attemptsUsed = 0;
-  for (let attempt = 1; attempt <= GROUNDED_SEARCH_MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= searchMaxAttempts; attempt++) {
     attemptsUsed = attempt;
     const elapsedGroundingMs = Date.now() - groundingBudgetStartedAt;
     const remainingBudget = searchBudgetMs - elapsedGroundingMs;
@@ -604,7 +616,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
           : "no provider error detail returned";
         const failure = new Error(`Grounded search request failed (${response.status}) on ${model}: ${providerMessage}`);
         lastFailure = failure;
-        if (attempt < GROUNDED_SEARCH_MAX_ATTEMPTS && GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)) {
+        if (attempt < searchMaxAttempts && GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)) {
           console.warn("[AskMoina] Grounded search provider returned a retryable response", JSON.stringify({
             model, location, attempt, status: response.status, retrying: true
           }));
@@ -645,7 +657,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
         };
       }
 
-      if (requestedListCount && attempt < GROUNDED_SEARCH_MAX_ATTEMPTS) {
+      if (requestedListCount) {
         const rankedRows = extractGroundedRankedRows(candidateText, requestedListCount);
         if (rankedRows.length < requestedListCount) {
           const presentRanks = new Set(rankedRows.map((row) => row.rank));
@@ -654,35 +666,57 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
           partialRankedListText = candidateText
             .split(/\n\s*(?:sources?|source links):/i)[0]
             .trim();
-          partialRankedListChunks = receivedCandidate?.groundingMetadata?.groundingChunks || [];
-          const targetedQuery = query.toLowerCase().includes("ipl") && query.includes("2025")
-            ? "IPL 2025 most runs Orange Cap full batting leaderboard player team runs ranks " + missingRanks.join(", ")
-            : query + " missing ranked entries " + missingRanks.join(", ");
-          retryRequestBody = makeGroundingRequestBody([
-            groundingPrompt,
-            "TARGETED RETRY FOR MISSING RANKS ONLY.",
-            "The first attempt produced only " + rankedRows.length + " of " + requestedListCount + " requested rows.",
-            "Missing rank positions to retrieve: " + missingRanks.join(", ") + ".",
-            "Run a distinct Google Search focused on this specific missing-rank query: " + targetedQuery + ".",
-            "Return newly found rows using their ORIGINAL rank numbers. For each missing rank, return one separate line in the exact format: rank. Player or item name — team/category — requested statistic.",
-            "Do not repeat earlier rows unless needed for context. Do not substitute another leaderboard or season. Do not guess missing ranks. Include full HTTPS source URLs from Google Search grounding in a final Sources section."
-          ].join("\n\n"));
-          console.warn("[AskMoina] Grounded ranked list is incomplete; retrying specifically for missing ranks", JSON.stringify({
-            requestedCount: requestedListCount,
-            recoveredRows: rankedRows.length,
-            missingRanks,
-            attempt,
-            retrying: true
+          // candidate may already contain merged output from earlier attempts, so
+          // keep the accumulated grounded source metadata when moving to attempt 3.
+          partialRankedListChunks = candidate?.groundingMetadata?.groundingChunks ||
+            receivedCandidate?.groundingMetadata?.groundingChunks || [];
+
+          if (attempt < searchMaxAttempts) {
+            if (attempt === 1) {
+              const targetedQuery = query.toLowerCase().includes("ipl") && query.includes("2025")
+                ? "IPL 2025 most runs Orange Cap batting leaderboard player team runs ranks " + missingRanks.join(", ")
+                : query + " full ranking missing positions " + missingRanks.join(", ");
+              retryRequestBody = makeGroundingRequestBody([
+                "TARGETED RETRY FOR MISSING RANKS ONLY.",
+                "The first attempt produced only " + rankedRows.length + " of " + requestedListCount + " requested rows for: " + query + ".",
+                "Missing rank positions to retrieve: " + missingRanks.join(", ") + ".",
+                "Run a distinct Google Search focused on this exact missing-rank query: " + targetedQuery + ".",
+                "Return newly found rows using their ORIGINAL rank numbers. Exact row format: rank. Player or item name — team/category — requested statistic.",
+                "Do not guess missing ranks. Include actual HTTPS source URLs from Google Search grounding in a final Sources section."
+              ].join("\n\n"));
+              console.warn("[AskMoina] Grounded ranked list is incomplete; retrying specifically for missing ranks", JSON.stringify({
+                requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempt, retrying: true
+              }));
+            } else {
+              const fullTableQuery = query.toLowerCase().includes("ipl") && query.includes("2025")
+                ? "IPL 2025 Orange Cap most runs complete top ten batting leaderboard full table player team runs official IPL stats ESPNcricinfo Cricbuzz"
+                : "complete top " + requestedListCount + " ranking table for " + query + " reputable full leaderboard source";
+              retryRequestBody = makeGroundingRequestBody([
+                "ALTERNATE COMPLETE-TABLE RETRY.",
+                "The first two search attempts together still yielded only " + rankedRows.length + " distinct requested ranks out of " + requestedListCount + ".",
+                "Do not run another query that only asks for the currently missing positions. Search for a different source that publishes the complete ranking table: " + fullTableQuery + ".",
+                "Prefer an official statistics page or a reputable publisher's complete leaderboard table. Switch to a different publisher/domain from the source already tried if possible.",
+                "Return the entire requested top " + requestedListCount + ", rank 1 through " + requestedListCount + ", one row per line in this exact format: rank. Player Name — Team — statistic.",
+                "For IPL 2025 without a different explicit metric, use most runs (Orange Cap) and include runs. Never mix seasons or change metrics.",
+                "Never fabricate missing rows. Include only ranks that the alternate source really supports and its HTTPS source URLs under Sources."
+              ].join("\n\n"));
+              console.warn("[AskMoina] Ranked-list retries remain incomplete; trying alternate complete table", JSON.stringify({
+                requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempt, retrying: true
+              }));
+            }
+            if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
+            continue;
+          }
+          console.warn("[AskMoina] Grounded ranked list remained incomplete after all attempts", JSON.stringify({
+            requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempts: attemptsUsed, complete: false
           }));
-          if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
-          continue;
         }
       }
       const hasGroundingUrls = (candidate?.groundingMetadata?.groundingChunks || []).some((chunk) => {
         const uri = chunk.web?.uri;
         return typeof uri === "string" && (uri.startsWith("https://") || uri.startsWith("http://"));
       });
-      if (!hasGroundingUrls && attempt < GROUNDED_SEARCH_MAX_ATTEMPTS) {
+      if (!hasGroundingUrls && attempt < searchMaxAttempts) {
         console.warn("[AskMoina] Grounded search returned no source URLs; retrying with a more specific query", JSON.stringify({
           model, location, attempt, retrying: true, reason: "no_grounding_sources"
         }));
@@ -695,7 +729,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
       lastFailure = error;
       const timedOut = controller.signal.aborted || (error instanceof Error && error.name === "AbortError");
       const networkFailure = error instanceof TypeError;
-      if (attempt < GROUNDED_SEARCH_MAX_ATTEMPTS && (timedOut || networkFailure)) {
+      if (attempt < searchMaxAttempts && (timedOut || networkFailure)) {
         console.warn("[AskMoina] Grounded search attempt failed; retrying", JSON.stringify({
           model,
           location,

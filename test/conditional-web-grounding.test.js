@@ -74,9 +74,17 @@ describe("Grounded ranked-list completeness and recovery", () => {
   it("retries successful provider responses that contain no source URLs", () => {
     expect(workerSource).toContain("no_grounding_sources");
     expect(workerSource).toContain("hasGroundingUrls");
-    expect(workerSource).toContain("attempt < GROUNDED_SEARCH_MAX_ATTEMPTS");
+    expect(workerSource).toContain("attempt < searchMaxAttempts");
     expect(workerSource).toContain("RETRY: The first attempt was incomplete or not verifiable");
   });
+  it("uses a third, distinct full-table search when the targeted missing-rank retry remains incomplete", () => {
+    expect(workerSource).toContain("const searchMaxAttempts = rankedListSearchBudget ? 3 : GROUNDED_SEARCH_MAX_ATTEMPTS;");
+    expect(workerSource).toContain("attempt <= searchMaxAttempts");
+    expect(workerSource).toContain("ALTERNATE COMPLETE-TABLE RETRY");
+    expect(workerSource).toContain("Grounded ranked list remained incomplete after all attempts");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;");
+  });
+
   it("instructs grounded search to return a complete top-N table when sources support it", () => {
     expect(workerSource).toContain("Do not stop early for concision or invent missing data");
     expect(workerSource).toContain("Prefer official tables or reputable full-table reports");
@@ -90,7 +98,7 @@ describe("Adaptive grounded-list search budget", () => {
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("(requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
-    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("const remainingBudget = searchBudgetMs - elapsedGroundingMs;");
     expect(workerSource).toContain("Math.min(searchTimeoutMs, remainingBudget)");
     expect(workerSource).toContain("requestedListCount: requestedListCountForBudget");
@@ -112,7 +120,7 @@ describe("Ranked-table budget inference when Live simplifies the query", () => {
   it("keeps the higher budget restricted to recognized Co-Pilot ranked-table requests or explicit large counts", () => {
     expect(workerSource).toContain("const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);");
     expect(workerSource).toContain("const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;");
-    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 18_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_BUDGET_MS = 42_000;");
   });
