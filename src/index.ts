@@ -1390,15 +1390,16 @@ async function handleVoiceSocket(
         }));
       }
 
-      try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
       const answerInstruction = fullTableVerified
         ? "A complete, source-verified top-" + requestedCount + " answer sheet is already visible on screen. Do not call any more tools and do not create another card. Give the user a concise, natural spoken summary in the established Assamese-English mix, explain what the ranking measures, and mention that the full row-by-row list and source links are on the card. Use only the grounded result below.\n\n"
         : "A lookup-status answer card is visible. The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Do not invent or fill missing entries from memory. Tell the user honestly what was verified and that the complete ranking could not be confirmed. Do not call any more tools or create another card.\n\n";
       const continuationText = answerInstruction + "Grounded search result:\n" + result.slice(0, 18_000);
+      let continuationDeliveryState: "queued" | "sent_immediately" = "sent_immediately";
       if (forcedRankedProgressTurnOutstanding) {
         // Sending clientContent during an active Live response can collide with or
         // discard the final turn. Wait for the progress sentence's turnComplete.
         pendingForcedRankedAnswerContinuation = continuationText;
+        continuationDeliveryState = "queued";
         console.info("[AskMoina] Queued mandatory ranked-list spoken continuation behind the active progress turn");
       } else {
         sendUpstreamMessage({
@@ -1407,7 +1408,17 @@ async function handleVoiceSocket(
             turnComplete: true,
           },
         });
+        console.info("[AskMoina] Sent mandatory ranked-list spoken continuation immediately", JSON.stringify({ outstandingProgressTurn: false }));
       }
+      try {
+        workerSocket.send(JSON.stringify({
+          live_search_status: {
+            state: "lookup_complete",
+            ranked_continuation: continuationDeliveryState,
+            progress_turn_outstanding: forcedRankedProgressTurnOutstanding,
+          },
+        }));
+      } catch (_) {}
       forcedRankedLookupActive = false;
     })().catch((error) => {
       forcedRankedLookupActive = false;
@@ -2081,6 +2092,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           },
         });
         console.info("[AskMoina] Resumed queued ranked-list spoken continuation after progress turn completed");
+        try {
+          workerSocket.send(JSON.stringify({
+            live_search_status: {
+              state: "lookup_complete",
+              ranked_continuation: "sent_after_progress",
+              progress_turn_outstanding: false,
+            },
+          }));
+        } catch (_) {}
       }
     } else if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
       liveSearchProgressCuePending = false;
