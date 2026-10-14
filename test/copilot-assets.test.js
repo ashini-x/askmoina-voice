@@ -662,7 +662,7 @@ describe("RC7 zero-gap search-status feedback", () => {
     expect(script).toContain("micNoiseCalibrationUntil = now + 500");
     expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
     expect(script).toContain("now - micSpeechCandidateAt >= 120");
-    expect(script).toContain("Sustained local speech may start a neutral acknowledgement; transcripts and tool events determine search-specific status.");
+    expect(script).toContain("Keep the interface clean while the user talks; show processing immediately after speech ends.");
     expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
   });
