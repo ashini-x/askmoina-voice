@@ -502,8 +502,8 @@ async function waitForGroundedRetry(delayMs: number, budgetStartedAt: number, bu
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
 const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;
-const GROUNDED_SEARCH_BUDGET_MS = 60_000;
-const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;
+const GROUNDED_SEARCH_BUDGET_MS = 80_000;
+const GROUNDED_SEARCH_MAX_ATTEMPTS = 3;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
 /** Detect a grounded-table query even when the voice model drops the user's requested count. */
