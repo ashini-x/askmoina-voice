@@ -498,7 +498,7 @@ describe("Apple-style live-search progress", () => {
     expect(script).toContain("Collecting supporting evidence");
     expect(css).toContain("@keyframes live-search-sweep");
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
-    expect(workerSource).toContain("The browser immediately displays and speaks a short acknowledgement");
+    expect(workerSource).toContain("The browser displays a contextual Apple-style loader");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
     expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
     const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
