@@ -20,7 +20,10 @@ describe("authenticated live synthetic verification", () => {
   it("checks grounded completion without requiring one brittle transcript keyword", () => {
     expect(grounding).toContain("if not tool_called:");
     expect(grounding).toContain("if not turn_complete:");
-    expect(grounding).toContain("if len(lowered.strip()) < 16:");
+    expect(grounding).toContain("has_numeric_release_detail = bool(re.search");
+    expect(grounding).toContain("len(lowered_so_far) >= 45");
+    expect(grounding).toContain("completed_turns += 1");
+    expect(grounding).toContain("transcript_chars=");
     expect(grounding).not.toContain("if not any(word in lowered");
     expect(grounding).not.toContain('if "android" not in lowered:');
   });
