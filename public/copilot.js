@@ -764,10 +764,10 @@
       showConnectionNotice("You're offline", "Waiting for your network. Tap Reconnect now when you're back online.", "slow");
       return;
     }
-    if (automaticReconnectAttempts >= 2) {
+    if (automaticReconnectAttempts >= 3) {
       automaticReconnectAttempts = 0;
       stopCopilot(false, message || "The connection could not be restored. Check your network and try again.", "error", true);
-      setConnectionState("OFFLINE", "error");
+      setConnectionState("READY", "error");
       return;
     }
     automaticReconnectAttempts += 1;
@@ -785,7 +785,7 @@
       if (active || starting) return;
       isAutomaticRetry = true;
       void startCopilot();
-    }, automaticReconnectAttempts === 1 ? 700 : 1350);
+    }, automaticReconnectAttempts === 1 ? 700 : automaticReconnectAttempts === 2 ? 1400 : 2500);
   }
 
   function setAvailability(message, kind) {
@@ -2839,6 +2839,7 @@
       return;
     }
     if (message.connection_status && message.connection_status.state === "resumed") {
+      hideConnectionNotice(true);
       setConnectionState("LIVE", "live");
       setStatus(message.connection_status.message || "Back live. Your conversation is continuing.", "normal");
       return;
