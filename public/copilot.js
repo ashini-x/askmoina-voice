@@ -91,7 +91,8 @@
   let lastGroundedRankedListCard = null;
   let protectGroundedListForTurn = false;
   let liveSearchStageIndex = 0;
-  let liveSearchSpokenAcknowledgementText = "";
+  let pendingUserProgressContext = "";
+  let pendingUserProgressSearchIntent = false;
   let liveSearchProgressStageIndex = 0;
   let liveSearchPreflightStages = [];
   let liveSearchPreflightContext = "";
@@ -273,10 +274,10 @@
       return {
         key: "general",
         stages: [
-          { title: "Thinking through your request", message: "Preparing a useful answer. I'll show live-source checks if needed." },
-          { title: "Preparing your answer", message: "Working out what information will help most." },
-          { title: "Preparing your answer", message: "Checking whether up-to-date sources would help." },
-          { title: "Putting it together", message: "Keeping the answer focused on your question." }
+          { title: "Thinking through your request", message: "Bujhi paisu — working out the useful bits for this question." },
+          { title: "Organizing the details", message: "Details bur milai asu so the answer stays clear." },
+          { title: "Preparing your answer sheet", message: "Answer card-tu ready kori asu." },
+          { title: "Finishing the answer", message: "Olop wait — making sure the spoken answer and card match." }
         ]
       };
     }
@@ -284,9 +285,9 @@
       return {
         key: "ranked-list",
         stages: [
-          { title: "Preparing your search", message: "Looking for complete source-backed tables." },
-          { title: "Checking ranked results", message: "Checking names, positions and supporting figures." },
-          { title: "Preparing your list", message: "Getting the full set of verified details ready." }
+          { title: "Preparing your search", message: "Looking for a complete table, not just a few names." },
+          { title: "Checking ranked results", message: "Names aru rankings match kori asu against sources." },
+          { title: "Preparing your list", message: "Verified details bur organize kori asu for the full list." }
         ]
       };
     }
@@ -294,9 +295,9 @@
       return {
         key: "current-info",
         stages: [
-          { title: "Preparing a live lookup", message: "Looking for current information relevant to your question." },
-          { title: "Checking recent sources", message: "Prioritising useful, up-to-date details." },
-          { title: "Preparing your answer", message: "Bringing the most relevant information together." }
+          { title: "Preparing a live lookup", message: "Checking the latest info that matters for your question." },
+          { title: "Checking recent sources", message: "Recent sources bur compare kori asu." },
+          { title: "Preparing your answer", message: "Relevant details bur answer card-tot arrange kori asu." }
         ]
       };
     }
@@ -304,18 +305,18 @@
       return {
         key: "reference-check",
         stages: [
-          { title: "Preparing a source check", message: "Looking for relevant official documentation." },
-          { title: "Checking the details", message: "Matching source information to your specific question." },
-          { title: "Preparing useful guidance", message: "Separating verified details from anything uncertain." }
+          { title: "Preparing a source check", message: "Finding the official manual or exact model info." },
+          { title: "Checking the details", message: "Model details match kori asu before suggesting anything." },
+          { title: "Preparing useful guidance", message: "Verified info aru uncertainty alag kori asu." }
         ]
       };
     }
     return {
       key: "web-search",
       stages: [
-        { title: "Preparing your search", message: "Finding the best way to verify the answer." },
-        { title: "Choosing useful sources", message: "Focusing on sources that directly answer your question." },
-        { title: "Preparing your answer", message: "Getting the relevant evidence ready." }
+        { title: "Preparing your search", message: "Finding the best way to verify this." },
+        { title: "Choosing useful sources", message: "Useful source bur prioritize kori asu." },
+        { title: "Preparing your answer", message: "Useful evidence bur answer card-tot arrange kori asu." }
       ]
     };
   }
@@ -357,16 +358,17 @@
       const elapsed = Math.max(0, Date.now() - liveSearchAcknowledgementStartedAt);
       if (navigator.onLine === false) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. AskMoina will keep this status visible while waiting.";
-      } else if (micSpeechGateActive) {
-        if (liveSearchTitle) liveSearchTitle.textContent = "Listening to your question";
-        if (liveSearchMessage) liveSearchMessage.textContent = "Take your time. I'll show live-source checks if needed.";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Connection tu offline mone hoi — check your internet; I will keep this status visible.";
+      } else if (micSpeechGateActive && !(stage && stage.classList.contains("is-speaking"))) {
+        liveSearchStatus.hidden = true;
+        liveSearchAcknowledgementTimer = null;
+        return;
       } else if (elapsed >= 25_000 && liveSearchPreflightIntent) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your lookup";
-        if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI search service may be slow.";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Olop besi time lagise — network or the AI search service may be slow.";
       } else if (elapsed >= 25_000) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Still working on your answer";
-        if (liveSearchMessage) liveSearchMessage.textContent = "I have not finished preparing a response yet. The network or AI service may be slow; I will keep this status visible.";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Answer-tu etiya ready nohoi — network or AI service slow hobo pare. I will keep you updated.";
       } else if (elapsed >= 12_000 && liveSearchPreflightIntent) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
         if (liveSearchMessage) liveSearchMessage.textContent = "I am still waiting for the live-search step to start. The AI service or network may be slow.";
@@ -396,27 +398,6 @@
     if (liveSearchStatus) {
       liveSearchStatus.classList.remove("is-acknowledging");
       liveSearchStatus.hidden = true;
-    }
-  }
-
-  function speakImmediateSearchAcknowledgement(text) {
-    const normalized = String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (!normalized || liveSearchSpokenAcknowledgementText) return;
-    liveSearchSpokenAcknowledgementText = normalized;
-    if (typeof window.SpeechSynthesisUtterance !== "function" || !window.speechSynthesis) return;
-    try {
-      const speech = window.speechSynthesis;
-      const utterance = new window.SpeechSynthesisUtterance("Got it. I'm looking that up now.");
-      utterance.lang = "en-IN";
-      utterance.rate = 1.02;
-      utterance.pitch = 1.04;
-      const voices = speech.getVoices();
-      const preferredVoice = voices.find((voice) => /^en-IN$/i.test(voice.lang)) ||
-        voices.find((voice) => /^en-(GB|US)$/i.test(voice.lang));
-      if (preferredVoice) utterance.voice = preferredVoice;
-      speech.speak(utterance);
-    } catch (_) {
-      // Browser speech output is an enhancement; the live voice route remains available.
     }
   }
 
@@ -483,8 +464,14 @@
       const searchIntent = isLikelyLiveSearchRequest(normalized);
       // Even if intent detection is inconclusive, keep a generic preflight visible
       // from the first user-audio frame until an answer starts or a real lookup takes over.
+      if (micSpeechGateActive && !(stage && stage.classList.contains("is-speaking"))) {
+        pendingUserProgressContext = normalized;
+        pendingUserProgressSearchIntent = searchIntent;
+        return;
+      }
+      pendingUserProgressContext = "";
+      pendingUserProgressSearchIntent = false;
       showLiveSearchAcknowledgement(normalized, searchIntent);
-      if (searchIntent) speakImmediateSearchAcknowledgement(normalized);
       return;
     }
 
@@ -1973,10 +1960,7 @@
         if (now - micSpeechCandidateAt >= 120) {
           if (!micSpeechGateActive) {
             micSpeechGateActive = true;
-            // Show a local acknowledgement before the Live API returns its transcript or search-tool event.
-            if (!greetingTurnPending && !stage.classList.contains("is-speaking")) {
-              showLiveSearchAcknowledgement("", false);
-            }
+            // Keep the interface clean while the user talks; show processing immediately after speech ends.
           }
           lastMicVoiceAt = now;
         }
@@ -2767,7 +2751,10 @@
     const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text || "";
     const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text || "";
     if (!userText.trim() || !assistantText.trim()) return false;
-    if (LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantText.trim()) && assistantText.trim().length < 90) return false;
+    if (LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantText.trim()) && assistantText.trim().length < 180) return false;
+    if (assistantText.trim().length < 180 &&
+        /\b(?:checking|searching|looking up|finding sources|pulling together|lining up|wrapping up|preparing your answer|getting the details ready|making the answer card|organizing the answer)\b/i.test(assistantText) &&
+        !/\b(?:the answer is|in short|it means|you can|you should|the result|the main point)\b/i.test(assistantText)) return false;
     if (liveSearchActive && !liveSearchLookupCompleted && !liveSearchFinishing) return false;
     if (protectGroundedListForTurn && lastGroundedRankedListCard && responseCardRenderedForTurn) return true;
     if (pendingResponseCards.some((item) => item && isGroundedRankedListCard(item.args))) return false;
@@ -2832,9 +2819,9 @@
       if (call.name === "search_current_web") continue;
       if (call.name === "display_response_card") {
         const id = typeof call.id === "string" ? call.id : "";
-        if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
-        // Render first and reply to the model immediately, even while search progress is finishing.
+        // Make the answer sheet visible before dismissing the loader.
         const rendered = renderResponseCard(call.args);
+        if (liveSearchAcknowledgementActive && !liveSearchActive) hideLiveSearchAcknowledgement();
         if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();
         if (id) {
           responses.push({
@@ -3035,8 +3022,8 @@
         }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
-        liveSearchSpokenAcknowledgementText = "";
-        if (liveSearchActive && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
+
+        if (liveSearchActive && liveSearchLookupCompleted && !hasSearchCallOnThisMessage && responseCardRenderedForTurn) completeLiveSearchProgress();
         else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage) {
           // A preflight acknowledgement is not evidence of an active search. Preserve it across acknowledgement-only turns.
           const assistantTurnText = currentTranscriptNodes.assistant && typeof currentTranscriptNodes.assistant.text === "string"
@@ -3051,10 +3038,12 @@
             if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
             if (liveSearchMessage) liveSearchMessage.textContent = "The request is received. Waiting for the live-source check to start.";
           } else {
-            hideLiveSearchAcknowledgement();
+            if (liveSearchTitle) liveSearchTitle.textContent = "Finishing your answer sheet";
+            if (liveSearchMessage) liveSearchMessage.textContent = "Lining up the useful details so the answer is ready on screen.";
           }
         } else if (liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
-          hideLiveSearchAcknowledgement();
+          if (liveSearchTitle) liveSearchTitle.textContent = "Finishing your answer sheet";
+          if (liveSearchMessage) liveSearchMessage.textContent = "Making the answer easy to scan on screen.";
         }
         if (pendingResponseCards.length) {
           const queuedCards = pendingResponseCards.splice(0);
@@ -3066,7 +3055,12 @@
           }
         }
         if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);
-        finalizeTurn();
+        if (liveSearchActive && liveSearchLookupCompleted && responseCardRenderedForTurn && !liveSearchFinishing) completeLiveSearchProgress();
+        // Keep transcript context alive across a spoken progress turn or pending tool call.
+        // A turn is complete for presentation only once its answer card has actually rendered.
+        if (responseCardRenderedForTurn || (!liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive)) {
+          finalizeTurn();
+        }
         if (greetingTurnPending) beginListeningAfterGreeting();
         else if (active && processor) setStatus("Listening — show me the next thing you want help with.");
       }
@@ -5299,12 +5293,12 @@
   void checkSpatialArSupport();
   void checkBackend();
 
-  // Voice-turn presentation contract: never overlay the user's speech with a loader.
-  // When the microphone gate closes, show the translucent status card immediately while
-  // the model prepares a reply. Keep the same card visible while the assistant speaks.
+  // No status surface while the user speaks. Restore the contextual loader immediately
+  // after the mic speech gate closes and keep it present until the answer sheet is visible.
   let __moinaLastUserSpeech = false;
   window.setInterval(() => {
-    const userSpeaking = Boolean(micSpeechGateActive || (stage && stage.classList.contains("is-listening")));
+    const assistantSpeaking = Boolean(stage && stage.classList.contains("is-speaking"));
+    const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking);
     if (userSpeaking) {
       __moinaLastUserSpeech = true;
       if (liveSearchStatus) {
@@ -5318,9 +5312,14 @@
     }
     if (__moinaLastUserSpeech) {
       __moinaLastUserSpeech = false;
-      // Neutral processing acknowledgement, not a claim that a web search has started.
-      if (!liveSearchActive && !liveSearchFinishing && liveSearchStatus) {
-        showLiveSearchAcknowledgement("", false);
+      if (liveSearchActive && !liveSearchFinishing && liveSearchStatus) {
+        liveSearchStatus.hidden = false;
+      } else if (!liveSearchFinishing && liveSearchStatus) {
+        const context = pendingUserProgressContext;
+        const searchIntent = pendingUserProgressSearchIntent;
+        pendingUserProgressContext = "";
+        pendingUserProgressSearchIntent = false;
+        showLiveSearchAcknowledgement(context, searchIntent);
       }
     }
   }, 90);
