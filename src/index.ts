@@ -1,5 +1,5 @@
 import type { Env } from "./config/env";
-import { deriveGuestIdentity, GUEST_DEMO_DAILY_SECONDS, GUEST_DEMO_MAX_SESSION_SECONDS, handleAuthRequest, getAuthenticatedUserId, isGuestUserId } from "./auth/accounts";
+import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { TokenBucket } from "./sessions/audio-rate-limit";
@@ -32,7 +32,7 @@ function renderSiteMenu(authenticated: boolean): string {
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
-const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <button type=\"button\" class=\"entry-demo-action\" id=\"guestDemoStart\">Try a 2-minute demo</button>\n    <p class=\"entry-demo-note\">No account needed · Personal memories stay off</p>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
+const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\">\n    <h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1>\n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
 const ENTRY_PRODUCTS_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Choose an experience\">\n  <div class=\"entry-product-panel\"><h1 class=\"sr-only\">Choose an experience</h1>\n    <div class=\"entry-products\">\n      <a class=\"entry-product-card\" href=\"/copilot?product=0.4.0\" aria-label=\"Open Vision, version 0.4.0\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7.2\"/><circle cx=\"12\" cy=\"12\" r=\"3.1\"/><path d=\"M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2\"/></svg></span>\n        <span><span class=\"entry-product-name\">Vision</span><span class=\"entry-product-meta\">0.4.0</span></span>\n        <span class=\"entry-product-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n      </a>\n      <div class=\"entry-product-card is-disabled\" role=\"img\" aria-disabled=\"true\" aria-label=\"Hardware, under development\">\n        <span class=\"entry-product-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7.5\" y=\"7.5\" width=\"9\" height=\"9\" rx=\"1.5\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/></svg></span>\n        <span><span class=\"entry-product-name\">Hardware</span><span class=\"entry-product-meta\">Under development</span></span>\n            </div>\n      <div class=\"entry-support-links\" aria-label=\"Support AskMoina\">\n        <a class=\"entry-quick-link entry-donation-link\" href=\"/donate\" aria-label=\"Donations. Illustrative demo total ₹1.09L, not verified donations\">\n          <span>Donations</span><span class=\"entry-quick-link-amount\" data-donation-counter aria-live=\"off\">₹1.09L</span>\n        </a>\n        <a class=\"entry-quick-link\" href=\"/help\"><span>Support</span><svg class=\"entry-quick-link-icon\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><rect x=\"1.5\" y=\"3\" width=\"13\" height=\"10\" rx=\"1.7\"/><path d=\"m2.2 4 5.8 4.5L13.8 4\"/></svg></a>\n      </div>\n    </div>\n  </div>\n</section>";const ENTRY_LAUNCH_OVERLAY = "<section class=\"auth-launch-screen\" role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></section>";
 
 const ENTRY_FOOTER = "<footer class=\"entry-footer\" aria-label=\"Copyright\">Copyright &copy; 2026 askMoina. All rights reserved.</footer>";
@@ -509,7 +509,7 @@ function isLikelyRankedTableSearchQuery(query: string): boolean {
  */
 const groundedSearchFlights = new SingleFlight<string>();
 
-/** Share concurrent identical lookups only; never cache completed or potentially stale results. */
+/** Share concurrent identical lookups only; do not cache completed/current results. */
 async function performGroundedWebSearch(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
   const normalizedQuery = String(query || "").replace(/\s+/g, " ").trim();
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
@@ -671,7 +671,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   });
   const modelSpecificContext = Boolean(deviceContext.model_id || deviceContext.variant || deviceContext.part_number);
   const noVisibleExactMatch = modelSpecificContext && !rawSources.some((web) => {
-    const assessment = assessGroundedSource(String(web.title || web.uri), web.uri || "", deviceContext);
+    const assessment = assessGroundedSource(String(web.title || web.uri), web.uri, deviceContext);
     return assessment.modelTextMatch === "visible_in_title_or_url";
   });
   const officialExactModelMatch = modelSpecificContext && rawSources.some((web) => {
@@ -692,8 +692,6 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   }));
   if (!sources.length) return "The web lookup returned no verifiable source URLs after a retry. State plainly that the result could not be verified; do not claim current facts or a completed search result.";
   if (modelSpecificContext && (noVisibleExactMatch || !officialExactModelMatch)) {
-    // Enforce the model-match rule in code so the assistant cannot give a polished but
-    // mismatched procedure merely by ignoring a text-only caveat.
     return [
       noVisibleExactMatch
         ? "MODEL MATCH NOT ESTABLISHED: no returned source title or HTTPS URL visibly contains every supplied model/variant identifier."
@@ -745,7 +743,6 @@ interface VoiceReservation {
   userObjectName: string;
   globalObjectName: string;
   maxDurationSeconds: number;
-  guestLimited?: boolean;
 }
 
 async function reserveVoiceSession(
@@ -756,45 +753,13 @@ async function reserveVoiceSession(
   return { sessionId: crypto.randomUUID(), userObjectName: "unlimited-app-quota-disabled", globalObjectName: "unlimited-app-quota-disabled", maxDurationSeconds: 0 };
 }
 
-/** Guest trials are bounded separately; paid/member sessions keep their existing policy. */
-async function reserveGuestVoiceSession(request: Request, env: Env): Promise<VoiceReservation | null> {
-  const identity = await deriveGuestIdentity(request, env);
-  if (!identity) return null;
-  const sessionId = crypto.randomUUID();
-  const result = await callGuard(env, identity.budgetObjectName, "/session/acquire", {
-    sessionId,
-    now: Date.now(),
-    maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS,
-    maxDailySeconds: GUEST_DEMO_DAILY_SECONDS,
-    maxConcurrentSessions: 1,
-    enforceRateLimit: true,
-    enforceDailyLimit: true
-  });
-  if (!result.ok || result.allowed !== true || !result.reservedSeconds) return null;
-  return {
-    sessionId,
-    userObjectName: identity.budgetObjectName,
-    globalObjectName: identity.budgetObjectName,
-    maxDurationSeconds: Math.min(GUEST_DEMO_MAX_SESSION_SECONDS, result.reservedSeconds),
-    guestLimited: true
-  };
+async function releaseVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<void> {
+  // App-level daily and concurrency reservations are deliberately disabled.
 }
 
-async function releaseVoiceSession(env: Env, reservation: VoiceReservation): Promise<void> {
-  if (!reservation.guestLimited) return;
-  await callGuard(env, reservation.userObjectName, "/session/release", {
-    sessionId: reservation.sessionId,
-    now: Date.now()
-  });
-}
-
-async function heartbeatVoiceSession(env: Env, reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
-  if (!reservation.guestLimited) return { leaseLost: false };
-  const result = await callGuard(env, reservation.userObjectName, "/session/heartbeat", {
-    sessionId: reservation.sessionId,
-    now: Date.now()
-  });
-  return { leaseLost: !result.ok || result.allowed !== true };
+async function heartbeatVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
+  // Do not stale-lock a good conversation on an app-owned heartbeat lease.
+  return { leaseLost: false };
 }
 
 
@@ -855,27 +820,8 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
   const accountId = await getAuthenticatedUserId(request, env);
   const admin = await isAdmin(request, env);
-  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or start the limited demo to use AskMoina.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
+  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
   if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
-  if (isGuestUserId(accountId)) {
-    const identity = await deriveGuestIdentity(request, env);
-    if (!identity) return json({ available: false, reason: "guest_demo_unavailable", message: "The demo is unavailable on this connection. Please sign in.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 }, 503);
-    const limits = await readGuardStatus(env, identity.budgetObjectName, {
-      now: Date.now(),
-      maxDailySeconds: GUEST_DEMO_DAILY_SECONDS,
-      maxConcurrentSessions: 1,
-      enforceRateLimit: false,
-      enforceDailyLimit: true
-    });
-    if (!limits) return json({ available: false, reason: "temporarily_unavailable", message: "The demo limit could not be checked safely. Please try again.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 }, 503);
-    if (limits.dailyLimitReached || limits.dailySecondsRemaining <= 0) {
-      return json({ available: false, reason: "guest_demo_used", message: "You've used today's demo time. Sign in for your own AskMoina sessions.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: 0 });
-    }
-    if (limits.concurrencyLimited) {
-      return json({ available: false, reason: "guest_demo_active", message: "A demo is already active from this network. Finish it before starting another.", maxSessionSeconds: GUEST_DEMO_MAX_SESSION_SECONDS, dailyRemainingSeconds: limits.dailySecondsRemaining });
-    }
-    return json({ available: true, reason: "guest_demo", message: "Limited demo: up to two minutes per session and three minutes per network each day. Personal memory is disabled.", maxSessionSeconds: Math.min(GUEST_DEMO_MAX_SESSION_SECONDS, limits.dailySecondsRemaining), dailyRemainingSeconds: limits.dailySecondsRemaining, guestDemo: true, memoryPersonalization: false });
-  }
   return json({ available: true, reason: "available", message: "Voice is ready. AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
@@ -908,15 +854,8 @@ async function handleVoiceSocket(
 
   const sessionUserId = await getAuthenticatedUserId(request, env);
   if (!sessionUserId && !await isAdmin(request, env)) return json({ error: "authentication_required" }, 401);
-  const reservation = isGuestUserId(sessionUserId)
-    ? await reserveGuestVoiceSession(request, env)
-    : await reserveVoiceSession(request, env);
-  if (!reservation) return json({
-    error: isGuestUserId(sessionUserId) ? "guest_demo_limit_reached" : "voice_capacity_or_daily_limit_reached",
-    message: isGuestUserId(sessionUserId)
-      ? "The demo has no time left or another demo is active from this network. Sign in for full access."
-      : "Voice is temporarily unavailable. Please try again."
-  }, 429);
+  const reservation = await reserveVoiceSession(request, env);
+  if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
 
   const analyticsStartedAt = Date.now();
   let analyticsFinished = false;
@@ -1009,7 +948,6 @@ async function handleVoiceSocket(
   let lastClientMessageAt = Date.now();
   let guardHeartbeatInFlight = false;
   let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
-  let guestSessionTimer: ReturnType<typeof setTimeout> | null = null;
   const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
   const MAX_CLIENT_FRAME_CHARS = 16_384;
@@ -1026,10 +964,6 @@ async function handleVoiceSocket(
     if (clientIdleWatchdog !== null) {
       clearInterval(clientIdleWatchdog);
       clientIdleWatchdog = null;
-    }
-    if (guestSessionTimer !== null) {
-      clearTimeout(guestSessionTimer);
-      guestSessionTimer = null;
     }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
@@ -1092,10 +1026,6 @@ async function handleVoiceSocket(
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
-  if (reservation.guestLimited && reservation.maxDurationSeconds > 0) {
-    guestSessionTimer = setTimeout(() => closeBoth(1000, "Session time limit reached"), reservation.maxDurationSeconds * 1_000);
-  }
-
   // A silent/disconnected browser must not leave a relay and its reservation hanging.
   // Normal live sessions continuously send microphone frames, even during pauses in speech.
   clientIdleWatchdog = setInterval(() => {
@@ -1136,12 +1066,7 @@ async function handleVoiceSocket(
       try {
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
         const allowedKeys = ["setup", "memory_context", "copilot_mode"];
-        const requestedMemoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
-        const memoryContext = isGuestUserId(sessionUserId) ? "" : requestedMemoryContext;
-        if (isGuestUserId(sessionUserId) && message?.copilot_mode !== true) {
-          closeBoth(1008, "Guest demo is Co-Pilot only");
-          return;
-        }
+        const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
         if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string") || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
           closeBoth(1008, "First message must be a small setup object");
           return;
@@ -1151,13 +1076,10 @@ const baseInstruction = pronunciationGuidance
   ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
   : SYSTEM_INSTRUCTION;
 const enableCopilotForSetup = message.copilot_mode === true;
-const guestDemoInstruction = isGuestUserId(sessionUserId)
-  ? "\n\nGUEST DEMO BOUNDARY: This is a short, unpersonalized demo. Do not request, infer, claim to remember, or rely on personal saved memories. Help within the session and explain when the demo ends."
-  : "";
 const systemInstruction = buildPersonalizedSystemInstruction(
-  (enableCopilotForSetup
+  enableCopilotForSetup
     ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-    : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`) + guestDemoInstruction,
+    : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
   memoryContext,
 );
         copilotMode = enableCopilotForSetup;
@@ -1583,7 +1505,6 @@ export default {
 
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
       const accountId = await getAuthenticatedUserId(request, env);
-      if (isGuestUserId(accountId)) return Response.redirect(new URL("/copilot?demo=1", request.url).toString(), 302);
       const adminAccess = accountId ? false : await isAdmin(request, env);
       let html = COPILOT_HTML
         .replace('<script src="/transcript-merge.js" defer></script>', "")
@@ -1633,12 +1554,7 @@ export default {
       }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
-      let body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
-      if (!isScript && !isStyle && isGuestUserId(accountId)) {
-        body = body.replace("<body>", '<body data-guest-demo="true"><div class="guest-demo-banner" id="guestDemoBanner" role="status" aria-live="polite"><span id="guestDemoTimer">DEMO · 02:00 · MEMORY OFF</span><a href="/login?exit-demo=1">Sign up</a></div>');
-        // A time-limited demo must not advertise members-only Memory Vault controls.
-        body = body.replace(/<a[^>]*id="vaultButton"[^>]*>[\s\S]*?<\/a>/i, "");
-      }
+      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
       const contentType = isScript ? "text/javascript; charset=utf-8" :
         isStyle ? "text/css; charset=utf-8" : "text/html; charset=utf-8";
       const headers = new Headers({
@@ -1687,13 +1603,6 @@ export default {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = await isAdmin(request, env);
       authenticatedForMenu = Boolean(accountId || adminAccess);
-      if (isGuestUserId(accountId) && ![
-        "/", "/index.html", "/copilot", "/copilot.html", "/copilot.js", "/copilot.css",
-        "/transcript-merge.js", "/session-ui.js", "/api/health", "/api/voice/status", "/api/voice/socket"
-      ].includes(url.pathname)) {
-        if (url.pathname.startsWith("/api/")) return json({ error: "guest_demo_limited", message: "This feature needs a full AskMoina account. Sign up to use personal memories and account features." }, 403);
-        return Response.redirect(new URL("/copilot?demo=1", request.url).toString(), 302);
-      }
       if (!accountId && !adminAccess) {
         if (url.pathname.startsWith("/api/")) return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
         if (request.method === "GET" || request.method === "HEAD") return Response.redirect(new URL("/login", request.url).toString(), 302);
