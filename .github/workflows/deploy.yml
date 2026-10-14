@@ -1,0 +1,82 @@
+name: Deploy AskMoina Voice
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "test/**"
+      - "package.json"
+      - "wrangler.jsonc"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-voice-production
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check Worker
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Confirm Cloudflare deployment credential is configured
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::The CLOUDFLARE_API_TOKEN repository Actions secret is missing."
+            exit 1
+          fi
+
+      - name: Deploy Worker and static assets
+        run: npx wrangler deploy --config wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Verify deployed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="https://askmoina-voice.thenewtongs.workers.dev"
+          health=""
+          for attempt in $(seq 1 12); do
+            health="$(curl --fail --silent --show-error "$base_url/api/health" 2>/dev/null || true)"
+            if printf '%s' "$health" | grep -Fq '"version":"0.4.17"'; then
+              echo "Production health reports version 0.4.17."
+              break
+            fi
+            sleep 5
+          done
+          if ! printf '%s' "$health" | grep -Fq '"version":"0.4.17"'; then
+            echo "::error::Production health did not confirm version 0.4.17."
+            printf '%s\n' "$health"
+            exit 1
+          fi
+          js="$(curl --fail --silent --show-error "$base_url/copilot.js?v=0.4.17")"
+          printf '%s' "$js" | grep -Fq 'responseCardRestoreButton.parentElement !== document.body' || {
+            echo "::error::The deployed Co-Pilot script is missing the minimize/restore fix."
+            exit 1
+          }
+          echo "Production Co-Pilot script contains the restore-control fix."
