@@ -765,3 +765,18 @@ describe("long-running Live session continuity", () => {
     expect(html).not.toContain('class="privacy-hint sr-only"');
   });
 });
+
+
+describe("Apple-style active turn contract", () => {
+  it("keeps processing state contextual, continues Live progress, and requires answer cards", () => {
+    expect(script).toContain("No status surface while the user speaks.");
+    expect(script).toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
+    expect(script).toContain("Answer card-tu ready kori asu.");
+    expect(script).toContain("Names aru rankings match kori asu against sources.");
+    expect(workerSource).toContain('behavior: "NON_BLOCKING"');
+    expect(workerSource).toContain("function sendLiveSearchProgressCue(cueNumber: number)");
+    expect(workerSource).toContain("liveSearchProgressCueCount < 4");
+    expect(workerSource).toContain("A card is mandatory for every informative answer");
+    expect(workerSource).toContain("M42 — CONTINUOUS VOICE DURING BACKGROUND WORK");
+  });
+});
