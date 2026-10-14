@@ -1101,6 +1101,8 @@ async function handleVoiceSocket(
   let lastAssistantTurnCompletedAt = 0;
   let latestUserRequestNeedsGrounding = false;
   let forcedRankedLookupActive = false;
+  // Ranked lookup can outlast the progress sentence. Never send the final prompt into an active Live turn.
+  let pendingForcedRankedAnswerContinuation: string | null = null;
   let targetSelectionCount = 0;
   let lastVideoFrameAt = 0;
   let closed = false;
@@ -1124,6 +1126,7 @@ async function handleVoiceSocket(
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
     closed = true;
+    pendingForcedRankedAnswerContinuation = null;
     if (clientIdleWatchdog !== null) {
       clearInterval(clientIdleWatchdog);
       clientIdleWatchdog = null;
@@ -1345,7 +1348,8 @@ async function handleVoiceSocket(
         console.warn("[AskMoina] Mandatory ranked-list grounding failed", error instanceof Error ? error.message.slice(0, 240) : "unknown error");
       } finally {
         pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
-        if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
+        // liveSearchProgressCuePending tracks the active assistant turn, not the lookup.
+        // Keep it set until that progress sentence reaches turnComplete.
       }
 
       const builtCard = buildGroundedListCard(query, result, requestedCount);
@@ -1385,12 +1389,20 @@ async function handleVoiceSocket(
       const answerInstruction = fullTableVerified
         ? "A complete, source-verified top-" + requestedCount + " answer sheet is already visible on screen. Do not call any more tools and do not create another card. Give the user a concise, natural spoken summary in the established Assamese-English mix, explain what the ranking measures, and mention that the full row-by-row list and source links are on the card. Use only the grounded result below.\n\n"
         : "A lookup-status answer card is visible. The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Do not invent or fill missing entries from memory. Tell the user honestly what was verified and that the complete ranking could not be confirmed. Do not call any more tools or create another card.\n\n";
-      sendUpstreamMessage({
-        clientContent: {
-          turns: [{ role: "user", parts: [{ text: answerInstruction + "Grounded search result:\n" + result.slice(0, 18_000) }] }],
-          turnComplete: true,
-        },
-      });
+      const continuationText = answerInstruction + "Grounded search result:\n" + result.slice(0, 18_000);
+      if (liveSearchProgressCuePending) {
+        // Sending clientContent during an active Live response can collide with or
+        // discard the final turn. Wait for the progress sentence's turnComplete.
+        pendingForcedRankedAnswerContinuation = continuationText;
+        console.info("[AskMoina] Queued mandatory ranked-list spoken continuation behind the active progress turn");
+      } else {
+        sendUpstreamMessage({
+          clientContent: {
+            turns: [{ role: "user", parts: [{ text: continuationText }] }],
+            turnComplete: true,
+          },
+        });
+      }
       forcedRankedLookupActive = false;
     })().catch((error) => {
       forcedRankedLookupActive = false;
@@ -2045,6 +2057,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         liveSearchProgressCueCount += 1;
         liveSearchProgressCuePending = true;
         sendLiveSearchProgressCue(liveSearchProgressCueCount);
+      } else if (pendingForcedRankedAnswerContinuation !== null) {
+        const continuationText = pendingForcedRankedAnswerContinuation;
+        pendingForcedRankedAnswerContinuation = null;
+        sendUpstreamMessage({
+          clientContent: {
+            turns: [{ role: "user", parts: [{ text: continuationText }] }],
+            turnComplete: true,
+          },
+        });
+        console.info("[AskMoina] Resumed queued ranked-list spoken continuation after progress turn completed");
       }
     }
   });
