@@ -45,12 +45,17 @@ try {
     const nativeSend = WebSocket.prototype.send;
     const observedSockets = [];
     window.__askmoinaContinuitySockets = observedSockets;
+    window.__askmoinaPauseContinuityAudio = false;
     WebSocket.prototype.send = function (data) {
       try {
-        if (new URL(this.url).pathname === "/api/voice/socket" && !observedSockets.includes(this)) {
-          observedSockets.push(this);
+        if (new URL(this.url).pathname === "/api/voice/socket") {
+          if (!observedSockets.includes(this)) observedSockets.push(this);
+          if (window.__askmoinaPauseContinuityAudio && typeof data === "string") {
+            const payload = JSON.parse(data);
+            if (payload?.realtime_input?.audio) return;
+          }
         }
-      } catch { /* Ignore non-voice sockets. */ }
+      } catch { /* Ignore unrelated or non-JSON socket frames. */ }
       return nativeSend.call(this, data);
     };
   });
@@ -121,6 +126,8 @@ try {
     const before = [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
       .map((node) => node.textContent || "").join(" ").trim();
     if (!ws) return { sent: false, reason: "no-open-voice-socket" };
+    window.__askmoinaPauseContinuityAudio = true;
+    ws.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
     ws.send(JSON.stringify({
       text_input: "Continuity verification: please respond aloud in one short sentence confirming our live camera conversation is still active. Do not call tools."
     }));
@@ -165,7 +172,7 @@ try {
   assert.deepEqual(closedSockets, [], "browser-facing Live socket must not close during the continuity window");
   assert.ok(diagnostics.timeline.some((item) => item.state === "live"),
     "the browser must have entered the live state");
-  assert.ok(diagnostics.timeline.every((item) => item.state === "live" || item.state === "connecting"),
+  assert.ok(diagnostics.timeline.every((item) => ["live", "connecting"].includes(item.state)),
     "the session must not fall back to ready/error during continuity");
   assert.equal(diagnostics.noticeVisible, false,
     "no stale reconnect overlay should remain after a stable long-running session");
