@@ -775,7 +775,7 @@ describe("Apple-style active turn contract", () => {
     expect(script).toContain("Names aru rankings match kori asu against sources.");
     expect(workerSource).toContain('behavior: "NON_BLOCKING"');
     expect(workerSource).toContain('function sendLiveSearchProgressCue(cueNumber: number, requestContext = "")');
-    expect(workerSource).toContain("liveSearchProgressCueCount < 4");
+    expect(workerSource).toContain("liveSearchProgressCueCount < 8");
     expect(workerSource).toContain("A card is mandatory for every informative answer");
     expect(workerSource).toContain("M42 — CONTINUOUS VOICE DURING BACKGROUND WORK");
   });
