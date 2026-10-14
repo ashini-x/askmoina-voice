@@ -1078,6 +1078,7 @@ async function handleVoiceSocket(
   let resolveResumeSetup: ((accepted: boolean) => void) | null = null;
   let resumeSetupTimeout: ReturnType<typeof setTimeout> | null = null;
   let copilotMode = false;
+  let completeRankedFallbackCardSentAt = 0;
   let groundedSearchCount = 0;
   let pendingGroundedSearches = 0;
   let liveSearchProgressCueCount = 0;
@@ -1742,12 +1743,21 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                   });
                 }
               } else {
-                console.warn("[AskMoina] Response card contract rejected", JSON.stringify({ reason: validation.reason, mode: copilotMode ? "copilot" : "voice" }));
+                const completeRankedFallbackRecentlySent =
+                  copilotMode && completeRankedFallbackCardSentAt > 0 &&
+                  Date.now() - completeRankedFallbackCardSentAt < 45_000;
+                if (completeRankedFallbackRecentlySent) {
+                  console.info("[AskMoina] Skipped redundant response-card replacement after complete grounded ranked list");
+                } else {
+                  console.warn("[AskMoina] Response card contract rejected", JSON.stringify({ reason: validation.reason, mode: copilotMode ? "copilot" : "voice" }));
+                }
                 if (typeof call.id === "string" && call.id) {
                   responses.push({
                     id: call.id,
                     name: "display_response_card",
-                    response: { result: `The response-card payload was rejected because of this schema issue: ${validation.reason}. Retry display_response_card once with the same complete supported details and correct only that issue. For a requested leaderboard, preserve all supported rows up to ten and omit optional source links if they cause a validation problem; never substitute speech-only names for the visible list. Do not claim the card is visible until the client acknowledges it.` },
+                    response: { result: completeRankedFallbackRecentlySent
+                      ? "The complete source-backed ranked card is already visible, with all requested rows verified. Your replacement payload is unnecessary; do not call display_response_card again and do not repeat the list on screen. Continue speaking now: briefly summarize the top entries and the takeaway from the full list."
+                      : `The response-card payload was rejected because of this schema issue: ${validation.reason}. Retry display_response_card once with the same complete supported details and correct only that issue. For a requested leaderboard, preserve all supported rows up to ten and omit optional source links if they cause a validation problem; never substitute speech-only names for the visible list. Do not claim the card is visible until the client acknowledges it.` },
                     ...(searchCallsPresent ? { scheduling: "WHEN_IDLE" as const } : {}),
                   });
                 }
@@ -1799,6 +1809,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                     const complete = String(validation.card.summary || "").startsWith("Complete ranked list") &&
                       verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0;
                     completeRankedFallbackCardSent = complete;
+                    if (complete) completeRankedFallbackCardSentAt = Date.now();
                     console.info("[AskMoina] Grounded ranked-list fallback card ready", JSON.stringify({
                       requestedCount: validation.card.details.length,
                       verifiedRows: verifiedRowCount,
