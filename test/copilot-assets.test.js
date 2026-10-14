@@ -658,7 +658,7 @@ describe("RC11 bounded search latency", () => {
 describe("RC7 zero-gap search-status feedback", () => {
   it("shows early status only after sustained microphone speech, not raw energy or brief noise", () => {
     expect(script).toContain('if (!micSpeechGateActive) {');
-    expect(script).toContain('showLiveSearchAcknowledgement("", false);');
+    expect(script).toContain("showLiveSearchAcknowledgement(context, searchIntent);");
     expect(script).toContain("micNoiseCalibrationUntil = now + 500");
     expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
     expect(script).toContain("now - micSpeechCandidateAt >= 120");
@@ -705,7 +705,7 @@ describe("Voice-turn status visibility", () => {
     expect(script).toContain("if (userSpeaking) {");
     expect(script).toContain("liveSearchStatus.hidden = true;");
     expect(script).toContain("if (__moinaLastUserSpeech) {");
-    expect(script).toContain('showLiveSearchAcknowledgement("", false);');
+    expect(script).toContain("showLiveSearchAcknowledgement(context, searchIntent);");
     expect(script).toContain('title: "Thinking through your request"');
     expect(script).toContain("Answer card-tu ready kori asu.");
     expect(script).toContain("No status surface while the user speaks.");
