@@ -43,12 +43,12 @@ export function isPrebuiltLiveVoiceName(value: string | undefined): value is Pre
   return typeof value === "string" && PREBUILT_LIVE_VOICES.some((voice) => voice.name === value);
 }
 
-/** Build audio-only generation settings. A prompted voice ID remains configured only for normal sessions until the user selects a prebuilt voice. */
+/** Build live speech output with text transcription enabled alongside audio. */
 export function buildVoiceGenerationConfig(configuredVoiceName?: string, configuredVoiceId?: string) {
   const voiceId = configuredVoiceId?.trim();
   if (voiceId) {
     return {
-      responseModalities: ["AUDIO"],
+      responseModalities: ["AUDIO", "TEXT"],
       speechConfig: {
         voiceConfig: {
           voice: voiceId,
@@ -59,7 +59,7 @@ export function buildVoiceGenerationConfig(configuredVoiceName?: string, configu
 
   const voiceName = configuredVoiceName?.trim() || DEFAULT_LIVE_VOICE_NAME;
   return {
-    responseModalities: ["AUDIO"],
+    responseModalities: ["AUDIO", "TEXT"],
     speechConfig: {
       voiceConfig: {
         prebuiltVoiceConfig: { voiceName },
