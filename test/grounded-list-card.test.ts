@@ -48,7 +48,7 @@ describe("grounded ranked-list fallback cards", () => {
       "",
       "Sources:",
       "- First source: https://example.com/first"
-    ].join("\\n");
+    ].join("\n");
     const retry = [
       "5. Retry player five — Team E — 600 runs",
       "6. Player Six — Team F — 590 runs",
@@ -59,7 +59,7 @@ describe("grounded ranked-list fallback cards", () => {
       "",
       "Sources:",
       "- Retry source: https://example.com/retry"
-    ].join("\\n");
+    ].join("\n");
     const merged = mergeGroundedRankedListAttempts(first, retry);
     const rows = extractGroundedRankedRows(merged, 10);
     expect(rows).toHaveLength(10);
