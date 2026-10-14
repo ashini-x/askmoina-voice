@@ -93,7 +93,7 @@ jobs:
           let last = { error: "Smoke test has not started." };
           while (Date.now() < deadline) {
             try {
-              const healthResponse = await fetch(base + "/health", {
+              const healthResponse = await fetch(base + "/api/health", {
                 cache: "no-store",
                 headers: { "Cache-Control": "no-cache" },
                 signal: AbortSignal.timeout(15000)
