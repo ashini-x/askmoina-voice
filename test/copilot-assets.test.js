@@ -603,6 +603,50 @@ describe("RC6 grounded list visibility regressions", () => {
   });
 });
 
+describe("RC11 network recovery", () => {
+  it("waits for the browser's offline/online transitions and requires an explicit user reconnect", () => {
+    expect(script).toContain('window.addEventListener("offline"');
+    expect(script).toContain('window.addEventListener("online"');
+    expect(script).toContain('navigator.onLine === false');
+    expect(script).toContain("will not auto-open your camera or microphone");
+    expect(script).toContain("Tap Reconnect now to resume the live session.");
+    expect(script).toContain("still offline");
+  });
+
+  it("does not add any guest/demo path to the signed-in Co-Pilot or auth screen", () => {
+    expect(script).not.toMatch(/guestDemo|isGuestDemo|guest-demo/i);
+    expect(workerSource).not.toContain("/api/auth/guest/start");
+    expect(workerSource).not.toContain("reserveGuestVoiceSession");
+    expect(authScript).not.toContain("guestDemoStart");
+    expect(siteChromeCss).not.toContain("entry-demo-action");
+  });
+});
+
+describe("RC11 bounded search latency", () => {
+  it("starts the wall-clock budget before Google authentication and bounds each retrieval attempt by the remaining budget", () => {
+    const searchStart = workerSource.indexOf("const searchStartedAt = Date.now();", workerSource.indexOf("performGroundedWebSearchOnce"));
+    const budgetStart = workerSource.indexOf("const groundingBudgetStartedAt = searchStartedAt;", searchStart);
+    const authentication = workerSource.indexOf("const accessToken = await getGoogleAccessToken(env);", searchStart);
+    const remainingBudget = workerSource.indexOf("const remainingBudget = searchBudgetMs - elapsedGroundingMs;", searchStart);
+    expect(searchStart).toBeGreaterThan(-1);
+    expect(budgetStart).toBeGreaterThan(searchStart);
+    expect(authentication).toBeGreaterThan(budgetStart);
+    expect(remainingBudget).toBeGreaterThan(authentication);
+    expect(workerSource).toContain("const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);");
+    expect(workerSource).toContain("const attemptTimeoutMs = Math.min(searchTimeoutMs, remainingBudget);");
+    expect(workerSource).toContain("Grounded search exceeded its");
+    expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("waitForGroundedRetry(delayMs: number, budgetStartedAt: number, budgetMs: number)");
+    expect(workerSource).toContain("budgetMs - (Date.now() - budgetStartedAt) <= delayMs + 500");
+  });
+
+  it("coalesces simultaneous duplicate grounded lookups but does not cache completed results", () => {
+    expect(workerSource).toContain("const groundedSearchFlights = new SingleFlight<string>();");
+    expect(workerSource).toContain("groundedSearchFlights.run(flightKey");
+    expect(workerSource).toContain("do not cache completed/current results");
+  });
+});
+
 describe("RC7 zero-gap search-status feedback", () => {
   it("does not show the search-status bar from raw microphone energy or brief noise", () => {
     expect(script).not.toContain('showLiveSearchAcknowledgement("", false)');

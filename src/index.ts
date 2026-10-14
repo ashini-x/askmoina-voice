@@ -13,7 +13,8 @@ import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
-import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
+import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
+import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount } from "./sessions/grounded-list-card";
 
@@ -486,6 +487,13 @@ function hasVertexCredentials(env: Env): boolean {
   return Boolean(env.GCP_PROJECT_ID?.trim() && (hasJson || hasSplitSecrets));
 }
 
+/** Wait before retrying only when enough wall-clock budget remains for another attempt. */
+async function waitForGroundedRetry(delayMs: number, budgetStartedAt: number, budgetMs: number): Promise<boolean> {
+  if (budgetMs - (Date.now() - budgetStartedAt) <= delayMs + 500) return false;
+  await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+  return budgetMs - (Date.now() - budgetStartedAt) > 500;
+}
+
 /**
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
@@ -506,24 +514,41 @@ function isLikelyRankedTableSearchQuery(query: string): boolean {
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
+const groundedSearchFlights = new SingleFlight<string>();
+
+/** Share concurrent identical lookups only; do not cache completed/current results. */
 async function performGroundedWebSearch(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
+  const normalizedQuery = String(query || "").replace(/\s+/g, " ").trim();
+  const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
+  const flightKey = await sha256(JSON.stringify({ query: normalizedQuery, deviceContext, isCopilotSearch }));
+  return groundedSearchFlights.run(flightKey, () =>
+    performGroundedWebSearchOnce(env, normalizedQuery, deviceContext, isCopilotSearch));
+}
+
+async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
   // Gemini 3.8 Flash supports Google Search grounding; use the global endpoint
   // for this separate lookup instead of the regional endpoint selected by Live voice.
   const location = "global";
   const host = "aiplatform.googleapis.com";
   const model = "gemini-3.8-flash";
   const searchStartedAt = Date.now();
-  const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
-  const accessToken = await getGoogleAccessToken(env);
-  // Credential acquisition cannot silently shorten the time available for actual search.
-  const groundingBudgetStartedAt = Date.now();
-  // Full ranked tables need more retrieval time than ordinary current-fact lookups.
-  // Only explicit requests for at least eight entries receive this longer bounded budget.
+  // This is a true end-to-end budget: authentication/credential refresh counts against
+  // the same clock as the Google Search request and bounded retry.
+  const groundingBudgetStartedAt = searchStartedAt;
+  // Full ranked tables need more retrieval time than ordinary current-fact lookups,
+  // but their larger allowance is still a hard wall-clock cap rather than a per-attempt
+  // timeout that can be added on top of authentication latency.
   const requestedListCountForBudget = getRequestedRankedListCount(query);
   const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);
   const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
   const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
   const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
+  const accessToken = await getGoogleAccessToken(env);
+  const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);
+  if (remainingAfterAuthentication <= 0) {
+    throw new Error(`Grounded search exceeded its ${searchBudgetMs}ms end-to-end latency budget during Google authentication.`);
+  }
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
   const groundingPrompt = [
       `Search the public web for: ${query}`,
@@ -581,7 +606,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           console.warn("[AskMoina] Grounded search provider returned a retryable response", JSON.stringify({
             model, location, attempt, status: response.status, retrying: true
           }));
-          await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+          if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
           continue;
         }
         throw failure;
@@ -595,7 +620,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           console.warn("[AskMoina] Grounded ranked list is incomplete; retrying for requested rows", JSON.stringify({
             requestedCount: requestedListCount, recoveredRows: rankedRows.length, attempt, retrying: true
           }));
-          await new Promise<void>((resolve) => setTimeout(resolve, 250));
+          if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
           continue;
         }
       }
@@ -607,7 +632,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
         console.warn("[AskMoina] Grounded search returned no source URLs; retrying with a more specific query", JSON.stringify({
           model, location, attempt, retrying: true, reason: "no_grounding_sources"
         }));
-        await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+        if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
         continue;
       }
       lastFailure = null;
@@ -629,7 +654,7 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
           reason: timedOut ? "timeout" : "network",
           retrying: true
         }));
-        await new Promise<void>((resolve) => setTimeout(resolve, 650 * attempt));
+        if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
         continue;
       }
       if (timedOut) {
@@ -640,23 +665,34 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
       clearTimeout(timeout);
     }
   }
+  if (!candidate && Date.now() - groundingBudgetStartedAt >= searchBudgetMs) {
+    throw new Error(`Grounded search exceeded its ${searchBudgetMs}ms end-to-end latency budget across authentication and lookup.`);
+  }
   if (!candidate && lastFailure) {
     throw lastFailure instanceof Error ? lastFailure : new Error("Grounded search failed without a provider response.");
   }
   const answer = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
   const rawSources = (candidate?.groundingMetadata?.groundingChunks || [])
     .map((chunk) => chunk.web)
-    .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri && (web.uri.startsWith("https://") || web.uri.startsWith("http://"))))
+    .filter((web): web is { uri: string; title?: string } => Boolean(safeGroundedSourceUrl(web?.uri)))
+    .map((web) => ({ ...web, uri: safeGroundedSourceUrl(web.uri)! }))
     .slice(0, 8);
   const sources = rawSources.map((web) => {
     const title = String(web.title || web.uri).slice(0, 180);
-    const assessment = assessGroundedSource(title, web.uri || "", deviceContext);
-    return `- ${title}: ${web.uri}\n  Match check: ${assessment.note}.`;
+    const assessment = assessGroundedSource(title, web.uri, deviceContext);
+    const hostEvidence = assessment.officialManufacturerHostMatch
+      ? "Known manufacturer-domain match; page content and exact model applicability still require inspection"
+      : "Official manufacturer-domain match not established by the allowlist";
+    return `- ${title}: ${web.uri}\n  Model check: ${assessment.note}.\n  Host check: ${hostEvidence}.`;
   });
   const modelSpecificContext = Boolean(deviceContext.model_id || deviceContext.variant || deviceContext.part_number);
   const noVisibleExactMatch = modelSpecificContext && !rawSources.some((web) => {
-    const assessment = assessGroundedSource(String(web.title || web.uri), web.uri || "", deviceContext);
+    const assessment = assessGroundedSource(String(web.title || web.uri), web.uri, deviceContext);
     return assessment.modelTextMatch === "visible_in_title_or_url";
+  });
+  const officialExactModelMatch = modelSpecificContext && rawSources.some((web) => {
+    const assessment = assessGroundedSource(String(web.title || web.uri), web.uri, deviceContext);
+    return assessment.modelTextMatch === "visible_in_title_or_url" && assessment.officialManufacturerHostMatch;
   });
   console.info("[AskMoina] Grounded search finished", JSON.stringify({
     model,
@@ -671,10 +707,16 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
     totalBudgetMs: searchBudgetMs,
   }));
   if (!sources.length) return "The web lookup returned no verifiable source URLs after a retry. State plainly that the result could not be verified; do not claim current facts or a completed search result.";
-  const matchCaveat = noVisibleExactMatch
-    ? "MODEL MATCH NOT ESTABLISHED: no returned source title or URL visibly contains every requested model/variant identifier. Do not provide model-specific procedure steps until page content is checked or a matching official source is found."
-    : "";
-  return [answer || "Relevant sources were found.", matchCaveat, `Sources:\n${sources.join("\n")}`].filter(Boolean).join("\n\n").slice(0, 10_500);
+  if (modelSpecificContext && (noVisibleExactMatch || !officialExactModelMatch)) {
+    return [
+      noVisibleExactMatch
+        ? "MODEL MATCH NOT ESTABLISHED: no returned source title or HTTPS URL visibly contains every supplied model/variant identifier."
+        : "OFFICIAL MODEL MATCH NOT ESTABLISHED: no returned HTTPS source both visibly matches every supplied model/variant identifier and belongs to a recognized manufacturer domain.",
+      "Do not follow model-specific repair, wiring, reset, or service steps from these results. Ask for the exact model/revision or a matching official manual first. Only safe, non-device-specific context may be given until applicability is established.",
+      `Candidate sources (not yet verified for this exact model):\n${sources.join("\n\n")}`
+    ].join("\n\n").slice(0, 10_500);
+  }
+  return [answer || "Relevant sources were found.", `Sources:\n${sources.join("\n\n")}`].filter(Boolean).join("\n\n").slice(0, 10_500);
 }
 
 

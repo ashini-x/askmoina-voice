@@ -57,10 +57,29 @@ describe("M30 model-aware grounded expertise", () => {
     expect(invalid.modelTextMatch).toBe("not_established");
   });
 
+  it("requires HTTPS sources and exact official-domain boundaries", async () => {
+    const { safeGroundedSourceUrl, isKnownOfficialManufacturerHost } =
+      await import("../src/grounded-expertise");
+
+    expect(safeGroundedSourceUrl("https://www.samsung.com/support/device")).toBe("https://www.samsung.com/support/device");
+    expect(safeGroundedSourceUrl("http://www.samsung.com/support")).toBeNull();
+    expect(safeGroundedSourceUrl("https://user:pass@samsung.com/support")).toBeNull();
+    expect(safeGroundedSourceUrl("https://localhost/support")).toBeNull();
+    expect(safeGroundedSourceUrl("javascript:alert(1)")).toBeNull();
+
+    expect(isKnownOfficialManufacturerHost("https://support.samsung.com/manual", "Samsung")).toBe(true);
+    expect(isKnownOfficialManufacturerHost("https://samsung.com.evil.example/manual", "Samsung")).toBe(false);
+    expect(isKnownOfficialManufacturerHost("https://example.com/samsung", "Samsung")).toBe(false);
+    expect(isKnownOfficialManufacturerHost("https://support.unknownbrand.example/manual", "UnknownBrand")).toBe(false);
+  });
+
   it("passes explicit context into grounded search and warns when exact model match is unverified", () => {
     expect(workerSource).toContain("device_context: {");
     expect(workerSource).toContain("await performGroundedWebSearch(env, query, deviceContext, copilotMode)");
     expect(workerSource).toContain("MODEL MATCH NOT ESTABLISHED");
+    expect(workerSource).toContain("officialExactModelMatch");
+    expect(workerSource).toContain("safeGroundedSourceUrl(web?.uri)");
+    expect(workerSource).toContain("Candidate sources (not yet verified for this exact model):");
     expect(workerSource).toContain("Prefer the manufacturer's official manual");
     expect(workerSource).toContain("A source or web search is not proof that the camera identified the physical device");
     expect(workerSource).toContain("M30 — MODEL-AWARE GROUNDING:");

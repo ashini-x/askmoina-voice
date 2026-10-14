@@ -857,6 +857,16 @@
   }
 
   function retryConnection(message) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      if (active || starting) stopCopilot(false, null, null, true);
+      automaticReconnectAttempts = 0;
+      setConnectionState("OFFLINE", "error");
+      setStatus("You're offline. Reconnect when your internet is back; AskMoina will not auto-open your camera or microphone.", "warning");
+      showConnectionNotice("You're offline", "Waiting for your network. Tap Reconnect now when you're back online.", "slow");
+      return;
+    }
     if (automaticReconnectAttempts >= 2) {
       automaticReconnectAttempts = 0;
       stopCopilot(false, message || "The connection could not be restored. Check your network and try again.", "error", true);
@@ -3883,6 +3893,11 @@
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {
       if (connectionNoticeAction.disabled) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setStatus("Still offline. Reconnect to the internet, then tap Reconnect now.", "warning");
+        showConnectionNotice("You're still offline", "AskMoina will wait until you choose to reconnect.", "slow");
+        return;
+      }
       connectionNoticeAction.disabled = true;
       automaticReconnectAttempts = 0;
       isAutomaticRetry = false;
@@ -3896,6 +3911,21 @@
       void startCopilot();
     });
   }
+  window.addEventListener("offline", () => {
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (active || starting) stopCopilot(false, null, null, true);
+    automaticReconnectAttempts = 0;
+    setConnectionState("OFFLINE", "error");
+    setStatus("You're offline. Your camera preview stays local. Tap Reconnect now after your connection returns.", "warning");
+    showConnectionNotice("You're offline", "Waiting for your network. AskMoina will not reopen the live session automatically.", "slow");
+  });
+  window.addEventListener("online", () => {
+    if (active || starting) return;
+    setConnectionState("READY", "ready");
+    setStatus("Network restored. Tap Reconnect now when you're ready to resume.", "normal");
+    showConnectionNotice("Network restored", "Your connection is back. Tap Reconnect now to resume the live session.", "slow");
+  });
   toggleButton.addEventListener("click", () => {
     if (active || starting) {
       stopCopilot(true);
