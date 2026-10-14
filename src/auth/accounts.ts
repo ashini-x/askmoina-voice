@@ -17,10 +17,82 @@ function origin(r:Request,e:Env){return (e.WEBAUTHN_ORIGIN||new URL(r.url).origi
 function rp(r:Request,e:Env){return (e.WEBAUTHN_RP_ID||new URL(r.url).hostname).trim().toLowerCase();}
 function sameOrigin(r:Request){const o=r.headers.get("Origin");return !!o&&o===new URL(r.url).origin&&(!r.headers.get("Sec-Fetch-Site")||["same-origin","none"].includes(r.headers.get("Sec-Fetch-Site")||""));}
 async function body(r:Request){try{const x=await r.json() as unknown;return x&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;}catch{return null;}}
-function secretCookie(t:string){return C+"="+t+"; Max-Age="+SESSION_SECONDS+"; Path=/; Secure; HttpOnly; SameSite=Lax";}
-async function session(e:Env,u:string){const t=random(32),now=new Date(),expires=new Date(now.getTime()+SESSION_SECONDS*1000);await e.DB.prepare("DELETE FROM account_sessions WHERE expires_at<?").bind(now.toISOString()).run();await e.DB.prepare("INSERT INTO account_sessions(token_hash,user_id,created_at,expires_at,last_seen_at) VALUES(?,?,?,?,?)").bind(await hash(t),u,now.toISOString(),expires.toISOString(),now.toISOString()).run();return secretCookie(t);}
+function secretCookie(t:string,maxAgeSeconds=SESSION_SECONDS){return C+"="+t+"; Max-Age="+maxAgeSeconds+"; Path=/; Secure; HttpOnly; SameSite=Lax";}
+async function session(e:Env,u:string,maxAgeSeconds=SESSION_SECONDS){const t=random(32),now=new Date(),expires=new Date(now.getTime()+maxAgeSeconds*1000);await e.DB.prepare("DELETE FROM account_sessions WHERE expires_at<?").bind(now.toISOString()).run();await e.DB.prepare("INSERT INTO account_sessions(token_hash,user_id,created_at,expires_at,last_seen_at) VALUES(?,?,?,?,?)").bind(await hash(t),u,now.toISOString(),expires.toISOString(),now.toISOString()).run();return secretCookie(t,maxAgeSeconds);}
 async function find(r:Request,e:Env):Promise<User|null>{const t=cookie(r,C);if(!t||!/^[A-Za-z0-9_-]{43}$/.test(t))return null;try{return await e.DB.prepare("SELECT u.user_id,u.role,u.status FROM account_sessions s JOIN account_users u ON u.user_id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' LIMIT 1").bind(await hash(t),new Date().toISOString()).first<User>();}catch{return null;}}
 export async function getAuthenticatedUserId(r:Request,e:Env){return (await find(r,e))?.user_id||null;}
+export type GuestIdentity = { userId: string; budgetObjectName: string; startRateObjectName: string };
+export function isGuestUserId(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.startsWith("uid_guest_");
+}
+
+/** Derive a per-network pseudonymous demo bucket without persisting the raw IP address. */
+export async function deriveGuestIdentity(r: Request, e: Env): Promise<GuestIdentity | null> {
+  const ip = (r.headers.get("CF-Connecting-IP") || "").trim();
+  if (!ip || ip.length > 100) return null;
+  const secret = (e.AUTH_IDENTITY_PEPPER || e.ADMIN_SESSION_SECRET || e.GCP_PROJECT_ID || "").trim();
+  if (!secret) return null;
+  const digest = (await hash("askmoina-guest-demo-v1|" + secret + "|" + ip)).slice(0, 32);
+  return {
+    userId: "uid_guest_" + digest,
+    budgetObjectName: "askmoina-guest-" + digest,
+    startRateObjectName: "askmoina-guest-start-" + digest
+  };
+}
+const GUEST_SESSION_SECONDS = 15 * 60;
+const GUEST_MAX_SESSION_SECONDS = 120;
+const GUEST_DAILY_SECONDS = 180;
+
+async function guestStart(r: Request, e: Env): Promise<Response> {
+  const identity = await deriveGuestIdentity(r, e);
+  if (!identity) return json({ error: "guest_demo_unavailable", message: "The demo cannot start on this connection. Please sign in instead." }, 503);
+  try {
+    const rateStub = e.USER_STATE.get(e.USER_STATE.idFromName(identity.startRateObjectName));
+    const rateResponse = await rateStub.fetch("https://user-state/session/acquire", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "guest-start-" + random(12),
+        now: Date.now(),
+        maxSessionSeconds: 1,
+        maxDailySeconds: 1,
+        maxConcurrentSessions: 1,
+        enforceRateLimit: true,
+        enforceDailyLimit: false,
+        rateLimitOnly: true
+      })
+    });
+    const rateResult = await rateResponse.json().catch(() => ({})) as { allowed?: boolean; reason?: string };
+    if (!rateResponse.ok || rateResult.allowed !== true) {
+      return json({ error: "guest_demo_rate_limited", message: "Too many demo starts from this network. Please wait a minute or sign in." }, 429);
+    }
+
+    const now = new Date();
+    const stamp = now.toISOString();
+    await e.DB.prepare("DELETE FROM account_sessions WHERE expires_at<?").bind(stamp).run();
+    const active = await e.DB.prepare("SELECT token_hash FROM account_sessions WHERE user_id=? AND expires_at>? LIMIT 1")
+      .bind(identity.userId, stamp).first<{ token_hash: string }>();
+    if (!active) {
+      await e.DB.prepare("DELETE FROM account_users WHERE user_id=? AND role='user'").bind(identity.userId).run().catch(() => undefined);
+      await e.DB.prepare("INSERT INTO account_users(user_id,role,created_at,status) VALUES(?,'user',?,'active') ON CONFLICT(user_id) DO NOTHING")
+        .bind(identity.userId, stamp).run();
+    }
+    const cookieHeader = await session(e, identity.userId, GUEST_SESSION_SECONDS);
+    const headers = new Headers();
+    headers.append("Set-Cookie", cookieHeader);
+    return json({
+      ok: true,
+      guestDemo: true,
+      demoSeconds: GUEST_MAX_SESSION_SECONDS,
+      dailySeconds: GUEST_DAILY_SECONDS,
+      expiresInSeconds: GUEST_SESSION_SECONDS,
+      memoryPersonalization: false
+    }, 200, headers);
+  } catch {
+    return json({ error: "guest_demo_unavailable", message: "The demo could not start safely. Please sign in or try again." }, 503);
+  }
+}
+
 export async function isAuthenticatedAccountAdmin(r:Request,e:Env){return (await find(r,e))?.role==="admin";}
 export async function createAdminAccountSessionCookie(e:Env){const u="uid_admin_system";await e.DB.prepare("INSERT INTO account_users(user_id,role,created_at,status) VALUES(?,'admin',?,'active') ON CONFLICT(user_id) DO UPDATE SET role='admin',status='active'").bind(u,new Date().toISOString()).run();return session(e,u);}
 async function serve(r:Request,e:Env,path:string){const u=new URL(r.url);u.pathname=path;u.search="";const x=await e.ASSETS.fetch(new Request(u.toString()));const h=new Headers(x.headers);h.set("Cache-Control","no-store");h.set("Content-Security-Policy","default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self';");h.set("X-Frame-Options","DENY");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");return new Response(x.body,{status:x.status,headers:h});}
@@ -37,4 +109,4 @@ async function regOptions(r:Request,e:Env){const current=await getAuthenticatedU
 async function regVerify(r:Request,e:Env,b:Record<string,unknown>){const c=await readChallenge(e,b.challengeId);if(!c||!["passkey-register-signup","passkey-register-attach"].includes(c.purpose)||!c.user_id)return json({error:"registration_expired"},400);const current=await getAuthenticatedUserId(r,e);if(c.purpose==="passkey-register-attach"&&current!==c.user_id)return json({error:"sign_in_required"},401);if(!b.credential||typeof b.credential!=="object")return json({error:"invalid_credential"},400);let v;try{v=await verifyRegistrationResponse({response:b.credential as RegistrationResponseJSON,expectedChallenge:c.challenge,expectedOrigin:origin(r,e),expectedRPID:rp(r,e),requireUserVerification:true});}catch(error){console.warn("[AskMoina] Passkey registration verification failed",JSON.stringify({name:error instanceof Error?error.name:"unknown",message:error instanceof Error?error.message.slice(0,180):"unknown",origin:origin(r,e),rpId:rp(r,e)}));return json({error:"passkey_verification_failed",message:"The device could not be verified."},400);}if(!v.verified||!v.registrationInfo)return json({error:"passkey_verification_failed"},400);const info=v.registrationInfo as unknown as {credential:{id:string;publicKey:Uint8Array;counter:number;transports?:string[]};credentialDeviceType?:string;credentialBackedUp?:boolean};const cr=info.credential;if(!cr?.id||!(cr.publicKey instanceof Uint8Array))return json({error:"invalid_passkey_result"},400);if(await e.DB.prepare("SELECT credential_id FROM passkey_credentials WHERE credential_id=?").bind(cr.id).first())return json({error:"passkey_already_registered",message:"This passkey is already linked to an account."},409);const stamp=new Date().toISOString();if(c.purpose==="passkey-register-signup"){await e.DB.prepare("INSERT INTO account_users(user_id,role,created_at,status) VALUES(?,'user',?,'active')").bind(c.user_id,stamp).run();await e.DB.prepare("INSERT INTO visitor_profiles(visitor_id,first_seen_at,last_seen_at) VALUES(?,?,?) ON CONFLICT(visitor_id) DO NOTHING").bind(c.user_id,stamp,stamp).run();}await e.DB.prepare("INSERT INTO passkey_credentials(credential_id,user_id,public_key,counter,transports,device_type,backed_up,created_at,last_used_at) VALUES(?,?,?,?,?,?,?,?,NULL)").bind(cr.id,c.user_id,b64u(cr.publicKey),cr.counter,JSON.stringify(cr.transports||[]),info.credentialDeviceType||null,info.credentialBackedUp?1:0,stamp).run();await delChallenge(e,c.challenge_id);const h=new Headers();if(c.purpose==="passkey-register-signup")h.append("Set-Cookie",await session(e,c.user_id));return json({ok:true,userId:c.user_id},200,h);}
 async function authOptions(r:Request,e:Env){const o=await generateAuthenticationOptions({rpID:rp(r,e),userVerification:"required"}),id=await challenge(e,"passkey-login",o.challenge,null,null);return json({...o,challengeId:id});}
 async function authVerify(r:Request,e:Env,b:Record<string,unknown>){const c=await readChallenge(e,b.challengeId);if(!c||c.purpose!=="passkey-login")return json({error:"authentication_expired"},400);if(!b.credential||typeof b.credential!=="object")return json({error:"invalid_credential"},400);const response=b.credential as AuthenticationResponseJSON,stored=await e.DB.prepare("SELECT c.credential_id,c.user_id,c.public_key,c.counter,c.transports,u.role FROM passkey_credentials c JOIN account_users u ON u.user_id=c.user_id WHERE c.credential_id=? AND u.status='active' LIMIT 1").bind(response.id).first<Cred&{role:string}>();if(!stored)return json({error:"passkey_not_found",message:"That passkey is not linked to an active account."},401);let v;try{v=await verifyAuthenticationResponse({response,expectedChallenge:c.challenge,expectedOrigin:origin(r,e),expectedRPID:rp(r,e),requireUserVerification:true,credential:{id:stored.credential_id,publicKey:unb64u(stored.public_key),counter:stored.counter,transports:transports(stored.transports) as never[]}});}catch(error){console.warn("[AskMoina] Passkey sign-in verification failed",JSON.stringify({name:error instanceof Error?error.name:"unknown",message:error instanceof Error?error.message.slice(0,180):"unknown",origin:origin(r,e),rpId:rp(r,e)}));return json({error:"passkey_verification_failed"},401);}if(!v.verified||!Number.isFinite(v.authenticationInfo.newCounter))return json({error:"passkey_verification_failed"},401);await e.DB.prepare("UPDATE passkey_credentials SET counter=?,last_used_at=? WHERE credential_id=?").bind(v.authenticationInfo.newCounter,new Date().toISOString(),stored.credential_id).run();await delChallenge(e,c.challenge_id);const h=new Headers();h.append("Set-Cookie",await session(e,stored.user_id));return json({ok:true,userId:stored.user_id},200,h);}
-export async function handleAuthRequest(r:Request,e:Env):Promise<Response|null>{const u=new URL(r.url);if(r.method==="GET"&&(u.pathname==="/login"||u.pathname==="/login.html")){if(await getAuthenticatedUserId(r,e))return Response.redirect(new URL("/",r.url).toString(),302);return serve(r,e,"/login.html");}if(r.method==="GET"&&(u.pathname==="/account"||u.pathname==="/account.html")){if(!await getAuthenticatedUserId(r,e))return Response.redirect(new URL("/login",r.url).toString(),302);return serve(r,e,"/account.html");}if(r.method==="GET"&&u.pathname==="/auth.js")return serve(r,e,"/auth.js");if(u.pathname==="/api/auth/me"&&r.method==="GET"){const a=await find(r,e);return json(a?{authenticated:true,userId:a.user_id,role:a.role}:{authenticated:false});}if((u.pathname==="/api/auth/logout"||u.pathname==="/admin/logout")&&r.method==="POST"){if(!sameOrigin(r))return json({error:"forbidden_origin"},403);const t=cookie(r,C);if(t&&/^[A-Za-z0-9_-]{43}$/.test(t))await e.DB.prepare("DELETE FROM account_sessions WHERE token_hash=?").bind(await hash(t)).run().catch(()=>undefined);const h=new Headers();h.append("Set-Cookie",C+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax");h.append("Set-Cookie","moina_admin_session=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict");h.append("Set-Cookie","moina_admin_session=; Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict");return json({ok:true},200,h);}if(!u.pathname.startsWith("/api/auth/"))return null;if(r.method!=="POST")return json({error:"method_not_allowed"},405);if(!sameOrigin(r))return json({error:"forbidden_origin"},403);const b=await body(r);if(!b)return json({error:"invalid_json"},400);try{if(u.pathname==="/api/auth/passkey/register/options")return await regOptions(r,e);if(u.pathname==="/api/auth/passkey/register/verify")return await regVerify(r,e,b);if(u.pathname==="/api/auth/passkey/login/options")return await authOptions(r,e);if(u.pathname==="/api/auth/passkey/login/verify")return await authVerify(r,e,b);if(u.pathname==="/api/auth/phone/start")return await phoneStart(r,e,b);if(u.pathname==="/api/auth/phone/verify")return await phoneVerify(r,e,b);return json({error:"not_found"},404);}catch(err){console.warn("[AskMoina] Account authentication operation failed",u.pathname,err instanceof Error?err.name:"unknown");return json({error:"auth_unavailable",message:"Account authentication is temporarily unavailable. Please try again."},500);}}
+export async function handleAuthRequest(r:Request,e:Env):Promise<Response|null>{const u=new URL(r.url);if(r.method==="GET"&&(u.pathname==="/login"||u.pathname==="/login.html")&&u.searchParams.get("exit-demo")==="1"){const token=cookie(r,C);if(token&&/^[A-Za-z0-9_-]{43}$/.test(token))await e.DB.prepare("DELETE FROM account_sessions WHERE token_hash=?").bind(await hash(token)).run().catch(()=>undefined);const h=new Headers();h.append("Set-Cookie",C+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax");return serve(new Request(r.url,{method:"GET",headers:r.headers}),e,"/login.html").then(async response=>{const headers=new Headers(response.headers);headers.append("Set-Cookie",C+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax");return new Response(response.body,{status:response.status,headers});});}if(r.method==="GET"&&(u.pathname==="/login"||u.pathname==="/login.html")){if(await getAuthenticatedUserId(r,e))return Response.redirect(new URL("/",r.url).toString(),302);return serve(r,e,"/login.html");}if(r.method==="GET"&&(u.pathname==="/account"||u.pathname==="/account.html")){if(!await getAuthenticatedUserId(r,e))return Response.redirect(new URL("/login",r.url).toString(),302);return serve(r,e,"/account.html");}if(r.method==="GET"&&u.pathname==="/auth.js")return serve(r,e,"/auth.js");if(u.pathname==="/api/auth/me"&&r.method==="GET"){const a=await find(r,e);return json(a?{authenticated:true,userId:a.user_id,role:a.role,guest:isGuestUserId(a.user_id)}:{authenticated:false});}if((u.pathname==="/api/auth/logout"||u.pathname==="/admin/logout")&&r.method==="POST"){if(!sameOrigin(r))return json({error:"forbidden_origin"},403);const t=cookie(r,C);if(t&&/^[A-Za-z0-9_-]{43}$/.test(t))await e.DB.prepare("DELETE FROM account_sessions WHERE token_hash=?").bind(await hash(t)).run().catch(()=>undefined);const h=new Headers();h.append("Set-Cookie",C+"=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax");h.append("Set-Cookie","moina_admin_session=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict");h.append("Set-Cookie","moina_admin_session=; Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict");return json({ok:true},200,h);}if(!u.pathname.startsWith("/api/auth/"))return null;if(r.method!=="POST")return json({error:"method_not_allowed"},405);if(!sameOrigin(r))return json({error:"forbidden_origin"},403);const b=await body(r);if(!b)return json({error:"invalid_json"},400);const currentUser=await getAuthenticatedUserId(r,e);if(isGuestUserId(currentUser)&&u.pathname!=="/api/auth/guest/start")return json({error:"guest_demo_limited",message:"Demo accounts cannot access personal accounts, saved memories, or account changes. Sign up to keep your own account."},403);try{if(u.pathname==="/api/auth/guest/start")return await guestStart(r,e);if(u.pathname==="/api/auth/passkey/register/options")return await regOptions(r,e);if(u.pathname==="/api/auth/passkey/register/verify")return await regVerify(r,e,b);if(u.pathname==="/api/auth/passkey/login/options")return await authOptions(r,e);if(u.pathname==="/api/auth/passkey/login/verify")return await authVerify(r,e,b);if(u.pathname==="/api/auth/phone/start")return await phoneStart(r,e,b);if(u.pathname==="/api/auth/phone/verify")return await phoneVerify(r,e,b);return json({error:"not_found"},404);}catch(err){console.warn("[AskMoina] Account authentication operation failed",u.pathname,err instanceof Error?err.name:"unknown");return json({error:"auth_unavailable",message:"Account authentication is temporarily unavailable. Please try again."},500);}}
