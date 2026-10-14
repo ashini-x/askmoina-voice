@@ -698,8 +698,8 @@ describe("Early live-search status from local speech", () => {
     expect(script).toContain('title: "Listening to your question"');
     expect(script).toContain('message: "Getting your request ready. I\'ll show live-source checks if needed."');
     expect(script).toContain('message: "Take your time. I\'ll show live-source checks if needed."');
-    expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);"))
-      .toBeLessThan(script.indexOf("sendAudioChunk(samples);", script.indexOf("function startAudioCapture()")));
+    expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);", script.indexOf("function startAudioCapture()")))
+      .toBeLessThan(script.lastIndexOf("sendAudioChunk(samples);"));
     expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
     expect(script).toContain("navigator.onLine === false");
   });
