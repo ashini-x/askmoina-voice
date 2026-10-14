@@ -66,6 +66,15 @@ describe("grounded ranked-list fallback cards", () => {
     expect(rows[4].label).toContain("Retry player five");
     expect(rows[9].label).toContain("Player Ten");
     expect(merged).not.toContain("Sources:");
+
+    const card = buildGroundedListCard(
+      "top 10 IPL 2025 most runs",
+      merged + "\\n\\nSources:\\n- IPL leaderboard: https://example.com/ipl"
+    );
+    expect(card?.details).toHaveLength(10);
+    expect(card?.details.every((row) => !row.label.endsWith("Not verified"))).toBe(true);
+    expect(card?.summary).toContain("Complete ranked list");
+    expect(card?.sources[0].url).toBe("https://example.com/ipl");
   });
 
   it("creates a ten-row visual card while honestly identifying missing source-backed ranks", () => {
