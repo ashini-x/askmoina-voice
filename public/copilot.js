@@ -3926,7 +3926,7 @@
     setStatus("Network restored. Tap Reconnect now when you're ready to resume.", "normal");
     showConnectionNotice("Network restored", "Your connection is back. Tap Reconnect now to resume the live session.", "slow");
   });
-    toggleButton.addEventListener("click", () => {
+  toggleButton.addEventListener("click", () => {
     if (active || starting) {
       stopCopilot(true);
       stage.classList.add("is-returning");
