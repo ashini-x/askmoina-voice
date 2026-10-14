@@ -576,7 +576,7 @@ describe("Answer sheet minimize and restore control", () => {
 describe("Grounded search resilience", () => {
   it("keeps the supported fast grounding model and retries slow/transient provider failures", () => {
     expect(workerSource).toContain('const model = "gemini-3.8-flash";');
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 18_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
     expect(workerSource).toContain('temperature: 0.0');
