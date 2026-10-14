@@ -49,6 +49,14 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
+  it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
+    expect(workerSource).toContain("const isIpl2025RunsLeaderboard =");
+    expect(workerSource).toContain("https://www.ipl.com/series/indian-premier-league-2025-129413/stats");
+    expect(workerSource).toContain("compact section named Top Run Scorers containing only three featured players");
+    expect(workerSource).toContain("Read the longer main batting stats table");
+    expect(workerSource).toContain("ipl2025FullTableInstruction");
+  });
+
   it("targets missing ranked positions on retry and merges earlier grounded rows", () => {
     expect(workerSource).toContain("retrying specifically for missing ranks");
     expect(workerSource).toContain("Missing rank positions to retrieve:");
