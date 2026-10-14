@@ -73,7 +73,13 @@ try {
       navigator.onLine === false;
   }, null, { timeout: 15_000 });
   assert.equal(await page.locator("#connectionNoticeAction").textContent(), "Reconnect now");
-  console.log("Browser network recovery: active session stopped and offline notice shown.");
+  const previewDiagnostics = await page.locator("#videoPreview").evaluate((element) => ({
+    filter: getComputedStyle(element).filter,
+    inlineFilter: element.style.filter,
+    stageClass: element.parentElement?.className || "",
+  }));
+  assert.equal(previewDiagnostics.filter, "none", "camera preview should stay clear after session stop and during user-driven recovery; " + JSON.stringify(previewDiagnostics));
+  console.log("Browser network recovery: active session stopped, camera preview is clear, and offline notice shown.");
 
   await context.setOffline(false);
   await page.waitForFunction(() => {
