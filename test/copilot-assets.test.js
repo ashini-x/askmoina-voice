@@ -678,7 +678,9 @@ describe("Persistent live-search progress", () => {
   it("keeps the status visible through slow preflight, provider delays, and offline states", () => {
     expect(script).toContain("liveSearchAcknowledgementStartedAt = Date.now()");
     expect(script).toContain("liveSearchPreflightIntent");
-    expect(script).toContain("if (liveSearchPreflightIntent) return;");
+    expect(script).toContain("if (liveSearchPreflightIntent || (LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) && normalized.length < 90)) return;");
+    expect(script).toContain("Putting the details together.");
+    expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
     expect(script).toContain("liveSearchStartedAt = Date.now()");
     expect(script).toContain("navigator.onLine === false");
     expect(script).toContain("This is taking longer than usual.");
