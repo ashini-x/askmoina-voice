@@ -1101,6 +1101,8 @@ async function handleVoiceSocket(
   let lastAssistantTurnCompletedAt = 0;
   let latestUserRequestNeedsGrounding = false;
   let forcedRankedLookupActive = false;
+  // Isolated from generic search flags: tracks the actual outstanding forced-ranked progress turn.
+  let forcedRankedProgressTurnOutstanding = false;
   // Ranked lookup can outlast the progress sentence. Never send the final prompt into an active Live turn.
   let pendingForcedRankedAnswerContinuation: string | null = null;
   let targetSelectionCount = 0;
@@ -1127,6 +1129,7 @@ async function handleVoiceSocket(
     if (closed) return;
     closed = true;
     pendingForcedRankedAnswerContinuation = null;
+    forcedRankedProgressTurnOutstanding = false;
     if (clientIdleWatchdog !== null) {
       clearInterval(clientIdleWatchdog);
       clientIdleWatchdog = null;
@@ -1255,9 +1258,9 @@ async function handleVoiceSocket(
     }
   }
 
-  function sendLiveSearchProgressCue(cueNumber: number, requestContext = "") {
+  function sendLiveSearchProgressCue(cueNumber: number, requestContext = ""): boolean {
     if (!copilotMode || closed || !upstreamSetupReady || resumptionInProgress ||
-        upstreamSocket.readyState !== WebSocket.OPEN || pendingGroundedSearches <= 0) return;
+        upstreamSocket.readyState !== WebSocket.OPEN || pendingGroundedSearches <= 0) return false;
     const phase = cueNumber <= 1
       ? "The lookup has just started. Explain briefly what kind of information is being checked, without saying any findings have arrived."
       : cueNumber === 2
@@ -1287,6 +1290,7 @@ async function handleVoiceSocket(
         turnComplete: true,
       },
     });
+    return true;
   }
 
   function rememberLatestUserRequestFromProviderFrame(frameText: string) {
@@ -1329,9 +1333,10 @@ async function handleVoiceSocket(
     latestUserRequestNeedsGrounding = false;
     pendingGroundedSearches += 1;
     liveSearchProgressCueCount = 1;
-    liveSearchProgressCuePending = true;
+    liveSearchProgressCuePending = false;
+    forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(1, query);
+    liveSearchProgressCuePending = forcedRankedProgressTurnOutstanding;
     try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
-    sendLiveSearchProgressCue(1, query);
 
     ctx.waitUntil((async () => {
       let result = "";
@@ -1390,7 +1395,7 @@ async function handleVoiceSocket(
         ? "A complete, source-verified top-" + requestedCount + " answer sheet is already visible on screen. Do not call any more tools and do not create another card. Give the user a concise, natural spoken summary in the established Assamese-English mix, explain what the ranking measures, and mention that the full row-by-row list and source links are on the card. Use only the grounded result below.\n\n"
         : "A lookup-status answer card is visible. The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Do not invent or fill missing entries from memory. Tell the user honestly what was verified and that the complete ranking could not be confirmed. Do not call any more tools or create another card.\n\n";
       const continuationText = answerInstruction + "Grounded search result:\n" + result.slice(0, 18_000);
-      if (liveSearchProgressCuePending) {
+      if (forcedRankedProgressTurnOutstanding) {
         // Sending clientContent during an active Live response can collide with or
         // discard the final turn. Wait for the progress sentence's turnComplete.
         pendingForcedRankedAnswerContinuation = continuationText;
@@ -2043,20 +2048,29 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     // Continue progress voice at natural turn boundaries only. Never interrupt a spoken
     // update mid-turn; stop requesting updates immediately when all pending lookups finish.
-    const isCompletedAssistantTurn =
-      (frameText.includes('"turnComplete":true') || frameText.includes('"turnComplete": true') ||
-       frameText.includes('"turn_complete":true') || frameText.includes('"turn_complete": true')) &&
+    const hasTurnCompleteSignal =
+      frameText.includes('"turnComplete":true') || frameText.includes('"turnComplete": true') ||
+      frameText.includes('"turn_complete":true') || frameText.includes('"turn_complete": true');
+    const hasToolCall = frameText.includes('"toolCall"') || frameText.includes('"tool_call"');
+    const isProviderTurnComplete = hasTurnCompleteSignal &&
+      (frameText.includes('"serverContent"') || frameText.includes('"server_content"')) &&
+      !hasToolCall;
+    const isCompletedAssistantTurn = isProviderTurnComplete &&
       (frameText.includes('"modelTurn"') || frameText.includes('"model_turn"') ||
-       frameText.includes('"outputTranscription"') || frameText.includes('"output_transcription"')) &&
-      !frameText.includes('"toolCall"') && !frameText.includes('"tool_call"');
+       frameText.includes('"outputTranscription"') || frameText.includes('"output_transcription"'));
 
     if (isCompletedAssistantTurn) lastAssistantTurnCompletedAt = Date.now();
-    if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
+
+    // The forced ranked flow owns its progress turns. Do not let generic searches
+    // overwrite the state or use the narrower transcript-dependent detector to strand
+    // the queued answer; a provider turnComplete is the safe boundary for this flow.
+    if (forcedRankedProgressTurnOutstanding && isProviderTurnComplete) {
+      forcedRankedProgressTurnOutstanding = false;
       liveSearchProgressCuePending = false;
       if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 8) {
         liveSearchProgressCueCount += 1;
-        liveSearchProgressCuePending = true;
-        sendLiveSearchProgressCue(liveSearchProgressCueCount);
+        forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(liveSearchProgressCueCount);
+        liveSearchProgressCuePending = forcedRankedProgressTurnOutstanding;
       } else if (pendingForcedRankedAnswerContinuation !== null) {
         const continuationText = pendingForcedRankedAnswerContinuation;
         pendingForcedRankedAnswerContinuation = null;
@@ -2067,6 +2081,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           },
         });
         console.info("[AskMoina] Resumed queued ranked-list spoken continuation after progress turn completed");
+      }
+    } else if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
+      liveSearchProgressCuePending = false;
+      if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 8) {
+        liveSearchProgressCueCount += 1;
+        liveSearchProgressCuePending = true;
+        sendLiveSearchProgressCue(liveSearchProgressCueCount);
       }
     }
   });
