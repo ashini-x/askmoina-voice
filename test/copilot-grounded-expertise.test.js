@@ -77,6 +77,9 @@ describe("M30 model-aware grounded expertise", () => {
     expect(workerSource).toContain("device_context: {");
     expect(workerSource).toContain("await performGroundedWebSearch(env, query, deviceContext, copilotMode)");
     expect(workerSource).toContain("MODEL MATCH NOT ESTABLISHED");
+    expect(workerSource).toContain("officialExactModelMatch");
+    expect(workerSource).toContain("safeGroundedSourceUrl(web?.uri)");
+    expect(workerSource).toContain("Candidate sources (not yet verified for this exact model):");
     expect(workerSource).toContain("Prefer the manufacturer's official manual");
     expect(workerSource).toContain("A source or web search is not proof that the camera identified the physical device");
     expect(workerSource).toContain("M30 — MODEL-AWARE GROUNDING:");
