@@ -43,8 +43,8 @@ jobs:
         env:
           ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}
         run: |
-          node scripts/live-network-recovery-smoke.mjs
           node scripts/live-session-continuity-smoke.mjs
+          node scripts/live-network-recovery-smoke.mjs
       - name: Revoke synthetic session
         if: always()
         shell: bash
