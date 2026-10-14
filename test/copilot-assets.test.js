@@ -501,11 +501,11 @@ describe("Apple-style live-search progress", () => {
     expect(workerSource).toContain("The browser displays a contextual Apple-style loader");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
     expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
-    const workerStart = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
-    const searchAwait = workerSource.indexOf("result = await performGroundedWebSearch(env, query, deviceContext, copilotMode)");
+    const workerStart = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
+    const searchAwait = workerSource.lastIndexOf("result = await performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode)");
     expect(workerStart).toBeGreaterThanOrEqual(0);
     expect(searchAwait).toBeGreaterThan(workerStart);
-    const lookupComplete = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
+    const lookupComplete = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
     expect(lookupComplete).toBeGreaterThan(searchAwait);
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "lookup_complete"');
     expect(script).toContain('if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();');
@@ -774,7 +774,7 @@ describe("Apple-style active turn contract", () => {
     expect(script).toContain("Answer card-tu ready kori asu.");
     expect(script).toContain("Names aru rankings match kori asu against sources.");
     expect(workerSource).toContain('behavior: "NON_BLOCKING"');
-    expect(workerSource).toContain("function sendLiveSearchProgressCue(cueNumber: number)");
+    expect(workerSource).toContain('function sendLiveSearchProgressCue(cueNumber: number, requestContext = "")');
     expect(workerSource).toContain("liveSearchProgressCueCount < 4");
     expect(workerSource).toContain("A card is mandatory for every informative answer");
     expect(workerSource).toContain("M42 — CONTINUOUS VOICE DURING BACKGROUND WORK");
