@@ -565,10 +565,18 @@ describe("Immediate live-search acknowledgement", () => {
 });
 
 
+describe("Answer sheet minimize and restore control", () => {
+  it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
+    expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
+    expect(html).toContain('src="/copilot.js?v=0.4.17"');
+  });
+});
+
+
 describe("Grounded search resilience", () => {
   it("keeps the supported fast grounding model and retries slow/transient provider failures", () => {
     expect(workerSource).toContain('const model = "gemini-3.8-flash";');
-    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 13_000;");
+    expect(workerSource).toContain("const GROUNDED_SEARCH_TIMEOUT_MS = 18_000;");
     expect(workerSource).toContain("const GROUNDED_SEARCH_MAX_ATTEMPTS = 2;");
     expect(workerSource).toContain("GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)");
     expect(workerSource).toContain('temperature: 0.0');
