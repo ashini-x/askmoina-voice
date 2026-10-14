@@ -45,6 +45,35 @@ def extract_text(message: dict) -> str:
     return " ".join(texts)
 
 
+def recv_json_message(ws):
+    """Read JSON control frames while safely skipping separate binary audio frames.
+
+    Gemini Live can interleave audio media frames with structured tool/control
+    messages. Binary frames that are not JSON are media, not protocol errors.
+    Malformed JSON text frames still fail loudly so protocol regressions remain visible.
+    """
+    frame = ws.recv()
+    if frame == "":
+        return None
+    if isinstance(frame, bytes):
+        try:
+            frame_text = frame.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+        try:
+            message = json.loads(frame_text)
+        except json.JSONDecodeError:
+            return None
+    else:
+        try:
+            message = json.loads(frame)
+        except json.JSONDecodeError:
+            raise RuntimeError("Live WebSocket sent an invalid JSON text frame.") from None
+    if not isinstance(message, dict):
+        raise RuntimeError("Live WebSocket JSON message was not an object.")
+    return message
+
+
 def has_grounding_tool_call(message: dict) -> bool:
     for key in ("toolCall", "tool_call"):
         frame = message.get(key)
@@ -84,7 +113,9 @@ def main() -> int:
         setup_deadline = time.time() + SETUP_WAIT_SECONDS
         while time.time() < setup_deadline:
             try:
-                message = json.loads(ws.recv())
+                message = recv_json_message(ws)
+                if message is None:
+                    continue
             except websocket.WebSocketTimeoutException:
                 continue
             if message.get("error"):
@@ -105,7 +136,9 @@ def main() -> int:
             deadline = time.time() + TURN_WAIT_SECONDS
             while time.time() < deadline:
                 try:
-                    message = json.loads(ws.recv())
+                    message = recv_json_message(ws)
+                    if message is None:
+                        continue
                 except websocket.WebSocketTimeoutException:
                     continue
                 if message.get("error"):
