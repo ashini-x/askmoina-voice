@@ -1152,4 +1152,6 @@ body.site-info-body .site-info-card{width:100%}
 }
 
 /* Keep the camera usable after bounded reconnect retries end; the visible notice still offers Try again. */
-.camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important;transform:none!important}
+.camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important}
+/* A disconnected preview stays visible during reconnect attempts; the camera is local even when the relay is unavailable. */
+.camera-stage.has-notice:not(.voice-active):not(.is-connecting) #videoPreview{filter:none!important}

@@ -1,11 +1,6 @@
 name: Browser network recovery synthetic
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "scripts/live-network-recovery-smoke.mjs"
-      - ".github/workflows/browser-network-recovery-synthetic.yml"
   workflow_dispatch:
 
 permissions:
@@ -39,6 +34,10 @@ jobs:
           fi
           echo "::add-mask::$cookie"
           echo "cookie=$cookie" >> "$GITHUB_OUTPUT"
+      - name: Verify audiovisual continuity and a post-start AI reply
+        env:
+          ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}
+        run: node scripts/live-session-continuity-smoke.mjs
       - name: Simulate a real browser network interruption and user-driven reconnect
         env:
           ASKMOINA_SYNTHETIC_COOKIE: ${{ steps.synthetic_session.outputs.cookie }}

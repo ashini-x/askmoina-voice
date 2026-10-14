@@ -550,7 +550,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.33"');
+    expect(html).toContain('src="/copilot.js?v=0.4.34"');
   });
 });
 
@@ -734,10 +734,14 @@ describe("long-running Live session continuity", () => {
     expect(script).toContain("window.setInterval(sendVideoFrame, 1000)");
   });
 
-  it("keeps the camera visible after bounded reconnect retries end and clears stale notice on resume", () => {
+  it("keeps the local camera clear after a live session drops while bounded reconnect attempts run", () => {
     expect(script).toContain("automaticReconnectAttempts >= 3");
     expect(script).toContain("hideConnectionNotice(true);");
-    expect(css).toContain(".camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important;transform:none!important}");
+    expect(script).toContain("function syncDisconnectedPreviewAppearance()");
+    expect(script).toContain('video.style.setProperty("filter", "none", "important")');
+    expect(script).toContain("if (wasConnected) recoveryPreviewClear = true;");
+    expect(css).toContain(".camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important}");
+    expect(css).toContain(".camera-stage.has-notice:not(.voice-active):not(.is-connecting) #videoPreview{filter:none!important}");
   });
 
   it("discloses temporary provider-side session caching", () => {

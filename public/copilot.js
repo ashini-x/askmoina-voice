@@ -433,6 +433,7 @@
   let active = false;
   let stopping = false;
   let setupReady = false;
+  let recoveryPreviewClear = false;
   let setupTimer = null;
   let videoTimer = null;
   let firstVideoTimer = null;
@@ -744,6 +745,7 @@
     if (isError || kind === "slow") connectionNoticeAction.disabled = false;
     connectionNotice.hidden = false;
     stage.classList.add("has-notice");
+    syncDisconnectedPreviewAppearance();
   }
 
   function hideConnectionNotice(resolved = false) {
@@ -751,6 +753,7 @@
     if (resolved) { persistentConnectionIssue = null; if (connectionNoticeAction) connectionNoticeAction.disabled = false; }
     if (connectionNotice) connectionNotice.hidden = true;
     stage.classList.remove("has-notice");
+    syncDisconnectedPreviewAppearance();
   }
 
   function retryConnection(message) {
@@ -793,6 +796,16 @@
     availabilityNode.dataset.kind = kind || "normal";
   }
 
+  function syncDisconnectedPreviewAppearance() {
+    if (!video) return;
+    if (recoveryPreviewClear && !(active && setupReady)) {
+      video.style.setProperty("filter", "none", "important");
+      return;
+    }
+    video.style.removeProperty("filter");
+    if (active && setupReady) recoveryPreviewClear = false;
+  }
+
   function setConnectionState(label, state) {
     connectionPill.textContent = label;
     connectionPill.dataset.state = state || "ready";
@@ -812,6 +825,7 @@
     toggleButton.classList.toggle("is-live", active);
     stage.classList.toggle("voice-active", active);
     stage.classList.toggle("is-connecting", starting && !active);
+    syncDisconnectedPreviewAppearance();
     toggleButton.setAttribute("aria-label", active ? "End call" : "Start call");
     toggleButton.title = active ? "End call" : "Start call";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
@@ -2278,6 +2292,7 @@
   function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false) {
     lastSessionEndedAt = Date.now();
     const wasConnected = active && setupReady;
+    if (wasConnected) recoveryPreviewClear = true;
     if (wasConnected && !silentDisconnect) playDisconnectSound();
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -3077,6 +3092,7 @@
     greetingTurnPending = false;
     stage.classList.remove("pre-start", "initial-intro");
     stage.classList.add("is-connecting");
+    syncDisconnectedPreviewAppearance();
     if (previewPromise) { try { await previewPromise; } catch (_) {} }
     recordRealityLoopEvent("session_starting");
     clearOverlay();

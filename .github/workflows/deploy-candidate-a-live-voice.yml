@@ -284,8 +284,24 @@ jobs:
           python scripts/live-response-card-smoke.py
           python scripts/live-ranked-list-smoke.py
           python scripts/live-memory-voice-smoke.py
+
+          # Run both browser recoveries independently so failures in one do not hide the other result.
+          set +e
+          node scripts/live-network-recovery-smoke.mjs
+          NETWORK_RECOVERY_STATUS=$?
           node scripts/live-session-continuity-smoke.mjs
+          LIVE_CONTINUITY_STATUS=$?
+          set -e
+
           cleanup
           trap - EXIT
           echo "Synthetic session revoked: OK"
+          if [[ "$NETWORK_RECOVERY_STATUS" -ne 0 ]]; then
+            echo "::error::Browser network recovery synthetic failed."
+          fi
+          if [[ "$LIVE_CONTINUITY_STATUS" -ne 0 ]]; then
+            echo "::error::Long-running audiovisual continuity synthetic failed."
+          fi
+          test "$NETWORK_RECOVERY_STATUS" -eq 0
+          test "$LIVE_CONTINUITY_STATUS" -eq 0
 
