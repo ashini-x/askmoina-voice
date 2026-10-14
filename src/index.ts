@@ -1046,8 +1046,10 @@ async function handleVoiceSocket(
   let upstreamSetupReady = false;
   let securedSetupForResume: Record<string, unknown> | null = null;
   let lastSessionResumptionHandle: string | null = null;
-  let lastConsumedClientMessageIndex = -1;
-  let nextClientMessageIndex = 0;
+  let pendingResumeSessionHandle: string | null = null;
+  // Google requires one-based client message indexes; reset these per resumed connection.
+  let lastConsumedClientMessageIndex = 0;
+  let nextClientMessageIndex = 1;
   const upstreamReplayBuffer: Array<{ index: number; encoded: string }> = [];
   let upstreamReplayBufferChars = 0;
   let highestEvictedClientMessageIndex = -1;
@@ -1213,16 +1215,34 @@ async function handleVoiceSocket(
     }
   }
 
-  function replayUnconsumedMessages() {
+  function replayUnconsumedMessages(reindexForNewConnection = false) {
     if (upstreamSocket.readyState !== WebSocket.OPEN) return;
     const replay = upstreamReplayBuffer.filter((item) => item.index > lastConsumedClientMessageIndex);
-    for (const item of replay) upstreamSocket.send(item.encoded);
+    const replayWindowComplete = highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex;
+    if (reindexForNewConnection) {
+      // The resumption handle already contains acknowledged context; send only unconsumed
+      // frames and restart their client-managed sequence at 1 on this WebSocket connection.
+      upstreamReplayBuffer.splice(0);
+      upstreamReplayBufferChars = 0;
+      lastConsumedClientMessageIndex = 0;
+      nextClientMessageIndex = 1;
+      highestEvictedClientMessageIndex = -1;
+      for (const item of replay) {
+        const index = nextClientMessageIndex++;
+        upstreamReplayBuffer.push({ index, encoded: item.encoded });
+        upstreamReplayBufferChars += item.encoded.length;
+        upstreamSocket.send(item.encoded);
+      }
+    } else {
+      for (const item of replay) upstreamSocket.send(item.encoded);
+    }
     console.info("[AskMoina] Resumed Live input replay", JSON.stringify({
       replayedMessageCount: replay.length,
       replayedChars: replay.reduce((total, item) => total + item.encoded.length, 0),
-      oldestReplayIndex: replay[0]?.index ?? null,
+      firstReplayIndex: reindexForNewConnection && replay.length ? 1 : replay[0]?.index ?? null,
       lastConsumedClientMessageIndex,
-      replayWindowComplete: highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex,
+      replayWindowComplete,
+      indexReset: reindexForNewConnection,
     }));
   }
 
@@ -1528,11 +1548,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     if (providerMessage?.sessionResumptionUpdate) {
       const update = providerMessage.sessionResumptionUpdate;
-      if (typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) lastSessionResumptionHandle = update.newHandle;
+      if (typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) {
+        if (resumptionInProgress) pendingResumeSessionHandle = update.newHandle;
+        else lastSessionResumptionHandle = update.newHandle;
+      }
       const consumedValue = update.lastConsumedClientMessageIndex;
       const consumedIndex = typeof consumedValue === "number" ? consumedValue :
         typeof consumedValue === "string" && consumedValue.trim() ? Number(consumedValue) : Number.NaN;
-      if (Number.isSafeInteger(consumedIndex) && consumedIndex >= lastConsumedClientMessageIndex) {
+      if (!resumptionInProgress && Number.isSafeInteger(consumedIndex) && consumedIndex >= lastConsumedClientMessageIndex) {
         lastConsumedClientMessageIndex = consumedIndex;
         pruneConsumedReplayMessages();
       }
@@ -1562,12 +1585,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       analyticsSetupComplete = true;
       requestToSetupMs = Date.now() - analyticsStartedAt;
       if (resumedSessionSetupComplete) {
+        if (pendingResumeSessionHandle) lastSessionResumptionHandle = pendingResumeSessionHandle;
+        pendingResumeSessionHandle = null;
         const oldSocket = previousUpstreamSocket;
         previousUpstreamSocket = null;
         resumptionInProgress = false;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(true); }
-        replayUnconsumedMessages();
+        replayUnconsumedMessages(true);
         if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
           try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
         }
@@ -1755,6 +1780,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     const handleToResume = lastSessionResumptionHandle;
     const previousSocket = upstreamSocket;
     previousUpstreamSocket = previousSocket;
+    pendingResumeSessionHandle = null;
     resumptionInProgress = true;
     upstreamSetupReady = false;
     setupCompleteReceived = false;
@@ -1805,12 +1831,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
         upstreamSetupReady = false;
         previousUpstreamSocket = previousSocket;
+        pendingResumeSessionHandle = null;
         console.warn("[AskMoina] Live session resume did not complete setup", JSON.stringify({ attempt, reason }));
       } catch {
         if (candidate) { try { candidate.close(1011, "Resume attempt failed"); } catch {} }
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
         upstreamSetupReady = false;
         previousUpstreamSocket = previousSocket;
+        pendingResumeSessionHandle = null;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         resolveResumeSetup = null;
         console.warn("[AskMoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));

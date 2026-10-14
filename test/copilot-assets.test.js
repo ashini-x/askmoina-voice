@@ -743,7 +743,10 @@ describe("long-running Live session continuity", () => {
   });
 
   it("indexes actually-sent messages separately from the wire payload and buffers reconnect input", () => {
+    expect(worker).toContain("let nextClientMessageIndex = 1");
     expect(worker).toContain("const index = nextClientMessageIndex++");
+    expect(worker).toContain("replayUnconsumedMessages(true)");
+    expect(worker).toContain("lastConsumedClientMessageIndex = 0;");
     expect(worker).toContain("function queuePendingUpstreamMessage");
     expect(worker).toContain("function drainPendingUpstreamMessages");
     expect(worker).toContain("function rememberAndSendUpstreamMessage");
