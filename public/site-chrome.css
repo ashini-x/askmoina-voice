@@ -42,3 +42,9 @@ body.site-info-body .site-info-card{width:100%}
 /* Small, quiet details to keep the entry screen balanced. */
 .entry-overlay .entry-products .entry-quick-link-icon{display:block;width:14px;height:14px;flex:0 0 14px;fill:none;stroke:#86868b;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
 .entry-footer{position:fixed;z-index:202;left:max(14px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));width:min(calc(100% - 28px),390px);color:#a1a1a6;text-align:left;font:400 10px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.005em;pointer-events:none}
+
+/* Quiet entry-page invitation for a bounded, memory-free first-use demo. */
+.entry-auth-panel .entry-demo-action{display:flex;align-items:center;justify-content:center;width:100%;min-height:43px;margin:13px 0 0;padding:0 15px;border:1px solid rgba(60,60,67,.15);border-radius:13px;background:rgba(255,255,255,.76);color:#1d1d1f;font:600 13px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.01em;cursor:pointer;transition:background .16s ease,border-color .16s ease}
+.entry-auth-panel .entry-demo-action:hover:not(:disabled){background:#fff;border-color:rgba(60,60,67,.26)}
+.entry-auth-panel .entry-demo-action:disabled{opacity:.6;cursor:wait}
+.entry-auth-panel .entry-demo-note{margin:6px 0 0;color:#86868b;text-align:center;font:400 11px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
