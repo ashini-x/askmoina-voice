@@ -538,8 +538,11 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   // Full ranked tables need more retrieval time than ordinary current-fact lookups,
   // but their larger allowance is still a hard wall-clock cap rather than a per-attempt
   // timeout that can be added on top of authentication latency.
-  const requestedListCountForBudget = getRequestedRankedListCount(query);
+  const explicitRequestedListCount = getRequestedRankedListCount(query);
   const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);
+  // Live may simplify "top 10 rankers" to a terse query such as "IPL 2025 most runs".
+  // Preserve the product's default top-ten request after that simplification.
+  const requestedListCountForBudget = explicitRequestedListCount ?? (inferredRankedTableQuery ? 10 : null);
   const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
   const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
   const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;
@@ -627,7 +630,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
       }
       const receivedCandidate = payload.candidates?.[0];
       candidate = receivedCandidate;
-      const requestedListCount = getRequestedRankedListCount(query);
+      const requestedListCount = requestedListCountForBudget;
       let candidateText = (receivedCandidate?.content?.parts || [])
         .map((part) => part.text || "")
         .filter(Boolean)
