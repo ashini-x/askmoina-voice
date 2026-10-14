@@ -2,6 +2,29 @@
   "use strict";
 
   const $ = (selector) => document.querySelector(selector);
+  const isGuestDemo = document.body.dataset.guestDemo === "true" || new URLSearchParams(window.location.search).get("demo") === "1";
+  const guestDemoTimerNode = $("#guestDemoTimer");
+  let guestDemoCountdownInterval = null;
+  function startGuestDemoCountdown(seconds) {
+    if (!isGuestDemo || !guestDemoTimerNode) return;
+    if (guestDemoCountdownInterval !== null) window.clearInterval(guestDemoCountdownInterval);
+    const duration = Math.max(1, Math.min(120, Math.floor(Number(seconds) || 120)));
+    const deadline = Date.now() + duration * 1_000;
+    const update = () => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1_000));
+      const minutes = String(Math.floor(left / 60)).padStart(2, "0");
+      const secs = String(left % 60).padStart(2, "0");
+      guestDemoTimerNode.textContent = left > 0
+        ? `DEMO · ${minutes}:${secs} · MEMORY OFF`
+        : "DEMO TIME USED · SIGN IN FOR FULL ACCESS";
+      if (left <= 0 && guestDemoCountdownInterval !== null) {
+        window.clearInterval(guestDemoCountdownInterval);
+        guestDemoCountdownInterval = null;
+      }
+    };
+    update();
+    guestDemoCountdownInterval = window.setInterval(update, 1_000);
+  }
   const backButton = $("#backButton");
   if (backButton) backButton.addEventListener("click", () => {
     if (history.length > 1) history.back();
@@ -857,6 +880,15 @@
   }
 
   function retryConnection(message) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      if (active || starting) stopCopilot(false, null, null, true);
+      setConnectionState("OFFLINE", "error");
+      setStatus("You're offline. Reconnect when your internet is back; AskMoina will not auto-open your camera or microphone.", "warning");
+      showConnectionNotice("You're offline", "Waiting for your network. Tap Reconnect now when you're back online.", "slow");
+      return;
+    }
     if (automaticReconnectAttempts >= 2) {
       automaticReconnectAttempts = 0;
       stopCopilot(false, message || "The connection could not be restored. Check your network and try again.", "error", true);
@@ -1740,7 +1772,12 @@
       voiceAvailability = result;
       if (sequence !== availabilitySequence) return result;
       if (result.available) {
-        setAvailability("Available · no AskMoina usage quota; provider limits may apply. Camera frames are reduced and sent about once per second.", "normal");
+        if (result.guestDemo) {
+          const remainingMinutes = Math.max(1, Math.ceil(Number(result.dailyRemainingSeconds || 0) / 60));
+          setAvailability("Limited demo · up to " + remainingMinutes + " min left today · personal memory off", "normal");
+        } else {
+          setAvailability("Available · no AskMoina usage quota; provider limits may apply. Camera frames are reduced and sent about once per second.", "normal");
+        }
       } else {
         setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
         if (result.message) setStatus(result.message, "error");
@@ -3135,7 +3172,7 @@
     setStatus("Just a moment");
     showConnectionNotice("Connecting securely", "Just a moment", "connecting");
     const preflight = await refreshAvailabilityAfterRelease();
-    if (preflight && !preflight.available) {
+    if ((preflight && !preflight.available) || (isGuestDemo && !preflight)) {
       starting = false;
       stage.classList.add("pre-start");
       setControls("Start Co-Pilot", false);
@@ -3146,6 +3183,7 @@
       );
       return;
     }
+    if (isGuestDemo && preflight) startGuestDemoCountdown(preflight.maxSessionSeconds || 120);
 
     let sessionSocket = null;
     try {
@@ -3883,6 +3921,11 @@
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {
       if (connectionNoticeAction.disabled) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setStatus("Still offline. Reconnect to the internet, then tap Reconnect now.", "warning");
+        showConnectionNotice("You're still offline", "AskMoina will wait until you choose to reconnect.", "slow");
+        return;
+      }
       connectionNoticeAction.disabled = true;
       automaticReconnectAttempts = 0;
       isAutomaticRetry = false;
@@ -3900,13 +3943,45 @@
     if (active || starting) {
       stopCopilot(true);
       stage.classList.add("is-returning");
-      // Let the distinct end tone finish before returning to the Vision card chooser.
-      window.setTimeout(() => window.location.replace("/"), 570);
+      // Let the distinct end tone finish before leaving a restricted guest trial.
+      if (isGuestDemo) {
+        window.setTimeout(async () => {
+          try {
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 1_800);
+            await fetch("/api/auth/logout", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+              signal: controller.signal
+            }).catch(() => undefined);
+            window.clearTimeout(timeout);
+          } catch (_) {}
+          window.location.replace("/login?exit-demo=1");
+        }, 570);
+      } else {
+        window.setTimeout(() => window.location.replace("/"), 570);
+      }
     } else {
       void startCopilot();
     }
   });
-  flipButton.addEventListener("click", () => { void flipCamera(); });
+  window.addEventListener("offline", () => {
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (active || starting) stopCopilot(false, null, null, true);
+    automaticReconnectAttempts = 0;
+    setConnectionState("OFFLINE", "error");
+    setStatus("You're offline. Your camera preview stays local. Tap Reconnect now after your connection returns.", "warning");
+    showConnectionNotice("You're offline", "Waiting for your network. AskMoina will not reopen the live session automatically.", "slow");
+  });
+  window.addEventListener("online", () => {
+    if (active || starting) return;
+    setConnectionState("READY", "ready");
+    setStatus("Network restored. Tap Reconnect now when you're ready to resume.", "normal");
+    showConnectionNotice("Network restored", "Your connection is back. Tap Reconnect now to resume the live session.", "slow");
+  });
+    flipButton.addEventListener("click", () => { void flipCamera(); });
   muteButton.addEventListener("click", toggleMicrophoneMute);
   clearMarkerButton.addEventListener("click", clearOverlay);
   clearTranscriptButton.addEventListener("click", resetTranscript);
