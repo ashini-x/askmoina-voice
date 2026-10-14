@@ -1779,6 +1779,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
             if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
 
+            let completeRankedFallbackCardSent = false;
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
               const fallbackRequestedCount = getRequestedRankedListCount(query) ??
                 (isLikelyRankedTableSearchQuery(query) ? 10 : null);
@@ -1788,17 +1789,24 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 if (validation.valid && validation.card.type === "key_details") {
                   try {
                     workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+                    const verifiedRowCount = validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length;
+                    const complete = String(validation.card.summary || "").startsWith("Complete ranked list") &&
+                      verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0;
+                    completeRankedFallbackCardSent = complete;
                     console.info("[AskMoina] Grounded ranked-list fallback card ready", JSON.stringify({
                       requestedCount: validation.card.details.length,
-                      verifiedRows: validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length,
-                      complete: String(validation.card.summary || "").startsWith("Complete ranked list")
+                      verifiedRows: verifiedRowCount,
+                      complete
                     }));
                   } catch (_) {}
                 }
               }
               try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
-            responses.push({ id: call.id, name: "search_current_web", response: { result }, scheduling: "WHEN_IDLE" });
+            const modelFacingSearchResult = completeRankedFallbackCardSent
+              ? result + "\n\nVISIBLE RESPONSE CARD HAS ALREADY BEEN RENDERED: The user can see the complete, source-backed top-ranked list on screen. Do not try to replace it with another card in this turn. Continue speaking naturally now: briefly explain the leader, the important differences among the leading entries, and the takeaway from the full list. Keep the answer conversational and do not stop after this tool result."
+              : result;
+            responses.push({ id: call.id, name: "search_current_web", response: { result: modelFacingSearchResult }, scheduling: "WHEN_IDLE" });
           }
           if (responses.length && !closed) {
             sendUpstreamMessage({ toolResponse: { functionResponses: responses } });

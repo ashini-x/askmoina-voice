@@ -49,6 +49,14 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
+  it("prompts Live to continue speaking after a complete grounded ranked card is rendered", () => {
+    expect(workerSource).toContain("let completeRankedFallbackCardSent = false");
+    expect(workerSource).toContain("VISIBLE RESPONSE CARD HAS ALREADY BEEN RENDERED");
+    expect(workerSource).toContain("Continue speaking naturally now");
+    expect(workerSource).toContain("const modelFacingSearchResult = completeRankedFallbackCardSent");
+    expect(workerSource).toContain("verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0");
+  });
+
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
     expect(workerSource).toContain("const isIpl2025RunsLeaderboard =");
     expect(workerSource).toContain("https://www.ipl.com/series/indian-premier-league-2025-129413/stats");
