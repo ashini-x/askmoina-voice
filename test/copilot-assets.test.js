@@ -568,7 +568,7 @@ describe("Immediate live-search acknowledgement", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.22"');
+    expect(html).toContain('src="/copilot.js?v=0.4.23"');
   });
 });
 
