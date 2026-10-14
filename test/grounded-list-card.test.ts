@@ -69,12 +69,12 @@ describe("grounded ranked-list fallback cards", () => {
 
     const card = buildGroundedListCard(
       "top 10 IPL 2025 most runs",
-      merged + "\\n\\nSources:\\n- IPL leaderboard: https://example.com/ipl"
+      merged + "\n\nSources:\n- IPL leaderboard: https://example.com/ipl"
     );
     expect(card?.details).toHaveLength(10);
     expect(card?.details.every((row) => !row.label.endsWith("Not verified"))).toBe(true);
     expect(card?.summary).toContain("Complete ranked list");
-    expect(card?.sources[0].url).toBe("https://example.com/ipl");
+    expect(card?.sources?.[0].url).toBe("https://example.com/ipl");
   });
 
   it("creates a ten-row visual card while honestly identifying missing source-backed ranks", () => {
