@@ -26,6 +26,7 @@ describe("authenticated live synthetic verification", () => {
     expect(grounding).toContain("len(lowered_so_far) >= 45");
     expect(grounding).toContain("completed_turns += 1");
     expect(grounding).toContain("transcript_chars=");
+    expect(grounding).toContain("TURN_WAIT_SECONDS = 130");
     expect(grounding).not.toContain("if not any(word in lowered");
     expect(grounding).not.toContain('if "android" not in lowered:');
   });
@@ -80,7 +81,7 @@ describe("authenticated live synthetic verification", () => {
   it("allows the server-ranked-list lookup to finish before judging grounding", () => {
     const rankedList = readFileSync(new URL("../scripts/live-ranked-list-smoke.py", import.meta.url), "utf8");
     // The production ranked-list search has a 75-second total budget before speech resumes.
-    expect(rankedList).toContain("TURN_WAIT_SECONDS = 130");
+    expect(rankedList).toContain("TURN_WAIT_SECONDS = 160");
     expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
     expect(rankedList).toContain("grounded_search_count += 1");
     expect(rankedList).toContain("grounded_response_card");
