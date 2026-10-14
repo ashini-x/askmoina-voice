@@ -508,7 +508,7 @@ describe("Apple-style live-search progress", () => {
     const lookupComplete = workerSource.indexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
     expect(lookupComplete).toBeGreaterThan(searchAwait);
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "lookup_complete"');
-    expect(script).toContain('if (!hasSearchCallOnThisMessage || liveSearchLookupCompleted) completeLiveSearchProgress()');
+    expect(script).toContain('if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();');
   });
 
   it("holds estimated progress below completion, reaches 100%, then removes the loader before revealing cards and final text", () => {
@@ -520,7 +520,9 @@ describe("Apple-style live-search progress", () => {
     expect(css).toContain(".live-search-status.is-complete .live-search-track>span");
     expect(script).toContain("updateLiveSearchProgress(100)");
     expect(script).toContain("liveSearchStatus.hidden = true");
-    expect(script).toContain("pendingResponseCards.push({ id, args: call.args })");
+    expect(script).toContain("const rendered = renderResponseCard(call.args);");
+    expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();");
+    expect(script).not.toContain("pendingResponseCards.push({ id, args: call.args })");
     expect(script).toContain("const queuedCards = pendingResponseCards.splice(0)");
     expect(script).toContain('transcriptNode.classList.add("is-searching")');
     expect(script).toContain('transcriptNode.classList.remove("is-searching")');
