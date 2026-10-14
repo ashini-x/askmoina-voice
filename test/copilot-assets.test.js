@@ -653,7 +653,7 @@ describe("RC7 zero-gap search-status feedback", () => {
     expect(script).toContain("micNoiseCalibrationUntil = now + 500");
     expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
     expect(script).toContain("now - micSpeechCandidateAt >= 120");
-    expect(script).toContain("Status is triggered by recognized user speech or a real search event, never raw RMS");
+    expect(script).toContain("Sustained local speech may start a neutral acknowledgement; transcripts and tool events determine search-specific status.");
     expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
   });
@@ -686,5 +686,21 @@ describe("Persistent live-search progress", () => {
     expect(script).toContain("This is taking longer than usual.");
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000)");
     expect(script).not.toContain("}, 38_000);");
+  });
+});
+
+
+describe("Early live-search status from local speech", () => {
+  it("shows a neutral acknowledgement on sustained microphone speech before the server transcript arrives", () => {
+    expect(script).toContain("if (!micSpeechGateActive) {");
+    expect(script).toContain("showLiveSearchAcknowledgement(\"\", false);");
+    expect(script).toContain('if (!greetingTurnPending && !stage.classList.contains("is-speaking"))');
+    expect(script).toContain('title: "Listening to your question"');
+    expect(script).toContain('message: "Getting your request ready. I\'ll show live-source checks if needed."');
+    expect(script).toContain('message: "Take your time. I\'ll show live-source checks if needed."');
+    expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);"))
+      .toBeLessThan(script.indexOf("sendAudioChunk(samples);", script.indexOf("function startAudioCapture()")));
+    expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
+    expect(script).toContain("navigator.onLine === false");
   });
 });
