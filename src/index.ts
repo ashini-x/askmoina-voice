@@ -1258,6 +1258,13 @@ async function handleVoiceSocket(
     }
   }
 
+  function sendRankedContinuationStatus(state: "progress_turn_started" | "progress_turn_completed" | "continuation_queued" | "continuation_dispatched") {
+    // Safe, non-sensitive protocol trace for the production synthetic. No query, transcript, or result data.
+    try {
+      workerSocket.send(JSON.stringify({ ranked_continuation_status: { state, at: Date.now() } }));
+    } catch { /* the socket close handler owns cleanup */ }
+  }
+
   function sendLiveSearchProgressCue(cueNumber: number, requestContext = ""): boolean {
     if (!copilotMode || closed || !upstreamSetupReady || resumptionInProgress ||
         upstreamSocket.readyState !== WebSocket.OPEN || pendingGroundedSearches <= 0) return false;
@@ -1336,6 +1343,7 @@ async function handleVoiceSocket(
     liveSearchProgressCuePending = false;
     forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(1, query);
     liveSearchProgressCuePending = forcedRankedProgressTurnOutstanding;
+    if (forcedRankedProgressTurnOutstanding) sendRankedContinuationStatus("progress_turn_started");
     try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
 
     ctx.waitUntil((async () => {
@@ -1399,6 +1407,7 @@ async function handleVoiceSocket(
         // Sending clientContent during an active Live response can collide with or
         // discard the final turn. Wait for the progress sentence's turnComplete.
         pendingForcedRankedAnswerContinuation = continuationText;
+        sendRankedContinuationStatus("continuation_queued");
         console.info("[AskMoina] Queued mandatory ranked-list spoken continuation behind the active progress turn");
       } else {
         sendUpstreamMessage({
@@ -1407,6 +1416,8 @@ async function handleVoiceSocket(
             turnComplete: true,
           },
         });
+        sendRankedContinuationStatus("continuation_dispatched");
+        console.info("[AskMoina] Dispatched final ranked-list spoken continuation to Live");
       }
       forcedRankedLookupActive = false;
     })().catch((error) => {
@@ -2067,10 +2078,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     if (forcedRankedProgressTurnOutstanding && isProviderTurnComplete) {
       forcedRankedProgressTurnOutstanding = false;
       liveSearchProgressCuePending = false;
+      sendRankedContinuationStatus("progress_turn_completed");
       if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 8) {
         liveSearchProgressCueCount += 1;
         forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(liveSearchProgressCueCount);
         liveSearchProgressCuePending = forcedRankedProgressTurnOutstanding;
+        if (forcedRankedProgressTurnOutstanding) sendRankedContinuationStatus("progress_turn_started");
       } else if (pendingForcedRankedAnswerContinuation !== null) {
         const continuationText = pendingForcedRankedAnswerContinuation;
         pendingForcedRankedAnswerContinuation = null;
@@ -2080,6 +2093,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             turnComplete: true,
           },
         });
+        sendRankedContinuationStatus("continuation_dispatched");
         console.info("[AskMoina] Resumed queued ranked-list spoken continuation after progress turn completed");
       }
     } else if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
