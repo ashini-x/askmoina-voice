@@ -63,7 +63,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function restoreResponseCard()");
     expect(script).toContain("function createTranscriptFallbackCard(userText, assistantText)");
     expect(script).toContain("if (!prompt) return null;");
-    expect(script).toContain("A preflight acknowledgement is not evidence of an active search.");
+    expect(script).toContain("A user transcript alone is not progress");
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
@@ -485,7 +485,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
 });
 
 describe("Apple-style live-search progress", () => {
-  it("shows an immediate acknowledgement and staged loader for live search", () => {
+  it("starts for backend search or model-generated spoken progress, never for ordinary user transcripts", () => {
     expect(html).toContain('id="liveSearchStatus" hidden');
     expect(html).toContain('id="liveSearchTitle"');
     expect(html).toContain('id="liveSearchPercent"');
@@ -493,14 +493,16 @@ describe("Apple-style live-search progress", () => {
     expect(html).toContain('role="progressbar"');
     expect(script).toContain('call.name === "search_current_web"');
     expect(script).toContain("function startLiveSearchProgress()");
-    expect(script).toContain("Finding relevant sources");
-    expect(script).toContain("Checking useful source details");
-    expect(script).toContain("Collecting supporting evidence");
+    expect(script).toContain("const LIVE_SEARCH_PROGRESS_SPEECH = /");
+    expect(script).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(script).toContain("if (hasSearchCallOnThisMessage) startLiveSearchProgress()");
+    expect(script).toContain("const workActive = liveSearchActive || liveSearchFinishing");
+    expect(script).not.toContain("showLiveSearchAcknowledgement");
+    expect(script).not.toContain("startQuietThinkingLoader");
     expect(css).toContain("@keyframes live-search-sweep");
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
     expect(workerSource).toContain("The browser displays a contextual Apple-style loader");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
-    expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) return;");
     const workerStart = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
     const searchAwait = workerSource.lastIndexOf("result = await performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode)");
     expect(workerStart).toBeGreaterThanOrEqual(0);
@@ -508,67 +510,47 @@ describe("Apple-style live-search progress", () => {
     const lookupComplete = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
     expect(lookupComplete).toBeGreaterThan(searchAwait);
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "lookup_complete"');
-    expect(script).toContain('if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();');
   });
 
-  it("holds estimated progress below completion, reaches 100%, then removes the loader before revealing cards and final text", () => {
-    expect(script).toContain("const searchStages = [");
-    expect(script).toContain("liveSearchMessage.textContent = searchStages[liveSearchProgressStageIndex]");
-    expect(script).toContain('liveSearchProgress.removeAttribute("aria-valuenow")');
-    expect(script).not.toContain("Math.min(92, liveSearchProgressValue + increment)");
-    expect(script).toContain('liveSearchStatus.classList.add("is-complete")');
-    expect(css).toContain(".live-search-status.is-complete .live-search-track>span");
-    expect(script).toContain("updateLiveSearchProgress(100)");
-    expect(script).toContain("liveSearchStatus.hidden = true");
+  it("keeps the loader visible until the response card is actually rendered", () => {
+    expect(script).toContain("function finishLiveSearchAfterCardShown()");
+    expect(script).toContain("if (!responseCardTray.hidden) finishLiveSearchAfterCardShown()");
+    expect(script).toContain('liveSearchMessage.textContent = "Waiting for the answer card"');
     expect(script).toContain("const rendered = renderResponseCard(call.args);");
     expect(script).toContain("if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();");
-    expect(script).not.toContain("pendingResponseCards.push({ id, args: call.args })");
     expect(script).toContain("const queuedCards = pendingResponseCards.splice(0)");
     expect(script).toContain('transcriptNode.classList.add("is-searching")');
     expect(script).toContain('transcriptNode.classList.remove("is-searching")');
+    expect(script).not.toContain("updateLiveSearchProgress(100)");
+    const render = script.indexOf("responseCardTray.hidden = responseCardManuallyMinimizedForTurn");
+    const dismiss = script.indexOf("if (!responseCardTray.hidden) finishLiveSearchAfterCardShown()");
+    expect(render).toBeGreaterThanOrEqual(0);
+    expect(dismiss).toBeGreaterThan(render);
     expect(css).toContain(".transcript.is-searching .transcript-entry.from-moina{display:none!important}");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
   });
 });
 
-
-describe("Immediate live-search acknowledgement", () => {
-  it("acknowledges likely search requests as soon as speech is transcribed, before waiting for the search tool event", () => {
-    expect(script).toContain("function isLikelyLiveSearchRequest(text)");
-    expect(script).toContain("interim_input_transcription");
-    expect(script).toContain("interimInputTranscription");
-    expect(script).toContain("top\\s+\\d+");
-    expect(script).toContain("rank(?:ed|ing|ers?)");
-    expect(script).toContain("orange cap|purple cap");
-    expect(script).toContain("function showLiveSearchAcknowledgement(text = \"\", isSearchIntent = false)");
-    expect(script).toContain("getLiveSearchPreflightProfile(text, isSearchIntent)");
+describe("Assistant-voiced search progress", () => {
+  it("waits for generated search-progress speech or the backend event, not just the user's transcript", () => {
+    expect(script).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(script).toContain('if (role !== "assistant") return;');
+    expect(script).toContain("startLiveSearchProgress();");
     expect(script).toContain("handleTranscriptAcknowledgement(role, entry.text)");
-    expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
-    expect(script).toContain('liveSearchTitle.textContent = liveSearchPreflightStages[0].title');
-    expect(script).toContain('title: "Preparing your answer"');
-    expect(script).toContain('message: "Bujhi paisu — working out the useful bits for this question."');
-    expect(script).toContain('liveSearchTitle.textContent = stageItem.title');
-    expect(script).toContain('liveSearchTitle.textContent = "Building your answer"');
-    expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
-    expect(script).toContain("liveSearchStatus.classList.remove(\"is-acknowledging\")");
-    expect(css).toContain(".live-search-status.is-acknowledging .live-search-percent{display:none!important}");
-    expect(css).toContain("@keyframes live-search-sweep");
-  });
-
-  it("transitions to real progress when the Worker confirms lookup start and clears unused acknowledgements", () => {
-    expect(script).toContain("function hideLiveSearchAcknowledgement()");
-    expect(script).not.toContain("liveSearchAcknowledgementTimer = window.setTimeout(hideLiveSearchAcknowledgement, 12_000)");
-    expect(script).not.toContain("if (reply.length >= 18) hideLiveSearchAcknowledgement()");
-    expect(script).toContain("if (hasSearchCallOnThisMessage) startLiveSearchProgress()");
-    expect(script).toContain("else if (liveSearchAcknowledgementActive && !hasSearchCallOnThisMessage)");
+    const handlerStart = script.indexOf("function handleTranscriptAcknowledgement(role, text)");
+    const assistantGate = script.indexOf('if (role !== "assistant") return;', handlerStart);
+    const userBranch = script.slice(handlerStart, assistantGate);
+    expect(handlerStart).toBeGreaterThanOrEqual(0);
+    expect(userBranch).not.toContain("startLiveSearchProgress()");
+    expect(userBranch).not.toContain("LIVE_SEARCH_PROGRESS_SPEECH");
+    expect(script).not.toContain("function showLiveSearchAcknowledgement");
   });
 });
-
 
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.31"');
+    expect(html).toContain('src="/copilot.js?v=0.4.32"');
   });
 });
 
@@ -608,7 +590,8 @@ describe("RC6 grounded list visibility regressions", () => {
     expect(script).toContain("function isListDisplayFollowup(text)");
     expect(script).toContain("renderResponseCard(lastGroundedRankedListCard, true)");
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
-    expect(script).toContain("pendingUserProgressContext = normalized");
+    expect(script).toContain("protectGroundedListForTurn = true");
+    expect(script).not.toContain("pendingUserProgressContext = normalized");
   });
 });
 
@@ -657,65 +640,54 @@ describe("RC11 bounded search latency", () => {
 });
 
 describe("RC7 zero-gap search-status feedback", () => {
-  it("shows early status only after sustained microphone speech, not raw energy or brief noise", () => {
+  it("keeps progress hidden for ordinary speech and avoids a generic post-speech loader", () => {
     expect(script).toContain('if (!micSpeechGateActive) {');
-    expect(script).toContain("showLiveSearchAcknowledgement(context, searchIntent);");
     expect(script).toContain("micNoiseCalibrationUntil = now + 500");
     expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
     expect(script).toContain("now - micSpeechCandidateAt >= 120");
     expect(script).toContain("Keep the interface clean while the user talks; show processing immediately after speech ends.");
-    expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
+    expect(script).not.toContain("showLiveSearchAcknowledgement");
+    expect(script).not.toContain("startQuietThinkingLoader");
+    expect(script).not.toContain("Thinking through your request");
   });
 
-  it("adapts preflight stages by context and keeps explicit-search acknowledgements visible until the lookup or turn completes", () => {
-    expect(script).toContain('key: "ranked-list"');
-    expect(script).toContain('key: "current-info"');
-    expect(script).toContain('key: "reference-check"');
-    expect(script).toContain('key: "general"');
-    expect(script).toContain('if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing)');
-    expect(script).toContain("hideLiveSearchAcknowledgement()");
-  });
-
-  it("removes a preflight status before revealing a card when a web search was not started", () => {
-    expect(script).toContain("const rendered = renderResponseCard(call.args);");
-    expect(script).toContain("if (liveSearchAcknowledgementActive && !liveSearchActive) hideLiveSearchAcknowledgement();");
+  it("stops the loader only when a visible answer sheet has rendered", () => {
+    expect(script).toContain("function finishLiveSearchAfterCardShown()");
+    expect(script).toContain("if (!responseCardTray || responseCardTray.hidden) return false;");
+    expect(script).toContain("liveSearchStatus.hidden = true;");
+    expect(script).toContain("if (!responseCardTray.hidden) finishLiveSearchAfterCardShown()");
+    expect(script).toContain("Waiting for the answer card");
+    expect(script).not.toContain("updateLiveSearchProgress(100)");
   });
 });
 
-
 describe("Persistent live-search progress", () => {
-  it("keeps the status visible through slow preflight, provider delays, and offline states", () => {
-    expect(script).toContain("liveSearchAcknowledgementStartedAt = Date.now()");
-    expect(script).toContain("liveSearchPreflightIntent");
-    expect(script).toContain("if (liveSearchPreflightIntent || (LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) && normalized.length < 90)) return;");
-    expect(script).toContain("Putting the details together.");
-    expect(script).toContain("Olop besi time lagise");
+  it("keeps genuine search progress visible through slow provider responses and offline states", () => {
     expect(script).toContain("liveSearchStartedAt = Date.now()");
     expect(script).toContain("navigator.onLine === false");
-    expect(script).toContain("Olop besi time lagise");
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000)");
+    expect(script).toContain("Waiting for the answer card");
+    expect(script).toContain("function finishLiveSearchAfterCardShown()");
+    expect(script).not.toContain("liveSearchAcknowledgementStartedAt");
+    expect(script).not.toContain("LIVE_SEARCH_ACKNOWLEDGEMENT");
     expect(script).not.toContain("}, 38_000);");
   });
 });
 
-
 describe("Voice-turn status visibility", () => {
-  it("hides the loader during user speech and restores it for quiet processing", () => {
-    expect(script).toContain("No status surface while the user speaks.");
-    expect(script).toContain("if (userSpeaking) {");
+  it("hides search progress during user speech without showing generic quiet-thinking status", () => {
+    expect(script).toContain("liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive)");
     expect(script).toContain("liveSearchStatus.hidden = true;");
-    expect(script).toContain("if (__moinaLastUserSpeech) {");
-    expect(script).toContain("showLiveSearchAcknowledgement(context, searchIntent);");
-    expect(script).toContain('title: "Thinking through your request"');
-    expect(script).toContain("Answer card-tu ready kori asu.");
-    expect(script).toContain("No status surface while the user speaks.");
-    expect(script).toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
-    expect(script).toContain("Olop besi time lagise");
+    expect(script).toContain("function startLiveSearchProgress()");
+    expect(script).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(script).not.toContain("No status surface while the user speaks.");
+    expect(script).not.toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
+    expect(script).not.toContain("startQuietThinkingLoader");
+    expect(script).not.toContain("Thinking through your request");
     expect(script).toContain("navigator.onLine === false");
   });
 });
-
 
 describe("long-running Live session continuity", () => {
   const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
@@ -770,10 +742,10 @@ describe("long-running Live session continuity", () => {
 
 describe("Apple-style active turn contract", () => {
   it("keeps processing state contextual, continues Live progress, and requires answer cards", () => {
-    expect(script).toContain("No status surface while the user speaks.");
-    expect(script).toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
-    expect(script).toContain("Answer card-tu ready kori asu.");
-    expect(script).toContain("Names aru rankings match kori asu against sources.");
+    expect(script).toContain("LIVE_SEARCH_PROGRESS_SPEECH.test(normalized)");
+    expect(script).toContain("liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive)");
+    expect(script).not.toContain("Thinking through your request");
+    expect(script).not.toContain("startQuietThinkingLoader");
     expect(workerSource).toContain('behavior: "NON_BLOCKING"');
     expect(workerSource).toContain('function sendLiveSearchProgressCue(cueNumber: number, requestContext = "")');
     expect(workerSource).toContain("liveSearchProgressCueCount < 8");
