@@ -1053,6 +1053,12 @@ async function handleVoiceSocket(
   let highestEvictedClientMessageIndex = -1;
   let resumptionInProgress = false;
   const MAX_RESUME_REPLAY_CHARS = 512 * 1024;
+  const pendingUpstreamMessages: Array<{ payload: Record<string, unknown>; chars: number }> = [];
+  let pendingUpstreamMessagesChars = 0;
+  const MAX_PENDING_UPSTREAM_CHARS = 512 * 1024;
+  let previousUpstreamSocket: WebSocket | null = null;
+  let resolveResumeSetup: ((accepted: boolean) => void) | null = null;
+  let resumeSetupTimeout: ReturnType<typeof setTimeout> | null = null;
   let copilotMode = false;
   let groundedSearchCount = 0;
   let lastGroundedSearchAt = 0;
