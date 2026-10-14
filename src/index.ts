@@ -547,8 +547,8 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   // Preserve the product's default top-ten request after that simplification.
   const requestedListCountForBudget = explicitRequestedListCount ?? (inferredRankedTableQuery ? 10 : null);
   const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
-  const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
-  const searchBudgetMs = rankedListSearchBudget ? 75_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const searchTimeoutMs = rankedListSearchBudget ? 32_000 : GROUNDED_SEARCH_TIMEOUT_MS;
+  const searchBudgetMs = rankedListSearchBudget ? 100_000 : GROUNDED_SEARCH_BUDGET_MS;
   const searchMaxAttempts = rankedListSearchBudget ? 3 : GROUNDED_SEARCH_MAX_ATTEMPTS;
   const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
   const accessToken = await getGoogleAccessToken(env);
