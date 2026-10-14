@@ -135,6 +135,9 @@
       if (navigator.onLine === false) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
         if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. The search status will stay visible while we wait.";
+      } else if (micSpeechGateActive) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Listening to your question";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Take your time. I'll show live-source checks if needed.";
       } else if (elapsed >= 45_000) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Still waiting for live results";
         if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the search service may be slow; you do not need to repeat your question.";
@@ -269,6 +272,7 @@
       return {
         key: "general",
         stages: [
+          { title: "Listening to your question", message: "Getting your request ready. I'll show live-source checks if needed." },
           { title: "Understanding your request", message: "Working out what will help you most." },
           { title: "Preparing your answer", message: "Checking whether up-to-date sources would help." },
           { title: "Putting it together", message: "Keeping the answer focused on your question." }
@@ -353,6 +357,9 @@
       if (navigator.onLine === false) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
         if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. AskMoina will keep this status visible while waiting.";
+      } else if (micSpeechGateActive) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Listening to your question";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Take your time. I'll show live-source checks if needed.";
       } else if (elapsed >= 25_000 && liveSearchPreflightIntent) {
         if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your lookup";
         if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI search service may be slow.";
@@ -1963,7 +1970,13 @@
       if (speechLikeFrame) {
         if (!micSpeechCandidateAt) micSpeechCandidateAt = now;
         if (now - micSpeechCandidateAt >= 120) {
-          micSpeechGateActive = true;
+          if (!micSpeechGateActive) {
+            micSpeechGateActive = true;
+            // Show a local acknowledgement before the Live API returns its transcript or search-tool event.
+            if (!greetingTurnPending && !stage.classList.contains("is-speaking")) {
+              showLiveSearchAcknowledgement("", false);
+            }
+          }
           lastMicVoiceAt = now;
         }
       } else {
@@ -1987,7 +2000,7 @@
         if (now - lastMicVoiceAt > 240) stage.classList.remove("is-listening");
       }
       // Audio always streams to Gemini. The local gate only controls visual feedback.
-      // Status is triggered by recognized user speech or a real search event, never raw RMS.
+      // Sustained local speech may start a neutral acknowledgement; transcripts and tool events determine search-specific status.
       sendAudioChunk(samples);
     };
     microphoneSource.connect(processor);
