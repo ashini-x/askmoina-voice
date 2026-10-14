@@ -525,17 +525,23 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
   const host = "aiplatform.googleapis.com";
   const model = "gemini-3.8-flash";
   const searchStartedAt = Date.now();
-  const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
-  const accessToken = await getGoogleAccessToken(env);
-  // Credential acquisition cannot silently shorten the time available for actual search.
-  const groundingBudgetStartedAt = Date.now();
-  // Full ranked tables need more retrieval time than ordinary current-fact lookups.
-  // Only explicit requests for at least eight entries receive this longer bounded budget.
+  // This is a true end-to-end budget: authentication/credential refresh counts against
+  // the same clock as the Google Search request and bounded retry.
+  const groundingBudgetStartedAt = searchStartedAt;
+  // Full ranked tables need more retrieval time than ordinary current-fact lookups,
+  // but their larger allowance is still a hard wall-clock cap rather than a per-attempt
+  // timeout that can be added on top of authentication latency.
   const requestedListCountForBudget = getRequestedRankedListCount(query);
   const inferredRankedTableQuery = isCopilotSearch && isLikelyRankedTableSearchQuery(query);
   const rankedListSearchBudget = (requestedListCountForBudget !== null && requestedListCountForBudget >= 8) || inferredRankedTableQuery;
   const searchTimeoutMs = rankedListSearchBudget ? 22_000 : GROUNDED_SEARCH_TIMEOUT_MS;
   const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;
+  const url = `https://${host}/v1/projects/${encodeURIComponent(env.GCP_PROJECT_ID.trim())}/locations/${encodeURIComponent(location)}/publishers/google/models/${model}:generateContent`;
+  const accessToken = await getGoogleAccessToken(env);
+  const remainingAfterAuthentication = searchBudgetMs - (Date.now() - groundingBudgetStartedAt);
+  if (remainingAfterAuthentication <= 0) {
+    throw new Error(`Grounded search exceeded its ${searchBudgetMs}ms end-to-end latency budget during Google authentication.`);
+  }
   const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
   const groundingPrompt = [
       `Search the public web for: ${query}`,
@@ -651,6 +657,9 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     } finally {
       clearTimeout(timeout);
     }
+  }
+  if (!candidate && Date.now() - groundingBudgetStartedAt >= searchBudgetMs) {
+    throw new Error(`Grounded search exceeded its ${searchBudgetMs}ms end-to-end latency budget across authentication and lookup.`);
   }
   if (!candidate && lastFailure) {
     throw lastFailure instanceof Error ? lastFailure : new Error("Grounded search failed without a provider response.");
