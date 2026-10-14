@@ -80,7 +80,7 @@ describe("authenticated live synthetic verification", () => {
 
   it("allows the server-ranked-list lookup to finish before judging grounding", () => {
     const rankedList = readFileSync(new URL("../scripts/live-ranked-list-smoke.py", import.meta.url), "utf8");
-    // The production ranked-list search has a 75-second total budget before speech resumes.
+    // The ranked lookup can use 100 seconds; the harness allows 160 seconds for grounding, card delivery, and final speech.
     expect(rankedList).toContain("TURN_WAIT_SECONDS = 160");
     expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
     expect(rankedList).toContain("grounded_search_count += 1");

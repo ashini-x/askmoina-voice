@@ -43,7 +43,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.27",
+    "APP_VERSION": "0.4.28",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
