@@ -38,7 +38,7 @@
       if (button.id === "cancelAuth") return;
       if (button.id === "modeCreate" || button.id === "modeSignin" ||
           button.id === "passkeyAction" || button.id === "addPasskey" ||
-          button.id === "sendOtp" || button.id === "verifyOtp" || button.id === "guestDemoStart") {
+          button.id === "sendOtp" || button.id === "verifyOtp") {
         button.disabled = value;
       }
     });
@@ -332,23 +332,7 @@
       else if (button.dataset.passkey === "login") login();
     });
   });
-  $("#guestDemoStart")?.addEventListener("click", async () => {
-    if (busy) return;
-    setBusy(true);
-    say("Preparing your limited demo…");
-    try {
-      const result = await post("guest/start", {});
-      if (!result || result.ok !== true || result.guestDemo !== true) {
-        throw new Error("The demo could not be started. Please sign in instead.");
-      }
-      await navigateAfterAuth("/copilot?demo=1");
-    } catch (error) {
-      say(error && error.message ? error.message : "The demo could not be started. Please sign in instead.", "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-    $("#modeCreate")?.addEventListener("click", () => setMode("create"));
+  $("#modeCreate")?.addEventListener("click", () => setMode("create"));
   $("#modeSignin")?.addEventListener("click", () => setMode("signin"));
   $("#sendOtp")?.addEventListener("click", sendOtp);
   $("#verifyOtp")?.addEventListener("click", verifyOtp);
