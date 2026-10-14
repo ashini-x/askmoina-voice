@@ -689,10 +689,10 @@ describe("Persistent live-search progress", () => {
     expect(script).toContain("liveSearchPreflightIntent");
     expect(script).toContain("if (liveSearchPreflightIntent || (LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) && normalized.length < 90)) return;");
     expect(script).toContain("Putting the details together.");
-    expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
+    expect(script).toContain("Olop besi time lagise");
     expect(script).toContain("liveSearchStartedAt = Date.now()");
     expect(script).toContain("navigator.onLine === false");
-    expect(script).toContain("This is taking longer than usual.");
+    expect(script).toContain("Olop besi time lagise");
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000)");
     expect(script).not.toContain("}, 38_000);");
   });
@@ -701,16 +701,16 @@ describe("Persistent live-search progress", () => {
 
 describe("Voice-turn status visibility", () => {
   it("hides the loader during user speech and restores it for quiet processing", () => {
-    expect(script).toContain("Voice-turn presentation contract: never overlay the user's speech with a loader.");
+    expect(script).toContain("No status surface while the user speaks.");
     expect(script).toContain("if (userSpeaking) {");
     expect(script).toContain("liveSearchStatus.hidden = true;");
     expect(script).toContain("if (__moinaLastUserSpeech) {");
     expect(script).toContain('showLiveSearchAcknowledgement("", false);');
     expect(script).toContain('title: "Thinking through your request"');
-    expect(script).toContain(`message: "Preparing a useful answer. I'll show live-source checks if needed."`);
-    expect(script).toContain(`liveSearchMessage.textContent = "Take your time. I'll show live-source checks if needed."`);
+    expect(script).toContain("Answer card-tu ready kori asu.");
+    expect(script).toContain("No status surface while the user speaks.");
     expect(script).toContain("const userSpeaking = Boolean(micSpeechGateActive && !assistantSpeaking)");
-    expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
+    expect(script).toContain("Olop besi time lagise");
     expect(script).toContain("navigator.onLine === false");
   });
 });
