@@ -501,8 +501,8 @@ async function waitForGroundedRetry(delayMs: number, budgetStartedAt: number, bu
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
-const GROUNDED_SEARCH_TIMEOUT_MS = 32_000;
-const GROUNDED_SEARCH_BUDGET_MS = 100_000;
+const GROUNDED_SEARCH_TIMEOUT_MS = 25_000;
+const GROUNDED_SEARCH_BUDGET_MS = 60_000;
 const GROUNDED_SEARCH_MAX_ATTEMPTS = 3;
 const GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
@@ -596,7 +596,19 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     ].join("\n\n")
     : groundingPrompt;
   const requestBody = makeGroundingRequestBody(rankedListPrompt);
-  let retryRequestBody = makeGroundingRequestBody(groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.");
+  const genericRetryPrompt = groundingPrompt + "\n\nRETRY: The first attempt was incomplete or not verifiable. Run a DISTINCT alternate Google Search query for the complete official or reputable table, not only snippets. For a requested top-N list, return one numbered source-backed entry per rank, one per line, with name, team/category, and requested statistic. Add HTTPS source URLs in a final Sources section. Do not answer from memory or stop after the first few entries.";
+  // A timeout has no partial rows to target. Keep the ranking-specific full-table
+  // instructions on retry rather than accidentally falling back to the generic prompt.
+  const rankedRetryPrompt = [
+    rankedListPrompt,
+    "RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE: The prior attempt did not return a complete verified ranking. Use a distinct, simpler Google Search query and prioritize a full-table source rather than snippets or a featured-player teaser.",
+    ipl2025FullTableInstruction,
+    "Return one distinct row per rank from 1 through " + requestedListCountForBudget + ", with name, team/category, and the requested statistic.",
+    "Never invent missing entries. Include real HTTPS source URLs returned by grounding."
+  ].filter(Boolean).join("\n\n");
+  let retryRequestBody = makeGroundingRequestBody(
+    requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt
+  );
   let partialRankedListText = "";
   let partialRankedListChunks: Array<{ web?: { uri?: string; title?: string } }> = [];
   let candidate: {
