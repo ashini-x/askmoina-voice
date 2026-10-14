@@ -80,3 +80,58 @@ jobs:
           name: askmoina-worker-bundle
           path: dist/
           if-no-files-found: error
+      - name: Live production HTTP smoke (temporary verification only)
+        if: github.event_name == 'pull_request' && github.head_ref == 'test/live-production-smoke-20261014'
+        env:
+          BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+          EXPECTED_VERSION: "0.4.16"
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.BASE_URL;
+          const expectedVersion = process.env.EXPECTED_VERSION;
+          const deadline = Date.now() + 180000;
+          let last = { error: "Smoke test has not started." };
+          while (Date.now() < deadline) {
+            try {
+              const healthResponse = await fetch(base + "/health", {
+                cache: "no-store",
+                headers: { "Cache-Control": "no-cache" },
+                signal: AbortSignal.timeout(15000)
+              });
+              const healthText = await healthResponse.text();
+              let health = {};
+              try { health = JSON.parse(healthText); } catch {}
+              const scriptResponse = await fetch(base + "/copilot.js", {
+                cache: "no-store",
+                headers: { "Cache-Control": "no-cache" },
+                signal: AbortSignal.timeout(15000)
+              });
+              const script = await scriptResponse.text();
+              const checks = {
+                healthHttp: healthResponse.status,
+                healthOk: health.ok === true,
+                version: health.version,
+                environment: health.environment,
+                copilotHttp: scriptResponse.status,
+                retainsAcknowledgementStatus: script.includes("Preserve it across acknowledgement-only turns"),
+                keepsWaitingMessageVisible: script.includes("The request is received. Waiting for the live-source check to start."),
+                reportsPossibleSlowNetwork: script.includes("This is taking longer than usual. Your connection or the AI search service may be slow."),
+                reportsOfflineState: script.includes("Connection appears offline")
+              };
+              last = checks;
+              if (healthResponse.ok && health.ok === true &&
+                  health.version === expectedVersion && health.environment === "production" &&
+                  scriptResponse.ok && checks.retainsAcknowledgementStatus &&
+                  checks.keepsWaitingMessageVisible && checks.reportsPossibleSlowNetwork &&
+                  checks.reportsOfflineState) {
+                console.log("LIVE_PRODUCTION_SMOKE_PASS " + JSON.stringify(checks));
+                process.exit(0);
+              }
+            } catch (error) {
+              last = { error: String(error).slice(0, 240) };
+            }
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+          console.error("LIVE_PRODUCTION_SMOKE_FAIL " + JSON.stringify(last));
+          process.exit(1);
+          NODE
