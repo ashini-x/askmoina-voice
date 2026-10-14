@@ -1123,3 +1123,30 @@ body.site-info-body .site-info-card{width:100%}
 .response-card-restore:focus-visible{outline:2px solid #9be9b8;outline-offset:3px}
 .response-card-restore:hover{background:rgba(38,41,46,.92)}
 @media(prefers-reduced-transparency:reduce){.response-card-restore{background:#17191d;-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+
+/* AskMoina voice-turn status: restrained, translucent, Apple-inspired. */
+.live-search-status{
+  width:min(310px,calc(100% - 32px));
+  padding:13px 15px 12px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:20px;
+  background:rgba(245,246,248,.76);
+  color:#17181b;
+  -webkit-backdrop-filter:blur(30px) saturate(175%);
+  backdrop-filter:blur(30px) saturate(175%);
+  box-shadow:0 12px 38px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.66);
+  transition:opacity .18s ease,transform .18s ease;
+}
+.live-search-title{color:#17181b;font-size:.79rem;font-weight:650;letter-spacing:-.025em}
+.live-search-message{color:rgba(23,24,27,.66);font-size:.68rem;letter-spacing:-.01em}
+.live-search-mark{border-color:rgba(23,24,27,.16);border-top-color:#17181b}
+.live-search-mark span{background:#17181b}
+.live-search-track{background:rgba(23,24,27,.10)}
+.live-search-track>span{background:#202124}
+.live-search-status.is-acknowledging{width:min(286px,calc(100% - 32px));padding:12px 14px;border-radius:18px}
+.live-search-status.is-acknowledging .live-search-title{font-size:.77rem}
+.live-search-status.is-acknowledging .live-search-message{font-size:.67rem}
+@media(prefers-reduced-transparency:reduce){
+ .live-search-status{background:rgba(245,246,248,.98);-webkit-backdrop-filter:none;backdrop-filter:none}
+}

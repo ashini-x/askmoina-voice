@@ -5287,4 +5287,31 @@
   void prepareCameraPreview();
   void checkSpatialArSupport();
   void checkBackend();
+
+  // Voice-turn presentation contract: never overlay the user's speech with a loader.
+  // When the microphone gate closes, show the translucent status card immediately while
+  // the model prepares a reply. Keep the same card visible while the assistant speaks.
+  let __moinaLastUserSpeech = false;
+  window.setInterval(() => {
+    const userSpeaking = Boolean(micSpeechGateActive || (stage && stage.classList.contains("is-listening")));
+    if (userSpeaking) {
+      __moinaLastUserSpeech = true;
+      if (liveSearchStatus) {
+        liveSearchStatus.hidden = true;
+        liveSearchStatus.classList.remove("is-acknowledging");
+      }
+      if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
+      liveSearchAcknowledgementTimer = null;
+      liveSearchAcknowledgementActive = false;
+      return;
+    }
+    if (__moinaLastUserSpeech) {
+      __moinaLastUserSpeech = false;
+      // Neutral processing acknowledgement, not a claim that a web search has started.
+      if (!liveSearchActive && !liveSearchFinishing && liveSearchStatus) {
+        showLiveSearchAcknowledgement("", false);
+      }
+    }
+  }, 90);
+
 })();
