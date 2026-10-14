@@ -678,7 +678,7 @@ describe("RC7 zero-gap search-status feedback", () => {
 
   it("removes a preflight status before revealing a card when a web search was not started", () => {
     expect(script).toContain("const rendered = renderResponseCard(call.args);");
-    expect(script).toContain("hideLiveSearchAcknowledgement();\n          renderResponseCard(fallbackCard, true);");
+    expect(script).toContain("if (liveSearchAcknowledgementActive && !liveSearchActive) hideLiveSearchAcknowledgement();");\n          renderResponseCard(fallbackCard, true);");
   });
 });
 
