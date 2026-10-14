@@ -19,6 +19,10 @@
   let reconnectTimer = null;
   let isAutomaticRetry = false;
   let lastMicVoiceAt = 0;
+  let micNoiseFloor = 0.003;
+  let micNoiseCalibrationUntil = 0;
+  let micSpeechCandidateAt = 0;
+  let micSpeechGateActive = false;
   let disconnectToneUntil = 0;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
@@ -65,6 +69,9 @@
 
   let responseCardExpanded = true;
   let responseCardRenderedForTurn = false;
+  let responseCardWasTranscriptFallback = false;
+  let transcriptFallbackSourceLength = 0;
+  let responseCardManuallyMinimizedForTurn = false;
   if (responseCardCollapseButton) responseCardCollapseButton.addEventListener("click", () => setResponseCardExpanded(!responseCardExpanded));
   if (responseCardDismissButton) responseCardDismissButton.addEventListener("click", dismissResponseCard);
   if (responseCardMinimizeButton) responseCardMinimizeButton.addEventListener("click", minimizeResponseCard);
@@ -155,8 +162,8 @@
   function sendDeferredResponseCardResult(id, rendered) {
     if (!id || !socket || socket.readyState !== WebSocket.OPEN) return;
     const result = rendered
-      ? "The complete designed response card is now visible as a full-screen answer sheet. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
-      : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible.";
+      ? "The complete designed response card is now visible as a full-screen answer sheet. Continue speaking the complete natural response aloud: explain the answer, every useful step, what to look for, and relevant safety limits. A card never replaces the spoken explanation or proves that an action was completed."
+      : "The response-card payload could not be rendered by the client. Continue speaking the full natural response and do not claim a card is visible.";
     try {
       socket.send(JSON.stringify({
         tool_response: {
@@ -1794,7 +1801,12 @@
     const text = String(incomingText || "").trim();
     if (!text) return;
     const entry = getTranscriptEntry(role);
-    if (role === "user" && !entry.text) responseCardRenderedForTurn = false;
+    if (role === "user" && !entry.text) {
+      responseCardRenderedForTurn = false;
+      responseCardWasTranscriptFallback = false;
+      transcriptFallbackSourceLength = 0;
+      responseCardManuallyMinimizedForTurn = false;
+    }
     const mergeTranscript = window.AskMoinaTranscript && window.AskMoinaTranscript.merge;
     const merged = typeof mergeTranscript === "function"
       ? mergeTranscript(entry.text, text)
@@ -1804,6 +1816,7 @@
     entry.body.textContent = entry.text;
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
     handleTranscriptAcknowledgement(role, entry.text);
+    if (role === "assistant") ensureTranscriptFallbackCard(false);
   }
 
   function finalizeTurn() {
@@ -1871,23 +1884,59 @@
       if (!active || !setupReady || stopping) return;
       const samples = event.inputBuffer.getChannelData(0);
       let sumSquares = 0;
-      for (let i = 0; i < samples.length; i += 1) sumSquares += samples[i] * samples[i];
-      const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
-      const rawVoiceLevel = Math.min(1, Math.max(0, (rms - 0.005) / 0.075));
-      const decayedVoiceLevel = microphoneVoiceEnergy * (rms > 0.012 ? 0.5 : 0.62);
-      applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "microphone");
-      const now = performance.now();
-      if (rms > 0.012) {
-        lastMicVoiceAt = now;
-        const wasListening = stage.classList.contains("is-listening");
-        stage.classList.add("is-listening");
-        if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive) {
-          responseCardRenderedForTurn = false;
-      showLiveSearchAcknowledgement("", false);
-        }
-      } else if (now - lastMicVoiceAt > 145) {
-        stage.classList.remove("is-listening");
+      let crossings = 0;
+      for (let i = 0; i < samples.length; i += 1) {
+        const sample = samples[i];
+        sumSquares += sample * sample;
+        if (i > 0 && ((sample >= 0) !== (samples[i - 1] >= 0))) crossings += 1;
       }
+      const rms = Math.sqrt(sumSquares / Math.max(1, samples.length));
+      const zeroCrossingRate = crossings / Math.max(1, samples.length - 1);
+      const now = performance.now();
+      // Calibrate the ambient noise floor on the first active frames after Live is ready.
+      if (!micNoiseCalibrationUntil) {
+        micNoiseFloor = Math.max(0.001, Math.min(0.04, rms));
+        micNoiseCalibrationUntil = now + 500;
+        micSpeechCandidateAt = 0;
+        micSpeechGateActive = false;
+      }
+      if (now < micNoiseCalibrationUntil) {
+        micNoiseFloor = Math.max(0.001, Math.min(0.04, micNoiseFloor * 0.92 + rms * 0.08));
+        applyVoiceEdgeEnergy(0, "microphone");
+        sendAudioChunk(samples);
+        return;
+      }
+      // Require signal above the learned room-noise floor, speech-like crossings, and a sustained onset.
+      const speechThreshold = Math.max(0.013, micNoiseFloor * 1.55);
+      const speechLikeFrame = rms >= speechThreshold && zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38;
+      if (speechLikeFrame) {
+        if (!micSpeechCandidateAt) micSpeechCandidateAt = now;
+        if (now - micSpeechCandidateAt >= 120) {
+          micSpeechGateActive = true;
+          lastMicVoiceAt = now;
+        }
+      } else {
+        micSpeechCandidateAt = 0;
+        if (!micSpeechGateActive) {
+          micNoiseFloor = Math.max(0.001, Math.min(0.04, micNoiseFloor * 0.985 + rms * 0.015));
+        }
+      }
+      if (micSpeechGateActive && speechLikeFrame) lastMicVoiceAt = now;
+      if (micSpeechGateActive && now - lastMicVoiceAt > 240) {
+        micSpeechGateActive = false;
+        micSpeechCandidateAt = 0;
+      }
+      if (micSpeechGateActive) {
+        const rawVoiceLevel = Math.min(1, Math.max(0, (rms - speechThreshold * 0.85) / 0.075));
+        const decayedVoiceLevel = microphoneVoiceEnergy * (speechLikeFrame ? 0.5 : 0.62);
+        applyVoiceEdgeEnergy(Math.max(rawVoiceLevel, decayedVoiceLevel), "microphone");
+        stage.classList.add("is-listening");
+      } else {
+        applyVoiceEdgeEnergy(0, "microphone");
+        if (now - lastMicVoiceAt > 240) stage.classList.remove("is-listening");
+      }
+      // Audio always streams to Gemini. The local gate only controls visual feedback.
+      // Status is triggered by recognized user speech or a real search event, never raw RMS.
       sendAudioChunk(samples);
     };
     microphoneSource.connect(processor);
@@ -2593,6 +2642,7 @@
   function minimizeResponseCard() {
     if (!responseCardTray || responseCardTray.hidden) return;
     // Minimize only the visual sheet. Do not pause, clear, or restart live audio.
+    responseCardManuallyMinimizedForTurn = true;
     responseCardTray.hidden = true;
     if (stage) stage.classList.remove("has-response-card");
     if (responseCardRestoreButton) responseCardRestoreButton.hidden = false;
@@ -2600,6 +2650,7 @@
 
   function restoreResponseCard() {
     if (!responseCardTray) return;
+    responseCardManuallyMinimizedForTurn = false;
     responseCardTray.hidden = false;
     if (stage) stage.classList.add("has-response-card");
     if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
@@ -2607,6 +2658,9 @@
 
   function dismissResponseCard() {
     if (!responseCardTray) return;
+    responseCardManuallyMinimizedForTurn = false;
+    responseCardWasTranscriptFallback = false;
+    transcriptFallbackSourceLength = 0;
     responseCardTray.hidden = true;
     if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
     if (responseCardContent) responseCardContent.replaceChildren();
@@ -2644,15 +2698,44 @@
     return normalizeResponseCardPayload({ type: "key_details", title: title || "Moina's answer", summary: firstSentence || answer.slice(0, 180), details: details.length ? details : [{ label: "Answer", value: answer.slice(0, 180) }] });
   }
 
+  function ensureTranscriptFallbackCard(final = false) {
+    const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text || "";
+    const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text || "";
+    if (!userText.trim() || !assistantText.trim()) return false;
+    if (LIVE_SEARCH_ACKNOWLEDGEMENT.test(assistantText.trim()) && assistantText.trim().length < 90) return false;
+    if (liveSearchActive && !liveSearchLookupCompleted && !liveSearchFinishing) return false;
+    if (protectGroundedListForTurn && lastGroundedRankedListCard && responseCardRenderedForTurn) return true;
+    if (pendingResponseCards.some((item) => item && isGroundedRankedListCard(item.args))) return false;
+    if (responseCardManuallyMinimizedForTurn) return true;
+    if (responseCardRenderedForTurn && !responseCardWasTranscriptFallback) return true;
+    const answer = assistantText.replace(/[\\t\\r\\n]+/g, " ").replace(/\\s+/g, " ").trim();
+    if (!final && answer.length < 55) return false;
+    if (responseCardWasTranscriptFallback && !final && answer.length - transcriptFallbackSourceLength < 45) return true;
+    const fallbackCard = createTranscriptFallbackCard(userText, answer);
+    if (!fallbackCard) return false;
+    const rendered = renderResponseCard(fallbackCard, true);
+    if (rendered) {
+      responseCardWasTranscriptFallback = true;
+      transcriptFallbackSourceLength = answer.length;
+    }
+    return rendered;
+  }
+
   function renderResponseCard(value, force = false) {
-    const card = normalizeResponseCardPayload(value);
+    let card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
     if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") {
-      responseCardRenderedForTurn = true;
-      return true;
+      const existingGroundedCardIsVisible = !responseCardTray.hidden &&
+        responseCardTitle.textContent === lastGroundedRankedListCard.title && !responseCardWasTranscriptFallback;
+      if (existingGroundedCardIsVisible) {
+        responseCardRenderedForTurn = true;
+        return true;
+      }
+      // A protection flag must never suppress the first real render. Prefer the authoritative grounded list.
+      card = normalizeResponseCardPayload(lastGroundedRankedListCard) || card;
     }
     responseCardRenderedForTurn = true;
-    if (responseCardRestoreButton) responseCardRestoreButton.hidden = true;
+    responseCardWasTranscriptFallback = false;
 
     responseCardType.textContent = card.type === "key_details" ? "A GROUNDED ANSWER" :
       card.type === "steps" ? "YOUR GUIDE" : "SIDE-BY-SIDE";
@@ -2670,8 +2753,9 @@
         ? (card.sources && card.sources.length ? "SOURCE LINKS INCLUDED · Structured answer, not a task checklist." : "STRUCTURED ANSWER · Review important details.")
         : "REFERENCE ONLY · No actions marked complete.";
     }
-    responseCardTray.hidden = false;
-    if (stage) stage.classList.add("has-response-card");
+    responseCardTray.hidden = responseCardManuallyMinimizedForTurn;
+    if (stage) stage.classList.toggle("has-response-card", !responseCardManuallyMinimizedForTurn);
+    if (responseCardRestoreButton) responseCardRestoreButton.hidden = !responseCardManuallyMinimizedForTurn;
     setResponseCardExpanded(true);
     return true;
   }
@@ -2683,21 +2767,18 @@
       if (call.name === "search_current_web") continue;
       if (call.name === "display_response_card") {
         const id = typeof call.id === "string" ? call.id : "";
-        if (liveSearchActive) {
-          if (!hasSearchCallOnThisMessage || liveSearchLookupCompleted) completeLiveSearchProgress();
-          pendingResponseCards.push({ id, args: call.args });
-          continue;
-        }
         if (liveSearchAcknowledgementActive) hideLiveSearchAcknowledgement();
+        // Render first and reply to the model immediately, even while search progress is finishing.
         const rendered = renderResponseCard(call.args);
+        if (liveSearchActive && !liveSearchFinishing) completeLiveSearchProgress();
         if (id) {
           responses.push({
             id,
             name: "display_response_card",
             response: {
               result: rendered
-                ? "The complete designed response card is now visible as a full-screen answer sheet. Continue with concise spoken guidance. A rendered card does not mean the user completed any action."
-                : "The response-card payload could not be rendered by the client. Continue with concise spoken guidance and do not claim a card is visible."
+                ? "The complete designed response card is now visible as a full-screen answer sheet. Continue speaking the complete natural response aloud: explain the answer, every useful step, what to look for, and relevant safety limits. A card never replaces the spoken explanation or proves that an action was completed."
+                : "The response-card payload could not be rendered by the client. Continue speaking the full natural response and do not claim a card is visible."
             }
           });
         }
@@ -2786,11 +2867,11 @@
           protectGroundedListForTurn = true;
         }
         if (liveSearchActive) {
-          pendingResponseCards = pendingResponseCards.filter((queued) => queued.id !== "");
-          pendingResponseCards.push({ id: "", args: fallbackCard });
           if (liveSearchTitle) liveSearchTitle.textContent = "Building your answer";
           if (liveSearchMessage) liveSearchMessage.textContent = "Grounded results found · designing your list";
-          completeLiveSearchProgress();
+          // The grounded card is complete server-side. Put it on screen immediately.
+          renderResponseCard(fallbackCard, true);
+          if (!liveSearchFinishing) completeLiveSearchProgress();
         } else {
           hideLiveSearchAcknowledgement();
           renderResponseCard(fallbackCard, true);
@@ -2887,12 +2968,16 @@
         } else if (liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
           hideLiveSearchAcknowledgement();
         }
-        if (!responseCardRenderedForTurn && pendingResponseCards.length === 0) {
-          const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text || "";
-          const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text || "";
-          const fallbackCard = createTranscriptFallbackCard(userText, assistantText);
-          if (fallbackCard) renderResponseCard(fallbackCard, true);
+        if (pendingResponseCards.length) {
+          const queuedCards = pendingResponseCards.splice(0);
+          const groundedFallback = [...queuedCards].reverse().find((queued) => !queued.id && isGroundedRankedListCard(queued.args));
+          const selectedCard = groundedFallback || [...queuedCards].reverse().find((queued) => Boolean(queued.id)) || queuedCards[queuedCards.length - 1];
+          if (selectedCard) {
+            const rendered = renderResponseCard(selectedCard.args, !selectedCard.id || isGroundedRankedListCard(selectedCard.args));
+            for (const queued of queuedCards) if (queued.id) sendDeferredResponseCardResult(queued.id, rendered);
+          }
         }
+        if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);
         finalizeTurn();
         if (greetingTurnPending) beginListeningAfterGreeting();
         else if (active && processor) setStatus("Listening — show me the next thing you want help with.");
