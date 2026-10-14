@@ -546,7 +546,7 @@ describe("Immediate live-search acknowledgement", () => {
     expect(script.indexOf("handleTranscriptAcknowledgement(role, entry.text)")).toBeLessThan(script.indexOf("async function handleServerMessage"));
     expect(script).toContain('liveSearchTitle.textContent = liveSearchPreflightStages[0].title');
     expect(script).toContain('title: "Preparing your answer"');
-    expect(script).toContain('message: "Working out what information will help most."');
+    expect(script).toContain('message: "Bujhi paisu — working out the useful bits for this question."');
     expect(script).toContain('liveSearchTitle.textContent = stageItem.title');
     expect(script).toContain('liveSearchTitle.textContent = "Building your answer"');
     expect(script).toContain("liveSearchStatus.classList.add(\"is-acknowledging\")");
