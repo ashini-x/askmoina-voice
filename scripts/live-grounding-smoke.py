@@ -176,7 +176,7 @@ def main() -> int:
                 ):
                     completed_turns += 1
                     lowered_so_far = transcript.lower().strip()
-                    has_numeric_release_detail = bool(re.search(r"\\d", lowered_so_far))
+                    has_numeric_release_detail = bool(re.search(r"\d", lowered_so_far))
                     names_requested_subject = any(marker in lowered_so_far for marker in source_markers)
                     # A Live turn may finish on a short spoken acknowledgement before the
                     # grounded answer arrives. Keep receiving rather than treating that
