@@ -572,11 +572,22 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     tools: [{ googleSearch: {} }],
     generationConfig: { temperature: 0.0, maxOutputTokens: 1_400 }
   });
+  const isIpl2025RunsLeaderboard = /\\bipl\\b/i.test(query) && /\\b2025\\b/i.test(query) &&
+    /\\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\\b/i.test(query);
+  const ipl2025FullLeaderboardUrl = "https://www.ipl.com/series/indian-premier-league-2025-129413/stats";
+  const ipl2025FullTableInstruction = isIpl2025RunsLeaderboard
+    ? [
+      "Use the full-season batting table at " + ipl2025FullLeaderboardUrl + " as the primary source for the final IPL 2025 most-runs ranking.",
+      "Important: that page also has a separate compact section named Top Run Scorers containing only three featured players. Do NOT use that three-player widget as the leaderboard. Read the longer main batting stats table whose columns are Player, Matches, Inns, Runs, Avg, Sr, 4s, and 6s.",
+      "Return the first ten rows of that full table in rank order, copying the exact player name, team, and Runs value for ranks 1-10. If another credible final-season table agrees, cross-check against it. Never fill a missing row from memory."
+    ].join("\\n\\n")
+    : "";
   const rankedListPrompt = requestedListCountForBudget !== null
     ? [
       "Search the public web for the exact ranking requested by the user: " + query,
       "REQUIRED: return a complete top " + requestedListCountForBudget + " table, with ranks 1 through " + requestedListCountForBudget + " and one distinct row per rank.",
       "For IPL 2025 'rankers' without a different explicit metric, interpret this as the IPL 2025 most-runs batting leaderboard (Orange Cap) and include player, team, and runs.",
+      ipl2025FullTableInstruction,
       "Prioritize complete leaderboard tables from official league statistics or reputable cricket statistics publishers. Do not use a single-player profile, short snippet, or a different season as a substitute for the full table.",
       "Output rows in this exact parseable form, one per line: 1. Player Name — Team — 759 runs. Continue through the requested final rank.",
       "Use Google Search grounding to find the source table itself. If the source has only a partial table, search for another source with the full leaderboard instead of stopping after the first returned row.",
@@ -686,6 +697,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
                 "The first attempt produced only " + rankedRows.length + " of " + requestedListCount + " requested rows for: " + query + ".",
                 "Missing rank positions to retrieve: " + missingRanks.join(", ") + ".",
                 "Run a distinct Google Search focused on this exact missing-rank query: " + targetedQuery + ".",
+                ipl2025FullTableInstruction,
                 "Return newly found rows using their ORIGINAL rank numbers. Exact row format: rank. Player or item name — team/category — requested statistic.",
                 "Do not guess missing ranks. Include actual HTTPS source URLs from Google Search grounding in a final Sources section."
               ].join("\n\n"));
@@ -700,6 +712,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
                 "ALTERNATE COMPLETE-TABLE RETRY.",
                 "The first two search attempts together still yielded only " + rankedRows.length + " distinct requested ranks out of " + requestedListCount + ".",
                 "Do not run another query that only asks for the currently missing positions. Search for a different source that publishes the complete ranking table: " + fullTableQuery + ".",
+                ipl2025FullTableInstruction,
                 "Prefer an official statistics page or a reputable publisher's complete leaderboard table. Switch to a different publisher/domain from the source already tried if possible.",
                 "Return the entire requested top " + requestedListCount + ", rank 1 through " + requestedListCount + ", one row per line in this exact format: rank. Player Name — Team — statistic.",
                 "For IPL 2025 without a different explicit metric, use most runs (Orange Cap) and include runs. Never mix seasons or change metrics.",
