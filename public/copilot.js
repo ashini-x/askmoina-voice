@@ -99,6 +99,11 @@
   let liveSearchAcknowledgementStartedAt = 0;
   let liveSearchPreflightIntent = false;
   let liveSearchStartedAt = 0;
+  let quietThinkingStartTimer = null;
+  let quietThinkingRotationTimer = null;
+  let quietThinkingActive = false;
+  let quietThinkingMessageIndex = 0;
+  let relayKeepaliveTimer = null;
 
   function updateLiveSearchProgress(value) {
     const next = Math.max(0, Math.min(100, Math.round(value)));
@@ -111,9 +116,83 @@
     if (liveSearchProgressBar) liveSearchProgressBar.style.width = String(next) + "%";
   }
 
+  const QUIET_THINKING_STAGES = [
+    { title: "Thinking", message: "Putting the answer together" },
+    { title: "Working through the details", message: "Organizing the clearest useful answer" },
+    { title: "Preparing your answer", message: "Checking what matters and what can be left out" },
+    { title: "Finishing the details", message: "Getting the answer sheet ready" },
+  ];
+
+  function syncLiveSearchStatusVisibility() {
+    if (!liveSearchStatus) return;
+    const workActive = liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive || quietThinkingActive;
+    liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive);
+  }
+
+  function stopQuietThinkingLoader() {
+    if (quietThinkingStartTimer) window.clearTimeout(quietThinkingStartTimer);
+    if (quietThinkingRotationTimer) window.clearInterval(quietThinkingRotationTimer);
+    quietThinkingStartTimer = null;
+    quietThinkingRotationTimer = null;
+    quietThinkingActive = false;
+    if (!liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive && liveSearchStatus) {
+      liveSearchStatus.hidden = true;
+      liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
+    } else {
+      syncLiveSearchStatusVisibility();
+    }
+  }
+
+  function startQuietThinkingLoader() {
+    if (!liveSearchStatus || !active || !setupReady || stopping || micSpeechGateActive ||
+        liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive || responseCardRenderedForTurn) return;
+    if (quietThinkingStartTimer) window.clearTimeout(quietThinkingStartTimer);
+    quietThinkingStartTimer = window.setTimeout(() => {
+      quietThinkingStartTimer = null;
+      if (!active || !setupReady || stopping || micSpeechGateActive || responseCardRenderedForTurn ||
+          liveSearchActive || liveSearchFinishing || liveSearchAcknowledgementActive) return;
+      quietThinkingActive = true;
+      quietThinkingMessageIndex = 0;
+      liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
+      updateLiveSearchProgress(0);
+      if (liveSearchTitle) liveSearchTitle.textContent = QUIET_THINKING_STAGES[0].title;
+      if (liveSearchMessage) liveSearchMessage.textContent = QUIET_THINKING_STAGES[0].message;
+      syncLiveSearchStatusVisibility();
+      if (quietThinkingRotationTimer) window.clearInterval(quietThinkingRotationTimer);
+      quietThinkingRotationTimer = window.setInterval(() => {
+        if (!quietThinkingActive || responseCardRenderedForTurn || !active) return;
+        quietThinkingMessageIndex = (quietThinkingMessageIndex + 1) % QUIET_THINKING_STAGES.length;
+        const stage = QUIET_THINKING_STAGES[quietThinkingMessageIndex];
+        if (liveSearchTitle) liveSearchTitle.textContent = stage.title;
+        if (liveSearchMessage) liveSearchMessage.textContent = stage.message;
+        syncLiveSearchStatusVisibility();
+      }, 5_000);
+    }, 650);
+  }
+
+  function startRelayKeepalive(sessionSocket) {
+    if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+    relayKeepaliveTimer = window.setInterval(() => {
+      if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN || stopping) {
+        if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+        relayKeepaliveTimer = null;
+        return;
+      }
+      if (sessionSocket.bufferedAmount > 48 * 1024) return;
+      try { sessionSocket.send(JSON.stringify({ keepalive: true })); } catch (_) {}
+    }, 10_000);
+  }
+
+  function stopRelayKeepalive(sessionSocket = null) {
+    if (sessionSocket && socket && socket !== sessionSocket) return;
+    if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+    relayKeepaliveTimer = null;
+  }
+
   function startLiveSearchProgress() {
     if (!liveSearchStatus) return;
     if (liveSearchActive && !liveSearchFinishing) return;
+    stopQuietThinkingLoader();
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
@@ -153,7 +232,7 @@
       liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000);
     };
     liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000);
-    liveSearchStatus.hidden = false;
+    syncLiveSearchStatusVisibility();
     if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
     if (liveSearchMessage) liveSearchMessage.textContent = "Finding relevant sources";
     if (transcriptNode) transcriptNode.classList.add("is-searching");
@@ -344,7 +423,7 @@
     liveSearchPreflightContext = profile.key;
     liveSearchPreflightStages = profile.stages;
     liveSearchStageIndex = 0;
-    liveSearchStatus.hidden = false;
+    syncLiveSearchStatusVisibility();
     liveSearchStatus.classList.add("is-acknowledging");
     if (liveSearchTitle) liveSearchTitle.textContent = liveSearchPreflightStages[0].title;
     if (liveSearchMessage) liveSearchMessage.textContent = liveSearchPreflightStages[0].message;
@@ -1848,6 +1927,7 @@
     if (!text) return;
     const entry = getTranscriptEntry(role);
     if (role === "user" && !entry.text) {
+      stopQuietThinkingLoader();
       responseCardRenderedForTurn = false;
       responseCardWasTranscriptFallback = false;
       transcriptFallbackSourceLength = 0;
@@ -1955,6 +2035,7 @@
       // Require signal above the learned room-noise floor, speech-like crossings, and a sustained onset.
       const speechThreshold = Math.max(0.013, micNoiseFloor * 1.55);
       const speechLikeFrame = rms >= speechThreshold && zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38;
+      const speechGateBeforeFrame = micSpeechGateActive;
       if (speechLikeFrame) {
         if (!micSpeechCandidateAt) micSpeechCandidateAt = now;
         if (now - micSpeechCandidateAt >= 120) {
@@ -1974,6 +2055,13 @@
       if (micSpeechGateActive && now - lastMicVoiceAt > 240) {
         micSpeechGateActive = false;
         micSpeechCandidateAt = 0;
+      }
+      if (micSpeechGateActive && !speechGateBeforeFrame) {
+        stopQuietThinkingLoader();
+        syncLiveSearchStatusVisibility();
+      } else if (!micSpeechGateActive && speechGateBeforeFrame) {
+        syncLiveSearchStatusVisibility();
+        startQuietThinkingLoader();
       }
       if (micSpeechGateActive) {
         const rawVoiceLevel = Math.min(1, Math.max(0, (rms - speechThreshold * 0.85) / 0.075));
@@ -2420,6 +2508,8 @@
     }
     stopping = true;
     const oldSocket = socket;
+    stopRelayKeepalive(oldSocket);
+    stopQuietThinkingLoader();
     socket = null;
     if (oldSocket && oldSocket.readyState === WebSocket.OPEN) {
       try { oldSocket.close(1000, "Client disconnected"); } catch (_) {}
@@ -2776,6 +2866,7 @@
   function renderResponseCard(value, force = false) {
     let card = normalizeResponseCardPayload(value);
     if (!card || !responseCardTray || !responseCardContent || !responseCardTitle || !responseCardType) return false;
+    stopQuietThinkingLoader();
     if (!force && protectGroundedListForTurn && lastGroundedRankedListCard && card.type === "key_details") {
       const existingGroundedCardIsVisible = !responseCardTray.hidden &&
         responseCardTitle.textContent === lastGroundedRankedListCard.title && !responseCardWasTranscriptFallback;
@@ -3285,6 +3376,7 @@
           if (memory) setupPayload.memory_context = memory;
         } catch (_) {}
         sessionSocket.send(JSON.stringify(setupPayload));
+        startRelayKeepalive(sessionSocket);
         setStatus("Camera ready. Connecting securely to Moina…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
@@ -3300,6 +3392,7 @@
         }
       });
       sessionSocket.addEventListener("close", (event) => {
+        stopRelayKeepalive(sessionSocket);
         if (socket !== sessionSocket) return;
         socket = null;
         lastSessionEndedAt = Date.now();
@@ -5313,7 +5406,7 @@
     if (__moinaLastUserSpeech) {
       __moinaLastUserSpeech = false;
       if (liveSearchActive && !liveSearchFinishing && liveSearchStatus) {
-        liveSearchStatus.hidden = false;
+        syncLiveSearchStatusVisibility();
       } else if (!liveSearchFinishing && liveSearchStatus) {
         const context = pendingUserProgressContext;
         const searchIntent = pendingUserProgressSearchIntent;

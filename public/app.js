@@ -52,6 +52,26 @@
   });
 
   let socket = null;
+  let relayKeepaliveTimer = null;
+
+  function startRelayKeepalive(sessionSocket) {
+    if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+    relayKeepaliveTimer = window.setInterval(() => {
+      if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN || stopping) {
+        if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+        relayKeepaliveTimer = null;
+        return;
+      }
+      if (sessionSocket.bufferedAmount > 48 * 1024) return;
+      try { sessionSocket.send(JSON.stringify({ keepalive: true })); } catch (_) {}
+    }, 10_000);
+  }
+
+  function stopRelayKeepalive(sessionSocket = null) {
+    if (sessionSocket && socket && socket !== sessionSocket) return;
+    if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
+    relayKeepaliveTimer = null;
+  }
   let audioContext = null;
   let microphoneStream = null;
   let microphoneSource = null;
@@ -477,6 +497,7 @@
     if (!socket && !starting && !active) return;
     stopping = true;
     const oldSocket = socket;
+    stopRelayKeepalive(oldSocket);
     socket = null;
     if (oldSocket && oldSocket.readyState === WebSocket.OPEN) {
       try {
@@ -552,6 +573,7 @@
         }
         if (selectedMemoryContext) setupPayload.memory_context = selectedMemoryContext;
         sessionSocket.send(JSON.stringify(setupPayload));
+        startRelayKeepalive(sessionSocket);
         setStatus(selectedMemoryContext
           ? "Connected. Applying your selected memories to this conversation…"
           : "Connected to the relay. Setting up your conversation…");
@@ -581,6 +603,7 @@
       });
 
       sessionSocket.addEventListener("close", (event) => {
+        stopRelayKeepalive(sessionSocket);
         const isCurrentSocket = socket === sessionSocket;
         if (isCurrentSocket) socket = null;
         // stopConversation() already restored the UI; ignore its late close event.

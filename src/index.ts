@@ -1083,6 +1083,11 @@ async function handleVoiceSocket(
   let liveSearchProgressCueCount = 0;
   let liveSearchProgressCuePending = false;
   let lastGroundedSearchAt = 0;
+  let latestUserRequestText = "";
+  let latestUserRequestAt = 0;
+  let lastAssistantTurnCompletedAt = 0;
+  let latestUserRequestNeedsGrounding = false;
+  let forcedRankedLookupActive = false;
   let targetSelectionCount = 0;
   let lastVideoFrameAt = 0;
   let closed = false;
@@ -1234,7 +1239,7 @@ async function handleVoiceSocket(
     }
   }
 
-  function sendLiveSearchProgressCue(cueNumber: number) {
+  function sendLiveSearchProgressCue(cueNumber: number, requestContext = "") {
     if (!copilotMode || closed || !upstreamSetupReady || resumptionInProgress ||
         upstreamSocket.readyState !== WebSocket.OPEN || pendingGroundedSearches <= 0) return;
     const phase = cueNumber <= 1
@@ -1243,13 +1248,22 @@ async function handleVoiceSocket(
         ? "The lookup is still gathering sources. Reassure the user in fresh words and explain the kind of detail being verified, without inventing findings."
         : cueNumber === 3
           ? "The lookup is taking a little longer. Stay natural and conversational, briefly say what you are still checking, and do not state results yet."
-          : "The lookup is still in progress. Give one last short, varied update that acknowledges the wait without claiming results.";
+          : cueNumber === 4
+            ? "The source check is continuing. Briefly explain that details are being cross-checked and missing facts will not be guessed."
+            : cueNumber === 5
+              ? "Reassure the user in different words while source-backed details are collected; do not claim the answer is ready."
+              : cueNumber === 6
+                ? "The lookup needs more time. Give a short, natural update about verifying the useful details, without stating results."
+                : cueNumber === 7
+                  ? "Keep the update brief and fresh. Explain that the answer sheet is still being assembled from evidence."
+                  : "Acknowledge the wait naturally one more time, without claiming any findings have arrived.";
     sendUpstreamMessage({
       clientContent: {
         turns: [{
           role: "user",
           parts: [{
             text: "Internal continuation cue, not a new task: the current live web lookup is running in the background. " +
+              (requestContext ? "The user is asking about: " + String(requestContext).slice(0, 240) + ". Use this only to make the progress update contextual, not as evidence. " : "") +
               phase +
               " Say one short, natural, freshly phrased Assamese-English progress sentence grounded in the actual dialogue; do not use a memorized stock phrase, do not call tools, do not create a card in response to this cue, and do not go silent while the lookup continues. Wait for verified search results before giving factual findings."
           }]
@@ -1257,6 +1271,120 @@ async function handleVoiceSocket(
         turnComplete: true,
       },
     });
+  }
+
+  function rememberLatestUserRequestFromProviderFrame(frameText: string) {
+    if (!copilotMode || (!frameText.includes('"inputTranscription"') && !frameText.includes('"input_transcription"'))) return;
+    try {
+      const frame = JSON.parse(frameText) as Record<string, unknown>;
+      const content = (frame.serverContent || frame.server_content) as Record<string, unknown> | undefined;
+      const transcription = (content?.inputTranscription || content?.input_transcription ||
+        frame.inputTranscription || frame.input_transcription) as Record<string, unknown> | undefined;
+      const rawText = typeof transcription?.text === "string" ? transcription.text.trim() : "";
+      if (!rawText) return;
+      const text = rawText.slice(-1_500);
+      const now = Date.now();
+      const startsNewRequest = !latestUserRequestText || now - latestUserRequestAt > 8_000 ||
+        (lastAssistantTurnCompletedAt > 0 && lastAssistantTurnCompletedAt > latestUserRequestAt);
+      if (startsNewRequest) {
+        latestUserRequestText = text;
+      } else if (text.startsWith(latestUserRequestText)) {
+        latestUserRequestText = text;
+      } else if (!latestUserRequestText.startsWith(text)) {
+        latestUserRequestText = (latestUserRequestText + " " + text).slice(-1_500);
+      }
+      latestUserRequestAt = now;
+      latestUserRequestNeedsGrounding = Boolean(
+        getRequestedRankedListCount(latestUserRequestText) !== null &&
+        isLikelyRankedTableSearchQuery(latestUserRequestText)
+      );
+    } catch {
+      // Transcription metadata is optional and must never break the live audio relay.
+    }
+  }
+
+  function startForcedRankedListLookup(userRequest: string): boolean {
+    const query = String(userRequest || "").trim().slice(0, 1_500);
+    const requestedCount = getRequestedRankedListCount(query);
+    if (!copilotMode || closed || forcedRankedLookupActive || requestedCount === null ||
+        !isLikelyRankedTableSearchQuery(query) || workerSocket.readyState !== WebSocket.OPEN) return false;
+
+    forcedRankedLookupActive = true;
+    latestUserRequestNeedsGrounding = false;
+    pendingGroundedSearches += 1;
+    liveSearchProgressCueCount = 1;
+    liveSearchProgressCuePending = true;
+    try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+    sendLiveSearchProgressCue(1, query);
+
+    ctx.waitUntil((async () => {
+      let result = "";
+      let fullTableVerified = false;
+      try {
+        groundedSearchCount += 1;
+        lastGroundedSearchAt = Date.now();
+        console.info("[AskMoina] Mandatory ranked-list grounding started", JSON.stringify({
+          requestedCount, queryLength: query.length,
+        }));
+        result = await performGroundedWebSearch(env, query, undefined, true);
+      } catch (error) {
+        result = "The live ranked-list lookup could not complete. No ranking has been verified, so do not guess names, teams, or statistics. Tell the user the lookup failed and offer a retry.";
+        console.warn("[AskMoina] Mandatory ranked-list grounding failed", error instanceof Error ? error.message.slice(0, 240) : "unknown error");
+      } finally {
+        pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
+        if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
+      }
+
+      const builtCard = buildGroundedListCard(query, result, requestedCount);
+      const fallbackCard = builtCard || {
+        type: "key_details" as const,
+        title: "Leaderboard lookup status",
+        summary: "The complete ranked list could not be verified from live sources. Missing facts are not guessed.",
+        details: [
+          { label: "Lookup status", value: "The full source-backed ranking was not available." },
+          { label: "Next step", value: "Retry the lookup or request a different official source." },
+        ],
+      };
+      const validation = validateResponseCard(fallbackCard);
+      if (validation.valid && validation.card.type === "key_details") {
+        fullTableVerified = validation.card.details.length === requestedCount &&
+          validation.card.details.every((row) => !/not verified/i.test(row.label)) &&
+          String(validation.card.summary || "").startsWith("Complete ranked list");
+        try {
+          workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+          console.info("[AskMoina] Mandatory ranked-list card delivered", JSON.stringify({
+            requestedCount,
+            visibleRows: validation.card.details.length,
+            verifiedRows: validation.card.details.filter((row) => !/not verified/i.test(row.label)).length,
+            complete: fullTableVerified,
+            sourceCount: validation.card.sources?.length || 0,
+          }));
+        } catch (_) {
+          console.warn("[AskMoina] Mandatory ranked-list card could not be delivered");
+        }
+      } else {
+        console.warn("[AskMoina] Mandatory ranked-list card contract rejected", JSON.stringify({
+          reason: validation.valid ? "unexpected_card_type" : validation.reason,
+        }));
+      }
+
+      try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+      const answerInstruction = fullTableVerified
+        ? "A complete, source-verified top-" + requestedCount + " answer sheet is already visible on screen. Do not call any more tools and do not create another card. Give the user a concise, natural spoken summary in the established Assamese-English mix, explain what the ranking measures, and mention that the full row-by-row list and source links are on the card. Use only the grounded result below.\n\n"
+        : "A lookup-status answer card is visible. The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Do not invent or fill missing entries from memory. Tell the user honestly what was verified and that the complete ranking could not be confirmed. Do not call any more tools or create another card.\n\n";
+      sendUpstreamMessage({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text: answerInstruction + "Grounded search result:\n" + result.slice(0, 18_000) }] }],
+          turnComplete: true,
+        },
+      });
+      forcedRankedLookupActive = false;
+    })().catch((error) => {
+      forcedRankedLookupActive = false;
+      console.warn("[AskMoina] Forced ranked-list continuation failed", error instanceof Error ? error.message.slice(0, 180) : "unknown error");
+      try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+    }));
+    return true;
   }
 
   function replayUnconsumedMessages(reindexForNewConnection = false) {
@@ -1397,6 +1525,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         return;
       }
 
+      if (parsed.kind === "keepalive") {
+        // Refresh only the relay watchdog. Never forward a heartbeat as microphone audio.
+        return;
+      }
+
       if (parsed.kind === "initial_greeting") {
         sendUpstreamMessage({
           clientContent: {
@@ -1408,6 +1541,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
 
       if (parsed.kind === "text_input") {
+        latestUserRequestText = parsed.text;
+        latestUserRequestAt = Date.now();
+        lastAssistantTurnCompletedAt = 0;
+        latestUserRequestNeedsGrounding = Boolean(copilotMode && getRequestedRankedListCount(parsed.text) !== null && isLikelyRankedTableSearchQuery(parsed.text));
+        if (latestUserRequestNeedsGrounding && startForcedRankedListLookup(parsed.text)) return;
         // Text turns are the deterministic test/fallback path used to validate
         // tool selection independently of speech recognition and VAD variability.
         // Preserve the user's request verbatim, but elevate an explicit card request
@@ -1592,6 +1730,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       return;
     }
 
+    rememberLatestUserRequestFromProviderFrame(frameText);
     const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate);
     const resumedSessionSetupComplete = Boolean(providerMessage?.setupComplete && resumptionInProgress);
 
@@ -1690,6 +1829,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
           );
           let forwardedToolFrameEarly = false;
+          let forcedRankedTriggerText: string | null = null;
+          if (searchCallsPresent) latestUserRequestNeedsGrounding = false;
 
           // Forward the search event immediately, so the browser can show its loader
           // before retrieval begins. Withhold any card from the same frame until the
@@ -1727,6 +1868,19 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           }
 
           for (const call of calls) {
+            if (call?.name === "display_response_card" && copilotMode && !searchCallsPresent &&
+                latestUserRequestNeedsGrounding && getRequestedRankedListCount(latestUserRequestText) !== null &&
+                isLikelyRankedTableSearchQuery(latestUserRequestText) && Date.now() - latestUserRequestAt < 120_000 &&
+                typeof call.id === "string" && call.id) {
+              forcedRankedTriggerText = latestUserRequestText;
+              responses.push({
+                id: call.id,
+                name: "display_response_card",
+                response: { result: "This is only a preliminary card. The user requested a ranked list, so the server is withholding it until the complete list is checked against live sources. Do not present a memory-based partial ranking." },
+                scheduling: "WHEN_IDLE",
+              });
+              continue;
+            }
             if (call?.name === "display_response_card") {
               const validation = copilotMode ? validateResponseCard(call.args) : { valid: false as const, reason: "copilot_only" };
               if (validation.valid) {
@@ -1757,6 +1911,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             if (call?.name !== "search_current_web" || typeof call.id !== "string" || !call.id) continue;
             const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
             const query = typeof args.query === "string" ? args.query.trim().slice(0, 240) : "";
+            const originalRequestCount = getRequestedRankedListCount(latestUserRequestText);
+            const carryOriginalRankedIntent = Boolean(copilotMode && originalRequestCount !== null && isLikelyRankedTableSearchQuery(latestUserRequestText) && Date.now() - latestUserRequestAt < 120_000);
+            const effectiveQuery = carryOriginalRankedIntent ? latestUserRequestText + "\\nRefined search terms from Live: " + query : query;
+            if (carryOriginalRankedIntent) latestUserRequestNeedsGrounding = false;
             const deviceContext = normalizeGroundedDeviceContext(args.device_context);
             console.info("[AskMoina] Grounded search requested", JSON.stringify({
               mode: copilotMode ? "copilot" : "voice",
@@ -1773,7 +1931,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               groundedSearchCount += 1;
               lastGroundedSearchAt = now;
               try {
-                result = await performGroundedWebSearch(env, query, deviceContext, copilotMode);
+                result = await performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode);
               } catch (error) {
                 console.warn("[AskMoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
                 const timedOut = error instanceof Error && /(timed out|latency budget|exceeded its .*budget)/i.test(error.message);
@@ -1787,9 +1945,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
             let completeRankedFallbackCardSent = false;
             if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
-              const fallbackRequestedCount = getRequestedRankedListCount(query) ??
-                (isLikelyRankedTableSearchQuery(query) ? 10 : null);
-              const fallbackCard = buildGroundedListCard(query, result, fallbackRequestedCount);
+              const fallbackRequestedCount = getRequestedRankedListCount(effectiveQuery) ?? originalRequestCount ??
+                (isLikelyRankedTableSearchQuery(effectiveQuery) || isLikelyRankedTableSearchQuery(latestUserRequestText) ? 10 : null);
+              const fallbackCard = buildGroundedListCard(effectiveQuery, result, fallbackRequestedCount);
               if (fallbackCard) {
                 const validation = validateResponseCard(fallbackCard);
                 if (validation.valid && validation.card.type === "key_details") {
@@ -1816,6 +1974,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           }
           if (responses.length && !closed) {
             sendUpstreamMessage({ toolResponse: { functionResponses: responses } });
+          }
+          if (forcedRankedTriggerText) {
+            clientFrameText = "";
+            startForcedRankedListLookup(forcedRankedTriggerText);
           }
           const invalidCardPresent = calls.some((call) =>
             call?.name === "display_response_card" && !validateResponseCard(call.args).valid
@@ -1853,9 +2015,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
        frameText.includes('"outputTranscription"') || frameText.includes('"output_transcription"')) &&
       !frameText.includes('"toolCall"') && !frameText.includes('"tool_call"');
 
+    if (isCompletedAssistantTurn) lastAssistantTurnCompletedAt = Date.now();
     if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
       liveSearchProgressCuePending = false;
-      if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 4) {
+      if (pendingGroundedSearches > 0 && liveSearchProgressCueCount < 8) {
         liveSearchProgressCueCount += 1;
         liveSearchProgressCuePending = true;
         sendLiveSearchProgressCue(liveSearchProgressCueCount);

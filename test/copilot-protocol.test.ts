@@ -15,7 +15,14 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "f1", name: "display_screen_overlay" }] } }, false)).toBeNull();
   });
 
-  it("accepts the one-shot initial greeting signal only in Co-Pilot mode", () => {
+  it("accepts only the exact no-audio relay keepalive frame", () => {
+    expect(parseLiveClientInput({ keepalive: true }, false)).toEqual({ kind: "keepalive" });
+    expect(parseLiveClientInput({ keepalive: true }, true)).toEqual({ kind: "keepalive" });
+    expect(parseLiveClientInput({ keepalive: false }, true)).toBeNull();
+    expect(parseLiveClientInput({ keepalive: true, extra: true }, true)).toBeNull();
+  });
+
+  it("accepts the one-shot initial greeting signal only in Co-Pilot mode", () =>
     expect(parseLiveClientInput({ initial_greeting: true }, true)).toEqual({ kind: "initial_greeting" });
     expect(parseLiveClientInput({ initial_greeting: true }, false)).toBeNull();
     expect(parseLiveClientInput({ initial_greeting: false }, true)).toBeNull();

@@ -5,7 +5,6 @@ Sends a top-10 IPL ranking request without explicitly asking for a card, then
 asserts that grounding runs and the Live model proactively creates ten rows.
 Optional source links are validated separately and cannot gate the list itself.
 """
-import base64
 import json
 import os
 import time
@@ -159,15 +158,10 @@ def bounded_card(args: object) -> bool:
     return True
 
 
-def send_silence_keepalive(ws) -> None:
-    """Keep the authenticated Co-Pilot relay alive during a long synthetic turn."""
-    silence = bytes(3200)  # 100 ms of mono PCM16 silence at 16 kHz
-    ws.send(json.dumps({
-        "realtime_input": {"audio": {
-            "data": base64.b64encode(silence).decode("ascii"),
-            "mime_type": "audio/pcm;rate=16000",
-        }}
-    }))
+def send_relay_keepalive(ws) -> None:
+    """Keep the relay alive without injecting fake microphone PCM."""
+    ws.send(json.dumps({"keepalive": True}))
+
 
 
 def main() -> int:
@@ -234,12 +228,12 @@ def main() -> int:
                 message = recv_json_message(ws)
                 if message is None:
                     if time.monotonic() - last_keepalive_at >= 10:
-                        send_silence_keepalive(ws)
+                        send_relay_keepalive(ws)
                         last_keepalive_at = time.monotonic()
                     continue
             except websocket.WebSocketTimeoutException:
                 if time.monotonic() - last_keepalive_at >= 10:
-                    send_silence_keepalive(ws)
+                    send_relay_keepalive(ws)
                     last_keepalive_at = time.monotonic()
                 continue
             if message.get("error"):
@@ -321,7 +315,7 @@ def main() -> int:
             # The real browser keeps sending microphone frames. Match that behavior
             # while waiting for Live instead of letting the relay idle watchdog expire.
             if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:
-                send_silence_keepalive(ws)
+                send_relay_keepalive(ws)
                 last_keepalive_at = time.monotonic()
             if turn_complete_now and top_ten_card_seen and not supported_tool_call:
                 final_complete = True

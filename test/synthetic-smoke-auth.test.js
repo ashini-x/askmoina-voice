@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const grounding = readFileSync(new URL("../scripts/live-grounding-smoke.py", import.meta.url), "utf8");
 const memory = readFileSync(new URL("../scripts/live-memory-voice-smoke.py", import.meta.url), "utf8");
 const responseCardSmoke = readFileSync(new URL("../scripts/live-response-card-smoke.py", import.meta.url), "utf8");
+const copilot = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
+const protocol = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const session = readFileSync(new URL("../scripts/synthetic-passkey-session.mjs", import.meta.url), "utf8");
 const deploy = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
@@ -41,10 +43,13 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("if isinstance(frame, bytes):");
     expect(responseCardSmoke).toContain('ws.send(json.dumps({"text_input": PROMPT}))');
     expect(responseCardSmoke).not.toContain("def synthesize_pcm_16k() -> bytes:");
-    expect(responseCardSmoke).toContain("def send_silence_keepalive(ws) -> None:");
+    expect(responseCardSmoke).toContain("def send_relay_keepalive(ws) -> None:");
+    expect(responseCardSmoke).toContain('json.dumps({"keepalive": True})');
     expect(responseCardSmoke).toContain("time.monotonic() - last_keepalive_at >= 10");
     expect(responseCardSmoke).toContain("if message is None:");
-    expect(responseCardSmoke).toContain("send_silence_keepalive(ws)");
+    expect(responseCardSmoke).toContain("send_relay_keepalive(ws)");
+    expect(protocol).toContain("value.keepalive === true");
+    expect(protocol).toContain('{ kind: "keepalive" }');
 
     expect(responseCardSmoke).toContain("stage=");
     expect(responseCardSmoke).toContain("def get_input_text(message: dict) -> str:");
@@ -56,6 +61,20 @@ describe("authenticated live synthetic verification", () => {
     expect(responseCardSmoke).toContain("except json.JSONDecodeError:");
     expect(responseCardSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
     expect(responseCardSmoke).not.toContain("json.loads(ws.recv())");
+  });
+
+  it("keeps a quiet-work loader, hides it while the user speaks, and creates a card for ordinary answers", () => {
+    expect(copilot).toContain("function startQuietThinkingLoader()");
+    expect(copilot).toContain("liveSearchStatus.hidden = !workActive || Boolean(micSpeechGateActive)");
+    expect(copilot).toContain("if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);");
+    expect(copilot).toContain("function createTranscriptFallbackCard(userText, assistantText)");
+  });
+
+  it("forces a grounded search before showing a ranked-list card", () => {
+    expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
+    expect(workerSource).toContain("Mandatory ranked-list grounding started");
+    expect(workerSource).toContain("This is only a preliminary card");
+    expect(workerSource).toContain("const effectiveQuery = carryOriginalRankedIntent");
   });
 
   it("requires the RC2 tool for explicit card requests and keeps cards separate from overlays", () => {
