@@ -74,8 +74,8 @@ describe("Milestone 13 conditional web grounding", () => {
   });
 
   it("targets the complete final-season IPL batting table instead of the three-player teaser widget", () => {
-    expect(workerSource).toContain(String.raw\`const isIpl2025RunsLeaderboard = /\bipl\b/i.test(query) && /\b2025\b/i.test(query) &&\`);
-    expect(workerSource).toContain(String.raw\`/\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(query);\`);
+    expect(workerSource).toContain('const isIpl2025RunsLeaderboard = /\\bipl\\b/i.test(query) && /\\b2025\\b/i.test(query) &&');
+    expect(workerSource).toContain('/\\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\\b/i.test(query);');
     expect(workerSource).toContain('].join("\\n\\n")');
     const requestedLeaderboard = "IPL 2025 top rankers most runs";
     expect(/\bipl\b/i.test(requestedLeaderboard) && /\b2025\b/i.test(requestedLeaderboard) && /\b(?:runs?|scorers?|rankers?|leaderboard|batting|orange cap)\b/i.test(requestedLeaderboard)).toBe(true);
@@ -114,6 +114,9 @@ describe("Milestone 13 conditional web grounding", () => {
 
 describe("Grounded ranked-list completeness and recovery", () => {
   it("retries successful provider responses that contain no source URLs", () => {
+    expect(workerSource).toContain("const rankedRetryPrompt = [");
+    expect(workerSource).toContain("RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE");
+    expect(workerSource).toContain("requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt");
     expect(workerSource).toContain("const rankedRetryPrompt = [");
     expect(workerSource).toContain("RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE");
     expect(workerSource).toContain("requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt");
