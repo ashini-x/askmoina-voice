@@ -13,7 +13,8 @@ import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
-import { assessGroundedSource, normalizeGroundedDeviceContext } from "./grounded-expertise";
+import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
+import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount } from "./sessions/grounded-list-card";
 
@@ -506,7 +507,18 @@ function isLikelyRankedTableSearchQuery(query: string): boolean {
  * On-demand grounded lookup for Co-Pilot. The Live model requests this function only
  * when current web evidence is useful, keeping search latency and cost off normal turns.
  */
+const groundedSearchFlights = new SingleFlight<string>();
+
+/** Share concurrent identical lookups only; never cache completed or potentially stale results. */
 async function performGroundedWebSearch(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
+  const normalizedQuery = String(query || "").replace(/\s+/g, " ").trim();
+  const deviceContext = normalizeGroundedDeviceContext(rawDeviceContext);
+  const flightKey = await sha256(JSON.stringify({ query: normalizedQuery, deviceContext, isCopilotSearch }));
+  return groundedSearchFlights.run(flightKey, () =>
+    performGroundedWebSearchOnce(env, normalizedQuery, deviceContext, isCopilotSearch));
+}
+
+async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceContext?: unknown, isCopilotSearch = false): Promise<string> {
   // Gemini 3.8 Flash supports Google Search grounding; use the global endpoint
   // for this separate lookup instead of the regional endpoint selected by Live voice.
   const location = "global";
@@ -646,12 +658,16 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
   const answer = (candidate?.content?.parts || []).map((part) => part.text || "").filter(Boolean).join("\n").trim();
   const rawSources = (candidate?.groundingMetadata?.groundingChunks || [])
     .map((chunk) => chunk.web)
-    .filter((web): web is { uri?: string; title?: string } => Boolean(web?.uri && (web.uri.startsWith("https://") || web.uri.startsWith("http://"))))
+    .filter((web): web is { uri: string; title?: string } => Boolean(safeGroundedSourceUrl(web?.uri)))
+    .map((web) => ({ ...web, uri: safeGroundedSourceUrl(web.uri)! }))
     .slice(0, 8);
   const sources = rawSources.map((web) => {
     const title = String(web.title || web.uri).slice(0, 180);
-    const assessment = assessGroundedSource(title, web.uri || "", deviceContext);
-    return `- ${title}: ${web.uri}\n  Match check: ${assessment.note}.`;
+    const assessment = assessGroundedSource(title, web.uri, deviceContext);
+    const hostEvidence = assessment.officialManufacturerHostMatch
+      ? "Known manufacturer-domain match; page content and exact model applicability still require inspection"
+      : "Official manufacturer-domain match not established by the allowlist";
+    return `- ${title}: ${web.uri}\n  Model check: ${assessment.note}.\n  Host check: ${hostEvidence}.`;
   });
   const modelSpecificContext = Boolean(deviceContext.model_id || deviceContext.variant || deviceContext.part_number);
   const noVisibleExactMatch = modelSpecificContext && !rawSources.some((web) => {
@@ -671,10 +687,16 @@ async function performGroundedWebSearch(env: Env, query: string, rawDeviceContex
     totalBudgetMs: searchBudgetMs,
   }));
   if (!sources.length) return "The web lookup returned no verifiable source URLs after a retry. State plainly that the result could not be verified; do not claim current facts or a completed search result.";
-  const matchCaveat = noVisibleExactMatch
-    ? "MODEL MATCH NOT ESTABLISHED: no returned source title or URL visibly contains every requested model/variant identifier. Do not provide model-specific procedure steps until page content is checked or a matching official source is found."
-    : "";
-  return [answer || "Relevant sources were found.", matchCaveat, `Sources:\n${sources.join("\n")}`].filter(Boolean).join("\n\n").slice(0, 10_500);
+  if (modelSpecificContext && noVisibleExactMatch) {
+    // Enforce the model-match rule in code so the assistant cannot give a polished but
+    // mismatched procedure merely by ignoring a text-only caveat.
+    return [
+      "MODEL MATCH NOT ESTABLISHED: none of the returned source titles or HTTPS URLs visibly contains every supplied model/variant identifier.",
+      "Do not follow model-specific repair, wiring, reset, or service steps from these results. Ask for the exact model/revision or a matching official manual first. Only safe, non-device-specific context may be given until applicability is established.",
+      `Candidate sources (not yet verified for this exact model):\n${sources.join("\n\n")}`
+    ].join("\n\n").slice(0, 10_500);
+  }
+  return [answer || "Relevant sources were found.", `Sources:\n${sources.join("\n\n")}`].filter(Boolean).join("\n\n").slice(0, 10_500);
 }
 
 
