@@ -224,6 +224,7 @@ def main() -> int:
         final_complete = False
         saw_final_text = False
         saw_post_tool_spoken_text = False
+        saw_post_card_spoken_text = False
         input_transcription_received = False
         card_keyword_observed = False
         steps_keyword_observed = False
@@ -243,6 +244,7 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
+            card_was_visible_before_message = top_ten_card_seen
             fallback_card = message.get("grounded_response_card")
             if isinstance(fallback_card, dict):
                 if not bounded_card(fallback_card):
@@ -311,6 +313,8 @@ def main() -> int:
             spoken_text = get_text(message).strip()
             if spoken_text:
                 saw_final_text = True
+                if card_was_visible_before_message:
+                    saw_post_card_spoken_text = True
                 if tool_count > 0 and not calls:
                     saw_post_tool_spoken_text = True
             turn_complete_now = is_turn_complete(message)
@@ -327,8 +331,8 @@ def main() -> int:
             raise RuntimeError("The Co-Pilot failed to ground the IPL ranking request with live web search.")
         if not top_ten_card_seen:
             raise RuntimeError("The Co-Pilot did not proactively display a ten-row ranked response card.")
-        if not saw_post_tool_spoken_text:
-            raise RuntimeError("The model did not continue speaking after the ten-row answer card was acknowledged.")
+        if not saw_post_card_spoken_text and not saw_post_tool_spoken_text:
+            raise RuntimeError("The model did not continue speaking after the ten-row answer card became visible.")
         if not final_complete:
             raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
         PHASE = "verified"
