@@ -1539,8 +1539,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           contextWindowCompression: {
-            triggerTokens: 96_000,
-            slidingWindow: { targetTokens: 64_000 },
+            triggerTokens: 24_000,
+            slidingWindow: { targetTokens: 8_000 },
           },
           // Keep the current session resumable; the relay stores the handle and replay window.
           sessionResumption: { transparent: true },
@@ -1777,7 +1777,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     if (providerMessage?.sessionResumptionUpdate) {
       const update = providerMessage.sessionResumptionUpdate;
-      if (typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) {
+      if (update.resumable === true && typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) {
         if (resumptionInProgress) pendingResumeSessionHandle = update.newHandle;
         else lastSessionResumptionHandle = update.newHandle;
       }
