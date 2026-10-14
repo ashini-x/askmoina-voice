@@ -110,6 +110,18 @@ function extractGroundedSources(text: string): Array<{ title: string; url: strin
   return found;
 }
 
+/**
+ * Merge a targeted retry with the first grounded ranked-list attempt.
+ * Prefer the retry's wording for duplicate ranks, while preserving still-useful
+ * source-backed ranks from the first answer. Source sections are removed here;
+ * the Worker attaches the union of actual grounding metadata URLs separately.
+ */
+export function mergeGroundedRankedListAttempts(firstAttempt: string, retryAttempt: string): string {
+  const rankedSection = (value: string) =>
+    String(value || "").split(/\\n\\s*(?:sources?|source links):/i)[0].trim();
+  return [rankedSection(retryAttempt), rankedSection(firstAttempt)].filter(Boolean).join("\\n");
+}
+
 /** Build a designed fallback card from grounded results; missing positions remain explicitly unverified. */
 export function buildGroundedListCard(query: string, groundedResult: string): GroundedListCard | null {
   const requestedCount = getRequestedRankedListCount(query);
