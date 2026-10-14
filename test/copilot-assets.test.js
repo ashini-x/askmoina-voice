@@ -67,6 +67,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("liveSearchWatchdogTimer = window.setTimeout");
     expect(script).toContain("valueNode.textContent = typeof value === \"string\" ? value : \"\";");
     expect(script).toContain("The complete designed response card is now visible as a full-screen answer sheet.");
+    expect(script).toContain("const existingGroundedCardIsVisible = !responseCardTray.hidden");
+    expect(script).toContain("function ensureTranscriptFallbackCard(final = false)");
+    expect(script).toContain("complete natural response aloud");
+    expect(script).toContain("responseCardManuallyMinimizedForTurn");
     expect(script).toContain("function renderGroundedDetails(card)");
     expect(script).toContain("Optional source links are best-effort");
     expect(script).toContain("if (Array.isArray(value.sources))");
@@ -598,9 +602,12 @@ describe("RC6 grounded list visibility regressions", () => {
 });
 
 describe("RC7 zero-gap search-status feedback", () => {
-  it("shows a generic status on the first detected user speech before transcription or search start", () => {
-    expect(script).toContain('showLiveSearchAcknowledgement("", false)');
-    expect(script).toContain('if (!wasListening && !stage.classList.contains("is-speaking") && !liveSearchActive && !liveSearchFinishing && !liveSearchAcknowledgementActive)');
+  it("does not show the search-status bar from raw microphone energy or brief noise", () => {
+    expect(script).not.toContain('showLiveSearchAcknowledgement("", false)');
+    expect(script).toContain("micNoiseCalibrationUntil = now + 500");
+    expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
+    expect(script).toContain("now - micSpeechCandidateAt >= 120");
+    expect(script).toContain("Status is triggered by recognized user speech or a real search event, never raw RMS");
     expect(script).toContain('if (interimUserTranscription && typeof interimUserTranscription.text === "string") {');
     expect(script).toContain('handleTranscriptAcknowledgement("user", interimUserTranscription.text)');
   });
