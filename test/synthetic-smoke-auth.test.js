@@ -81,7 +81,7 @@ describe("authenticated live synthetic verification", () => {
     const rankedList = readFileSync(new URL("../scripts/live-ranked-list-smoke.py", import.meta.url), "utf8");
     // The production ranked-list search has a 75-second total budget before speech resumes.
     expect(rankedList).toContain("TURN_WAIT_SECONDS = 130");
-    expect(rankedList).toContain("Mandatory ranked-list");
+    expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
     expect(rankedList).toContain("grounded_search_count += 1");
     expect(rankedList).toContain("grounded_response_card");
     expect(rankedList).toContain("top_ten_card_seen = True");
