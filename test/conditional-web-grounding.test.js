@@ -117,9 +117,6 @@ describe("Grounded ranked-list completeness and recovery", () => {
     expect(workerSource).toContain("const rankedRetryPrompt = [");
     expect(workerSource).toContain("RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE");
     expect(workerSource).toContain("requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt");
-    expect(workerSource).toContain("const rankedRetryPrompt = [");
-    expect(workerSource).toContain("RETRY AFTER TIMEOUT OR INCOMPLETE RESPONSE");
-    expect(workerSource).toContain("requestedListCountForBudget !== null ? rankedRetryPrompt : genericRetryPrompt");
     expect(workerSource).toContain("no_grounding_sources");
     expect(workerSource).toContain("hasGroundingUrls");
     expect(workerSource).toContain("attempt < searchMaxAttempts");
