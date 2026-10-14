@@ -699,14 +699,16 @@ describe("Persistent live-search progress", () => {
 });
 
 
-describe("Early live-search status from local speech", () => {
-  it("shows a neutral acknowledgement on sustained microphone speech before the server transcript arrives", () => {
-    expect(script).toContain("if (!micSpeechGateActive) {");
-    expect(script).toContain("showLiveSearchAcknowledgement(\"\", false);");
-    expect(script).toContain('if (!greetingTurnPending && !stage.classList.contains("is-speaking"))');
-    expect(script).toContain('title: "Listening to your question"');
-    expect(script).toContain('message: "Getting your request ready. I\'ll show live-source checks if needed."');
-    expect(script).toContain('liveSearchMessage.textContent = "Take your time. I\'ll show live-source checks if needed."');
+describe("Voice-turn status visibility", () => {
+  it("hides the loader during user speech and restores it for quiet processing", () => {
+    expect(script).toContain("Voice-turn presentation contract: never overlay the user's speech with a loader.");
+    expect(script).toContain("if (userSpeaking) {");
+    expect(script).toContain("liveSearchStatus.hidden = true;");
+    expect(script).toContain("if (__moinaLastUserSpeech) {");
+    expect(script).toContain('showLiveSearchAcknowledgement("", false);');
+    expect(script).toContain('title: "Thinking through your request"');
+    expect(script).toContain('message: "Preparing a useful answer. I\\'ll show live-source checks if needed."');
+    expect(script).toContain('liveSearchMessage.textContent = "Take your time. I\\'ll show live-source checks if needed."');
     expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);", script.indexOf("function startAudioCapture()")))
       .toBeLessThan(script.lastIndexOf("sendAudioChunk(samples);"));
     expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
