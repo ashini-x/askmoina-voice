@@ -49,6 +49,13 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
+  it("targets missing ranked positions on retry and merges earlier grounded rows", () => {
+    expect(workerSource).toContain("retrying specifically for missing ranks");
+    expect(workerSource).toContain("Missing rank positions to retrieve:");
+    expect(workerSource).toContain("mergeGroundedRankedListAttempts(partialRankedListText, candidateText)");
+    expect(workerSource).toContain("partialRankedListChunks");
+  });
+
   it("preserves provider diagnostics on grounding API errors", () => {
     expect(workerSource).toContain("payload.error?.message");
     expect(workerSource).toContain("Grounded search request failed");
