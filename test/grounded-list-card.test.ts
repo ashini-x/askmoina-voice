@@ -77,6 +77,23 @@ describe("grounded ranked-list fallback cards", () => {
     expect(card?.sources?.[0].url).toBe("https://example.com/ipl");
   });
 
+  it("preserves the top-ten count when the Live model shortens the tool query", () => {
+    const rows = Array.from({ length: 10 }, (_, index) =>
+      (index + 1) + ". Player " + (index + 1) + " — Team " + String.fromCharCode(65 + index) + " — " + (700 - index * 10) + " runs"
+    ).join("\n");
+    const result = buildGroundedListCard(
+      "IPL 2025 most runs",
+      rows + "\n\nSources:\n- Complete IPL leaderboard: https://example.com/ipl-2025-runs",
+      10
+    );
+    expect(result).not.toBeNull();
+    expect(result?.title).toBe("Top 10 results");
+    expect(result?.details).toHaveLength(10);
+    expect(result?.details.every((item) => !item.label.endsWith("Not verified"))).toBe(true);
+    expect(result?.summary).toContain("Complete ranked list");
+    expect(result?.sources?.[0].url).toBe("https://example.com/ipl-2025-runs");
+  });
+
   it("creates a ten-row visual card while honestly identifying missing source-backed ranks", () => {
     const result = buildGroundedListCard(
       "show me all 10",
