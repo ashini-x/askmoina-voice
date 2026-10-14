@@ -988,6 +988,7 @@ body.site-info-body .site-info-card{width:100%}
 
 /* RC4 — full-screen Apple-style glass answer sheet; all model content is text-only. */
 .response-card-tray[hidden]{display:none!important}
+.response-card-tray:not([hidden]){visibility:visible;opacity:1;pointer-events:auto}
 .response-card-tray{
   position:fixed;inset:0;z-index:120;width:100%;height:100vh;height:100dvh;max-height:none;
   display:flex;flex-direction:column;gap:0;transform:none;
