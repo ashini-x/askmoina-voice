@@ -636,6 +636,8 @@ describe("RC11 bounded search latency", () => {
     expect(workerSource).toContain("const attemptTimeoutMs = Math.min(searchTimeoutMs, remainingBudget);");
     expect(workerSource).toContain("Grounded search exceeded its");
     expect(workerSource).toContain("const searchBudgetMs = rankedListSearchBudget ? 46_000 : GROUNDED_SEARCH_BUDGET_MS;");
+    expect(workerSource).toContain("waitForGroundedRetry(delayMs: number, budgetStartedAt: number, budgetMs: number)");
+    expect(workerSource).toContain("budgetMs - (Date.now() - budgetStartedAt) <= delayMs + 500");
   });
 
   it("coalesces simultaneous duplicate grounded lookups but does not cache completed results", () => {
