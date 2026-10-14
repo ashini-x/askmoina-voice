@@ -255,6 +255,11 @@ def main() -> int:
                     if not isinstance(sources, list) or not sources:
                         raise RuntimeError("The grounded fallback card did not include grounded source links.")
                     top_ten_card_seen = True
+                    # Ranked requests take the Worker-mandated grounding path before Live
+                    # receives the user turn. The resulting source-backed fallback card is
+                    # the observable proof of grounding; no Live search_current_web call is
+                    # expected for this deliberate path.
+                    grounded_search_count += 1
             input_text = get_input_text(message).lower()
             if input_text.strip():
                 input_transcription_received = True
