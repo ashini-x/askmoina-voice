@@ -648,8 +648,9 @@ describe("RC11 bounded search latency", () => {
 });
 
 describe("RC7 zero-gap search-status feedback", () => {
-  it("does not show the search-status bar from raw microphone energy or brief noise", () => {
-    expect(script).not.toContain('showLiveSearchAcknowledgement("", false)');
+  it("shows early status only after sustained microphone speech, not raw energy or brief noise", () => {
+    expect(script).toContain('if (!micSpeechGateActive) {');
+    expect(script).toContain('showLiveSearchAcknowledgement("", false);');
     expect(script).toContain("micNoiseCalibrationUntil = now + 500");
     expect(script).toContain("zeroCrossingRate >= 0.008 && zeroCrossingRate <= 0.38");
     expect(script).toContain("now - micSpeechCandidateAt >= 120");
@@ -697,7 +698,7 @@ describe("Early live-search status from local speech", () => {
     expect(script).toContain('if (!greetingTurnPending && !stage.classList.contains("is-speaking"))');
     expect(script).toContain('title: "Listening to your question"');
     expect(script).toContain('message: "Getting your request ready. I\'ll show live-source checks if needed."');
-    expect(script).toContain('message: "Take your time. I\'ll show live-source checks if needed."');
+    expect(script).toContain('liveSearchMessage.textContent = "Take your time. I\'ll show live-source checks if needed."');
     expect(script.indexOf("showLiveSearchAcknowledgement(\"\", false);", script.indexOf("function startAudioCapture()")))
       .toBeLessThan(script.lastIndexOf("sendAudioChunk(samples);"));
     expect(script).toContain("This is taking longer than usual. Your connection or the AI service may be slow.");
