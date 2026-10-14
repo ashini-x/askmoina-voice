@@ -94,6 +94,9 @@
   let liveSearchProgressStageIndex = 0;
   let liveSearchPreflightStages = [];
   let liveSearchPreflightContext = "";
+  let liveSearchAcknowledgementStartedAt = 0;
+  let liveSearchPreflightIntent = false;
+  let liveSearchStartedAt = 0;
 
   function updateLiveSearchProgress(value) {
     const next = Math.max(0, Math.min(100, Math.round(value)));
@@ -112,6 +115,8 @@
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
+    liveSearchPreflightIntent = false;
+    liveSearchAcknowledgementStartedAt = 0;
     liveSearchStatus.classList.remove("is-acknowledging", "is-complete");
     if (liveSearchCompletionTimer) window.clearTimeout(liveSearchCompletionTimer);
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
@@ -120,21 +125,29 @@
     liveSearchActive = true;
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
+    liveSearchStartedAt = Date.now();
     liveSearchProgressStageIndex = 0;
     if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
-    liveSearchWatchdogTimer = window.setTimeout(() => {
+    const refreshSlowSearchStatus = () => {
       liveSearchWatchdogTimer = null;
       if (!liveSearchActive || liveSearchFinishing) return;
-      if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
-      liveSearchProgressInterval = null;
-      liveSearchActive = false;
-      liveSearchFinishing = false;
-      liveSearchLookupCompleted = false;
-      if (liveSearchStatus) { liveSearchStatus.hidden = true; liveSearchStatus.classList.remove("is-complete", "is-acknowledging"); }
-      if (transcriptNode) transcriptNode.classList.remove("is-searching");
-      hideLiveSearchAcknowledgement();
-      if (statusNode) setStatus("The live lookup is taking longer than expected. You can keep talking while I recover.", "warning");
-    }, 38_000);
+      const elapsed = Date.now() - liveSearchStartedAt;
+      if (navigator.onLine === false) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. The search status will stay visible while we wait.";
+      } else if (elapsed >= 45_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Still waiting for live results";
+        if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the search service may be slow; you do not need to repeat your question.";
+      } else if (elapsed >= 25_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Still waiting for source results";
+        if (liveSearchMessage) liveSearchMessage.textContent = "I have not received the verified search results yet. This may be a network or service delay.";
+      } else if (elapsed >= 12_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Taking longer than expected";
+        if (liveSearchMessage) liveSearchMessage.textContent = "I am still waiting for live-search results. Your connection or the search service may be slow.";
+      }
+      liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000);
+    };
+    liveSearchWatchdogTimer = window.setTimeout(refreshSlowSearchStatus, 6_000);
     liveSearchStatus.hidden = false;
     if (liveSearchTitle) liveSearchTitle.textContent = "Searching the web";
     if (liveSearchMessage) liveSearchMessage.textContent = "Finding relevant sources";
@@ -151,6 +164,8 @@
     // The progress rail is deliberately indeterminate: it does not pretend to measure provider completion.
     liveSearchProgressInterval = window.setInterval(() => {
       if (!liveSearchActive || liveSearchFinishing || liveSearchLookupCompleted) return;
+      // Long-wait and offline copy is owned by the watchdog and must not be overwritten by the short-stage cycle.
+      if (navigator.onLine === false || Date.now() - liveSearchStartedAt >= 12_000) return;
       stageTick += 1;
       if (stageTick % 5 === 0 && liveSearchMessage) {
         liveSearchProgressStageIndex = (liveSearchProgressStageIndex + 1) % searchStages.length;
@@ -221,6 +236,8 @@
     if (liveSearchAcknowledgementTimer) window.clearTimeout(liveSearchAcknowledgementTimer);
     liveSearchAcknowledgementTimer = null;
     liveSearchAcknowledgementActive = false;
+    liveSearchPreflightIntent = false;
+    liveSearchAcknowledgementStartedAt = 0;
     liveSearchPreflightStages = [];
     liveSearchPreflightContext = "";
     if (liveSearchProgressInterval) window.clearInterval(liveSearchProgressInterval);
@@ -302,6 +319,7 @@
     if (!liveSearchStatus || liveSearchActive || liveSearchFinishing) return;
     const profile = getLiveSearchPreflightProfile(text, isSearchIntent);
     if (liveSearchAcknowledgementActive) {
+      if (isSearchIntent) liveSearchPreflightIntent = true;
       // Do not restart the stage timer for every partial transcript update.
       if (liveSearchPreflightContext !== profile.key) {
         liveSearchPreflightContext = profile.key;
@@ -315,6 +333,8 @@
     }
 
     liveSearchAcknowledgementActive = true;
+    liveSearchAcknowledgementStartedAt = Date.now();
+    liveSearchPreflightIntent = isSearchIntent;
     liveSearchPreflightContext = profile.key;
     liveSearchPreflightStages = profile.stages;
     liveSearchStageIndex = 0;
@@ -329,10 +349,22 @@
         liveSearchAcknowledgementTimer = null;
         return;
       }
-      const stages = liveSearchPreflightStages.length ? liveSearchPreflightStages : profile.stages;
-      const stageItem = stages[liveSearchStageIndex % stages.length];
-      if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
-      if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
+      const elapsed = Math.max(0, Date.now() - liveSearchAcknowledgementStartedAt);
+      if (liveSearchPreflightIntent && navigator.onLine === false) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Connection appears offline";
+        if (liveSearchMessage) liveSearchMessage.textContent = "Check your internet connection. AskMoina will keep this status visible while waiting.";
+      } else if (liveSearchPreflightIntent && elapsed >= 25_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Still preparing your lookup";
+        if (liveSearchMessage) liveSearchMessage.textContent = "This is taking longer than usual. Your connection or the AI search service may be slow.";
+      } else if (liveSearchPreflightIntent && elapsed >= 12_000) {
+        if (liveSearchTitle) liveSearchTitle.textContent = "Preparing a live lookup";
+        if (liveSearchMessage) liveSearchMessage.textContent = "I am still waiting for the live-search step to start. The AI service or network may be slow.";
+      } else {
+        const stages = liveSearchPreflightStages.length ? liveSearchPreflightStages : profile.stages;
+        const stageItem = stages[liveSearchStageIndex % stages.length];
+        if (liveSearchTitle) liveSearchTitle.textContent = stageItem.title;
+        if (liveSearchMessage) liveSearchMessage.textContent = stageItem.message;
+      }
       liveSearchStageIndex += 1;
       liveSearchAcknowledgementTimer = window.setTimeout(advancePreflightStage, 1650);
     };
@@ -449,8 +481,11 @@
     if (role === "assistant" && liveSearchAcknowledgementActive && !liveSearchActive && !liveSearchFinishing) {
       const normalized = String(text || "").replace(/\s+/g, " ").trim();
       if (!normalized) return;
-      // Preserve a brief spoken lookup acknowledgement, but remove the preflight as soon
-      // as the real answer starts. A real server search has its own progress lifecycle.
+      // For an explicit live-search request, short spoken acknowledgements can arrive long
+      // before the search tool call. Keep the preflight visible until a real lookup takes over
+      // or the assistant turn completes; never leave a silent 30-60 second gap.
+      if (liveSearchPreflightIntent) return;
+      // For non-search requests, remove the generic acknowledgement when the answer starts.
       if (!LIVE_SEARCH_ACKNOWLEDGEMENT.test(normalized) || normalized.length >= 90) {
         hideLiveSearchAcknowledgement();
       }
