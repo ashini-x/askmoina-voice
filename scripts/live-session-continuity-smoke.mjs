@@ -339,8 +339,8 @@ try {
   assert.equal(liveSockets.length, 1, "a single authenticated Live WebSocket should open");
 
   // Force a real browser network interruption before the delayed speech window.
-  // This exercises the actual offline/online callbacks, relay handoff, and replacement
-  // socket, then the microphone WAV fixture speaks only after the recovered session ages.
+  // The old provider must be terminated (not merely handed off), then a genuinely fresh
+  // Live session must answer two delayed real-microphone turns.
   await context.setOffline(true);
   await page.waitForFunction(() => {
     const title = document.querySelector("#connectionNoticeTitle");
@@ -382,6 +382,7 @@ try {
       openSocketCount: (window.__askmoinaContinuitySockets || []).filter((candidate) => candidate.readyState === WebSocket.OPEN).length,
       resumedSignals: signals.filter((signal) => signal.state === "resumed").length,
       resumingSignals: signals.filter((signal) => signal.state === "resuming").length,
+      setupCompleteSignals: signals.filter((signal) => signal.state === "setup_complete").length,
       socketClosures: (window.__askmoinaSocketClosures || []).slice(-5),
     };
   });
@@ -391,13 +392,13 @@ try {
     "only the intentionally interrupted browser socket may close; " + JSON.stringify(forcedRecoveryDiagnostics));
   assert.equal(forcedRecoveryDiagnostics.openSocketCount, 1,
     "recovery must leave exactly one open browser socket; " + JSON.stringify(forcedRecoveryDiagnostics));
-  assert.equal(forcedRecoveryDiagnostics.resumedSignals, 1,
-    "recovery must emit one resumed signal, not loop; " + JSON.stringify(forcedRecoveryDiagnostics));
-  assert.ok(forcedRecoveryDiagnostics.resumingSignals <= 1,
-    "recovery must not enter repeated resuming loops; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(forcedRecoveryDiagnostics.resumedSignals, 0,
+    "a confirmed network loss must create a fresh provider rather than reattach to a potentially silent provider; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(forcedRecoveryDiagnostics.resumingSignals, 0,
+    "fresh-session recovery must not enter a resuming loop; " + JSON.stringify(forcedRecoveryDiagnostics));
   assert.equal(forcedRecoveryDiagnostics.state, "live", "the new session must finish setup before returning to LIVE");
   assert.equal(forcedRecoveryDiagnostics.noticeVisible, false, "successful recovery must clear the reconnect notice");
-  console.log("Production forced-disconnect recovery: PASS (1 network loss, 1 recovered socket, 1 resumed signal, no stuck UI).");
+  console.log("Production forced-disconnect recovery: PASS (1 network loss, stale provider terminated, 1 fresh session/socket, no resume loop or stuck UI).");
 
   const sessionStartedAt = Date.now();
   await page.evaluate(() => {

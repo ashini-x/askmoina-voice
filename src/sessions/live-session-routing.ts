@@ -23,3 +23,7 @@ export const LIVE_CLIENT_RECONNECT_CLOSE_CODE = 4001;
 export function shouldDetachLiveSessionOnClientClose(code: number, reason: string): boolean {
   return code === LIVE_CLIENT_RECONNECT_CLOSE_CODE || (code === 1006 && !reason.trim());
 }
+
+
+/** Close code for a new provider session after a confirmed browser network loss. */
+export const LIVE_CLIENT_REPLACEMENT_CLOSE_CODE = 4002;
