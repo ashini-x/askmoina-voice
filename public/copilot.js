@@ -18,6 +18,8 @@
   let persistentConnectionIssue = null;
   let reconnectTimer = null;
   let isAutomaticRetry = false;
+  // Reuse the same session owner only while retrying this call; never across manual starts.
+  let liveSessionId = null;
   let lastMicVoiceAt = 0;
   let micNoiseFloor = 0.003;
   let micNoiseCalibrationUntil = 0;
@@ -3100,6 +3102,7 @@
     }
     const automaticRetry = isAutomaticRetry;
     isAutomaticRetry = false;
+    if (!automaticRetry || !liveSessionId) liveSessionId = crypto.randomUUID();
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
     if (!automaticRetry) automaticReconnectAttempts = 0;
@@ -3179,6 +3182,7 @@
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl.searchParams.set("session_id", liveSessionId);
       sessionSocket = new WebSocket(wsUrl.toString());
       socket = sessionSocket;
       sessionSocket.binaryType = "arraybuffer";
