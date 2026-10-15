@@ -27,6 +27,9 @@ let modelTurnFrames = 0;
 let outputTranscriptionFrames = 0;
 let outputTextCharacters = 0;
 let inlineDataParts = 0;
+let unsupportedFramePayloads = 0;
+let websocketFrameParseErrors = 0;
+const framePayloadTypeCounts = {};
 const audioMimeTypeCounts = {};
 const recentFrameShapes = [];
 const providerErrors = [];
@@ -92,11 +95,33 @@ try {
       liveSockets.push(ws);
       ws.on("close", () => closedSockets.push(ws.url()));
       // Count audio-bearing replies without storing or logging audio/transcripts.
-      ws.on("framereceived", (payload) => {
+      ws.on("framereceived", (frameEvent) => {
         receivedWebSocketFrames += 1;
+        let framePayloadType = "unknown";
+        let frameText = "";
         try {
-          const frameText = typeof payload === "string" ? payload :
-            (Buffer.isBuffer(payload) ? payload.toString("utf8") : String(payload));
+          // Playwright emits { payload: string | Buffer }, not the payload itself.
+          // Unwrap the documented event shape before parsing JSON/audio metadata.
+          const payload = frameEvent && typeof frameEvent === "object" && "payload" in frameEvent
+            ? frameEvent.payload
+            : frameEvent;
+          framePayloadType = typeof payload === "string" ? "string" :
+            Buffer.isBuffer(payload) ? "buffer" :
+            payload instanceof ArrayBuffer ? "arraybuffer" :
+            ArrayBuffer.isView(payload) ? "arraybuffer-view" : typeof payload;
+          framePayloadTypeCounts[framePayloadType] = (framePayloadTypeCounts[framePayloadType] || 0) + 1;
+          frameText = typeof payload === "string" ? payload :
+            Buffer.isBuffer(payload) ? payload.toString("utf8") :
+            payload instanceof ArrayBuffer ? Buffer.from(payload).toString("utf8") :
+            ArrayBuffer.isView(payload)
+              ? Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength).toString("utf8")
+              : "";
+          if (!frameText) {
+            unsupportedFramePayloads += 1;
+            recentFrameShapes.push({ kind: "unsupported_frame_payload", payloadType: framePayloadType });
+            if (recentFrameShapes.length > 20) recentFrameShapes.shift();
+            return;
+          }
           const frame = JSON.parse(frameText);
           parsedJsonFrames += 1;
           const serverContent = frame.serverContent || frame.server_content;
@@ -143,7 +168,14 @@ try {
           }
           if (recentFrameShapes.length > 20) recentFrameShapes.shift();
         } catch {
-          // Record only frame counts and parsed shape; never retain media, text or transcripts.
+          websocketFrameParseErrors += 1;
+          recentFrameShapes.push({
+            kind: "frame_parse_error",
+            payloadType: framePayloadType,
+            payloadLength: frameText.length,
+          });
+          if (recentFrameShapes.length > 20) recentFrameShapes.shift();
+          // Record only frame counts and payload shape; never retain media, text or transcripts.
         }
       });
     } catch { /* Ignore unrelated WebSockets. */ }
@@ -199,9 +231,10 @@ try {
     }
   });
 
-  // Keep media active, then send a real user turn before the old cutoff. Compression
-  // is triggered before turns; a silent fake microphone alone cannot verify that path.
-  await page.waitForTimeout(95_000);
+  // Keep real camera/microphone tracks active beyond the reported ~2-minute cutoff.
+  // Then send a deterministic user turn and verify the provider actually speaks again.
+  // A silent fake microphone alone cannot verify compression/continuity by itself.
+  await page.waitForTimeout(125_000);
   const assistantAudioFramesBeforeTurn = assistantAudioFrames;
   const turnDispatch = await page.evaluate(() => {
     const sockets = window.__askmoinaContinuitySockets || [];
@@ -245,6 +278,9 @@ try {
     outputTranscriptionFrames,
     outputTextCharacters,
     inlineDataParts,
+    unsupportedFramePayloads,
+    websocketFrameParseErrors,
+    framePayloadTypeCounts,
     assistantAudioFrames,
     audioMimeTypeCounts,
     recentFrameShapes,
@@ -282,12 +318,17 @@ try {
     outputTranscriptionFrames,
     outputTextCharacters,
     inlineDataParts,
+    unsupportedFramePayloads,
+    websocketFrameParseErrors,
+    framePayloadTypeCounts,
     audioMimeTypeCounts,
     recentFrameShapes,
     providerErrors,
   }));
+  assert.ok(parsedJsonFrames > 0,
+    "the synthetic observer must parse at least one JSON WebSocket frame; zero parsed frames means the observer is broken");
   assert.ok(assistantAudioFrames > assistantAudioFramesBeforeTurn,
-    "the assistant must transmit a new audio response after the mid-session test turn");
+    "the assistant must transmit a new audio response after the >2-minute continuity test turn");
 
   // Keep the same audiovisual session alive through the full 155-second window.
   const remainingMs = Math.max(0, 155_000 - (Date.now() - sessionStartedAt));
