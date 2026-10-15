@@ -2856,6 +2856,14 @@
       return;
     }
 
+    if (message.connection_status && message.connection_status.state === "recovering") {
+      setStatus(message.connection_status.message || "The last reply was not audible. Retrying it once.", "normal");
+      return;
+    }
+    if (message.connection_status && message.connection_status.state === "recovered") {
+      setStatus(message.connection_status.message || "Voice audio is flowing again.", "normal");
+      return;
+    }
     if (message.connection_status && message.connection_status.state === "resuming") {
       setConnectionState("RECONNECTING", "connecting");
       setStatus(message.connection_status.message || "Refreshing the live connection while keeping your conversation…", "normal");

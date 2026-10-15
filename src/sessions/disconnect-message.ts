@@ -10,7 +10,8 @@ export interface UserDisconnectNotice {
     | "invalid_client_frame"
     | "invalid_protocol"
     | "provider_protocol_error"
-    | "input_replay_window_lost";
+    | "input_replay_window_lost"
+    | "silent_response_recovery_failed";
   message: string;
 }
 
@@ -47,6 +48,17 @@ export function getUserFacingDisconnectNotice(
         ? "The voice connection dropped without a clean close, usually because the network or voice service interrupted it. This is not a question-count limit. Tap Start talking to reconnect."
         : "The voice service closed its connection unexpectedly. This is not a question-count limit; the service or network connection may have interrupted the session. Tap Start talking to reconnect.";
     return { state: "ended", code: "provider_disconnected", message };
+  }
+
+  if (
+    reason === "Voice response remained silent after one recovery attempt" ||
+    reason === "Voice response recovery timed out"
+  ) {
+    return {
+      state: "ended",
+      code: "silent_response_recovery_failed",
+      message: "AskMoina could not produce audible speech after one automatic retry, so this live session has been stopped instead of appearing connected while silent. Tap Start talking to open a fresh session; repeat your last request if needed.",
+    };
   }
 
   if (reason === "Voice provider socket error") {

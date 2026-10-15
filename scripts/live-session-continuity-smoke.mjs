@@ -6,6 +6,9 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium } from "playwright";
 
 const rawBaseUrl = process.env.BASE_URL || "https://askmoina-voice.thenewtongs.workers.dev";
@@ -36,55 +39,61 @@ const recentFrameShapes = [];
 const providerErrors = [];
 
 function synthesizePcm16k(text) {
-  // Use espeak-ng to generate a synthetic spoken turn, then convert it to the
-  // exact mono 16-bit, 16 kHz PCM format accepted by the Live relay.
-  const wav = execFileSync("espeak-ng", ["-v", "en-us", "-s", "135", "--stdout", text], {
-    maxBuffer: 16 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  if (wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
-    throw new Error("espeak-ng did not produce a valid WAV stream.");
-  }
-
-  let format = 0;
-  let channels = 0;
-  let sourceRate = 0;
-  let bitsPerSample = 0;
-  let pcm = null;
-  for (let offset = 12; offset + 8 <= wav.length;) {
-    const chunkName = wav.toString("ascii", offset, offset + 4);
-    const chunkSize = wav.readUInt32LE(offset + 4);
-    const start = offset + 8;
-    const end = start + chunkSize;
-    if (end > wav.length) throw new Error("espeak-ng produced a truncated WAV chunk.");
-    if (chunkName === "fmt " && chunkSize >= 16) {
-      format = wav.readUInt16LE(start);
-      channels = wav.readUInt16LE(start + 2);
-      sourceRate = wav.readUInt32LE(start + 4);
-      bitsPerSample = wav.readUInt16LE(start + 14);
-    } else if (chunkName === "data") {
-      pcm = wav.subarray(start, end);
+  // Ask espeak-ng to finalize the WAV header on disk. Its --stdout streaming
+  // header can advertise a data chunk larger than the bytes captured by Node.
+  const directory = mkdtempSync(join(tmpdir(), "askmoina-live-speech-"));
+  const wavPath = join(directory, "continuity.wav");
+  try {
+    execFileSync("espeak-ng", ["-v", "en-us", "-s", "135", "-w", wavPath, text], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    const wav = readFileSync(wavPath);
+    if (wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
+      throw new Error("espeak-ng did not produce a valid WAV file.");
     }
-    offset = end + (chunkSize & 1);
-  }
-  if (format !== 1 || channels !== 1 || bitsPerSample !== 16 || !sourceRate || !pcm || pcm.length < 4) {
-    throw new Error("espeak-ng returned an unsupported PCM WAV format.");
-  }
 
-  const sourceSampleCount = Math.floor(pcm.length / 2);
-  const outputSampleCount = Math.max(1, Math.floor(sourceSampleCount * 16000 / sourceRate));
-  const output = Buffer.alloc(outputSampleCount * 2);
-  for (let i = 0; i < outputSampleCount; i += 1) {
-    const position = i * sourceRate / 16000;
-    const left = Math.min(Math.floor(position), sourceSampleCount - 1);
-    const right = Math.min(left + 1, sourceSampleCount - 1);
-    const fraction = position - left;
-    const a = pcm.readInt16LE(left * 2);
-    const b = pcm.readInt16LE(right * 2);
-    const sample = Math.round(a * (1 - fraction) + b * fraction);
-    output.writeInt16LE(Math.max(-32768, Math.min(32767, sample)), i * 2);
+    let format = 0;
+    let channels = 0;
+    let sourceRate = 0;
+    let bitsPerSample = 0;
+    let pcm = null;
+    for (let offset = 12; offset + 8 <= wav.length;) {
+      const chunkName = wav.toString("ascii", offset, offset + 4);
+      const chunkSize = wav.readUInt32LE(offset + 4);
+      const start = offset + 8;
+      const end = start + chunkSize;
+      if (end > wav.length) throw new Error("espeak-ng produced a truncated WAV chunk.");
+      if (chunkName === "fmt " && chunkSize >= 16) {
+        format = wav.readUInt16LE(start);
+        channels = wav.readUInt16LE(start + 2);
+        sourceRate = wav.readUInt32LE(start + 4);
+        bitsPerSample = wav.readUInt16LE(start + 14);
+      } else if (chunkName === "data") {
+        pcm = wav.subarray(start, end);
+      }
+      offset = end + (chunkSize & 1);
+    }
+    if (format !== 1 || channels !== 1 || bitsPerSample !== 16 || !sourceRate || !pcm || pcm.length < 4) {
+      throw new Error("espeak-ng returned an unsupported PCM WAV format.");
+    }
+
+    const sourceSampleCount = Math.floor(pcm.length / 2);
+    const outputSampleCount = Math.max(1, Math.floor(sourceSampleCount * 16000 / sourceRate));
+    const output = Buffer.alloc(outputSampleCount * 2);
+    for (let i = 0; i < outputSampleCount; i += 1) {
+      const position = i * sourceRate / 16000;
+      const left = Math.min(Math.floor(position), sourceSampleCount - 1);
+      const right = Math.min(left + 1, sourceSampleCount - 1);
+      const fraction = position - left;
+      const a = pcm.readInt16LE(left * 2);
+      const b = pcm.readInt16LE(right * 2);
+      const sample = Math.round(a * (1 - fraction) + b * fraction);
+      output.writeInt16LE(Math.max(-32768, Math.min(32767, sample)), i * 2);
+    }
+    return output;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
-  return output;
 }
 
 function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {

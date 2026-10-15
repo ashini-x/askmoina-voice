@@ -20,6 +20,18 @@ describe("AskMoina disconnect explanations", () => {
     expect(notice?.message).toContain("network or voice service interrupted it");
   });
 
+  it("explains when a response stayed silent after the single recovery attempt", () => {
+    const notice = getUserFacingDisconnectNotice(
+      "Voice response remained silent after one recovery attempt",
+      540,
+      1011,
+    );
+    expect(notice?.state).toBe("ended");
+    expect(notice?.code).toBe("silent_response_recovery_failed");
+    expect(notice?.message).toContain("after one automatic retry");
+    expect(notice?.message).toContain("fresh session");
+  });
+
   it("provides a retry hint for provider socket errors", () => {
     const notice = getUserFacingDisconnectNotice("Voice provider socket error", 540, 1011);
     expect(notice?.code).toBe("provider_error");

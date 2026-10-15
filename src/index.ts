@@ -6,6 +6,7 @@ import { MAX_RESUME_REPLAY_CHARS, parseSessionResumptionCheckpoint, canAdvanceSe
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
+import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
 import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
@@ -1102,6 +1103,12 @@ async function handleVoiceSocket(
   let latestUserRequestText = "";
   let latestUserRequestAt = 0;
   let lastAssistantTurnCompletedAt = 0;
+  // These are per-provider-turn facts; a transcript and turnComplete may arrive in separate frames.
+  let providerTurnHasAudio = false;
+  let silentResponseRetryUsed = false;
+  let silentResponseRetryPending = false;
+  let silentResponseRecoveryTimeout: ReturnType<typeof setTimeout> | null = null;
+  const SILENT_RESPONSE_RECOVERY_TIMEOUT_MS = 12_000;
   let latestUserRequestNeedsGrounding = false;
   let forcedRankedLookupActive = false;
   // Isolated from generic search flags: tracks the actual outstanding forced-ranked progress turn.
@@ -1139,6 +1146,10 @@ async function handleVoiceSocket(
     }
     if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
     if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(false); }
+    if (silentResponseRecoveryTimeout !== null) {
+      clearTimeout(silentResponseRecoveryTimeout);
+      silentResponseRecoveryTimeout = null;
+    }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
     const analyticsOutcome = reason === "Session time limit reached" ? "session_timeout" :
@@ -1337,33 +1348,37 @@ async function handleVoiceSocket(
     return true;
   }
 
-  function rememberLatestUserRequestFromProviderFrame(frameText: string) {
-    if (!copilotMode || (!frameText.includes('"inputTranscription"') && !frameText.includes('"input_transcription"'))) return;
+  function rememberLatestUserRequestFromProviderFrame(frameText: string): boolean {
+    if (!frameText.includes('"inputTranscription"') && !frameText.includes('"input_transcription"')) return false;
     try {
       const frame = JSON.parse(frameText) as Record<string, unknown>;
       const content = (frame.serverContent || frame.server_content) as Record<string, unknown> | undefined;
       const transcription = (content?.inputTranscription || content?.input_transcription ||
         frame.inputTranscription || frame.input_transcription) as Record<string, unknown> | undefined;
       const rawText = typeof transcription?.text === "string" ? transcription.text.trim() : "";
-      if (!rawText) return;
+      if (!rawText) return false;
       const text = rawText.slice(-1_500);
       const now = Date.now();
       const startsNewRequest = !latestUserRequestText || now - latestUserRequestAt > 8_000 ||
         (lastAssistantTurnCompletedAt > 0 && lastAssistantTurnCompletedAt > latestUserRequestAt);
       if (startsNewRequest) {
         latestUserRequestText = text;
+        // Keep the single retry scoped to one user request. Do not reset it while a retry is outstanding.
+        if (!silentResponseRetryPending) silentResponseRetryUsed = false;
       } else if (text.startsWith(latestUserRequestText)) {
         latestUserRequestText = text;
       } else if (!latestUserRequestText.startsWith(text)) {
         latestUserRequestText = (latestUserRequestText + " " + text).slice(-1_500);
       }
       latestUserRequestAt = now;
-      latestUserRequestNeedsGrounding = Boolean(
+      latestUserRequestNeedsGrounding = copilotMode && Boolean(
         getRequestedRankedListCount(latestUserRequestText) !== null &&
         isLikelyRankedTableSearchQuery(latestUserRequestText)
       );
+      return startsNewRequest;
     } catch {
       // Transcription metadata is optional and must never break the live audio relay.
+      return false;
     }
   }
 
@@ -1835,7 +1850,26 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       return;
     }
 
-    rememberLatestUserRequestFromProviderFrame(frameText);
+    const isNewUserRequest = rememberLatestUserRequestFromProviderFrame(frameText);
+    if (isNewUserRequest && !silentResponseRetryPending) providerTurnHasAudio = false;
+    if (isProviderAudioFrame(frameText)) {
+      providerTurnHasAudio = true;
+      if (silentResponseRetryPending) {
+        // The retry is confirmed only when the provider actually emits an audio frame.
+        silentResponseRetryPending = false;
+        if (silentResponseRecoveryTimeout !== null) {
+          clearTimeout(silentResponseRecoveryTimeout);
+          silentResponseRecoveryTimeout = null;
+        }
+        try {
+          workerSocket.send(JSON.stringify({ connection_status: {
+            state: "recovered",
+            message: "Voice audio is flowing again. Your request is continuing.",
+          } }));
+        } catch { /* the browser may already be closing */ }
+        console.info("[AskMoina] Silent-turn recovery produced audio", JSON.stringify({ frameNumber }));
+      }
+    }
     const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate);
     const resumedSessionSetupComplete = Boolean(providerMessage?.setupComplete && resumptionInProgress);
 
@@ -2144,7 +2178,63 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       (frameText.includes('"modelTurn"') || frameText.includes('"model_turn"') ||
        frameText.includes('"outputTranscription"') || frameText.includes('"output_transcription"'));
 
-    if (isCompletedAssistantTurn) lastAssistantTurnCompletedAt = Date.now();
+    if (isProviderTurnComplete) {
+      const recoveryDecision = decideSilentTurnRecovery({
+        turnComplete: true,
+        responseHasAudio: providerTurnHasAudio,
+        retryPending: silentResponseRetryPending,
+        retryAlreadyUsed: silentResponseRetryUsed,
+        hasRecentUserInput: Boolean(latestUserRequestText) && latestUserRequestAt > lastAssistantTurnCompletedAt,
+        safeToRetry: setupCompleteReceived && upstreamSetupReady &&
+          upstreamSocket.readyState === WebSocket.OPEN && workerSocket.readyState === WebSocket.OPEN &&
+          !resumptionInProgress && !providerMessage?.error &&
+          !forcedRankedLookupActive && !forcedRankedProgressTurnOutstanding &&
+          pendingGroundedSearches === 0 && pendingForcedRankedAnswerContinuation === null,
+      });
+
+      if (recoveryDecision === "retry") {
+        // Replay-safe: route the recovery cue through sendUpstreamMessage so it is indexed,
+        // bounded, and retained alongside any unacknowledged user input.
+        silentResponseRetryUsed = true;
+        silentResponseRetryPending = true;
+        providerTurnHasAudio = false;
+        try {
+          workerSocket.send(JSON.stringify({ connection_status: {
+            state: "recovering",
+            message: "That reply was not audible. I’m retrying the spoken response once; your request is unchanged.",
+          } }));
+        } catch { /* the browser may already be closing */ }
+        silentResponseRecoveryTimeout = setTimeout(() => {
+          if (!closed && silentResponseRetryPending) {
+            closeBoth(1011, "Voice response recovery timed out");
+          }
+        }, SILENT_RESPONSE_RECOVERY_TIMEOUT_MS);
+        sendUpstreamMessage({
+          clientContent: {
+            turns: [{
+              role: "user",
+              parts: [{
+                text: "The immediately preceding assistant response did not produce audible voice audio. Repeat that answer aloud once in one concise, helpful response. Do not call tools, do not create a response card, do not restart the user's task, and do not claim the connection was resumed.",
+              }],
+            }],
+            turnComplete: true,
+          },
+        });
+        console.warn("[AskMoina] Completed Live turn had no audio; one controlled retry requested", JSON.stringify({
+          frameNumber,
+          hadOutputTranscriptOrModelTurn: frameText.includes('"outputTranscription"') ||
+            frameText.includes('"output_transcription"') || frameText.includes('"modelTurn"') || frameText.includes('"model_turn"'),
+        }));
+      } else if (recoveryDecision === "failed") {
+        closeBoth(1011, "Voice response remained silent after one recovery attempt");
+        return;
+      }
+
+      // Completion markers can be separate from the modelTurn/outputTranscription frame.
+      // This timestamp is the boundary for associating subsequent input with a new request.
+      lastAssistantTurnCompletedAt = Date.now();
+      providerTurnHasAudio = false;
+    }
 
     // The forced ranked flow owns its progress turns. Do not let generic searches
     // overwrite the state or use the narrower transcript-dependent detector to strand
