@@ -98,6 +98,11 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("Fresh session required after network loss");
     expect(script).toContain("forceFreshSessionOnReconnect = true;");
     expect(script).toContain("if (!isCurrentStart()) return;");
+    expect(script).toContain("const preRollFrames = [];");
+    expect(script).toContain('sendAudioActivityBoundary("start")');
+    expect(script).toContain('sendAudioActivityBoundary("end")');
+    expect(script).toContain("Manual activity mode sends PCM only inside a client-detected utterance");
+    expect(script).not.toContain("sendAudioStreamEnd()");");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");

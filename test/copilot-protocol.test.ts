@@ -142,3 +142,22 @@ describe("browser-to-provider realtime media mapping", () => {
     });
   });
 });
+
+
+describe("explicit client VAD activity boundaries", () => {
+  it("parses only the exact activity start/end browser signals", () => {
+    expect(parseLiveClientInput({ realtime_input: { activity_start: true } }, true)).toEqual({ kind: "activity_start" });
+    expect(parseLiveClientInput({ realtime_input: { activity_end: true } }, true)).toEqual({ kind: "activity_end" });
+    expect(parseLiveClientInput({ realtime_input: { activity_start: false } }, true)).toBeNull();
+    expect(parseLiveClientInput({ realtime_input: { activity_end: false } }, true)).toBeNull();
+  });
+
+  it("maps activity boundaries to Gemini Live camelCase envelopes", () => {
+    expect(toProviderRealtimeInput({ kind: "activity_start" })).toEqual({
+      realtimeInput: { activityStart: {} },
+    });
+    expect(toProviderRealtimeInput({ kind: "activity_end" })).toEqual({
+      realtimeInput: { activityEnd: {} },
+    });
+  });
+});

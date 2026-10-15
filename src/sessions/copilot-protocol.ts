@@ -6,6 +6,8 @@ export type ParsedLiveClientInput =
   | { kind: "initial_greeting" }
   | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
+  | { kind: "activity_start" }
+  | { kind: "activity_end" }
   | { kind: "tool_response"; responses: Array<{ id: string; name: "display_screen_overlay" | "display_response_card"; result: string }> };
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -96,6 +98,12 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
   if (inputKeys[0] === "audio_stream_end" && realtimeInput.audio_stream_end === true) {
     return { kind: "audio_stream_end" };
   }
+  if (inputKeys[0] === "activity_start" && realtimeInput.activity_start === true) {
+    return { kind: "activity_start" };
+  }
+  if (inputKeys[0] === "activity_end" && realtimeInput.activity_end === true) {
+    return { kind: "activity_end" };
+  }
 
   const isVideo = inputKeys[0] === "video";
   if (!isVideo && inputKeys[0] !== "audio") return null;
@@ -134,6 +142,10 @@ export function toProviderRealtimeInput(input: ParsedLiveClientInput): Record<st
       };
     case "audio_stream_end":
       return { realtimeInput: { audioStreamEnd: true } };
+    case "activity_start":
+      return { realtimeInput: { activityStart: {} } };
+    case "activity_end":
+      return { realtimeInput: { activityEnd: {} } };
     default:
       return null;
   }

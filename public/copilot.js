@@ -1820,12 +1820,12 @@
     }));
   }
 
-  function sendAudioStreamEnd() {
+  function sendAudioActivityBoundary(kind) {
     if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady) return;
-    // With automatic VAD still enabled on Live, explicitly finalize this utterance after
-    // the final silence-bearing PCM frame. The next PCM frame may reopen realtime input.
     try {
-      socket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+      socket.send(JSON.stringify({
+        realtime_input: kind === "start" ? { activity_start: true } : { activity_end: true }
+      }));
     } catch (_) {
       // The socket close/reconnect path owns recovery.
     }
@@ -1841,6 +1841,18 @@
     processor = audioContext.createScriptProcessor(audioBufferSize, 1, 1);
     silentGain = audioContext.createGain();
     silentGain.gain.value = 0;
+    // Keep a short PCM pre-roll while idle. When speech starts, send activityStart then flush
+    // these recent frames so the first syllable is preserved without streaming minutes of silence.
+    const preRollFrames = [];
+    const preRollChunkLimit = Math.max(4, Math.ceil(300 / (audioBufferSize / audioContext.sampleRate * 1000)));
+    function bufferPreRollFrame(samples) {
+      preRollFrames.push(new Float32Array(samples));
+      while (preRollFrames.length > preRollChunkLimit) preRollFrames.shift();
+    }
+    function flushPreRollFrames() {
+      const frames = preRollFrames.splice(0);
+      for (const frame of frames) sendAudioChunk(frame);
+    }
     processor.onaudioprocess = (event) => {
       if (!active || !setupReady || stopping) return;
       const samples = event.inputBuffer.getChannelData(0);
@@ -1864,7 +1876,7 @@
       if (now < micNoiseCalibrationUntil) {
         micNoiseFloor = Math.max(0.001, Math.min(0.04, micNoiseFloor * 0.92 + rms * 0.08));
         applyVoiceEdgeEnergy(0, "microphone");
-        sendAudioChunk(samples);
+        bufferPreRollFrame(samples);
         return;
       }
       // Require signal above the learned room-noise floor, speech-like crossings, and a sustained onset.
@@ -1906,10 +1918,22 @@
         applyVoiceEdgeEnergy(0, "microphone");
         if (now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS) stage.classList.remove("is-listening");
       }
-      // Keep PCM input continuous. Live's configured automatic activity detection handles
-      // ordinary speech/silence turn boundaries; the local gate is visual feedback only.
-      sendAudioChunk(samples);
-      if (speechGateEnded) sendAudioStreamEnd();
+      // Manual activity mode sends PCM only inside a client-detected utterance.
+      // This keeps long pauses local and makes each spoken turn boundary explicit.
+      if (micSpeechGateActive) {
+        if (!speechGateBeforeFrame) {
+          sendAudioActivityBoundary("start");
+          flushPreRollFrames();
+        }
+        sendAudioChunk(samples);
+      } else if (speechGateEnded) {
+        // Include the frame that crossed the silence threshold before closing the activity.
+        sendAudioChunk(samples);
+        sendAudioActivityBoundary("end");
+        preRollFrames.length = 0;
+      } else {
+        bufferPreRollFrame(samples);
+      }
     };
     microphoneSource.connect(processor);
     processor.connect(silentGain);
