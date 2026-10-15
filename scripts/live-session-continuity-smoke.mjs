@@ -371,9 +371,10 @@ try {
   // browser getUserMedia -> downsampling -> PCM send -> local VAD path is exercised.
   await page.waitForTimeout(125_000);
   const assistantAudioFramesBeforeTurn = assistantAudioFrames;
-  const microphoneFramesBeforeTurn = await page.evaluate(
-    () => window.__askmoinaMicInputStats?.audioFramesSent || 0
-  );
+  const microphoneStatsBeforeTurn = await page.evaluate(() => ({
+    audioFramesSent: window.__askmoinaMicInputStats?.audioFramesSent || 0,
+    audioStreamEndFramesSent: window.__askmoinaMicInputStats?.audioStreamEndFramesSent || 0,
+  }));
   let microphoneVadObserved = false;
   try {
     await page.waitForFunction(() => {
@@ -396,13 +397,14 @@ try {
       sent: speechStart >= 0 && speechEndIndex > speechStart,
       reason: speechStart < 0 ? "local-microphone-VAD-never-detected-speech" :
         speechEndIndex < 0 ? "local-microphone-VAD-never-detected-end-of-speech" : "",
-      chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baselineAudioFrames),
-      audioStreamEndFramesSent: stats.audioStreamEndFramesSent || 0,
+      chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baselineAudioFrames.audioFramesSent),
+      audioStreamEndFramesSent: Math.max(0,
+        (stats.audioStreamEndFramesSent || 0) - baselineAudioFrames.audioStreamEndFramesSent),
       speechStartedAt: speechStart >= 0 ? transitions[speechStart].at : null,
       speechEndedAt: speechEndIndex > speechStart ? transitions[speechEndIndex].at : null,
       textTurnsSent: stats.textTurnsSent || 0,
     };
-  }, microphoneFramesBeforeTurn);
+  }, microphoneStatsBeforeTurn);
   const beforeTurnDiagnostics = await page.evaluate(() => ({
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
     statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
@@ -449,6 +451,8 @@ try {
   assert.ok(turnDispatch.chunksSent > 0, "the real browser microphone must send PCM after the >2-minute boundary");
   assert.ok(microphoneVadObserved && turnDispatch.sent,
     "the actual microphone/VAD path must detect speech onset and end-of-speech on the delayed WAV stimulus");
+  assert.ok(turnDispatch.audioStreamEndFramesSent > 0,
+    "the post-boundary spoken turn must send an explicit audio-stream end marker to finalize Live VAD");
 
   // Give the PCM turn its own bounded response window. If it stays silent, send a
   // deterministic text turn over the same open socket to distinguish audio/VAD failure
