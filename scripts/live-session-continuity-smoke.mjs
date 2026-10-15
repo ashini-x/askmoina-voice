@@ -487,8 +487,6 @@ try {
     noticeKind: document.querySelector("#connectionNotice")?.dataset.kind || "none",
     assistantTranscriptChars: [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
       .reduce((sum, node) => sum + (node.textContent || "").length, 0),
-    assistantAudioFrames,
-    continuityReplyAudioFrames: assistantAudioFrames - assistantAudioFramesBeforeTurn,
     timeline: (window.__askmoinaContinuityTimeline || []).slice(-24),
     socketCount: (window.__askmoinaContinuitySockets || []).length,
   }));
@@ -527,7 +525,6 @@ try {
       socketCount: (window.__askmoinaContinuitySockets || []).length,
       assistantTranscriptChars: [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
         .reduce((sum, node) => sum + (node.textContent || "").length, 0),
-      assistantAudioFrames,
     })).catch(() => null);
     if (diagnostic) console.error("Production audiovisual Live continuity diagnostics: " + JSON.stringify({
       ...diagnostic, browserLiveSocketCount: liveSockets.length, closedBrowserSockets: closedSockets.length,
