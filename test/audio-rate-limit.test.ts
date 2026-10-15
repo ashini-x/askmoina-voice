@@ -46,9 +46,16 @@ describe("independent audiovisual input budgets", () => {
     }
   });
 
-  it("does not let rejected camera traffic consume the microphone byte budget", () => {
+  it("does not let sustained excessive camera traffic consume the microphone byte budget", () => {
     const limiter = new RealtimeMediaRateLimiter(0);
-    expect(limiter.consume("video", 70_000, 0)).toBe(false);
-    expect(limiter.consume("audio", 1_000, 0)).toBe(true);
+    let firstRejectedSecond = -1;
+    for (let second = 0; second < 60; second += 1) {
+      if (!limiter.consume("video", 70_000, second * 1_000)) {
+        firstRejectedSecond = second;
+        break;
+      }
+    }
+    expect(firstRejectedSecond).toBeGreaterThan(0);
+    expect(limiter.consume("audio", 1_000, firstRejectedSecond * 1_000)).toBe(true);
   });
 });
