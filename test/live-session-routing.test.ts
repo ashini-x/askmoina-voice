@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { liveSessionObjectName, normalizeLiveSessionId, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "../src/sessions/live-session-routing";
+import { liveSessionObjectName, normalizeLiveSessionId, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE, LIVE_CLIENT_REPLACEMENT_CLOSE_CODE } from "../src/sessions/live-session-routing";
 
 describe("Live session routing", () => {
   it("accepts browser-generated UUIDs and normalizes case", () => {
@@ -38,5 +38,14 @@ describe("Live session routing", () => {
 
   it("rejects empty owners and invalid UUIDs", () => {
     expect(() => liveSessionObjectName(" ", "bad")).toThrow(TypeError);
+  });
+});
+
+
+describe("Live session replacement vs handoff close codes", () => {
+  it("preserves the provider only for explicit handoff, not a network-loss replacement", () => {
+    expect(LIVE_CLIENT_REPLACEMENT_CLOSE_CODE).toBe(4002);
+    expect(shouldDetachLiveSessionOnClientClose(LIVE_CLIENT_REPLACEMENT_CLOSE_CODE, "Fresh session required after network loss")).toBe(false);
+    expect(shouldDetachLiveSessionOnClientClose(LIVE_CLIENT_RECONNECT_CLOSE_CODE, "Reconnect handoff")).toBe(true);
   });
 });

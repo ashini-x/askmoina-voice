@@ -440,6 +440,8 @@
   // Invalidate pending permission/preflight promises so stale starts cannot own media or sockets.
   let copilotStartGeneration = 0;
   let forceFreshSessionOnReconnect = false;
+  // Unlike the 4001 handoff code, 4002 deliberately closes the stale provider session.
+  const LIVE_CLIENT_REPLACEMENT_CLOSE_CODE = 4002;
   let setupReady = false;
   let recoveryPreviewClear = false;
   let setupTimer = null;
@@ -768,7 +770,8 @@
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
-      if (active || starting) stopCopilot(false, null, null, true);
+      forceFreshSessionOnReconnect = true;
+      if (active || starting) stopCopilot(false, null, null, true, true);
       automaticReconnectAttempts = 0;
       setConnectionState("OFFLINE", "error");
       setStatus("You're offline. Reconnect when your internet is back; AskMoina will not auto-open your camera or microphone.", "warning");
@@ -2328,7 +2331,7 @@
     setCameraState(livePreviewTrack ? "Camera preview" : "Camera paused", livePreviewTrack ? "live" : "idle");
   }
 
-  function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false) {
+  function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false) {
     copilotStartGeneration += 1;
     if (userInitiated) forceFreshSessionOnReconnect = false;
     lastSessionEndedAt = Date.now();
@@ -2346,7 +2349,13 @@
     stopRelayKeepalive(oldSocket);
     socket = null;
     if (oldSocket && oldSocket.readyState === WebSocket.OPEN) {
-      try { oldSocket.close(silentDisconnect && !userInitiated ? LIVE_CLIENT_RECONNECT_CLOSE_CODE : 1000, silentDisconnect && !userInitiated ? "Reconnect handoff" : "Client disconnected"); } catch (_) {}
+      const closeCode = replaceProviderSession
+        ? LIVE_CLIENT_REPLACEMENT_CLOSE_CODE
+        : silentDisconnect && !userInitiated ? LIVE_CLIENT_RECONNECT_CLOSE_CODE : 1000;
+      const closeReason = replaceProviderSession
+        ? "Fresh session required after network loss"
+        : silentDisconnect && !userInitiated ? "Reconnect handoff" : "Client disconnected";
+      try { oldSocket.close(closeCode, closeReason); } catch (_) {}
     } else if (oldSocket && oldSocket.readyState === WebSocket.CONNECTING) {
       try { oldSocket.close(); } catch (_) {}
     }
@@ -3973,7 +3982,10 @@
   window.addEventListener("offline", () => {
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
-    if (active || starting) stopCopilot(false, null, null, true);
+    // Browser-only reattachment kept the UI alive but left the provider unable to answer
+    // fresh microphone audio. Explicit network loss therefore requires a new Live session.
+    forceFreshSessionOnReconnect = true;
+    if (active || starting) stopCopilot(false, null, null, true, true);
     automaticReconnectAttempts = 0;
     setConnectionState("OFFLINE", "error");
     setStatus("You're offline. Your camera preview stays local. Tap Reconnect now after your connection returns.", "warning");

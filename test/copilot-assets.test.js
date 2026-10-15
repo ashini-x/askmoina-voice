@@ -94,6 +94,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("let copilotStartGeneration = 0;");
     expect(script).toContain("if (reconnectTimer !== null) return;");
     expect(script).toContain("forceFreshSessionOnReconnect");
+    expect(script).toContain("const LIVE_CLIENT_REPLACEMENT_CLOSE_CODE = 4002;");
+    expect(script).toContain("Fresh session required after network loss");
+    expect(script).toContain("forceFreshSessionOnReconnect = true;");
     expect(script).toContain("if (!isCurrentStart()) return;");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
@@ -554,7 +557,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.52"');
+    expect(html).toContain('src="/copilot.js?v=0.4.53"');
   });
 });
 
