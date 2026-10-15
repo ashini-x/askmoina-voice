@@ -6,6 +6,7 @@ const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "u
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const protocolSource = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
@@ -811,7 +812,7 @@ describe("Live microphone explicit activity detection", () => {
     expect(script).not.toContain("realtime_input: { audio_stream_end: true }");
     expect(workerSource).toContain('parsed.kind === "activity_start" || parsed.kind === "activity_end"');
     expect(workerSource).toContain("automaticActivityDetection: { disabled: true }");
-    expect(protocol).toContain('case "activity_start":');
-    expect(protocol).toContain('case "activity_end":');
+    expect(protocolSource).toContain('case "activity_start":');
+    expect(protocolSource).toContain('case "activity_end":');
   });
 });
