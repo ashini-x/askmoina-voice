@@ -1,35 +1,42 @@
 # AskMoina Voice — Production Incident Handoff
 
-Last verified: 2026-10-15 UTC. **Post-two-minute spoken-turn continuity is now verified passing on production 0.4.50.**
+Last updated: 2026-10-16 UTC.
 
-## Production state and evidence
+## Status: Phase 1 is not yet verified closed
+
+The production microphone-continuity incident remains open. Do not treat the single passing production run as proof of a stable fix; a subsequent run on the same deployed release failed the spoken-turn assertion.
 
 - Repository: https://github.com/ashini-x/askmoina-voice
-- Current `main`: `30e026436054a9d08a5a808a98eb8d91bec6b1bd`.
-- Deployed release: `0.4.50`.
-- [Release validation on main](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188852): passed.
-- [Production health smoke](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188912): passed and reported `0.4.50`, `gemini-3.8-live`, `us-central1`, and the expected Live voice.
-- [Production deploy + live synthetic run](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368): **overall failed** because the independent grounded-web-search and ranked-list synthetics failed. Its dedicated long-running audiovisual continuity check **passed**; do not confuse the overall red workflow with the target continuity assertion.
-- [PR #167](https://github.com/ashini-x/askmoina-voice/pull/167) merged the session compression/replay fix.
-- [PR #170](https://github.com/ashini-x/askmoina-voice/pull/170) merged the hybrid-VAD end-of-speech fix. [Its release validation](https://github.com/ashini-x/askmoina-voice/actions/runs/38787091838) passed.
+- Main at the time of the latest review: `85bfe647aaf77c177c71899376246e189dc64403`
+- Production release: `0.4.50`
+- Latest relevant failed production workflow: [38788316268](https://github.com/ashini-x/askmoina-voice/actions/runs/38788316268)
+- Earlier single-run spoken-turn pass: [38787188368](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368)
+- Current fix + strict two-turn regression PR: [#171 — Verify two real spoken turns after 155 seconds](https://github.com/ashini-x/askmoina-voice/pull/171)
+- Candidate branch: `test/second-spoken-turn-phase1`
 
-## Confirmed causes and fixes
+## Evidence and diagnosis
 
-The `0.4.48` production failure in [run 38782822842](https://github.com/ashini-x/askmoina-voice/actions/runs/38782822842) revealed Vertex closed with `1007 Untruncatable session`; the relay replayed ~3,200–4,776 buffered messages (~4.9 MB) in a burst; resumed sockets then closed with `1011 Resource has been exhausted`, causing a resume loop. PR #167 raised compression to a 48k trigger / 32k sliding-window target, paced audio replay and queued delivery, compacted replaceable camera frames, and prevented repeat attempts on fatal provider closes.
+The original 0.4.48 run [38782822842](https://github.com/ashini-x/askmoina-voice/actions/runs/38782822842) showed replay/resumption loops; the relay log noted provider close 1007 (“Untruncatable session”) and 1011 resource exhaustion after a large buffered replay burst. [PR #167](https://github.com/ashini-x/askmoina-voice/pull/167) addressed context compaction, paced replay and redundant recovery retries.
 
-The deployed `0.4.49` failure in [run 38785905379](https://github.com/ashini-x/askmoina-voice/actions/runs/38785905379) had a different remaining issue: 6,862 browser PCM frames and VAD transitions after ~168.5s, zero new spoken-turn audio, 3 frames from a text probe, and zero browser `audio_stream_end` markers. PR #170 now sends the final silence-bearing PCM first, then `realtime_input.audio_stream_end: true`, while automatic server VAD stays enabled. This matches Google's documented [hybrid VAD approach](https://ai.google.dev/gemini-api/docs/live-api/capabilities).
+The 0.4.49 run [38785905379](https://github.com/ashini-x/askmoina-voice/actions/runs/38785905379) isolated the next defect: the real browser microphone sent thousands of PCM frames and local VAD detected speech, but no audio-end signal was sent. [PR #170](https://github.com/ashini-x/askmoina-voice/pull/170) added hybrid VAD's `audioStreamEnd` marker and deployed 0.4.50.
 
-## Verified post-fix spoken-turn test
+That change is necessary but not sufficient on its own. In [run 38787188368](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368), one post-boundary utterance received four new assistant audio frames. In the subsequent [run 38788316268](https://github.com/ashini-x/askmoina-voice/actions/runs/38788316268), the browser again sent one audio-end marker after VAD observed speech; the spoken turn received zero new audio frames while the same session answered the text control probe with three audio frames. Both runs reported no provider error or browser socket closure during the failed speech turn. The whole deployment workflow also failed on independent grounded-web-search verification; it must not be confused with the spoken-turn result.
 
-Production run [38787188368](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368) on `0.4.50` reported:
-- `elapsedMs: 169166`; `audioFramesSent: 6838`; actual browser microphone VAD transitioned from idle to speech and back.
-- `audioStreamEndFramesSent: 1` for the delayed utterance after the two-minute boundary.
-- Assistant audio frames increased from 45 to 49 during the dedicated response window: **4 new frames attributable to the spoken turn**.
-- The text fallback was not sent (`textProbeSent: false`); no provider errors, browser socket closure, or resume loop were observed.
-- Final synthetic result: `Production audiovisual Live continuity: PASS (155 seconds, post-start AI reply, browser socket stayed open).`
+Google documents a hybrid-VAD mode that keeps server VAD and sends `audioStreamEnd` when client VAD detects the end of speech. It warns that overly short endpointing thresholds split natural pauses. The browser currently ended its local gate after 240 ms of silence, making this a credible application-level endpointing defect—not evidence of a fixed two-minute provider limit. The relay already maps `audio_stream_end` to `realtimeInput.audioStreamEnd`. The Worker also has context-window compression and session resumption configured.
 
-This satisfies the production acceptance criterion for the post-two-minute spoken-turn incident. The *entire* deployment workflow remains red only because the separate grounded search and ranked-list checks failed in that run.
+## Candidate fix in PR #171
 
-## Exact next task
+- Increase local speech-end tolerance from 240 ms to 700 ms, reducing premature finalization at natural phrase pauses.
+- Explicitly configure automatic server VAD with 250 ms prefix padding and an 800 ms server-side silence fallback. Keep hybrid `audioStreamEnd` enabled; do not switch to manual VAD without evidence, because manual mode removes server prefix buffering and requires reliable client pre-roll.
+- Bump the Worker/client release identifier to 0.4.51 and synchronize public and embedded Co-Pilot assets.
+- Expand the production browser synthetic to use Chromium's actual `getUserMedia`/microphone PCM path beyond 155 seconds, then deliver two separate speech utterances. Require an end marker for each turn, fresh assistant audio and provider `turnComplete` for each reply on the same session. Keep socket/reconnect assertions strict; do not use text control input as a success condition.
 
-Keep this incident resolved unless the post-two-minute speech assertion regresses. The next separate task is to investigate the grounded-web-search and ranked-list synthetic failures in [run 38787188368](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368), without weakening assertions or changing the verified microphone/VAD and compression/replay fixes. Do not bundle D1 conversation history or Continue UI into that task.
+## Verification records
+
+- PR #171's original test-only candidate release validation: [run 38789813759](https://github.com/ashini-x/askmoina-voice/actions/runs/38789813759) passed before the runtime endpointing change below.
+- Deployed 0.4.50 health smoke: [run 38788316373](https://github.com/ashini-x/askmoina-voice/actions/runs/38788316373) passed version, selected-voice and route checks.
+- The runtime endpointing change and two-turn verification in PR #171 still require release-validation, merge/deployment and a passing production long-session synthetic before this incident can be marked resolved.
+
+## Completion gate
+
+Phase 1 is complete only after a deployment run proves both real-microphone spoken turns—first at the post-155-second boundary, then a second distinct turn—each receive new assistant audio and `turnComplete` on the same session, with no stale reconnect loop or misleading live state. Record the exact merged commit, PR, deployed Worker/version, and workflow result here only after those results exist.
