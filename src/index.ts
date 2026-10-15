@@ -1099,6 +1099,7 @@ async function handleVoiceSocket(
   // Resumed media must be replayed at a controlled cadence, not as a multi-megabyte burst.
   let replayInProgress = false;
   let pendingDrainInProgress = false;
+  let providerRotationPending = false;
   // The replay window spans sustained audio/video while the provider advances its latest safe checkpoint.
   const pendingUpstreamMessages: Array<{ payload: Record<string, unknown>; chars: number }> = [];
   let pendingUpstreamMessagesChars = 0;
@@ -2128,8 +2129,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
         handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber, replayInProgress,
       }));
-      if (replayInProgress || pendingDrainInProgress) {
-        console.warn("[AskMoina] Deferring provider rotation until buffered input drains");
+      if (replayInProgress) {
+        providerRotationPending = true;
+        console.warn("[AskMoina] Deferring provider rotation until paced replay finishes");
         return;
       }
       if (!lastSessionResumptionCheckpoint?.handle) {
@@ -2176,13 +2178,18 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
           try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
         }
-        void drainPendingUpstreamMessages();
         try {
           sendClientFrame(JSON.stringify({ connection_status: {
             state: "resumed",
             message: "Back live. Your conversation is continuing.",
           } }));
         } catch { /* browser may already be closing */ }
+        if (providerRotationPending) {
+          providerRotationPending = false;
+          void resumeLiveUpstream("provider_go_away");
+        } else {
+          void drainPendingUpstreamMessages();
+        }
       }
       console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
         frameNumber, requestToSetupMs,
@@ -2550,7 +2557,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   }
 
   async function resumeLiveUpstream(reason: string) {
-    if (closed || resumptionInProgress || replayInProgress || pendingDrainInProgress) return;
+    if (closed || resumptionInProgress || replayInProgress) return;
     const checkpoint = lastSessionResumptionCheckpoint;
     if (!securedSetupForResume || !checkpoint?.handle) {
       closeBoth(1011, "Live session cannot be resumed safely");
