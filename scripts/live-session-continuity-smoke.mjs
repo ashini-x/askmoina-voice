@@ -20,6 +20,16 @@ let page;
 const liveSockets = [];
 const closedSockets = [];
 let assistantAudioFrames = 0;
+let receivedWebSocketFrames = 0;
+let parsedJsonFrames = 0;
+let serverContentFrames = 0;
+let modelTurnFrames = 0;
+let outputTranscriptionFrames = 0;
+let outputTextCharacters = 0;
+let inlineDataParts = 0;
+const audioMimeTypeCounts = {};
+const recentFrameShapes = [];
+const providerErrors = [];
 try {
   browser = await chromium.launch({
     headless: true,
@@ -83,19 +93,58 @@ try {
       ws.on("close", () => closedSockets.push(ws.url()));
       // Count audio-bearing replies without storing or logging audio/transcripts.
       ws.on("framereceived", (payload) => {
+        receivedWebSocketFrames += 1;
         try {
-          const frameText = typeof payload === "string" ? payload : payload.toString();
+          const frameText = typeof payload === "string" ? payload :
+            (Buffer.isBuffer(payload) ? payload.toString("utf8") : String(payload));
           const frame = JSON.parse(frameText);
+          parsedJsonFrames += 1;
           const serverContent = frame.serverContent || frame.server_content;
+          if (serverContent && typeof serverContent === "object") {
+            serverContentFrames += 1;
+            if (serverContent.turnComplete || serverContent.turn_complete) {
+              recentFrameShapes.push({kind:"turn_complete"});
+            }
+            const output = serverContent.outputTranscription || serverContent.output_transcription;
+            if (output && typeof output.text === "string") {
+              outputTranscriptionFrames += 1;
+              outputTextCharacters += output.text.length;
+            }
+          }
+          if (frame.error && typeof frame.error === "object") {
+            providerErrors.push({
+              code: String(frame.error.code || frame.error.status || "unknown").slice(0, 80),
+              message: String(frame.error.message || "").slice(0, 140),
+            });
+            if (providerErrors.length > 8) providerErrors.shift();
+          }
           const modelTurn = serverContent?.modelTurn || serverContent?.model_turn;
           const parts = modelTurn?.parts;
-          if (Array.isArray(parts) && parts.some((part) => {
-            const inline = part?.inlineData || part?.inline_data;
-            const mimeType = inline?.mimeType || inline?.mime_type;
-            return typeof inline?.data === "string" &&
-              typeof mimeType === "string" && mimeType.startsWith("audio/pcm");
-          })) assistantAudioFrames += 1;
-        } catch { /* Ignore non-JSON or non-audio frames. */ }
+          if (Array.isArray(parts)) {
+            modelTurnFrames += 1;
+            let audioPartsInFrame = 0;
+            for (const part of parts) {
+              if (typeof part?.text === "string") outputTextCharacters += part.text.length;
+              const inline = part?.inlineData || part?.inline_data;
+              if (!inline || typeof inline !== "object") continue;
+              inlineDataParts += 1;
+              const mime = String(inline.mimeType || inline.mime_type || "unknown").slice(0, 80);
+              if (mime.startsWith("audio/pcm") && typeof inline.data === "string" && inline.data.length) {
+                assistantAudioFrames += 1;
+                audioPartsInFrame += 1;
+                audioMimeTypeCounts[mime] = (audioMimeTypeCounts[mime] || 0) + 1;
+              }
+            }
+            recentFrameShapes.push({kind:"model_turn",partCount:parts.length,audioParts:audioPartsInFrame});
+          } else if (serverContent) {
+            recentFrameShapes.push({kind:"server_content",keys:Object.keys(serverContent).slice(0,12)});
+          } else {
+            recentFrameShapes.push({kind:"other",keys:Object.keys(frame).slice(0,12)});
+          }
+          if (recentFrameShapes.length > 20) recentFrameShapes.shift();
+        } catch {
+          // Record only frame counts and parsed shape; never retain media, text or transcripts.
+        }
       });
     } catch { /* Ignore unrelated WebSockets. */ }
   });
@@ -189,6 +238,17 @@ try {
     continuityTurnDispatched: turnDispatch.sent,
     continuityTurnReason: turnDispatch.reason || "",
     elapsedMs: Date.now() - sessionStartedAt,
+    receivedWebSocketFrames,
+    parsedJsonFrames,
+    serverContentFrames,
+    modelTurnFrames,
+    outputTranscriptionFrames,
+    outputTextCharacters,
+    inlineDataParts,
+    assistantAudioFrames,
+    audioMimeTypeCounts,
+    recentFrameShapes,
+    providerErrors,
   }));
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the continuity turn");
 
@@ -215,6 +275,16 @@ try {
     assistantAudioFramesBeforeTurn,
     assistantAudioFramesAfterTurn: assistantAudioFrames,
     assistantAudioFramesReceived: assistantAudioFrames - assistantAudioFramesBeforeTurn,
+    receivedWebSocketFrames,
+    parsedJsonFrames,
+    serverContentFrames,
+    modelTurnFrames,
+    outputTranscriptionFrames,
+    outputTextCharacters,
+    inlineDataParts,
+    audioMimeTypeCounts,
+    recentFrameShapes,
+    providerErrors,
   }));
   assert.ok(assistantAudioFrames > assistantAudioFramesBeforeTurn,
     "the assistant must transmit a new audio response after the mid-session test turn");
