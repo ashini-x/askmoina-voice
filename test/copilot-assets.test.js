@@ -550,7 +550,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.36"');
+    expect(html).toContain('src="/copilot.js?v=0.4.47"');
   });
 });
 
@@ -768,16 +768,17 @@ describe("Apple-style active turn contract", () => {
 });
 
 
-describe("Live microphone turn completion", () => {
-  it("sends an audioStreamEnd marker after the local VAD falling edge and final PCM chunk", () => {
-    const gateEnd = script.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
-    const finalAudioSend = script.indexOf("sendAudioChunk(samples);", gateEnd);
-    const endSignal = script.indexOf("if (speechGateEnded) sendAudioStreamEnd();", finalAudioSend);
-    expect(script).toContain("function sendAudioStreamEnd()");
-    expect(gateEnd).toBeGreaterThanOrEqual(0);
-    expect(finalAudioSend).toBeGreaterThan(gateEnd);
-    expect(endSignal).toBeGreaterThan(finalAudioSend);
-    expect(script).toContain("socket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));");
-    expect(workerSource).toContain('if (parsed.kind === "audio_stream_end")');
+describe("Live microphone automatic activity detection", () => {
+  it("streams PCM continuously and does not signal microphone shutdown at each local VAD edge", () => {
+    const captureStart = script.indexOf("function startAudioCapture()");
+    const captureEnd = script.indexOf("function decodePcm16(", captureStart);
+    expect(captureStart).toBeGreaterThanOrEqual(0);
+    expect(captureEnd).toBeGreaterThan(captureStart);
+    const capture = script.slice(captureStart, captureEnd);
+    expect(capture).toContain("sendAudioChunk(samples);");
+    expect(capture).not.toContain("sendAudioStreamEnd");
+    expect(capture).not.toContain("audio_stream_end");
+    expect(workerSource).toContain("inputAudioTranscription: {}");
+    expect(workerSource).not.toContain("automaticActivityDetection: { disabled: true }");
   });
 });
