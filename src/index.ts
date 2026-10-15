@@ -5,7 +5,7 @@ import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./session
 import { MAX_RESUME_REPLAY_CHARS, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { buildLiveWebSocketUrl } from "./sessions/live-endpoint";
-import { TokenBucket } from "./sessions/audio-rate-limit";
+import { RealtimeMediaRateLimiter } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
 import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
 import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
@@ -15,7 +15,7 @@ import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronu
 import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./sessions/assamese-speech-evaluation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
-import { parseLiveClientInput } from "./sessions/copilot-protocol";
+import { parseLiveClientInput, toProviderRealtimeInput } from "./sessions/copilot-protocol";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
@@ -1146,12 +1146,8 @@ async function handleVoiceSocket(
   const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
   const MAX_CLIENT_FRAME_CHARS = 65_536;
-  const MAX_AUDIO_FRAMES_PER_SECOND = 60;
-  const MAX_INPUT_CHARS_PER_SECOND = 96 * 1024;
-  // Smooth brief network stalls; shed excess media packets instead of closing calls.
-  const INPUT_RATE_BURST_SECONDS = 3;
-  const inputFrameBucket = new TokenBucket(MAX_AUDIO_FRAMES_PER_SECOND, INPUT_RATE_BURST_SECONDS);
-  const inputByteBucket = new TokenBucket(MAX_INPUT_CHARS_PER_SECOND, INPUT_RATE_BURST_SECONDS);
+  // Separate microphone and camera budgets so JPEG frames cannot starve PCM speech.
+  const inputRateLimiter = new RealtimeMediaRateLimiter();
 
   const closeBoth = (code = 1000, reason = "Session closed") => {
     if (closed) return;
@@ -1859,7 +1855,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         return;
       }
       if (parsed.kind === "audio_stream_end") {
-        sendUpstreamMessage({ realtimeInput: { audioStreamEnd: true } });
+        const providerInput = toProviderRealtimeInput(parsed);
+        if (!providerInput) {
+          closeBoth(1008, "Invalid audio end-of-stream signal");
+          return;
+        }
+        sendUpstreamMessage(providerInput);
         return;
       }
 
@@ -1877,25 +1878,24 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }
       inputFrameCount += 1;
       inputBytesInWindow += event.data.length;
-      const frameRateAllowed = inputFrameBucket.consume(1, now);
-      const byteRateAllowed = inputByteBucket.consume(event.data.length, now);
-      if (!frameRateAllowed || !byteRateAllowed) {
+      const acceptedByRateLimiter = inputRateLimiter.consume(isVideo ? "video" : "audio", event.data.length, now);
+      if (!acceptedByRateLimiter) {
         if (isVideo) videoFramesThrottled += 1;
         else audioFramesThrottled += 1;
         // Drop the excess packet only. Client-side backpressure normally avoids this path.
         return;
       }
 
+      const providerInput = toProviderRealtimeInput(parsed);
+      if (!providerInput) {
+        closeBoth(1008, "Invalid realtime media input");
+        return;
+      }
+      sendUpstreamMessage(providerInput);
       if (isVideo) {
-        sendUpstreamMessage({
-          realtimeInput: { video: { data: parsed.data, mimeType: "image/jpeg" } },
-        });
         videoFramesForwarded += 1;
         forwardedMediaBytes += event.data.length;
       } else {
-        sendUpstreamMessage({
-          realtimeInput: { audio: { data: parsed.data, mimeType: "audio/pcm;rate=16000" } },
-        });
         audioFramesForwarded += 1;
         forwardedMediaBytes += event.data.length;
       }
