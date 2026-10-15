@@ -29,6 +29,8 @@ let parsedJsonFrames = 0;
 let serverContentFrames = 0;
 let modelTurnFrames = 0;
 let outputTranscriptionFrames = 0;
+let inputTranscriptionFrames = 0;
+let inputTranscriptCharacters = 0;
 let outputTextCharacters = 0;
 let inlineDataParts = 0;
 let unsupportedFramePayloads = 0;
@@ -211,6 +213,12 @@ try {
               outputTranscriptionFrames += 1;
               outputTextCharacters += output.text.length;
             }
+            const input = serverContent.inputTranscription || serverContent.input_transcription ||
+              serverContent.interimInputTranscription || serverContent.interim_input_transcription;
+            if (input && typeof input.text === "string") {
+              inputTranscriptionFrames += 1;
+              inputTranscriptCharacters += input.text.length;
+            }
           }
           if (frame.error && typeof frame.error === "object") {
             providerErrors.push({
@@ -362,6 +370,8 @@ try {
     serverContentFrames,
     modelTurnFrames,
     outputTranscriptionFrames,
+    inputTranscriptionFrames,
+    inputTranscriptCharacters,
     outputTextCharacters,
     inlineDataParts,
     unsupportedFramePayloads,
@@ -375,9 +385,45 @@ try {
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the post-2-minute speech turn");
   assert.ok(turnDispatch.chunksSent > 0, "the synthetic must send a real PCM speech turn");
 
-  const replyDeadline = Date.now() + 30_000;
-  while (Date.now() < replyDeadline && assistantAudioFrames <= assistantAudioFramesBeforeTurn) {
+  // Give the PCM turn its own bounded response window. If it stays silent, send a
+  // deterministic text turn over the same open socket to distinguish audio/VAD failure
+  // from a Live session that no longer generates any response after two minutes.
+  const audioReplyDeadline = Date.now() + 15_000;
+  while (Date.now() < audioReplyDeadline && assistantAudioFrames <= assistantAudioFramesBeforeTurn) {
     await page.waitForTimeout(250);
+  }
+  const audioTurnFramesAfterWindow = assistantAudioFrames;
+  const audioTurnAudioFramesReceived = audioTurnFramesAfterWindow - assistantAudioFramesBeforeTurn;
+  let textProbeSent = false;
+  let textProbeAudioFramesReceived = 0;
+  if (audioTurnAudioFramesReceived === 0) {
+    const textProbeBaseline = assistantAudioFrames;
+    const textProbeDispatch = await page.evaluate(() => {
+      const sockets = window.__askmoinaContinuitySockets || [];
+      const ws = [...sockets].reverse().find((candidate) => candidate.readyState === WebSocket.OPEN);
+      const sendNative = window.__askmoinaNativeContinuitySend;
+      if (!ws || typeof sendNative !== "function") return { sent: false, reason: !ws ? "no-open-voice-socket" : "native-test-sender-missing" };
+      sendNative(ws, JSON.stringify({
+        text_input: "Continuity control probe: please say one short sentence confirming you can still hear and answer me."
+      }));
+      return { sent: true };
+    });
+    textProbeSent = textProbeDispatch.sent === true;
+    if (textProbeSent) {
+      const textProbeDeadline = Date.now() + 15_000;
+      while (Date.now() < textProbeDeadline && assistantAudioFrames <= textProbeBaseline) {
+        await page.waitForTimeout(250);
+      }
+      textProbeAudioFramesReceived = assistantAudioFrames - textProbeBaseline;
+    }
+    console.log("Production audiovisual Live text-control probe: " + JSON.stringify({
+      sent: textProbeSent,
+      reason: textProbeDispatch.reason || "",
+      audioFramesReceived: textProbeAudioFramesReceived,
+      inputTranscriptionFrames,
+      inputTranscriptCharacters,
+      elapsedMs: Date.now() - sessionStartedAt,
+    }));
   }
   const postTurnDiagnostics = await page.evaluate(() => ({
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
@@ -396,13 +442,18 @@ try {
     browserLiveSocketCount: liveSockets.length,
     closedBrowserSockets: closedSockets.length,
     assistantAudioFramesBeforeTurn,
+    assistantAudioFramesAfterAudioWindow: audioTurnFramesAfterWindow,
+    assistantAudioFramesReceived: audioTurnAudioFramesReceived,
+    textProbeSent,
+    textProbeAudioFramesReceived,
     assistantAudioFramesAfterTurn: assistantAudioFrames,
-    assistantAudioFramesReceived: assistantAudioFrames - assistantAudioFramesBeforeTurn,
     receivedWebSocketFrames,
     parsedJsonFrames,
     serverContentFrames,
     modelTurnFrames,
     outputTranscriptionFrames,
+    inputTranscriptionFrames,
+    inputTranscriptCharacters,
     outputTextCharacters,
     inlineDataParts,
     unsupportedFramePayloads,
@@ -414,8 +465,13 @@ try {
   }));
   assert.ok(parsedJsonFrames > 0,
     "the synthetic observer must parse at least one JSON WebSocket frame; zero parsed frames means the observer is broken");
-  assert.ok(assistantAudioFrames > assistantAudioFramesBeforeTurn,
-    "the assistant must transmit a new audio response after the >2-minute continuity test turn");
+  assert.ok(audioTurnAudioFramesReceived > 0,
+    "the assistant must transmit a new audio response to the >2-minute PCM speech turn; " +
+    (textProbeSent
+      ? (textProbeAudioFramesReceived > 0
+        ? "the same live session still answered a text control probe, so the failure is isolated to the audio/VAD input path."
+        : "the same live session also failed to answer a text control probe, so the upstream session stopped responding.")
+      : "the text control probe could not be sent."));
 
   // Keep the same audiovisual session alive through the full 155-second window.
   const remainingMs = Math.max(0, 155_000 - (Date.now() - sessionStartedAt));
