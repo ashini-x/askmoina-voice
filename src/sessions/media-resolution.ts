@@ -1,13 +1,13 @@
 /**
- * Gemini 3.8 Live documents LOW and MEDIUM media-resolution levels in its Live config.
- * MEDIUM is explicit model-side frame-token allocation (not JPEG dimensions) and increases
- * visual detail for Co-Pilot while audio-only sessions retain their existing token profile.
+ * Gemini Live media resolution is model-side token allocation, not JPEG dimensions.
+ * HIGH is appropriate for text-heavy video and small details (labels and serial numbers);
+ * apply it only to camera Co-Pilot so audio-only sessions keep their existing profile.
  */
 export function configureCopilotMediaResolution(
   generationConfig: Record<string, unknown>,
   copilotMode: boolean,
 ): Record<string, unknown> {
   return copilotMode
-    ? { ...generationConfig, mediaResolution: "MEDIA_RESOLUTION_MEDIUM" }
+    ? { ...generationConfig, mediaResolution: "MEDIA_RESOLUTION_HIGH" }
     : generationConfig;
 }

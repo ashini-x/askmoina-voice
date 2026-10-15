@@ -280,13 +280,17 @@ jobs:
               --header "Content-Type: application/json" --data '{}' || true
           }
           trap cleanup EXIT
-          python scripts/live-grounding-smoke.py
-          python scripts/live-response-card-smoke.py
-          python scripts/live-ranked-list-smoke.py
-          python scripts/live-memory-voice-smoke.py
-
-          # Run both browser recoveries independently so failures in one do not hide the other result.
+          # Run every synthetic independently. A failure in the product-card suite must not
+          # prevent the session recovery and long-running voice continuity checks from running.
           set +e
+          python scripts/live-grounding-smoke.py
+          GROUNDING_STATUS=$?
+          python scripts/live-response-card-smoke.py
+          RESPONSE_CARD_STATUS=$?
+          python scripts/live-ranked-list-smoke.py
+          RANKED_LIST_STATUS=$?
+          python scripts/live-memory-voice-smoke.py
+          MEMORY_VOICE_STATUS=$?
           node scripts/live-network-recovery-smoke.mjs
           NETWORK_RECOVERY_STATUS=$?
           node scripts/live-session-continuity-smoke.mjs
@@ -296,12 +300,25 @@ jobs:
           cleanup
           trap - EXIT
           echo "Synthetic session revoked: OK"
-          if [[ "$NETWORK_RECOVERY_STATUS" -ne 0 ]]; then
-            echo "::error::Browser network recovery synthetic failed."
-          fi
-          if [[ "$LIVE_CONTINUITY_STATUS" -ne 0 ]]; then
-            echo "::error::Long-running audiovisual continuity synthetic failed."
-          fi
+          for result in \
+            "grounded web search:$GROUNDING_STATUS" \
+            "response-card flow:$RESPONSE_CARD_STATUS" \
+            "ranked-list flow:$RANKED_LIST_STATUS" \
+            "voice memory:$MEMORY_VOICE_STATUS" \
+            "browser network recovery:$NETWORK_RECOVERY_STATUS" \
+            "long-running Live continuity:$LIVE_CONTINUITY_STATUS"; do
+            name="${result%:*}"
+            status="${result##*:}"
+            if [[ "$status" -eq 0 ]]; then
+              echo "Synthetic $name: PASS"
+            else
+              echo "::error::Synthetic $name failed (exit $status)."
+            fi
+          done
+          test "$GROUNDING_STATUS" -eq 0
+          test "$RESPONSE_CARD_STATUS" -eq 0
+          test "$RANKED_LIST_STATUS" -eq 0
+          test "$MEMORY_VOICE_STATUS" -eq 0
           test "$NETWORK_RECOVERY_STATUS" -eq 0
           test "$LIVE_CONTINUITY_STATUS" -eq 0
 

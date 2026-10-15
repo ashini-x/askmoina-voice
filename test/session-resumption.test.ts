@@ -148,13 +148,13 @@ describe("pending Live input queue overflow", () => {
 });
 
 describe("camera model-side media resolution", () => {
-  it("uses supported medium media resolution for Gemini 3.8 Live Co-Pilot while keeping audio-only config unchanged", () => {
+  it("uses high media resolution for text-heavy Gemini 3.8 Live Co-Pilot while keeping audio-only config unchanged", () => {
     const base = { responseModalities: ["AUDIO"], speechConfig: { voice: "Leda" } };
     const voice = configureCopilotMediaResolution(base, false);
     const copilot = configureCopilotMediaResolution(base, true);
 
     expect(voice).toBe(base);
     expect(voice).not.toHaveProperty("mediaResolution");
-    expect(copilot).toEqual({ ...base, mediaResolution: "MEDIA_RESOLUTION_MEDIUM" });
+    expect(copilot).toEqual({ ...base, mediaResolution: "MEDIA_RESOLUTION_HIGH" });
   });
 });
