@@ -796,8 +796,8 @@ describe("Live microphone explicit activity detection", () => {
     const speechGateEnded = activityCapture.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
     const idleBranch = activityCapture.indexOf("bufferPreRollFrame(samples);", speechGateEnded);
     expect(speechGateEnded).toBeGreaterThanOrEqual(0);
-    expect(activityCapture).toContain("const preRollFrames = [];");
-    expect(activityCapture).toContain("const preRollChunkLimit = Math.max(4");
+    expect(capture).toContain("const preRollFrames = [];");
+    expect(capture).toContain("const preRollChunkLimit = Math.max(4");
     expect(activityCapture).toContain('sendAudioActivityBoundary("start")');
     expect(activityCapture).toContain('sendAudioActivityBoundary("end")');
     expect(activityCapture).toContain("flushPreRollFrames();");
