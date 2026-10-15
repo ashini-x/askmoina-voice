@@ -766,3 +766,18 @@ describe("Apple-style active turn contract", () => {
     expect(workerSource).toContain("M42 — CONTINUOUS VOICE DURING BACKGROUND WORK");
   });
 });
+
+
+describe("Live microphone turn completion", () => {
+  it("sends an audioStreamEnd marker after the local VAD falling edge and final PCM chunk", () => {
+    const gateEnd = script.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
+    const finalAudioSend = script.indexOf("sendAudioChunk(samples);", gateEnd);
+    const endSignal = script.indexOf("if (speechGateEnded) sendAudioStreamEnd();", finalAudioSend);
+    expect(script).toContain("function sendAudioStreamEnd()");
+    expect(gateEnd).toBeGreaterThanOrEqual(0);
+    expect(finalAudioSend).toBeGreaterThan(gateEnd);
+    expect(endSignal).toBeGreaterThan(finalAudioSend);
+    expect(script).toContain("socket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));");
+    expect(workerSource).toContain('if (parsed.kind === "audio_stream_end")');
+  });
+});
