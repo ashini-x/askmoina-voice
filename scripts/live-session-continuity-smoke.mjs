@@ -2,11 +2,11 @@
 /**
  * Production browser synthetic for long-running audiovisual Live continuity.
  * Opens an authenticated Co-Pilot session with Chromium fake media and keeps camera
- * and microphone streaming for 155 seconds. Never logs credentials, audio or transcripts.
+ * and microphone streaming for more than 155 seconds with delayed real speech. Never logs credentials, audio or transcripts.
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -21,6 +21,7 @@ if (!match) throw new Error("A verified synthetic account cookie is required.");
 let browser;
 let context;
 let page;
+let mediaDirectory;
 const liveSockets = [];
 const closedSockets = [];
 let assistantAudioFrames = 0;
@@ -92,12 +93,33 @@ function synthesizePcm16k(text) {
       const sample = Math.round(a * (1 - fraction) + b * fraction);
       output.writeInt16LE(Math.max(-32768, Math.min(32767, sample)), i * 2);
     }
-    // Leave a full second of silence after speech so server-side VAD can close
-    // the utterance at a realistic microphone cadence before audioStreamEnd.
+    // Leave a full second of silence after speech so automatic server-side VAD can
+    // observe a natural end-of-speech boundary at realistic microphone cadence.
     return Buffer.concat([output, Buffer.alloc(16_000 * 2)]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function writeMonoPcm16Wav(path, pcm, sampleRate = 16_000) {
+  if (!Buffer.isBuffer(pcm) || pcm.length < 2 || pcm.length % 2 !== 0) {
+    throw new TypeError("Synthetic microphone PCM must contain whole 16-bit samples.");
+  }
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write("WAVE", 8, "ascii");
+  header.write("fmt ", 12, "ascii");
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36, "ascii");
+  header.writeUInt32LE(pcm.length, 40);
+  writeFileSync(path, Buffer.concat([header, pcm]));
 }
 
 function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
@@ -109,12 +131,25 @@ function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
   return chunks;
 }
 try {
+  // Chromium's default fake audio device emits a beep. Use a real WAV input instead:
+  // 170 seconds of actual silence followed by speech and trailing silence. This makes
+  // the post-two-minute assertion exercise getUserMedia, browser PCM capture and local
+  // VAD, rather than direct socket injection after 125 seconds of artificial audio.
+  mediaDirectory = mkdtempSync(join(tmpdir(), "askmoina-live-mic-fixture-"));
+  const speechPcm = synthesizePcm16k(
+    "Moina, can you still hear me? Please answer aloud in one short sentence confirming our camera conversation is continuing."
+  );
+  const silentPrelude = Buffer.alloc(16_000 * 2 * 170);
+  const fakeMicrophoneWavPath = join(mediaDirectory, "delayed-speech.wav");
+  writeMonoPcm16Wav(fakeMicrophoneWavPath, Buffer.concat([silentPrelude, speechPcm]));
+
   browser = await chromium.launch({
     headless: true,
     args: [
       "--no-sandbox",
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
+      `--use-file-for-fake-audio-capture=${fakeMicrophoneWavPath}%noloop`,
       "--autoplay-policy=no-user-gesture-required"
     ]
   });
@@ -132,14 +167,25 @@ try {
   // post-start user turn without changing the production UI or logging user content.
   await page.addInitScript(() => {
     const nativeSend = WebSocket.prototype.send;
-    // This handle is test-only: it lets the synthetic inject real PCM speech while
-    // the fake microphone is paused, without the observer's silence filter dropping it.
+    // Test-only observer records frame counts and local VAD edge times, never audio or transcripts.
     window.__askmoinaNativeContinuitySend = (socket, data) => nativeSend.call(socket, data);
     const observedSockets = [];
     window.__askmoinaContinuitySockets = observedSockets;
     window.__askmoinaSocketClosures = [];
     window.__askmoinaConnectionSignals = [];
-    window.__askmoinaPauseContinuityAudio = false;
+    window.__askmoinaMicInputStats = { audioFramesSent: 0, audioStreamEndFramesSent: 0, textTurnsSent: 0 };
+    window.__askmoinaMicVadTransitions = [];
+    let previousListeningState = null;
+    window.setInterval(() => {
+      const stage = document.querySelector("#cameraStage");
+      if (!stage) return;
+      const listening = stage.classList.contains("is-listening");
+      if (listening === previousListeningState) return;
+      previousListeningState = listening;
+      const transitions = window.__askmoinaMicVadTransitions;
+      transitions.push({ listening, at: Date.now() });
+      if (transitions.length > 30) transitions.shift();
+    }, 50);
     WebSocket.prototype.send = function (data) {
       try {
         if (new URL(this.url).pathname === "/api/voice/socket") {
@@ -158,9 +204,14 @@ try {
               } catch { /* Retain only structured relay status. */ }
             });
           }
-          if (window.__askmoinaPauseContinuityAudio && typeof data === "string") {
-            const payload = JSON.parse(data);
-            if (payload?.realtime_input?.audio) return;
+          if (typeof data === "string") {
+            try {
+              const payload = JSON.parse(data);
+              const stats = window.__askmoinaMicInputStats;
+              if (payload?.realtime_input?.audio) stats.audioFramesSent += 1;
+              if (payload?.realtime_input?.audio_stream_end === true) stats.audioStreamEndFramesSent += 1;
+              if (typeof payload?.text_input === "string") stats.textTurnsSent += 1;
+            } catch { /* Count only well-formed protocol frames. */ }
           }
         }
       } catch { /* Ignore unrelated or non-JSON socket frames. */ }
@@ -315,36 +366,43 @@ try {
     }
   });
 
-  // Keep real camera/microphone tracks active beyond the reported ~2-minute cutoff.
-  // Then send a deterministic user turn and verify the provider actually speaks again.
-  // A silent fake microphone alone cannot verify compression/continuity by itself.
+  // Keep the same real camera/microphone session active beyond the two-minute cutoff.
+  // Chromium's fake microphone contains real silence followed by spoken audio, so the actual
+  // browser getUserMedia -> downsampling -> PCM send -> local VAD path is exercised.
   await page.waitForTimeout(125_000);
   const assistantAudioFramesBeforeTurn = assistantAudioFrames;
-  const syntheticPcm = synthesizePcm16k(
-    "Moina, can you still hear me? Please answer aloud in one short sentence confirming our camera conversation is continuing."
+  const microphoneFramesBeforeTurn = await page.evaluate(
+    () => window.__askmoinaMicInputStats?.audioFramesSent || 0
   );
-  const syntheticAudioChunks = splitPcmIntoBase64Chunks(syntheticPcm);
-  const turnDispatch = await page.evaluate(async (chunks) => {
-    const sockets = window.__askmoinaContinuitySockets || [];
-    const ws = [...sockets].reverse().find((candidate) => candidate.readyState === WebSocket.OPEN);
-    if (!ws) return { sent: false, reason: "no-open-voice-socket", chunksSent: 0 };
-    const sendNative = window.__askmoinaNativeContinuitySend;
-    if (typeof sendNative !== "function") return { sent: false, reason: "native-test-sender-missing", chunksSent: 0 };
-    // Pause the silent fake mic and inject a properly completed, speech-bearing PCM turn.
-    // This tests the same real-time audio path as a user, instead of sending clientContent
-    // during an intentionally unfinished silent microphone stream.
-    window.__askmoinaPauseContinuityAudio = true;
-    for (const chunk of chunks) {
-      sendNative(ws, JSON.stringify({
-        realtime_input: { audio: { data: chunk, mime_type: "audio/pcm;rate=16000" } }
-      }));
-      // Each 3,200-byte chunk is 100 ms of 16 kHz mono PCM. Keep real-time
-      // pacing instead of pushing the speech faster than the microphone clock.
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    sendNative(ws, JSON.stringify({ realtime_input: { audio_stream_end: true } }));
-    return { sent: true, chunksSent: chunks.length, nominalAudioMs: chunks.length * 100 };
-  }, syntheticAudioChunks);
+  let microphoneVadObserved = false;
+  try {
+    await page.waitForFunction(() => {
+      const transitions = window.__askmoinaMicVadTransitions || [];
+      const speechStart = transitions.findIndex((item) => item.listening === true);
+      return speechStart >= 0 && transitions.slice(speechStart + 1).some((item) => item.listening === false);
+    }, null, { timeout: 60_000, polling: 100 });
+    microphoneVadObserved = true;
+  } catch {
+    // Assertions below report the bounded frame and VAD evidence if no transition occurred.
+  }
+  const turnDispatch = await page.evaluate((baselineAudioFrames) => {
+    const stats = window.__askmoinaMicInputStats || {};
+    const transitions = window.__askmoinaMicVadTransitions || [];
+    const speechStart = transitions.findIndex((item) => item.listening === true);
+    const speechEndIndex = speechStart < 0 ? -1 : transitions.findIndex(
+      (item, index) => index > speechStart && item.listening === false
+    );
+    return {
+      sent: speechStart >= 0 && speechEndIndex > speechStart,
+      reason: speechStart < 0 ? "local-microphone-VAD-never-detected-speech" :
+        speechEndIndex < 0 ? "local-microphone-VAD-never-detected-end-of-speech" : "",
+      chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baselineAudioFrames),
+      audioStreamEndFramesSent: stats.audioStreamEndFramesSent || 0,
+      speechStartedAt: speechStart >= 0 ? transitions[speechStart].at : null,
+      speechEndedAt: speechEndIndex > speechStart ? transitions[speechEndIndex].at : null,
+      textTurnsSent: stats.textTurnsSent || 0,
+    };
+  }, microphoneFramesBeforeTurn);
   const beforeTurnDiagnostics = await page.evaluate(() => ({
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
     statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
@@ -357,6 +415,8 @@ try {
     socketClosures: (window.__askmoinaSocketClosures || []).slice(-8),
     connectionSignals: (window.__askmoinaConnectionSignals || []).slice(-12),
     timeline: (window.__askmoinaContinuityTimeline || []).slice(-12),
+    microphoneInput: window.__askmoinaMicInputStats || {},
+    microphoneVadTransitions: (window.__askmoinaMicVadTransitions || []).slice(-12),
   }));
   console.log("Production audiovisual Live pre-turn diagnostics: " + JSON.stringify({
     ...beforeTurnDiagnostics,
@@ -364,6 +424,9 @@ try {
     closedBrowserSockets: closedSockets.length,
     continuityTurnDispatched: turnDispatch.sent,
     continuityTurnReason: turnDispatch.reason || "",
+    microphoneVadObserved,
+    microphoneInput: await page.evaluate(() => window.__askmoinaMicInputStats || {}),
+    microphoneVadTransitions: await page.evaluate(() => (window.__askmoinaMicVadTransitions || []).slice(-12)),
     elapsedMs: Date.now() - sessionStartedAt,
     receivedWebSocketFrames,
     parsedJsonFrames,
@@ -383,7 +446,9 @@ try {
     providerErrors,
   }));
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the post-2-minute speech turn");
-  assert.ok(turnDispatch.chunksSent > 0, "the synthetic must send a real PCM speech turn");
+  assert.ok(turnDispatch.chunksSent > 0, "the real browser microphone must send PCM after the >2-minute boundary");
+  assert.ok(microphoneVadObserved && turnDispatch.sent,
+    "the actual microphone/VAD path must detect speech onset and end-of-speech on the delayed WAV stimulus");
 
   // Give the PCM turn its own bounded response window. If it stays silent, send a
   // deterministic text turn over the same open socket to distinguish audio/VAD failure
@@ -466,7 +531,7 @@ try {
   assert.ok(parsedJsonFrames > 0,
     "the synthetic observer must parse at least one JSON WebSocket frame; zero parsed frames means the observer is broken");
   assert.ok(audioTurnAudioFramesReceived > 0,
-    "the assistant must transmit a new audio response to the >2-minute PCM speech turn; " +
+    "the assistant must transmit a new audio response to the >2-minute real microphone speech turn; " +
     (textProbeSent
       ? (textProbeAudioFramesReceived > 0
         ? "the same live session still answered a text control probe, so the failure is isolated to the audio/VAD input path."
@@ -534,4 +599,5 @@ try {
 } finally {
   if (context) await context.close().catch(() => undefined);
   if (browser) await browser.close().catch(() => undefined);
+  if (mediaDirectory) rmSync(mediaDirectory, { recursive: true, force: true });
 }
