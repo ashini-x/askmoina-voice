@@ -9,6 +9,25 @@ export interface SessionResumptionCheckpoint {
 export interface ReplayMessage {
   index: number;
   encoded: string;
+  /** Media type supports safe camera compaction during a resumed connection. */
+  kind?: "audio" | "video" | "control";
+}
+
+/**
+ * Camera frames are snapshots, unlike microphone PCM and control messages.
+ * During recovery, replay only the newest unconsumed video snapshot while
+ * preserving every audio/control message and the order of those messages.
+ */
+export function compactReplayMessagesForResumption(
+  messages: readonly ReplayMessage[],
+): ReplayMessage[] {
+  let latestVideoPosition = -1;
+  for (let i = 0; i < messages.length; i += 1) {
+    if (messages[i].kind === "video") latestVideoPosition = i;
+  }
+  return messages.filter((message, index) =>
+    message.kind !== "video" || index === latestVideoPosition
+  );
 }
 
 /**
