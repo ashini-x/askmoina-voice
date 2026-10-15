@@ -503,11 +503,11 @@ describe("Apple-style live-search progress", () => {
     expect(css).toContain(".live-search-status[hidden]{display:none!important}");
     expect(workerSource).toContain("The browser displays a contextual Apple-style loader");
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "started"');
-    const workerStart = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } }))');
+    const workerStart = workerSource.lastIndexOf('sendClientFrame(JSON.stringify({ live_search_status: { state: "started" } }))');
     const searchAwait = workerSource.lastIndexOf("result = await performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode)");
     expect(workerStart).toBeGreaterThanOrEqual(0);
     expect(searchAwait).toBeGreaterThan(workerStart);
-    const lookupComplete = workerSource.lastIndexOf('workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
+    const lookupComplete = workerSource.lastIndexOf('sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } }))');
     expect(lookupComplete).toBeGreaterThan(searchAwait);
     expect(script).toContain('message.live_search_status && message.live_search_status.state === "lookup_complete"');
   });

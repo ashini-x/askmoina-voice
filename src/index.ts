@@ -21,6 +21,7 @@ import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourc
 import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
+import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -965,10 +966,18 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   return json({ available: true, reason: "available", message: "Voice is ready. AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
+interface LiveRelayAttachment {
+  attach(socket: WebSocket): boolean;
+  isClosed(): boolean;
+  isAttached(): boolean;
+  detachedAt(): number;
+}
+
 async function handleVoiceSocket(
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: Pick<ExecutionContext, "waitUntil">,
+  registerRelay?: (attachment: LiveRelayAttachment) => void,
 ): Promise<Response> {
   if (request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
     return json({ error: "websocket_upgrade_required" }, 426);
@@ -1056,8 +1065,8 @@ async function handleVoiceSocket(
 
   let upstreamSocket: WebSocket = initialUpstreamSocket;
   const pair = new WebSocketPair();
-  const [clientSocket, workerSocket] = Object.values(pair) as [WebSocket, WebSocket];
-  workerSocket.accept();
+  const [clientSocket, initialWorkerSocket] = Object.values(pair) as [WebSocket, WebSocket];
+  let workerSocket: WebSocket = initialWorkerSocket;
   upstreamSocket.accept();
 
   let upstreamStartedAt = Date.now();
@@ -1125,6 +1134,14 @@ async function handleVoiceSocket(
   let lastGuardHeartbeatAt = Date.now();
   let lastClientMessageAt = Date.now();
   let guardHeartbeatInFlight = false;
+  let clientAttached = true;
+  let clientNeedsResumeSetup = false;
+  let lastClientDetachedAt = 0;
+  let detachedClientTimeout: ReturnType<typeof setTimeout> | null = null;
+  const pendingClientFrames: string[] = [];
+  let pendingClientFramesChars = 0;
+  const MAX_PENDING_CLIENT_FRAME_CHARS = 1_200_000;
+  const CLIENT_REATTACH_GRACE_MS = 45_000;
   let clientIdleWatchdog: ReturnType<typeof setInterval> | null = null;
   const GUARD_HEARTBEAT_INTERVAL_MS = 10_000;
   const CLIENT_IDLE_TIMEOUT_MS = 30_000;
@@ -1146,7 +1163,8 @@ async function handleVoiceSocket(
       clientIdleWatchdog = null;
     }
     if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
-    if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(false); }
+    if (detachedClientTimeout !== null) { clearTimeout(detachedClientTimeout); detachedClientTimeout = null; }
+    if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolve(false); }
     if (silentResponseRecoveryTimeout !== null) {
       clearTimeout(silentResponseRecoveryTimeout);
       silentResponseRecoveryTimeout = null;
@@ -1211,6 +1229,117 @@ async function handleVoiceSocket(
     }
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
+
+  function sendClientFrame(data: string) {
+    if (closed) return;
+    if (clientAttached && workerSocket.readyState === WebSocket.OPEN) {
+      try { workerSocket.send(data); return; }
+      catch { /* A close can race the readyState check; retain this frame for a quick reattach. */ }
+    }
+    if (pendingClientFramesChars + data.length > MAX_PENDING_CLIENT_FRAME_CHARS) {
+      console.warn("[AskMoina] Live client recovery output queue overflow", JSON.stringify({
+        queuedChars: pendingClientFramesChars, nextFrameChars: data.length,
+      }));
+      closeBoth(1011, "Client recovery output queue overflow");
+      return;
+    }
+    pendingClientFrames.push(data);
+    pendingClientFramesChars += data.length;
+  }
+
+  function flushPendingClientFrames() {
+    if (closed || !clientAttached || workerSocket.readyState !== WebSocket.OPEN) return;
+    let sentCount = 0;
+    try {
+      for (; sentCount < pendingClientFrames.length; sentCount += 1) {
+        workerSocket.send(pendingClientFrames[sentCount]);
+      }
+      pendingClientFrames.splice(0);
+      pendingClientFramesChars = 0;
+    } catch {
+      pendingClientFrames.splice(0, sentCount);
+      pendingClientFramesChars = pendingClientFrames.reduce((sum, frame) => sum + frame.length, 0);
+      clientAttached = true;
+      detachClientSocket("client_send_failed", 1006);
+    }
+  }
+
+  function detachClientSocket(reason: string, code: number) {
+    if (closed || !clientAttached) return;
+    clientAttached = false;
+    lastClientDetachedAt = Date.now();
+    if (detachedClientTimeout !== null) clearTimeout(detachedClientTimeout);
+    detachedClientTimeout = setTimeout(() => {
+      detachedClientTimeout = null;
+      if (!closed && !clientAttached && Date.now() - lastClientDetachedAt >= CLIENT_REATTACH_GRACE_MS) {
+        console.warn("[AskMoina] Live browser did not reattach within grace window", JSON.stringify({
+          graceMs: CLIENT_REATTACH_GRACE_MS,
+          checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+          pendingClientFrames: pendingClientFrames.length,
+        }));
+        closeBoth(1011, "Live client reconnect timed out");
+      }
+    }, CLIENT_REATTACH_GRACE_MS);
+    console.warn("[AskMoina] Preserving Live provider session during browser reconnect", JSON.stringify({
+      reason, clientCode: code, graceMs: CLIENT_REATTACH_GRACE_MS,
+      checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+      pendingReplayMessages: upstreamReplayBuffer.length,
+    }));
+  }
+
+  function attachClientSocket(nextSocket: WebSocket, resumingClient: boolean) {
+    const previousSocket = workerSocket;
+    workerSocket = nextSocket;
+    workerSocket.accept();
+    clientAttached = !resumingClient;
+    clientNeedsResumeSetup = resumingClient;
+    if (clientAttached && detachedClientTimeout !== null) {
+      clearTimeout(detachedClientTimeout);
+      detachedClientTimeout = null;
+    }
+    nextSocket.addEventListener("message", (event: MessageEvent) => {
+      if (nextSocket !== workerSocket || closed) return;
+      void handleClientMessage(event);
+    });
+    nextSocket.addEventListener("close", (event: CloseEvent) => {
+      if (nextSocket !== workerSocket || closed) return;
+      if (shouldDetachLiveSessionOnClientClose(event.code, event.reason || "")) {
+        detachClientSocket(event.code === LIVE_CLIENT_RECONNECT_CLOSE_CODE ? "retry_handoff" : "network_close", event.code);
+        return;
+      }
+      if (!setupCompleteReceived && !closed) {
+        console.warn("[AskMoina] Browser socket closed before setup completed", JSON.stringify({
+          clientCode: event.code, setupForwarded, upstreamFrameCount,
+        }));
+      }
+      closeBoth(event.code || 1000, "Client disconnected");
+    });
+    nextSocket.addEventListener("error", () => {
+      if (nextSocket !== workerSocket || closed) return;
+      detachClientSocket("browser_socket_error", 1006);
+    });
+    if (previousSocket !== nextSocket &&
+        (previousSocket.readyState === WebSocket.OPEN || previousSocket.readyState === WebSocket.CONNECTING)) {
+      try { previousSocket.close(LIVE_CLIENT_RECONNECT_CLOSE_CODE, "Client socket replaced"); } catch {}
+    }
+  }
+
+  function flushResumedClientSetup() {
+    if (closed || !clientNeedsResumeSetup) return;
+    clientNeedsResumeSetup = false;
+    clientAttached = true;
+    if (detachedClientTimeout !== null) {
+      clearTimeout(detachedClientTimeout);
+      detachedClientTimeout = null;
+    }
+    sendClientFrame(JSON.stringify({ connection_status: {
+      state: "resumed",
+      message: "Back live. Your conversation is continuing.",
+    } }));
+    sendClientFrame(JSON.stringify({ setup_complete: true, resumed: true }));
+    flushPendingClientFrames();
+    drainPendingUpstreamMessages();
+  }
 
   // Replay indexes are local bookkeeping only: clientMessageIndex is not a field in
   // the wire protocol. Index only messages actually sent upstream so checkpoint indexes
@@ -1310,7 +1439,7 @@ async function handleVoiceSocket(
   function sendRankedContinuationStatus(state: "progress_turn_started" | "progress_turn_completed" | "continuation_queued" | "continuation_dispatched") {
     // Safe, non-sensitive protocol trace for the production synthetic. No query, transcript, or result data.
     try {
-      workerSocket.send(JSON.stringify({ ranked_continuation_status: { state, at: Date.now() } }));
+      sendClientFrame(JSON.stringify({ ranked_continuation_status: { state, at: Date.now() } }));
     } catch { /* the socket close handler owns cleanup */ }
   }
 
@@ -1397,7 +1526,7 @@ async function handleVoiceSocket(
     forcedRankedProgressTurnOutstanding = sendLiveSearchProgressCue(1, query);
     liveSearchProgressCuePending = forcedRankedProgressTurnOutstanding;
     if (forcedRankedProgressTurnOutstanding) sendRankedContinuationStatus("progress_turn_started");
-    try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+    try { sendClientFrame(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
 
     ctx.waitUntil((async () => {
       let result = "";
@@ -1434,7 +1563,7 @@ async function handleVoiceSocket(
           validation.card.details.every((row) => !/not verified/i.test(row.label)) &&
           String(validation.card.summary || "").startsWith("Complete ranked list");
         try {
-          workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+          sendClientFrame(JSON.stringify({ grounded_response_card: validation.card }));
           console.info("[AskMoina] Mandatory ranked-list card delivered", JSON.stringify({
             requestedCount,
             visibleRows: validation.card.details.length,
@@ -1451,7 +1580,7 @@ async function handleVoiceSocket(
         }));
       }
 
-      try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+      try { sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
       const answerInstruction = fullTableVerified
         ? "A complete, source-verified top-" + requestedCount + " answer sheet is already visible on screen. Do not call any more tools and do not create another card. Give the user a concise, natural spoken summary in the established Assamese-English mix, explain what the ranking measures, and mention that the full row-by-row list and source links are on the card. Use only the grounded result below.\n\n"
         : "A lookup-status answer card is visible. The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Do not invent or fill missing entries from memory. Tell the user honestly what was verified and that the complete ranking could not be confirmed. Do not call any more tools or create another card.\n\n";
@@ -1476,7 +1605,7 @@ async function handleVoiceSocket(
     })().catch((error) => {
       forcedRankedLookupActive = false;
       console.warn("[AskMoina] Forced ranked-list continuation failed", error instanceof Error ? error.message.slice(0, 180) : "unknown error");
-      try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+      try { sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
     }));
     return true;
   }
@@ -1550,19 +1679,19 @@ async function handleVoiceSocket(
   // A silent/disconnected browser must not leave a relay and its reservation hanging.
   // Normal live sessions continuously send microphone frames, even during pauses in speech.
   clientIdleWatchdog = setInterval(() => {
-    if (!closed && Date.now() - lastClientMessageAt > CLIENT_IDLE_TIMEOUT_MS) {
+    if (!closed && clientAttached && Date.now() - lastClientMessageAt > CLIENT_IDLE_TIMEOUT_MS) {
       closeBoth(1000, "Client input timed out");
     }
   }, 10_000);
 
-  workerSocket.addEventListener("message", async (event: MessageEvent) => {
+  async function handleClientMessage(event: MessageEvent) {
     if (closed) return;
     lastClientMessageAt = Date.now();
     if (!guardHeartbeatInFlight && lastClientMessageAt - lastGuardHeartbeatAt >= GUARD_HEARTBEAT_INTERVAL_MS) {
       lastGuardHeartbeatAt = lastClientMessageAt;
       guardHeartbeatInFlight = true;
       ctx.waitUntil(
-        heartbeatVoiceSession(env, reservation)
+        heartbeatVoiceSession(env, reservation!)
           .then((result) => {
             if (result.leaseLost) closeBoth(1011, "Session lease expired");
           })
@@ -1575,6 +1704,21 @@ async function handleVoiceSocket(
     // client messages are not needed for the current audio-only UI and are rejected.
     if (typeof event.data !== "string" || event.data.length > MAX_CLIENT_FRAME_CHARS) {
       closeBoth(1008, "Invalid or oversized client frame");
+      return;
+    }
+
+    if (clientNeedsResumeSetup) {
+      try {
+        const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown };
+        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || resumeSetup.copilot_mode !== true) {
+          closeBoth(1008, "Invalid Live resume setup");
+          return;
+        }
+      } catch {
+        closeBoth(1008, "Invalid Live resume setup");
+        return;
+      }
+      flushResumedClientSetup();
       return;
     }
 
@@ -1758,12 +1902,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     } catch {
       closeBoth(1008, "Invalid client message");
     }
-  });
+  }
+
+  attachClientSocket(workerSocket, false);
 
   let upstreamFrameCount = 0;
   function attachUpstreamHandlers(socketForConnection: WebSocket) {
   socketForConnection.addEventListener("message", async (event: MessageEvent) => {
-    if (socketForConnection !== upstreamSocket || workerSocket.readyState !== WebSocket.OPEN || closed) return;
+    if (socketForConnection !== upstreamSocket || closed) return;
 
     // Workerd can expose upstream WebSocket frames as strings, ArrayBuffers, or Blobs.
     // Normalize them to JSON text before forwarding so the browser never receives an
@@ -1791,7 +1937,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     } catch {
       console.error("[AskMoina] Could not decode Vertex Live frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
-        workerSocket.send(JSON.stringify({ error: {
+        sendClientFrame(JSON.stringify({ error: {
           code: "PROVIDER_FRAME_DECODE_FAILED",
           status: "INTERNAL",
           message: "The voice provider sent a response that could not be decoded.",
@@ -1841,7 +1987,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     } catch {
       console.error("[AskMoina] Vertex Live sent an invalid control frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
-        workerSocket.send(JSON.stringify({ error: {
+        sendClientFrame(JSON.stringify({ error: {
           code: "PROVIDER_PROTOCOL_ERROR",
           status: "INTERNAL",
           message: "The voice provider sent a response in an unsupported format.",
@@ -1863,7 +2009,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           silentResponseRecoveryTimeout = null;
         }
         try {
-          workerSocket.send(JSON.stringify({ connection_status: {
+          sendClientFrame(JSON.stringify({ connection_status: {
             state: "recovered",
             message: "Voice audio is flowing again. Your request is continuing.",
           } }));
@@ -1936,7 +2082,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (!replayReady) return;
         drainPendingUpstreamMessages();
         try {
-          workerSocket.send(JSON.stringify({ connection_status: {
+          sendClientFrame(JSON.stringify({ connection_status: {
             state: "resumed",
             message: "Back live. Your conversation is continuing.",
           } }));
@@ -1985,9 +2131,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           // Forward the search event immediately, so the browser can show its loader
           // before retrieval begins. Withhold any card from the same frame until the
           // source results arrive; a pre-search card would be premature/unverifiable.
-          if (searchCallsPresent && clientFrameText && workerSocket.readyState === WebSocket.OPEN) {
+          if (searchCallsPresent && clientFrameText && !closed) {
             if (copilotMode) {
-              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
+              try { sendClientFrame(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
             }
             const immediateToolFrame = JSON.parse(JSON.stringify(toolFrame)) as typeof toolFrame;
             if (immediateToolFrame.toolCall && Array.isArray(immediateToolFrame.toolCall.functionCalls)) {
@@ -2000,7 +2146,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             const immediateCalls = immediateToolFrame.toolCall?.functionCalls || immediateToolFrame.tool_call?.function_calls || [];
             if (immediateCalls.length) {
               try {
-                workerSocket.send(JSON.stringify(immediateToolFrame));
+                sendClientFrame(JSON.stringify(immediateToolFrame));
                 clientFrameText = "";
                 forwardedToolFrameEarly = true;
               } catch { /* the socket close handler owns cleanup */ }
@@ -2103,7 +2249,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
 
             let completeRankedFallbackCardSent = false;
-            if (copilotMode && workerSocket.readyState === WebSocket.OPEN) {
+            if (copilotMode && !closed) {
               const fallbackRequestedCount = getRequestedRankedListCount(effectiveQuery) ?? originalRequestCount ??
                 (isLikelyRankedTableSearchQuery(effectiveQuery) || isLikelyRankedTableSearchQuery(latestUserRequestText) ? 10 : null);
               const fallbackCard = buildGroundedListCard(effectiveQuery, result, fallbackRequestedCount);
@@ -2111,7 +2257,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 const validation = validateResponseCard(fallbackCard);
                 if (validation.valid && validation.card.type === "key_details") {
                   try {
-                    workerSocket.send(JSON.stringify({ grounded_response_card: validation.card }));
+                    sendClientFrame(JSON.stringify({ grounded_response_card: validation.card }));
                     const verifiedRowCount = validation.card.details.filter((item) => !item.label.endsWith("Not verified")).length;
                     const complete = String(validation.card.summary || "").startsWith("Complete ranked list") &&
                       verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0;
@@ -2125,7 +2271,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                   } catch (_) {}
                 }
               }
-              try { workerSocket.send(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
+              try { sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
             }
             const modelFacingSearchResult = completeRankedFallbackCardSent
               ? result + "\n\nVISIBLE RESPONSE CARD HAS ALREADY BEEN RENDERED: The user can see the complete, source-backed top-ranked list on screen. Do not try to replace it with another card in this turn. Continue speaking naturally now: briefly explain the leader, the important differences among the leading entries, and the takeaway from the full list. Keep the answer conversational and do not stop after this tool result."
@@ -2161,7 +2307,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
 
     try {
-      if (clientFrameText) workerSocket.send(clientFrameText);
+      if (clientFrameText) sendClientFrame(clientFrameText);
     } catch {
       closeBoth(1011, "Client send failed");
     }
@@ -2200,7 +2346,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         silentResponseRetryPending = true;
         providerTurnHasAudio = false;
         try {
-          workerSocket.send(JSON.stringify({ connection_status: {
+          sendClientFrame(JSON.stringify({ connection_status: {
             state: "recovering",
             message: "That reply was not audible. I’m retrying the spoken response once; your request is unchanged.",
           } }));
@@ -2271,17 +2417,6 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
   });
 
-  workerSocket.addEventListener("close", (event: CloseEvent) => {
-    if (!setupCompleteReceived && !closed) {
-      console.warn("[AskMoina] Browser socket closed before setup completed", JSON.stringify({
-        clientCode: event.code,
-        setupForwarded,
-        upstreamFrameCount,
-      }));
-    }
-    closeBoth(event.code || 1000, "Client disconnected");
-  });
-  workerSocket.addEventListener("error", () => closeBoth(1011, "Client socket error"));
   socketForConnection.addEventListener("close", (event: CloseEvent) => {
     if (socketForConnection !== upstreamSocket || closed) return;
     console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
@@ -2326,7 +2461,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     upstreamSetupReady = false;
     setupCompleteReceived = false;
     try {
-      workerSocket.send(JSON.stringify({ connection_status: {
+      sendClientFrame(JSON.stringify({ connection_status: {
         state: "resuming",
         message: "Refreshing the live connection while keeping your conversation…",
       } }));
@@ -2390,8 +2525,61 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     closeBoth(1011, "Live session could not be resumed. Please restart Co-Pilot.");
   }
   attachUpstreamHandlers(upstreamSocket);
+  registerRelay?.({
+    attach: (socket: WebSocket) => {
+      if (closed) return false;
+      attachClientSocket(socket, true);
+      return true;
+    },
+    isClosed: () => closed,
+    isAttached: () => clientAttached && workerSocket.readyState === WebSocket.OPEN,
+    detachedAt: () => lastClientDetachedAt,
+  });
 
   return new Response(null, { status: 101, webSocket: clientSocket });
+}
+
+/**
+ * Long-lived owner for a single authenticated Live conversation.
+ *
+ * The public Worker routes each browser session to one object name. The actual
+ * browser/provider sockets and the relay's in-memory checkpoint/replay window
+ * are consequently owned by the Durable Object, not a short-lived edge Worker
+ * invocation. Keep the relay on the standard WebSocket API here: this service
+ * continuously forwards media and needs its live upstream socket while active.
+ */
+export class LiveSessionRelay {
+  private activeRelay: LiveRelayAttachment | null = null;
+
+  constructor(
+    private readonly state: DurableObjectState,
+    private readonly env: Env,
+  ) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const executionContext: Pick<ExecutionContext, "waitUntil"> = {
+      waitUntil: (promise) => this.state.waitUntil(promise),
+    };
+    if (this.activeRelay?.isClosed()) this.activeRelay = null;
+
+    const wantsResume = new URL(request.url).searchParams.get("resume") === "1";
+    if (wantsResume && this.activeRelay && !this.activeRelay.isClosed()) {
+      const wasAttached = this.activeRelay.isAttached();
+      const detachedForMs = this.activeRelay.detachedAt() ? Date.now() - this.activeRelay.detachedAt() : 0;
+      const pair = new WebSocketPair();
+      const [clientSocket, relaySocket] = Object.values(pair) as [WebSocket, WebSocket];
+      if (!this.activeRelay.attach(relaySocket)) {
+        try { relaySocket.close(1011, "Live session is no longer available"); } catch {}
+        return json({ error: "live_session_not_resumable" }, 409);
+      }
+      console.info("[AskMoina] Reattached browser to the existing Live relay", JSON.stringify({ wasAttached, detachedForMs }));
+      return new Response(null, { status: 101, webSocket: clientSocket });
+    }
+
+    return handleVoiceSocket(request, this.env, executionContext, (attachment) => {
+      this.activeRelay = attachment;
+    });
+  }
 }
 
 export default {
@@ -2562,7 +2750,22 @@ export default {
     }
 
     if (url.pathname === "/api/voice/status") return handleVoiceStatus(request, env);
-    if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
+    if (url.pathname === "/api/voice/socket") {
+      const rawSessionId = url.searchParams.get("session_id");
+      const sessionId = rawSessionId === null ? crypto.randomUUID() : normalizeLiveSessionId(rawSessionId);
+      if (!sessionId) return json({ error: "invalid_live_session_id" }, 400);
+
+      // A caller-supplied UUID is only a routing key, never an auth credential.
+      // Scope it to the authenticated account so different users cannot share an owner.
+      const accountId = await getAuthenticatedUserId(request, env);
+      const adminAccess = accountId ? false : await isAdmin(request, env);
+      if (!accountId && !adminAccess) return json({ error: "authentication_required" }, 401);
+      const owner = accountId
+        ? "user:" + accountId
+        : "admin:" + (env.ADMIN_DASHBOARD_USER?.trim().toLowerCase() || "admin");
+      const durableId = env.LIVE_SESSION_RELAY.idFromName(liveSessionObjectName(owner, sessionId));
+      return env.LIVE_SESSION_RELAY.get(durableId).fetch(request);
+    }
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 
     const assetResponse = await env.ASSETS.fetch(request);

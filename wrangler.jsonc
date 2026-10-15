@@ -70,11 +70,19 @@
       {
         "name": "USER_STATE",
         "class_name": "UserState"
+      },
+      {
+        "name": "LIVE_SESSION_RELAY",
+        "class_name": "LiveSessionRelay"
       }
     ]
   },
   "exports": {
     "UserState": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "LiveSessionRelay": {
       "type": "durable-object",
       "storage": "sqlite"
     }

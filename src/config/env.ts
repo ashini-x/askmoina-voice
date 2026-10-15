@@ -2,6 +2,7 @@ export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   USER_STATE: DurableObjectNamespace;
+  LIVE_SESSION_RELAY: DurableObjectNamespace;
   BACKGROUND_QUEUE: Queue;
 
   APP_VERSION: string;
