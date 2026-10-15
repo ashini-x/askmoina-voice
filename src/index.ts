@@ -21,6 +21,7 @@ import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourc
 import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
+import { normalizeLiveSessionId, liveSessionObjectName } from "./sessions/live-session-routing";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -968,7 +969,7 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
 async function handleVoiceSocket(
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: Pick<ExecutionContext, "waitUntil">,
 ): Promise<Response> {
   if (request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
     return json({ error: "websocket_upgrade_required" }, 426);
@@ -2394,6 +2395,29 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   return new Response(null, { status: 101, webSocket: clientSocket });
 }
 
+/**
+ * Long-lived owner for a single authenticated Live conversation.
+ *
+ * The public Worker routes each browser session to one object name. The actual
+ * browser/provider sockets and the relay's in-memory checkpoint/replay window
+ * are consequently owned by the Durable Object, not a short-lived edge Worker
+ * invocation. Keep the relay on the standard WebSocket API here: this service
+ * continuously forwards media and needs its live upstream socket while active.
+ */
+export class LiveSessionRelay {
+  constructor(
+    private readonly state: DurableObjectState,
+    private readonly env: Env,
+  ) {}
+
+  fetch(request: Request): Promise<Response> {
+    const executionContext: Pick<ExecutionContext, "waitUntil"> = {
+      waitUntil: (promise) => this.state.waitUntil(promise),
+    };
+    return handleVoiceSocket(request, this.env, executionContext);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -2562,7 +2586,22 @@ export default {
     }
 
     if (url.pathname === "/api/voice/status") return handleVoiceStatus(request, env);
-    if (url.pathname === "/api/voice/socket") return handleVoiceSocket(request, env, ctx);
+    if (url.pathname === "/api/voice/socket") {
+      const rawSessionId = url.searchParams.get("session_id");
+      const sessionId = rawSessionId === null ? crypto.randomUUID() : normalizeLiveSessionId(rawSessionId);
+      if (!sessionId) return json({ error: "invalid_live_session_id" }, 400);
+
+      // A caller-supplied UUID is only a routing key, never an auth credential.
+      // Scope it to the authenticated account so different users cannot share an owner.
+      const accountId = await getAuthenticatedUserId(request, env);
+      const adminAccess = accountId ? false : await isAdmin(request, env);
+      if (!accountId && !adminAccess) return json({ error: "authentication_required" }, 401);
+      const owner = accountId
+        ? "user:" + accountId
+        : "admin:" + (env.ADMIN_DASHBOARD_USER?.trim().toLowerCase() || "admin");
+      const durableId = env.LIVE_SESSION_RELAY.idFromName(liveSessionObjectName(owner, sessionId));
+      return env.LIVE_SESSION_RELAY.get(durableId).fetch(request);
+    }
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 
     const assetResponse = await env.ASSETS.fetch(request);
