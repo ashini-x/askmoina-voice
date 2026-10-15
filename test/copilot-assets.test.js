@@ -700,7 +700,7 @@ describe("long-running Live session continuity", () => {
     expect(worker).toContain("targetTokens: 8_000");
     expect(worker).toContain("sessionResumption: { transparent: true }");
     expect(worker).toContain("async function resumeLiveUpstream");
-    expect(worker).toContain("lastSessionResumptionHandle");
+    expect(worker).toContain("lastSessionResumptionCheckpoint");
     expect(worker).toContain("function replayUnconsumedMessages");
     expect(worker).toContain('state: "resuming"');
     expect(worker).toContain('state: "resumed"');
@@ -719,7 +719,7 @@ describe("long-running Live session continuity", () => {
     expect(worker).toContain("let nextClientMessageIndex = 1");
     expect(worker).toContain("const index = nextClientMessageIndex++");
     expect(worker).toContain("replayUnconsumedMessages(true)");
-    expect(worker).toContain("lastConsumedClientMessageIndex = 0;");
+    expect(worker).toContain("lastSessionResumptionCheckpoint = { handle: resumedHandle, lastConsumedClientMessageIndex: 0 }");
     expect(worker).toContain("function queuePendingUpstreamMessage");
     expect(worker).toContain("function drainPendingUpstreamMessages");
     expect(worker).toContain("function rememberAndSendUpstreamMessage");
