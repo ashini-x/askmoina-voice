@@ -783,28 +783,35 @@ describe("Apple-style active turn contract", () => {
 });
 
 
-describe("Live microphone hybrid activity detection", () => {
-  it("tolerates natural pauses before finalizing the final silence-bearing PCM frame", () => {
+describe("Live microphone explicit activity detection", () => {
+  it("buffers bounded pre-roll while idle, then brackets streamed PCM with activityStart and activityEnd", () => {
     const captureStart = script.indexOf("function startAudioCapture()");
     const captureEnd = script.indexOf("function decodePcm16(", captureStart);
     expect(captureStart).toBeGreaterThanOrEqual(0);
     expect(captureEnd).toBeGreaterThan(captureStart);
     const capture = script.slice(captureStart, captureEnd);
-    const fallingEdge = capture.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
-    const pcmSend = capture.indexOf("sendAudioChunk(samples);", fallingEdge);
-    const endSignal = capture.indexOf("if (speechGateEnded) sendAudioStreamEnd();", pcmSend);
-    expect(fallingEdge).toBeGreaterThanOrEqual(0);
-    expect(pcmSend).toBeGreaterThan(fallingEdge);
-    expect(endSignal).toBeGreaterThan(pcmSend);
+    const processorStart = capture.indexOf("processor.onaudioprocess = (event) => {");
+    expect(processorStart).toBeGreaterThanOrEqual(0);
+    const activityCapture = capture.slice(processorStart);
+    const speechGateEnded = activityCapture.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
+    const idleBranch = activityCapture.indexOf("bufferPreRollFrame(samples);", speechGateEnded);
+    expect(speechGateEnded).toBeGreaterThanOrEqual(0);
+    expect(activityCapture).toContain("const preRollFrames = [];");
+    expect(activityCapture).toContain("const preRollChunkLimit = Math.max(4");
+    expect(activityCapture).toContain('sendAudioActivityBoundary("start")');
+    expect(activityCapture).toContain('sendAudioActivityBoundary("end")');
+    expect(activityCapture).toContain("flushPreRollFrames();");
+    expect(activityCapture).toContain("if (micSpeechGateActive) {");
+    expect(activityCapture).toContain("} else if (speechGateEnded) {");
+    expect(idleBranch).toBeGreaterThan(speechGateEnded);
     expect(script).toContain("const LOCAL_VAD_END_SILENCE_MS = 700;");
-    expect(capture).toContain("now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS");
-    expect(script).toContain("function sendAudioStreamEnd()");
-    expect(script).toContain("realtime_input: { audio_stream_end: true }");
-    expect(workerSource).toContain('if (parsed.kind === "audio_stream_end")');
-    expect(workerSource).toContain("realtimeInputConfig:");
-    expect(workerSource).toContain("prefixPaddingMs: 250");
-    expect(workerSource).toContain("silenceDurationMs: 800");
-    expect(workerSource).toContain("inputAudioTranscription: {}");
-    expect(workerSource).not.toContain("automaticActivityDetection: { disabled: true }");
+    expect(script).toContain("function sendAudioActivityBoundary(kind)");
+    expect(script).toContain('kind === "start" ? { activity_start: true } : { activity_end: true }');
+    expect(script).not.toContain("function sendAudioStreamEnd()");
+    expect(script).not.toContain("realtime_input: { audio_stream_end: true }");
+    expect(workerSource).toContain('parsed.kind === "activity_start" || parsed.kind === "activity_end"');
+    expect(workerSource).toContain("automaticActivityDetection: { disabled: true }");
+    expect(protocol).toContain('case "activity_start":');
+    expect(protocol).toContain('case "activity_end":');
   });
 });
