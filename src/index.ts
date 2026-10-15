@@ -1884,12 +1884,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
           // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
           // The 800 ms server fallback is deliberately tolerant of natural speaking pauses.
+          // Co-Pilot uses explicit client-side activity boundaries and bounded speech pre-roll.
+          // This avoids a silence-only realtime stream and makes turn completion deterministic.
           realtimeInputConfig: {
-            automaticActivityDetection: {
-              disabled: false,
-              prefixPaddingMs: 250,
-              silenceDurationMs: 800,
-            },
+            automaticActivityDetection: { disabled: true },
           },
           contextWindowCompression: {
             // The permanent system/personalization instructions are not sliding-window history.
@@ -1990,10 +1988,10 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         });
         return;
       }
-      if (parsed.kind === "audio_stream_end") {
+      if (parsed.kind === "audio_stream_end" || parsed.kind === "activity_start" || parsed.kind === "activity_end") {
         const providerInput = toProviderRealtimeInput(parsed);
         if (!providerInput) {
-          closeBoth(1008, "Invalid audio end-of-stream signal");
+          closeBoth(1008, "Invalid audio activity boundary");
           return;
         }
         sendUpstreamMessage(providerInput);

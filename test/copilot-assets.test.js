@@ -6,6 +6,7 @@ const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "u
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const protocolSource = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
@@ -98,6 +99,11 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("Fresh session required after network loss");
     expect(script).toContain("forceFreshSessionOnReconnect = true;");
     expect(script).toContain("if (!isCurrentStart()) return;");
+    expect(script).toContain("const preRollFrames = [];");
+    expect(script).toContain('sendAudioActivityBoundary("start")');
+    expect(script).toContain('sendAudioActivityBoundary("end")');
+    expect(script).toContain("Manual activity mode sends PCM only inside a client-detected utterance");
+    expect(script).not.toContain("sendAudioStreamEnd()");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
@@ -557,7 +563,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.53"');
+    expect(html).toContain('src="/copilot.js?v=0.4.54"');
   });
 });
 
@@ -778,28 +784,35 @@ describe("Apple-style active turn contract", () => {
 });
 
 
-describe("Live microphone hybrid activity detection", () => {
-  it("tolerates natural pauses before finalizing the final silence-bearing PCM frame", () => {
+describe("Live microphone explicit activity detection", () => {
+  it("buffers bounded pre-roll while idle, then brackets streamed PCM with activityStart and activityEnd", () => {
     const captureStart = script.indexOf("function startAudioCapture()");
     const captureEnd = script.indexOf("function decodePcm16(", captureStart);
     expect(captureStart).toBeGreaterThanOrEqual(0);
     expect(captureEnd).toBeGreaterThan(captureStart);
     const capture = script.slice(captureStart, captureEnd);
-    const fallingEdge = capture.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
-    const pcmSend = capture.indexOf("sendAudioChunk(samples);", fallingEdge);
-    const endSignal = capture.indexOf("if (speechGateEnded) sendAudioStreamEnd();", pcmSend);
-    expect(fallingEdge).toBeGreaterThanOrEqual(0);
-    expect(pcmSend).toBeGreaterThan(fallingEdge);
-    expect(endSignal).toBeGreaterThan(pcmSend);
+    const processorStart = capture.indexOf("processor.onaudioprocess = (event) => {");
+    expect(processorStart).toBeGreaterThanOrEqual(0);
+    const activityCapture = capture.slice(processorStart);
+    const speechGateEnded = activityCapture.indexOf("const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;");
+    const idleBranch = activityCapture.indexOf("bufferPreRollFrame(samples);", speechGateEnded);
+    expect(speechGateEnded).toBeGreaterThanOrEqual(0);
+    expect(capture).toContain("const preRollFrames = [];");
+    expect(capture).toContain("const preRollChunkLimit = Math.max(4");
+    expect(activityCapture).toContain('sendAudioActivityBoundary("start")');
+    expect(activityCapture).toContain('sendAudioActivityBoundary("end")');
+    expect(activityCapture).toContain("flushPreRollFrames();");
+    expect(activityCapture).toContain("if (micSpeechGateActive) {");
+    expect(activityCapture).toContain("} else if (speechGateEnded) {");
+    expect(idleBranch).toBeGreaterThan(speechGateEnded);
     expect(script).toContain("const LOCAL_VAD_END_SILENCE_MS = 700;");
-    expect(capture).toContain("now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS");
-    expect(script).toContain("function sendAudioStreamEnd()");
-    expect(script).toContain("realtime_input: { audio_stream_end: true }");
-    expect(workerSource).toContain('if (parsed.kind === "audio_stream_end")');
-    expect(workerSource).toContain("realtimeInputConfig:");
-    expect(workerSource).toContain("prefixPaddingMs: 250");
-    expect(workerSource).toContain("silenceDurationMs: 800");
-    expect(workerSource).toContain("inputAudioTranscription: {}");
-    expect(workerSource).not.toContain("automaticActivityDetection: { disabled: true }");
+    expect(script).toContain("function sendAudioActivityBoundary(kind)");
+    expect(script).toContain('kind === "start" ? { activity_start: true } : { activity_end: true }');
+    expect(script).not.toContain("function sendAudioStreamEnd()");
+    expect(script).not.toContain("realtime_input: { audio_stream_end: true }");
+    expect(workerSource).toContain('parsed.kind === "activity_start" || parsed.kind === "activity_end"');
+    expect(workerSource).toContain("automaticActivityDetection: { disabled: true }");
+    expect(protocolSource).toContain('case "activity_start":');
+    expect(protocolSource).toContain('case "activity_end":');
   });
 });

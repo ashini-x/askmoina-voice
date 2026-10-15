@@ -182,7 +182,7 @@ try {
     window.__askmoinaContinuitySockets = observedSockets;
     window.__askmoinaSocketClosures = [];
     window.__askmoinaConnectionSignals = [];
-    window.__askmoinaMicInputStats = { audioFramesSent: 0, audioStreamEndFramesSent: 0, textTurnsSent: 0 };
+    window.__askmoinaMicInputStats = { audioFramesSent: 0, activityStartFramesSent: 0, activityEndFramesSent: 0, textTurnsSent: 0 };
     window.__askmoinaMicVadTransitions = [];
     let previousListeningState = null;
     window.setInterval(() => {
@@ -218,7 +218,8 @@ try {
               const payload = JSON.parse(data);
               const stats = window.__askmoinaMicInputStats;
               if (payload?.realtime_input?.audio) stats.audioFramesSent += 1;
-              if (payload?.realtime_input?.audio_stream_end === true) stats.audioStreamEndFramesSent += 1;
+              if (payload?.realtime_input?.activity_start === true) stats.activityStartFramesSent += 1;
+              if (payload?.realtime_input?.activity_end === true) stats.activityEndFramesSent += 1;
               if (typeof payload?.text_input === "string") stats.textTurnsSent += 1;
             } catch { /* Count only well-formed protocol frames. */ }
           }
@@ -446,7 +447,8 @@ try {
   const completedAssistantTurnsBeforeSpeech = assistantTurnCompleteFrames;
   const microphoneStatsBeforeTurn = await page.evaluate(() => ({
     audioFramesSent: window.__askmoinaMicInputStats?.audioFramesSent || 0,
-    audioStreamEndFramesSent: window.__askmoinaMicInputStats?.audioStreamEndFramesSent || 0,
+    activityStartFramesSent: window.__askmoinaMicInputStats?.activityStartFramesSent || 0,
+    activityEndFramesSent: window.__askmoinaMicInputStats?.activityEndFramesSent || 0,
   }));
   let microphoneVadObserved = false;
   try {
@@ -471,8 +473,10 @@ try {
       reason: speechStart < 0 ? "local-microphone-VAD-never-detected-speech" :
         speechEndIndex < 0 ? "local-microphone-VAD-never-detected-end-of-speech" : "",
       chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baselineAudioFrames.audioFramesSent),
-      audioStreamEndFramesSent: Math.max(0,
-        (stats.audioStreamEndFramesSent || 0) - baselineAudioFrames.audioStreamEndFramesSent),
+      activityStartFramesSent: Math.max(0,
+        (stats.activityStartFramesSent || 0) - baselineAudioFrames.activityStartFramesSent),
+      activityEndFramesSent: Math.max(0,
+        (stats.activityEndFramesSent || 0) - baselineAudioFrames.activityEndFramesSent),
       speechStartedAt: speechStart >= 0 ? transitions[speechStart].at : null,
       speechEndedAt: speechEndIndex > speechStart ? transitions[speechEndIndex].at : null,
       textTurnsSent: stats.textTurnsSent || 0,
@@ -524,8 +528,10 @@ try {
   assert.ok(turnDispatch.chunksSent > 0, "the real browser microphone must send PCM after the >2-minute boundary");
   assert.ok(microphoneVadObserved && turnDispatch.sent,
     "the actual microphone/VAD path must detect speech onset and end-of-speech on the delayed WAV stimulus");
-  assert.ok(turnDispatch.audioStreamEndFramesSent > 0,
-    "the post-boundary spoken turn must send an explicit audio-stream end marker to finalize Live VAD");
+  assert.ok(turnDispatch.activityStartFramesSent > 0,
+    "the delayed spoken turn must send activityStart before its captured PCM");
+  assert.ok(turnDispatch.activityEndFramesSent > 0,
+    "the delayed spoken turn must send activityEnd to finalize its user turn");
 
   // Give the PCM turn its own bounded response window. If it stays silent, send a
   // deterministic text turn over the same open socket to distinguish audio/VAD failure
@@ -631,7 +637,8 @@ try {
   const secondTurnCompleteBaseline = assistantTurnCompleteFrames;
   const secondTurnInputBaseline = await page.evaluate(() => ({
     audioFramesSent: window.__askmoinaMicInputStats?.audioFramesSent || 0,
-    audioStreamEndFramesSent: window.__askmoinaMicInputStats?.audioStreamEndFramesSent || 0,
+    activityStartFramesSent: window.__askmoinaMicInputStats?.activityStartFramesSent || 0,
+    activityEndFramesSent: window.__askmoinaMicInputStats?.activityEndFramesSent || 0,
   }));
   const firstSpeechEndedAt = turnDispatch.speechEndedAt;
   await page.waitForFunction((afterAt) => {
@@ -651,8 +658,10 @@ try {
     return {
       sent: startIndex >= 0 && endIndex > startIndex,
       chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baseline.audioFramesSent),
-      audioStreamEndFramesSent: Math.max(0,
-        (stats.audioStreamEndFramesSent || 0) - baseline.audioStreamEndFramesSent),
+      activityStartFramesSent: Math.max(0,
+        (stats.activityStartFramesSent || 0) - baseline.activityStartFramesSent),
+      activityEndFramesSent: Math.max(0,
+        (stats.activityEndFramesSent || 0) - baseline.activityEndFramesSent),
       speechStartedAt: startIndex >= 0 ? transitions[startIndex].at : null,
       speechEndedAt: endIndex > startIndex ? transitions[endIndex].at : null,
     };
@@ -660,15 +669,17 @@ try {
   console.log("Production audiovisual Live second spoken turn: " + JSON.stringify({
     microphoneVadObserved: secondTurnDispatch.sent,
     microphonePcmFramesSent: secondTurnDispatch.chunksSent,
-    audioStreamEndFramesSent: secondTurnDispatch.audioStreamEndFramesSent,
+    activityEndFramesSent: secondTurnDispatch.activityEndFramesSent,
     elapsedMs: Date.now() - sessionStartedAt,
   }));
   assert.equal(secondTurnDispatch.sent, true,
     "the real browser microphone/VAD path must detect a second spoken turn after the first assistant reply");
   assert.ok(secondTurnDispatch.chunksSent > 0,
     "the second spoken turn must travel through actual microphone PCM capture, not a text probe");
-  assert.ok(secondTurnDispatch.audioStreamEndFramesSent > 0,
-    "the second spoken turn must send its own end-of-speech marker");
+  assert.ok(secondTurnDispatch.activityStartFramesSent > 0,
+    "the second spoken turn must send its own activityStart signal");
+  assert.ok(secondTurnDispatch.activityEndFramesSent > 0,
+    "the second spoken turn must send its own activityEnd signal");
 
   const secondReplyDeadline = Date.now() + 25_000;
   while (Date.now() < secondReplyDeadline &&
