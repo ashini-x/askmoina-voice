@@ -26,6 +26,8 @@
   let micNoiseCalibrationUntil = 0;
   let micSpeechCandidateAt = 0;
   let micSpeechGateActive = false;
+  // Google recommends 500–800 ms local end-of-speech tolerance for hybrid VAD.
+  const LOCAL_VAD_END_SILENCE_MS = 700;
   let disconnectToneUntil = 0;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
@@ -1869,7 +1871,7 @@
         }
       }
       if (micSpeechGateActive && speechLikeFrame) lastMicVoiceAt = now;
-      if (micSpeechGateActive && now - lastMicVoiceAt > 240) {
+      if (micSpeechGateActive && now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS) {
         micSpeechGateActive = false;
         micSpeechCandidateAt = 0;
       }
@@ -1886,7 +1888,7 @@
         stage.classList.add("is-listening");
       } else {
         applyVoiceEdgeEnergy(0, "microphone");
-        if (now - lastMicVoiceAt > 240) stage.classList.remove("is-listening");
+        if (now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS) stage.classList.remove("is-listening");
       }
       // Keep PCM input continuous. Live's configured automatic activity detection handles
       // ordinary speech/silence turn boundaries; the local gate is visual feedback only.

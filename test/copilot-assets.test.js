@@ -550,7 +550,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.50"');
+    expect(html).toContain('src="/copilot.js?v=0.4.51"');
   });
 });
 
@@ -772,7 +772,7 @@ describe("Apple-style active turn contract", () => {
 
 
 describe("Live microphone hybrid activity detection", () => {
-  it("sends final silence-bearing PCM before the audio-stream end marker", () => {
+  it("tolerates natural pauses before finalizing the final silence-bearing PCM frame", () => {
     const captureStart = script.indexOf("function startAudioCapture()");
     const captureEnd = script.indexOf("function decodePcm16(", captureStart);
     expect(captureStart).toBeGreaterThanOrEqual(0);
@@ -784,9 +784,14 @@ describe("Live microphone hybrid activity detection", () => {
     expect(fallingEdge).toBeGreaterThanOrEqual(0);
     expect(pcmSend).toBeGreaterThan(fallingEdge);
     expect(endSignal).toBeGreaterThan(pcmSend);
+    expect(script).toContain("const LOCAL_VAD_END_SILENCE_MS = 700;");
+    expect(capture).toContain("now - lastMicVoiceAt > LOCAL_VAD_END_SILENCE_MS");
     expect(script).toContain("function sendAudioStreamEnd()");
     expect(script).toContain("realtime_input: { audio_stream_end: true }");
     expect(workerSource).toContain('if (parsed.kind === "audio_stream_end")');
+    expect(workerSource).toContain("realtimeInputConfig:");
+    expect(workerSource).toContain("prefixPaddingMs: 250");
+    expect(workerSource).toContain("silenceDurationMs: 800");
     expect(workerSource).toContain("inputAudioTranscription: {}");
     expect(workerSource).not.toContain("automaticActivityDetection: { disabled: true }");
   });
