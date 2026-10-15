@@ -2,17 +2,20 @@
 
 Last updated: 2026-10-16 UTC.
 
-## Status: Phase 1 is not yet verified closed
+## Status: Phase 1 production speech continuity verified; Phase 2 in progress
 
-The production microphone-continuity incident remains open. Do not treat the single passing production run as proof of a stable fix; a subsequent run on the same deployed release failed the spoken-turn assertion.
+The stricter post-two-minute speech test passed against the deployed `0.4.51` Worker. Phase 1 is considered closed for the speech-continuity criterion; the overall production workflow still reports a separate live web-grounding synthetic failure.
 
 - Repository: https://github.com/ashini-x/askmoina-voice
-- Main at the time of the latest review: `85bfe647aaf77c177c71899376246e189dc64403`
-- Production release: `0.4.50`
-- Latest relevant failed production workflow: [38788316268](https://github.com/ashini-x/askmoina-voice/actions/runs/38788316268)
-- Earlier single-run spoken-turn pass: [38787188368](https://github.com/ashini-x/askmoina-voice/actions/runs/38787188368)
-- Current fix + strict two-turn regression PR: [#171 — Verify two real spoken turns after 155 seconds](https://github.com/ashini-x/askmoina-voice/pull/171)
-- Candidate branch: `test/second-spoken-turn-phase1`
+- Current `main`: `d9a2ee82d31018a4b2d5ba414766a5fa803b1b05`
+- Deployed Worker release: `0.4.51`
+- Worker version deployed by production workflow: `e8fac2bf-5b23-4986-83f4-6e5b12eb2946`
+- Phase 1 long-session synthetic: [production run 38793224730](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224730)
+- Release validation: [run 38793224586](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224586); production health: [run 38793224567](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224567)
+- Phase 1 implementation: [PR #171 — Stabilize Live speech endpointing and verify two spoken turns](https://github.com/ashini-x/askmoina-voice/pull/171)
+- Phase 2 candidate: [PR #172 — Make Live session recovery deterministic](https://github.com/ashini-x/askmoina-voice/pull/172), branch `phase-2/deterministic-session-recovery`.
+
+Production run 38793224730 deployed `0.4.51` and its long-session synthetic passed. The first health poll observed the prior version during propagation; the next health poll confirmed `0.4.51`. The workflow's final conclusion is `failure` only because the independent live web-grounding synthetic failed; the two spoken turns, response card, ranked list, voice memory, browser network recovery, and long-session continuity synthetics passed.
 
 ## Evidence and diagnosis
 
@@ -24,7 +27,7 @@ That change is necessary but not sufficient on its own. In [run 38787188368](htt
 
 Google documents a hybrid-VAD mode that keeps server VAD and sends `audioStreamEnd` when client VAD detects the end of speech. It warns that overly short endpointing thresholds split natural pauses. The browser currently ended its local gate after 240 ms of silence, making this a credible application-level endpointing defect—not evidence of a fixed two-minute provider limit. The relay already maps `audio_stream_end` to `realtimeInput.audioStreamEnd`. The Worker also has context-window compression and session resumption configured.
 
-## Candidate fix in PR #171
+## Phase 1 fix merged and production verified (PR #171)
 
 - Increase local speech-end tolerance from 240 ms to 700 ms, reducing premature finalization at natural phrase pauses.
 - Explicitly configure automatic server VAD with 250 ms prefix padding and an 800 ms server-side silence fallback. Keep hybrid `audioStreamEnd` enabled; do not switch to manual VAD without evidence, because manual mode removes server prefix buffering and requires reliable client pre-roll.
@@ -33,10 +36,22 @@ Google documents a hybrid-VAD mode that keeps server VAD and sends `audioStreamE
 
 ## Verification records
 
-- PR #171's original test-only candidate release validation: [run 38789813759](https://github.com/ashini-x/askmoina-voice/actions/runs/38789813759) passed before the runtime endpointing change below.
-- Deployed 0.4.50 health smoke: [run 38788316373](https://github.com/ashini-x/askmoina-voice/actions/runs/38788316373) passed version, selected-voice and route checks.
-- The runtime endpointing change and two-turn verification in PR #171 still require release-validation, merge/deployment and a passing production long-session synthetic before this incident can be marked resolved.
+- Merged Phase 1 commit: `d9a2ee82d31018a4b2d5ba414766a5fa803b1b05`.
+- Deployed `0.4.51` Worker version: `e8fac2bf-5b23-4986-83f4-6e5b12eb2946` (confirmed by the deployment log and the successful retry health poll in [run 38793224730](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224730)).
+- First delayed spoken turn: `audioStreamEndFramesSent: 1`, `assistantAudioFramesReceived: 17`, provider turn completion observed.
+- Second distinct delayed spoken turn: `audioStreamEndFramesSent: 1`, `assistantAudioFramesReceived: 29`, `completed: true`.
+- Both turns passed after the 170-second silence window on one browser Live socket; no socket closure or provider error was recorded during the speech turn.
+- Independent failure: the same full workflow failed `Synthetic live web grounding test` because the Live WebSocket closed during grounded search. Response-card, ranked-list, voice-memory, browser network-recovery and long-session speech synthetics passed.
 
-## Completion gate
+## Phase 1 completion gate — satisfied
 
-Phase 1 is complete only after a deployment run proves both real-microphone spoken turns—first at the post-155-second boundary, then a second distinct turn—each receive new assistant audio and `turnComplete` on the same session, with no stale reconnect loop or misleading live state. Record the exact merged commit, PR, deployed Worker/version, and workflow result here only after those results exist.
+Phase 1 speech continuity is verified on deployed `0.4.51`: the production synthetic observed two delayed real-microphone turns, each producing fresh assistant audio and turn completion on the same session without a browser socket close or provider error. The unrelated web-grounding synthetic remains a separate issue and is not counted as a speech-continuity failure.
+
+## Phase 2 — deterministic session recovery (candidate)
+
+- PR: [#172 — Phase 2: Make Live session recovery deterministic](https://github.com/ashini-x/askmoina-voice/pull/172).
+- Branch: `phase-2/deterministic-session-recovery`.
+- Candidate release: `0.4.52`.
+- The candidate gates resumed UI on real provider setup and replay completion; makes a pending attachment own the single relay socket slot; rejects duplicate concurrent reattachments; invalidates stale browser start promises; de-duplicates browser reconnect timers; and routes missing/expired handles to one explicit fresh-session path while closing stale provider sockets and clearing pending queues.
+- New automated coverage includes delayed provider setup, duplicate reattachment, missing handle/setup, invalid/expired handle errors, provider-requested rotation during replay, and one forced browser network interruption followed by two required post-170-second spoken replies.
+- Status at this handoff revision: PR validation and production recovery verification are still pending. Do not call Phase 2 complete until the browser-level forced-disconnect test passes after deployment and the following spoken turn produces assistant audio and completion, with no duplicate sockets or stuck status overlay.
