@@ -696,12 +696,15 @@ describe("long-running Live session continuity", () => {
 
   it("enables context compression and session resumption", () => {
     expect(worker).toContain("contextWindowCompression: {");
-    expect(worker).toContain("triggerTokens: 12_000");
-    expect(worker).toContain("targetTokens: 8_000");
+    expect(worker).toContain("triggerTokens: 48_000");
+    expect(worker).toContain("targetTokens: 32_000");
     expect(worker).toContain("sessionResumption: { transparent: true }");
     expect(worker).toContain("async function resumeLiveUpstream");
     expect(worker).toContain("lastSessionResumptionCheckpoint");
     expect(worker).toContain("function replayUnconsumedMessages");
+    expect(worker).toContain("await replayUnconsumedMessages(true)");
+    expect(worker).toContain("compactReplayMessagesForResumption");
+    expect(worker).toContain("replayInProgress");
     expect(worker).toContain('state: "resuming"');
     expect(worker).toContain('state: "resumed"');
   });
