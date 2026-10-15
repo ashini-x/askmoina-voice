@@ -1157,5 +1157,5 @@ body.site-info-body .site-info-card{width:100%}
 .camera-stage.has-notice:not(.voice-active):not(.is-connecting) #videoPreview{filter:none!important}
 
 /* Keep the camera or fallback scene sharp after a failed/disrupted live reconnect. */
-.camera-stage.recovery-preview-clear.has-notice #videoPreview{filter:none!important;-webkit-filter:none!important;transform:none!important}.camera-stage.recovery-preview-clear #videoPreview{filter:none!important;-webkit-filter:none!important;transform:none!important}
+.camera-stage.recovery-preview-clear.has-notice #videoPreview{filter:none!important;-webkit-filter:none!important;transform:none!important;transition:none!important}.camera-stage.recovery-preview-clear #videoPreview{filter:none!important;-webkit-filter:none!important;transform:none!important;transition:none!important}
 .camera-stage.recovery-preview-clear:not(.has-camera) .camera-placeholder{filter:none!important;opacity:1!important}

@@ -46,11 +46,27 @@ try {
     const nativeSend = WebSocket.prototype.send;
     const observedSockets = [];
     window.__askmoinaContinuitySockets = observedSockets;
+    window.__askmoinaSocketClosures = [];
+    window.__askmoinaConnectionSignals = [];
     window.__askmoinaPauseContinuityAudio = false;
     WebSocket.prototype.send = function (data) {
       try {
         if (new URL(this.url).pathname === "/api/voice/socket") {
-          if (!observedSockets.includes(this)) observedSockets.push(this);
+          if (!observedSockets.includes(this)) {
+            observedSockets.push(this);
+            this.addEventListener("close", (event) => window.__askmoinaSocketClosures.push({ code: event.code, reason: String(event.reason || "").slice(0, 100), wasClean: event.wasClean, at: Date.now() }));
+            this.addEventListener("message", (event) => {
+              if (typeof event.data !== "string") return;
+              try {
+                const frame = JSON.parse(event.data);
+                if (frame.connection_status && typeof frame.connection_status === "object") {
+                  window.__askmoinaConnectionSignals.push({ state: frame.connection_status.state || "", code: frame.connection_status.code || "", message: String(frame.connection_status.message || "").slice(0, 130), at: Date.now() });
+                  if (window.__askmoinaConnectionSignals.length > 20) window.__askmoinaConnectionSignals.shift();
+                }
+                if (frame.error && typeof frame.error === "object") window.__askmoinaConnectionSignals.push({ state: "error", code: frame.error.code || "", message: String(frame.error.message || "").slice(0, 130), at: Date.now() });
+              } catch { /* Retain only structured relay status. */ }
+            });
+          }
           if (window.__askmoinaPauseContinuityAudio && typeof data === "string") {
             const payload = JSON.parse(data);
             if (payload?.realtime_input?.audio) return;
@@ -152,6 +168,27 @@ try {
     window.__askmoinaContinuityAssistantBaseline = before;
     return { sent: true, baselineChars: before.length };
   });
+  const beforeTurnDiagnostics = await page.evaluate(() => ({
+    state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
+    statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
+    status: (document.querySelector("#status")?.textContent || "").slice(0, 120),
+    noticeVisible: Boolean(document.querySelector("#connectionNotice") && !document.querySelector("#connectionNotice").hidden),
+    noticeKind: document.querySelector("#connectionNotice")?.dataset.kind || "none",
+    noticeTitle: (document.querySelector("#connectionNoticeTitle")?.textContent || "").slice(0, 80),
+    noticeMessage: (document.querySelector("#connectionNoticeMessage")?.textContent || "").slice(0, 120),
+    sockets: (window.__askmoinaContinuitySockets || []).map((candidate) => ({ readyState: candidate.readyState })),
+    socketClosures: (window.__askmoinaSocketClosures || []).slice(-8),
+    connectionSignals: (window.__askmoinaConnectionSignals || []).slice(-12),
+    timeline: (window.__askmoinaContinuityTimeline || []).slice(-12),
+  }));
+  console.log("Production audiovisual Live pre-turn diagnostics: " + JSON.stringify({
+    ...beforeTurnDiagnostics,
+    browserLiveSocketCount: liveSockets.length,
+    closedBrowserSockets: closedSockets.length,
+    continuityTurnDispatched: turnDispatch.sent,
+    continuityTurnReason: turnDispatch.reason || "",
+    elapsedMs: Date.now() - sessionStartedAt,
+  }));
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the continuity turn");
 
   const replyDeadline = Date.now() + 30_000;

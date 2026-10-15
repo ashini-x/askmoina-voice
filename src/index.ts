@@ -2,7 +2,7 @@ import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
-import { parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
+import { MAX_RESUME_REPLAY_CHARS, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
@@ -1085,7 +1085,7 @@ async function handleVoiceSocket(
   let upstreamReplayBufferChars = 0;
   let highestEvictedClientMessageIndex = -1;
   let resumptionInProgress = false;
-  const MAX_RESUME_REPLAY_CHARS = 512 * 1024;
+  // The replay window spans sustained audio/video while the provider advances its latest safe checkpoint.
   const pendingUpstreamMessages: Array<{ payload: Record<string, unknown>; chars: number }> = [];
   let pendingUpstreamMessagesChars = 0;
   const MAX_PENDING_UPSTREAM_CHARS = 512 * 1024;

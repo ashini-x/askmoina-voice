@@ -804,11 +804,13 @@
       // while the local camera preview is being reacquired.
       stage.classList.add("recovery-preview-clear");
       video.style.setProperty("-webkit-filter", "none", "important");
+      video.style.setProperty("transition", "none", "important");
       return;
     }
     stage.classList.remove("recovery-preview-clear");
     video.style.removeProperty("filter");
     video.style.removeProperty("-webkit-filter");
+    video.style.removeProperty("transition");
     if (active && setupReady) recoveryPreviewClear = false;
   }
 

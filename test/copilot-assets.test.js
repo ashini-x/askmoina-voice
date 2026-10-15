@@ -740,6 +740,8 @@ describe("long-running Live session continuity", () => {
     expect(script).toContain("function syncDisconnectedPreviewAppearance()");
     expect(script).toContain('video.style.setProperty("filter", "none", "important")');
     expect(script).toContain("if (wasConnected) recoveryPreviewClear = true;");
+    expect(script).toContain('video.style.setProperty("transition", "none", "important")');
+    expect(css).toContain(".camera-stage.recovery-preview-clear #videoPreview{filter:none!important;-webkit-filter:none!important;transform:none!important;transition:none!important}");
     expect(css).toContain(".camera-stage.pre-start.has-notice:not(.is-connecting) #videoPreview{filter:none!important}");
     expect(css).toContain(".camera-stage.has-notice:not(.voice-active):not(.is-connecting) #videoPreview{filter:none!important}");
   });

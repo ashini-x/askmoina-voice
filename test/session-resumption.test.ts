@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAdvanceSessionResumptionCheckpoint,
+  MAX_RESUME_REPLAY_CHARS,
   isCheckpointWithinSentMessageWindow,
   isReplayWindowComplete,
   parseSessionResumptionCheckpoint,
@@ -85,6 +86,9 @@ describe("checkpoint index space", () => {
 });
 
 describe("bounded Live replay buffer", () => {
+  it("keeps a bounded window for sustained audiovisual continuity", () => {
+    expect(MAX_RESUME_REPLAY_CHARS).toBe(16 * 1024 * 1024);
+  });
   it("marks sustained unacknowledged input overflow as unsafe to replay", () => {
     const buffer: ReplayMessage[] = [];
     const maxChars = 160;

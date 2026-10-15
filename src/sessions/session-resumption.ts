@@ -1,3 +1,6 @@
+/** Hard cap for client input retained across a Live socket rotation (16 MiB). */
+export const MAX_RESUME_REPLAY_CHARS = 16 * 1024 * 1024;
+
 export interface SessionResumptionCheckpoint {
   handle: string;
   lastConsumedClientMessageIndex: number;
