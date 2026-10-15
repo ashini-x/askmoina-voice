@@ -1691,7 +1691,7 @@ async function handleVoiceSocket(
       lastGuardHeartbeatAt = lastClientMessageAt;
       guardHeartbeatInFlight = true;
       ctx.waitUntil(
-        heartbeatVoiceSession(env, reservation)
+        heartbeatVoiceSession(env, reservation!)
           .then((result) => {
             if (result.leaseLost) closeBoth(1011, "Session lease expired");
           })
