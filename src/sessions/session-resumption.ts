@@ -75,3 +75,56 @@ export function trimReplayBufferToLimit(
     highestEvictedClientMessageIndex: highestEvicted,
   };
 }
+
+
+/** True only when the provider's checkpoint cursor refers to messages sent on this connection. */
+export function isCheckpointWithinSentMessageWindow(
+  candidate: SessionResumptionCheckpoint | null,
+  highestSentClientMessageIndex: number,
+): candidate is SessionResumptionCheckpoint {
+  return candidate !== null &&
+    Number.isSafeInteger(highestSentClientMessageIndex) &&
+    highestSentClientMessageIndex >= 0 &&
+    candidate.lastConsumedClientMessageIndex <= highestSentClientMessageIndex;
+}
+
+export interface PendingUpstreamMessageLike {
+  payload: Record<string, unknown>;
+  chars: number;
+}
+
+/** Video frames are replaceable evidence; audio, text, and control input are not. */
+function isReplaceableVideoMessage(payload: Record<string, unknown>): boolean {
+  const realtimeInput = payload.realtimeInput;
+  if (!realtimeInput || typeof realtimeInput !== "object" || Array.isArray(realtimeInput)) return false;
+  const input = realtimeInput as Record<string, unknown>;
+  return "video" in input && !("audio" in input) && !("audioStreamEnd" in input);
+}
+
+/**
+ * Bounds messages queued while the upstream is reconnecting. If trimming discards
+ * anything other than an isolated video frame, the caller must terminate continuity.
+ */
+export function trimPendingMessagesToLimit<T extends PendingUpstreamMessageLike>(
+  pending: T[],
+  maxChars: number,
+  currentChars: number,
+): { bufferChars: number; droppedCount: number; droppedNonReplaceable: boolean } {
+  let bufferChars = currentChars;
+  let droppedCount = 0;
+  let droppedNonReplaceable = false;
+  const limit = Math.max(0, maxChars);
+
+  while (bufferChars > limit && pending.length > 0) {
+    const dropped = pending.shift()!;
+    bufferChars -= dropped.chars;
+    droppedCount += 1;
+    if (!isReplaceableVideoMessage(dropped.payload)) droppedNonReplaceable = true;
+  }
+
+  return {
+    bufferChars: Math.max(0, bufferChars),
+    droppedCount,
+    droppedNonReplaceable,
+  };
+}

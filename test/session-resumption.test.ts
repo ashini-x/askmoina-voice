@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   canAdvanceSessionResumptionCheckpoint,
+  isCheckpointWithinSentMessageWindow,
   isReplayWindowComplete,
   parseSessionResumptionCheckpoint,
+  trimPendingMessagesToLimit,
   trimReplayBufferToLimit,
   type ReplayMessage,
   type SessionResumptionCheckpoint,
@@ -63,6 +65,25 @@ describe("Live session resumption checkpoints", () => {
   });
 });
 
+describe("checkpoint index space", () => {
+  it("rejects non-zero checkpoint cursors before a resumed socket has sent any replayed input", () => {
+    const nonZero = parseSessionResumptionCheckpoint({
+      resumable: true,
+      newHandle: "resumed-handle",
+      lastConsumedClientMessageIndex: "3",
+    });
+    const zero = parseSessionResumptionCheckpoint({
+      resumable: true,
+      newHandle: "resumed-handle",
+      lastConsumedClientMessageIndex: "0",
+    });
+
+    expect(isCheckpointWithinSentMessageWindow(nonZero, 0)).toBe(false);
+    expect(isCheckpointWithinSentMessageWindow(zero, 0)).toBe(true);
+    expect(isCheckpointWithinSentMessageWindow(nonZero, 3)).toBe(true);
+  });
+});
+
 describe("bounded Live replay buffer", () => {
   it("marks sustained unacknowledged input overflow as unsafe to replay", () => {
     const buffer: ReplayMessage[] = [];
@@ -99,14 +120,41 @@ describe("bounded Live replay buffer", () => {
   });
 });
 
+describe("pending Live input queue overflow", () => {
+  it("marks dropped microphone input as a continuity failure", () => {
+    const pending = [
+      { payload: { realtimeInput: { audio: { data: "first" } } }, chars: 40 },
+      { payload: { realtimeInput: { audio: { data: "second" } } }, chars: 40 },
+    ];
+    const trimmed = trimPendingMessagesToLimit(pending, 40, 80);
+
+    expect(trimmed.bufferChars).toBeLessThanOrEqual(40);
+    expect(trimmed.droppedCount).toBe(1);
+    expect(trimmed.droppedNonReplaceable).toBe(true);
+  });
+
+  it("allows old camera frames to be replaced without marking audio continuity lost", () => {
+    const pending = [
+      { payload: { realtimeInput: { video: { data: "old-frame" } } }, chars: 40 },
+      { payload: { realtimeInput: { audio: { data: "microphone" } } }, chars: 40 },
+    ];
+    const trimmed = trimPendingMessagesToLimit(pending, 40, 80);
+
+    expect(trimmed.bufferChars).toBe(40);
+    expect(trimmed.droppedCount).toBe(1);
+    expect(trimmed.droppedNonReplaceable).toBe(false);
+    expect(pending[0].payload).toHaveProperty("realtimeInput.audio");
+  });
+});
+
 describe("camera model-side media resolution", () => {
-  it("uses high media resolution for Co-Pilot while keeping audio-only config unchanged", () => {
+  it("uses supported medium media resolution for Gemini 3.8 Live Co-Pilot while keeping audio-only config unchanged", () => {
     const base = { responseModalities: ["AUDIO"], speechConfig: { voice: "Leda" } };
     const voice = configureCopilotMediaResolution(base, false);
     const copilot = configureCopilotMediaResolution(base, true);
 
     expect(voice).toBe(base);
     expect(voice).not.toHaveProperty("mediaResolution");
-    expect(copilot).toEqual({ ...base, mediaResolution: "MEDIA_RESOLUTION_HIGH" });
+    expect(copilot).toEqual({ ...base, mediaResolution: "MEDIA_RESOLUTION_MEDIUM" });
   });
 });

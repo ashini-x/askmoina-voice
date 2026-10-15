@@ -2,7 +2,7 @@ import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
-import { parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isReplayWindowComplete, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
+import { parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
@@ -1231,9 +1231,8 @@ async function handleVoiceSocket(
     upstreamReplayBufferChars = trimmed.bufferChars;
     highestEvictedClientMessageIndex = trimmed.highestEvictedClientMessageIndex;
 
-    // Send the current packet before stopping, but never keep claiming continuity after
-    // an unacknowledged packet has been evicted from the only replay copy.
-    upstreamSocket.send(encoded);
+    // Once unacknowledged input has been evicted, stop before forwarding more input.
+    // It is safer to surface continuity loss than to present a partial task as continuous.
     if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpointConsumedMessageIndex())) {
       console.warn("[AskMoina] Live replay window exceeded; continuity can no longer be guaranteed", JSON.stringify({
         highestEvictedClientMessageIndex,
@@ -1241,10 +1240,13 @@ async function handleVoiceSocket(
         bufferedMessageCount: upstreamReplayBuffer.length,
       }));
       closeBoth(1011, "Live input replay window incomplete");
+      return;
     }
+    upstreamSocket.send(encoded);
   }
 
   function queuePendingUpstreamMessage(payload: Record<string, unknown>) {
+    if (closed) return;
     const encoded = JSON.stringify(payload);
     // Camera snapshots are replaceable; hold only the most recent during a reconnect.
     if (payload.realtimeInput && typeof payload.realtimeInput === "object" && "video" in payload.realtimeInput) {
@@ -1259,10 +1261,24 @@ async function handleVoiceSocket(
     }
     pendingUpstreamMessages.push({ payload, chars: encoded.length });
     pendingUpstreamMessagesChars += encoded.length;
-    // Bound RAM during a long outage. Oldest audio packets may be shed; new input remains live.
-    while (pendingUpstreamMessagesChars > MAX_PENDING_UPSTREAM_CHARS && pendingUpstreamMessages.length > 0) {
-      const dropped = pendingUpstreamMessages.shift()!;
-      pendingUpstreamMessagesChars -= dropped.chars;
+    // Keep RAM bounded, but only camera frames are replaceable. Dropping audio, text,
+    // or control input breaks continuity, so the session must stop explicitly.
+    const trimmed = trimPendingMessagesToLimit(
+      pendingUpstreamMessages,
+      MAX_PENDING_UPSTREAM_CHARS,
+      pendingUpstreamMessagesChars,
+    );
+    pendingUpstreamMessagesChars = trimmed.bufferChars;
+    if (trimmed.droppedCount > 0) {
+      console.warn("[AskMoina] Pending Live input queue trimmed", JSON.stringify({
+        droppedMessageCount: trimmed.droppedCount,
+        droppedNonReplaceable: trimmed.droppedNonReplaceable,
+        pendingMessageCount: pendingUpstreamMessages.length,
+        pendingChars: pendingUpstreamMessagesChars,
+      }));
+    }
+    if (trimmed.droppedNonReplaceable) {
+      closeBoth(1011, "Live input replay window incomplete");
     }
   }
 
@@ -1511,6 +1527,7 @@ async function handleVoiceSocket(
         continue;
       }
       rememberAndSendUpstreamMessage(item.payload);
+      if (closed) return;
     }
   }
 
@@ -1827,20 +1844,22 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       const candidateCheckpoint = parseSessionResumptionCheckpoint(update);
       let checkpointAccepted = false;
       if (candidateCheckpoint) {
-        if (resumptionInProgress) {
-          if (canAdvanceSessionResumptionCheckpoint(pendingResumeSessionCheckpoint, candidateCheckpoint)) {
-            pendingResumeSessionCheckpoint = candidateCheckpoint;
+        // Before replay begins, the replacement socket has sent no indexed input. A
+        // non-zero cursor cannot be paired with this socket's reset index space.
+        const highestSentIndex = resumptionInProgress ? 0 : nextClientMessageIndex - 1;
+        if (isCheckpointWithinSentMessageWindow(candidateCheckpoint, highestSentIndex)) {
+          if (resumptionInProgress) {
+            if (canAdvanceSessionResumptionCheckpoint(pendingResumeSessionCheckpoint, candidateCheckpoint)) {
+              pendingResumeSessionCheckpoint = candidateCheckpoint;
+              checkpointAccepted = true;
+            }
+          } else if (canAdvanceSessionResumptionCheckpoint(lastSessionResumptionCheckpoint, candidateCheckpoint)) {
+            // Advance the handle and replay cursor atomically. Empty/invalid handles cannot
+            // prune input because their consumed index does not describe a resumable snapshot.
+            lastSessionResumptionCheckpoint = candidateCheckpoint;
+            pruneConsumedReplayMessages();
             checkpointAccepted = true;
           }
-        } else if (
-          candidateCheckpoint.lastConsumedClientMessageIndex <= nextClientMessageIndex - 1 &&
-          canAdvanceSessionResumptionCheckpoint(lastSessionResumptionCheckpoint, candidateCheckpoint)
-        ) {
-          // Advance the handle and replay cursor atomically. Empty/invalid handles cannot
-          // prune input because their consumed index does not describe a resumable snapshot.
-          lastSessionResumptionCheckpoint = candidateCheckpoint;
-          pruneConsumedReplayMessages();
-          checkpointAccepted = true;
         }
       }
       console.info("[AskMoina] Live session resumption checkpoint", JSON.stringify({
