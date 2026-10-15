@@ -18,6 +18,7 @@ import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
+import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -2327,9 +2328,11 @@ export default {
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = accountId ? false : await isAdmin(request, env);
-      let html = COPILOT_HTML
-        .replace('<script src="/transcript-merge.js" defer></script>', "")
-        .replace('<script src="/copilot.js" defer></script>', "");
+      // APP_VERSION changes the browser cache key even when the checked-in HTML
+      // template has an older query string. The entry page should not boot the Co-Pilot JS.
+      let html = removeCopilotClientScript(
+        versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION),
+      ).replace('<script src="/transcript-merge.js" defer></script>', "");
       if ((accountId || adminAccess) && url.searchParams.get("launch") === "1") {
         html = html.replace("<body>", '<body data-page="launch" data-entry-state="launch">');
         html = html.replace("</body>", ENTRY_LAUNCH_OVERLAY + '<script src="/auth.js" defer></script></body>');
@@ -2375,7 +2378,7 @@ export default {
       }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
-      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : COPILOT_HTML;
+      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION);
       const contentType = isScript ? "text/javascript; charset=utf-8" :
         isStyle ? "text/css; charset=utf-8" : "text/html; charset=utf-8";
       const headers = new Headers({
