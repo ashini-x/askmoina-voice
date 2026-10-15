@@ -54,3 +54,16 @@ export function isExpiredSessionResumptionError(error: unknown): boolean {
   const invalidatesHandle = /expired|invalid|not found|unknown|unavailable|no longer valid|does not exist|cannot be resumed/i.test(detail);
   return mentionsResumeHandle && invalidatesHandle;
 }
+
+export type ProviderRotationDecision = "defer" | "resume" | "replace_session";
+
+/** GoAway can be acted on only when replay is idle and the handle/setup pair is usable. */
+export function decideProviderRotation(
+  replayInProgress: boolean,
+  resumeHandleAvailable: boolean,
+  securedSetupAvailable: boolean,
+): ProviderRotationDecision {
+  if (replayInProgress) return "defer";
+  if (!resumeHandleAvailable || !securedSetupAvailable) return "replace_session";
+  return "resume";
+}

@@ -22,7 +22,7 @@ import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
-import { decideClientReattachment, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
+import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -2189,15 +2189,24 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
 
     if (providerMessage?.goAway) {
+      const rotationDecision = decideProviderRotation(
+        replayInProgress,
+        Boolean(lastSessionResumptionCheckpoint?.handle),
+        Boolean(securedSetupForResume),
+      );
       console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
-        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber, replayInProgress,
+        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+        securedSetupAvailable: Boolean(securedSetupForResume),
+        frameNumber,
+        replayInProgress,
+        decision: rotationDecision,
       }));
-      if (replayInProgress) {
+      if (rotationDecision === "defer") {
         providerRotationPending = true;
         console.warn("[AskMoina] Deferring provider rotation until paced replay finishes");
         return;
       }
-      if (!lastSessionResumptionCheckpoint?.handle) {
+      if (rotationDecision === "replace_session") {
         closeBoth(1011, "Live session requires replacement");
         return;
       }

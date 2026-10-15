@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decideClientReattachment,
+  decideProviderRotation,
   isExpiredSessionResumptionError,
   isRecoverableLiveDisconnectCode,
   shouldAcceptBrowserReattachment,
@@ -85,5 +86,18 @@ describe("expired provider session-resumption handles", () => {
     "expired resume handle",
   ])("does not misclassify unrelated or malformed provider errors", (error) => {
     expect(isExpiredSessionResumptionError(error)).toBe(false);
+  });
+});
+
+
+describe("provider-requested Live rotation", () => {
+  it("defers GoAway during paced replay and resumes once the replay window is idle", () => {
+    expect(decideProviderRotation(true, true, true)).toBe("defer");
+    expect(decideProviderRotation(false, true, true)).toBe("resume");
+  });
+
+  it("selects a fresh session when the rotation lacks a usable handle/setup pair", () => {
+    expect(decideProviderRotation(false, false, true)).toBe("replace_session");
+    expect(decideProviderRotation(false, true, false)).toBe("replace_session");
   });
 });

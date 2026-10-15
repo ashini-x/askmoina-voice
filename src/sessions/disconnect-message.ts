@@ -80,7 +80,7 @@ export function getUserFacingDisconnectNotice(
     return {
       state: "ended",
       code: "provider_error",
-      message: "The voice service encountered a connection error. I'm restoring the live session now.",
+      message: "The voice service encountered a connection error. I'm restoring the live session now. If recovery fails, tap Start talking to open a fresh session.",
     };
   }
 
