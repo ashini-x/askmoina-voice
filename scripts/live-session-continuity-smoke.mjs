@@ -161,7 +161,8 @@ try {
       .map((node) => node.textContent || "").join(" ").trim();
     if (!ws) return { sent: false, reason: "no-open-voice-socket" };
     window.__askmoinaPauseContinuityAudio = true;
-    ws.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+    // The fake microphone is intentionally silent and may not have opened an audio stream.
+    // Sending audio_stream_end in that state can disrupt the subsequent deterministic text turn.
     ws.send(JSON.stringify({
       text_input: "Continuity verification: please respond aloud in one short sentence confirming our live camera conversation is still active. Do not call tools."
     }));
@@ -195,6 +196,26 @@ try {
   while (Date.now() < replyDeadline && assistantAudioFrames <= assistantAudioFramesBeforeTurn) {
     await page.waitForTimeout(250);
   }
+  const postTurnDiagnostics = await page.evaluate(() => ({
+    state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
+    statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
+    status: (document.querySelector("#status")?.textContent || "").slice(0, 120),
+    noticeVisible: Boolean(document.querySelector("#connectionNotice") && !document.querySelector("#connectionNotice").hidden),
+    noticeKind: document.querySelector("#connectionNotice")?.dataset.kind || "none",
+    sockets: (window.__askmoinaContinuitySockets || []).map((candidate) => ({ readyState: candidate.readyState })),
+    socketClosures: (window.__askmoinaSocketClosures || []).slice(-8),
+    connectionSignals: (window.__askmoinaConnectionSignals || []).slice(-12),
+    assistantTranscriptChars: [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
+      .reduce((sum, node) => sum + (node.textContent || "").length, 0),
+  }));
+  console.log("Production audiovisual Live post-turn diagnostics: " + JSON.stringify({
+    ...postTurnDiagnostics,
+    browserLiveSocketCount: liveSockets.length,
+    closedBrowserSockets: closedSockets.length,
+    assistantAudioFramesBeforeTurn,
+    assistantAudioFramesAfterTurn: assistantAudioFrames,
+    assistantAudioFramesReceived: assistantAudioFrames - assistantAudioFramesBeforeTurn,
+  }));
   assert.ok(assistantAudioFrames > assistantAudioFramesBeforeTurn,
     "the assistant must transmit a new audio response after the mid-session test turn");
 
