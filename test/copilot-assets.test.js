@@ -91,6 +91,10 @@ describe("Live Co-Pilot browser assets", () => {
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
     expect(() => new Function(script)).not.toThrow();
     expect(script).toContain("copilot_mode: true");
+    expect(script).toContain("let copilotStartGeneration = 0;");
+    expect(script).toContain("if (reconnectTimer !== null) return;");
+    expect(script).toContain("forceFreshSessionOnReconnect");
+    expect(script).toContain("if (!isCurrentStart()) return;");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
