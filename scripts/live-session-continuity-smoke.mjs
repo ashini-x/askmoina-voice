@@ -2,7 +2,8 @@
 /**
  * Production browser synthetic for long-running audiovisual Live continuity.
  * Opens an authenticated Co-Pilot session with Chromium fake media and keeps camera
- * and microphone streaming for more than 155 seconds with delayed real speech. Never logs credentials, audio or transcripts.
+ * and microphone streaming beyond 155 seconds. Requires two separate delayed spoken
+ * turns to each produce completed assistant audio. Never logs credentials, audio or transcripts.
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -28,6 +29,7 @@ let assistantAudioFrames = 0;
 let receivedWebSocketFrames = 0;
 let parsedJsonFrames = 0;
 let serverContentFrames = 0;
+let assistantTurnCompleteFrames = 0;
 let modelTurnFrames = 0;
 let outputTranscriptionFrames = 0;
 let inputTranscriptionFrames = 0;
@@ -132,16 +134,23 @@ function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
 }
 try {
   // Chromium's default fake audio device emits a beep. Use a real WAV input instead:
-  // 170 seconds of actual silence followed by speech and trailing silence. This makes
-  // the post-two-minute assertion exercise getUserMedia, browser PCM capture and local
-  // VAD, rather than direct socket injection after 125 seconds of artificial audio.
+  // 170 seconds of silence followed by two distinct utterances. Both exercise getUserMedia,
+  // browser PCM capture and local VAD, rather than direct socket text injection.
   mediaDirectory = mkdtempSync(join(tmpdir(), "askmoina-live-mic-fixture-"));
-  const speechPcm = synthesizePcm16k(
+  const firstSpeechPcm = synthesizePcm16k(
     "Moina, can you still hear me? Please answer aloud in one short sentence confirming our camera conversation is continuing."
   );
+  const secondSpeechPcm = synthesizePcm16k(
+    "Moina, this is my next spoken turn. Please answer aloud with one short sentence."
+  );
   const silentPrelude = Buffer.alloc(16_000 * 2 * 170);
+  // Each utterance has one second of trailing silence. Add twenty more seconds before
+  // turn two so the first assistant response can complete.
+  const secondTurnGap = Buffer.alloc(16_000 * 2 * 20);
   const fakeMicrophoneWavPath = join(mediaDirectory, "delayed-speech.wav");
-  writeMonoPcm16Wav(fakeMicrophoneWavPath, Buffer.concat([silentPrelude, speechPcm]));
+  writeMonoPcm16Wav(fakeMicrophoneWavPath, Buffer.concat([
+    silentPrelude, firstSpeechPcm, secondTurnGap, secondSpeechPcm
+  ]));
 
   browser = await chromium.launch({
     headless: true,
@@ -257,6 +266,7 @@ try {
           if (serverContent && typeof serverContent === "object") {
             serverContentFrames += 1;
             if (serverContent.turnComplete || serverContent.turn_complete) {
+              assistantTurnCompleteFrames += 1;
               recentFrameShapes.push({kind:"turn_complete"});
             }
             const output = serverContent.outputTranscription || serverContent.output_transcription;
@@ -371,6 +381,7 @@ try {
   // browser getUserMedia -> downsampling -> PCM send -> local VAD path is exercised.
   await page.waitForTimeout(125_000);
   const assistantAudioFramesBeforeTurn = assistantAudioFrames;
+  const completedAssistantTurnsBeforeSpeech = assistantTurnCompleteFrames;
   const microphoneStatsBeforeTurn = await page.evaluate(() => ({
     audioFramesSent: window.__askmoinaMicInputStats?.audioFramesSent || 0,
     audioStreamEndFramesSent: window.__askmoinaMicInputStats?.audioStreamEndFramesSent || 0,
@@ -541,6 +552,78 @@ try {
         ? "the same live session still answered a text control probe, so the failure is isolated to the audio/VAD input path."
         : "the same live session also failed to answer a text control probe, so the upstream session stopped responding.")
       : "the text control probe could not be sent."));
+ 
+  // Do not attribute delayed audio from turn one to turn two: require the first
+  // provider turnComplete event before starting the second-turn measurement window.
+  const firstReplyCompleteDeadline = Date.now() + 10_000;
+  while (Date.now() < firstReplyCompleteDeadline &&
+      assistantTurnCompleteFrames <= completedAssistantTurnsBeforeSpeech) {
+    await page.waitForTimeout(100);
+  }
+  assert.ok(assistantTurnCompleteFrames > completedAssistantTurnsBeforeSpeech,
+    "the first post-155-second spoken response must complete before the next user turn");
+
+  // The fixture contains a second distinct utterance. It must traverse the real browser
+  // microphone/PCM/VAD path and produce its own completed assistant audio response.
+  const secondTurnAudioBaseline = assistantAudioFrames;
+  const secondTurnCompleteBaseline = assistantTurnCompleteFrames;
+  const secondTurnInputBaseline = await page.evaluate(() => ({
+    audioFramesSent: window.__askmoinaMicInputStats?.audioFramesSent || 0,
+    audioStreamEndFramesSent: window.__askmoinaMicInputStats?.audioStreamEndFramesSent || 0,
+  }));
+  const firstSpeechEndedAt = turnDispatch.speechEndedAt;
+  await page.waitForFunction((afterAt) => {
+    const transitions = window.__askmoinaMicVadTransitions || [];
+    const startIndex = transitions.findIndex((item) => item.at > afterAt && item.listening === true);
+    return startIndex >= 0 && transitions.slice(startIndex + 1).some(
+      (item) => item.at > afterAt && item.listening === false
+    );
+  }, firstSpeechEndedAt, { timeout: 60_000, polling: 100 });
+  const secondTurnDispatch = await page.evaluate(({ afterAt, baseline }) => {
+    const stats = window.__askmoinaMicInputStats || {};
+    const transitions = window.__askmoinaMicVadTransitions || [];
+    const startIndex = transitions.findIndex((item) => item.at > afterAt && item.listening === true);
+    const endIndex = startIndex < 0 ? -1 : transitions.findIndex(
+      (item, index) => index > startIndex && item.at > afterAt && item.listening === false
+    );
+    return {
+      sent: startIndex >= 0 && endIndex > startIndex,
+      chunksSent: Math.max(0, (stats.audioFramesSent || 0) - baseline.audioFramesSent),
+      audioStreamEndFramesSent: Math.max(0,
+        (stats.audioStreamEndFramesSent || 0) - baseline.audioStreamEndFramesSent),
+      speechStartedAt: startIndex >= 0 ? transitions[startIndex].at : null,
+      speechEndedAt: endIndex > startIndex ? transitions[endIndex].at : null,
+    };
+  }, { afterAt: firstSpeechEndedAt, baseline: secondTurnInputBaseline });
+  console.log("Production audiovisual Live second spoken turn: " + JSON.stringify({
+    microphoneVadObserved: secondTurnDispatch.sent,
+    microphonePcmFramesSent: secondTurnDispatch.chunksSent,
+    audioStreamEndFramesSent: secondTurnDispatch.audioStreamEndFramesSent,
+    elapsedMs: Date.now() - sessionStartedAt,
+  }));
+  assert.equal(secondTurnDispatch.sent, true,
+    "the real browser microphone/VAD path must detect a second spoken turn after the first assistant reply");
+  assert.ok(secondTurnDispatch.chunksSent > 0,
+    "the second spoken turn must travel through actual microphone PCM capture, not a text probe");
+  assert.ok(secondTurnDispatch.audioStreamEndFramesSent > 0,
+    "the second spoken turn must send its own end-of-speech marker");
+
+  const secondReplyDeadline = Date.now() + 25_000;
+  while (Date.now() < secondReplyDeadline &&
+      assistantTurnCompleteFrames <= secondTurnCompleteBaseline) {
+    await page.waitForTimeout(150);
+  }
+  const secondTurnAudioFramesReceived = assistantAudioFrames - secondTurnAudioBaseline;
+  const secondTurnCompleted = assistantTurnCompleteFrames > secondTurnCompleteBaseline;
+  console.log("Production audiovisual Live second spoken-turn reply: " + JSON.stringify({
+    assistantAudioFramesReceived: secondTurnAudioFramesReceived,
+    completed: secondTurnCompleted,
+    elapsedMs: Date.now() - sessionStartedAt,
+  }));
+  assert.ok(secondTurnAudioFramesReceived > 0,
+    "the same live session must transmit new assistant audio in response to the second spoken turn");
+  assert.equal(secondTurnCompleted, true,
+    "the second spoken turn must reach provider turnComplete, not merely emit a partial audio frame");
 
   // Keep the same audiovisual session alive through the full 155-second window.
   const remainingMs = Math.max(0, 155_000 - (Date.now() - sessionStartedAt));
@@ -576,7 +659,7 @@ try {
     "the session must not fall back to ready/error during continuity");
   assert.equal(diagnostics.noticeVisible, false,
     "no stale reconnect overlay should remain after a stable long-running session");
-  console.log("Production audiovisual Live continuity: PASS (155 seconds, post-start AI reply, browser socket stayed open).");
+  console.log("Production audiovisual Live continuity: PASS (over 155 seconds, two completed spoken turns each received new assistant audio, browser socket stayed open).");
 
   await page.locator("#toggleCopilot").click();
   await page.waitForTimeout(700);
