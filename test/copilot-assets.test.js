@@ -102,7 +102,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('sendAudioActivityBoundary("start")');
     expect(script).toContain('sendAudioActivityBoundary("end")');
     expect(script).toContain("Manual activity mode sends PCM only inside a client-detected utterance");
-    expect(script).not.toContain("sendAudioStreamEnd()");");
+    expect(script).not.toContain("sendAudioStreamEnd()");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
