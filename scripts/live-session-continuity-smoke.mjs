@@ -90,7 +90,9 @@ function synthesizePcm16k(text) {
       const sample = Math.round(a * (1 - fraction) + b * fraction);
       output.writeInt16LE(Math.max(-32768, Math.min(32767, sample)), i * 2);
     }
-    return output;
+    // Leave a full second of silence after speech so server-side VAD can close
+    // the utterance at a realistic microphone cadence before audioStreamEnd.
+    return Buffer.concat([output, Buffer.alloc(16_000 * 2)]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -328,10 +330,12 @@ try {
       sendNative(ws, JSON.stringify({
         realtime_input: { audio: { data: chunk, mime_type: "audio/pcm;rate=16000" } }
       }));
-      await new Promise((resolve) => setTimeout(resolve, 85));
+      // Each 3,200-byte chunk is 100 ms of 16 kHz mono PCM. Keep real-time
+      // pacing instead of pushing the speech faster than the microphone clock.
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     sendNative(ws, JSON.stringify({ realtime_input: { audio_stream_end: true } }));
-    return { sent: true, chunksSent: chunks.length };
+    return { sent: true, chunksSent: chunks.length, nominalAudioMs: chunks.length * 100 };
   }, syntheticAudioChunks);
   const beforeTurnDiagnostics = await page.evaluate(() => ({
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
