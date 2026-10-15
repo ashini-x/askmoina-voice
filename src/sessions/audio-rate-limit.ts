@@ -41,3 +41,34 @@ export class TokenBucket {
     return this.tokens >= 0;
   }
 }
+
+
+export type RealtimeMediaKind = "audio" | "video";
+
+/**
+ * Keep continuous microphone PCM and camera JPEGs within independent budgets.
+ * Camera frames are replaceable visual context and must not spend the quota
+ * required for non-replaceable speech input.
+ */
+export class RealtimeMediaRateLimiter {
+  private readonly audioFrameBucket: TokenBucket;
+  private readonly audioByteBucket: TokenBucket;
+  private readonly videoFrameBucket: TokenBucket;
+  private readonly videoByteBucket: TokenBucket;
+
+  constructor(now: number = Date.now()) {
+    const burstSeconds = 3;
+    this.audioFrameBucket = new TokenBucket(60, burstSeconds, now);
+    this.audioByteBucket = new TokenBucket(64 * 1024, burstSeconds, now);
+    this.videoFrameBucket = new TokenBucket(2, burstSeconds, now);
+    this.videoByteBucket = new TokenBucket(64 * 1024, burstSeconds, now);
+  }
+
+  consume(kind: RealtimeMediaKind, encodedChars: number, now: number = Date.now()): boolean {
+    const frameBucket = kind === "video" ? this.videoFrameBucket : this.audioFrameBucket;
+    const byteBucket = kind === "video" ? this.videoByteBucket : this.audioByteBucket;
+    const frameAllowed = frameBucket.consume(1, now);
+    const bytesAllowed = byteBucket.consume(encodedChars, now);
+    return frameAllowed && bytesAllowed;
+  }
+}
