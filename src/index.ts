@@ -1828,6 +1828,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
+          // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
+          // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
+          // The 800 ms server fallback is deliberately tolerant of natural speaking pauses.
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              disabled: false,
+              prefixPaddingMs: 250,
+              silenceDurationMs: 800,
+            },
+          },
           contextWindowCompression: {
             // The permanent system/personalization instructions are not sliding-window history.
             // An 8k target was below observed prompt usage and produced "Untruncatable session".
