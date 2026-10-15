@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TokenBucket } from "../src/sessions/audio-rate-limit";
+import { RealtimeMediaRateLimiter, TokenBucket } from "../src/sessions/audio-rate-limit";
 
 describe("audio input rate limiting", () => {
   it("allows a brief network burst just above the one-second threshold", () => {
@@ -28,5 +28,27 @@ describe("audio input rate limiting", () => {
     expect(budget.consume(20, 0)).toBe(true);
     expect(budget.consume(11, 1_000)).toBe(false);
     expect(budget.consume(10, 2_500)).toBe(true);
+  });
+});
+
+
+describe("independent audiovisual input budgets", () => {
+  it("preserves speech capacity during 160 seconds of maximum-sized camera frames", () => {
+    const limiter = new RealtimeMediaRateLimiter(0);
+    for (let second = 0; second < 160; second += 1) {
+      const secondStart = second * 1_000;
+      // Near the permitted per-frame camera ceiling, followed by realistic
+      // 48 kHz browser callbacks downsampled to roughly 1,000 JSON chars each.
+      expect(limiter.consume("video", 48_080, secondStart)).toBe(true);
+      for (let frame = 0; frame < 47; frame += 1) {
+        expect(limiter.consume("audio", 1_000, secondStart + frame * 21)).toBe(true);
+      }
+    }
+  });
+
+  it("does not let rejected camera traffic consume the microphone byte budget", () => {
+    const limiter = new RealtimeMediaRateLimiter(0);
+    expect(limiter.consume("video", 70_000, 0)).toBe(false);
+    expect(limiter.consume("audio", 1_000, 0)).toBe(true);
   });
 });
