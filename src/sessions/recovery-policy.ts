@@ -42,3 +42,15 @@ export function isRecoverableLiveDisconnectCode(code: unknown): boolean {
     "input_replay_window_lost",
   ].includes(code);
 }
+
+/** Detect explicit provider rejection of a resume handle without treating other errors as expiry. */
+export function isExpiredSessionResumptionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as Record<string, unknown>;
+  const detail = [record.code, record.status, record.message]
+    .filter((value) => typeof value === "string")
+    .join(" ");
+  const mentionsResumeHandle = /resume|resumption|handle/i.test(detail);
+  const invalidatesHandle = /expired|invalid|not found|unknown|unavailable|no longer valid|does not exist|cannot be resumed/i.test(detail);
+  return mentionsResumeHandle && invalidatesHandle;
+}

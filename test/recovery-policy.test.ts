@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decideClientReattachment,
+  isExpiredSessionResumptionError,
   isRecoverableLiveDisconnectCode,
   shouldAcceptBrowserReattachment,
 } from "../src/sessions/recovery-policy";
@@ -64,4 +65,25 @@ describe("bounded replacement recovery", () => {
     "does not silently retry fatal or malformed code %s",
     (code) => expect(isRecoverableLiveDisconnectCode(code)).toBe(false),
   );
+});
+
+
+describe("expired provider session-resumption handles", () => {
+  it.each([
+    { status: "INVALID_ARGUMENT", message: "Session resumption handle is expired" },
+    { code: "FAILED_PRECONDITION", message: "The resume handle is no longer valid" },
+    { message: "Unknown session resumption handle" },
+  ])("recognizes an explicit stale-handle error", (error) => {
+    expect(isExpiredSessionResumptionError(error)).toBe(true);
+  });
+
+  it.each([
+    { code: "RESOURCE_EXHAUSTED", message: "Audio input quota exceeded" },
+    { status: "UNAVAILABLE", message: "Temporary network error" },
+    { message: "Invalid audio packet" },
+    null,
+    "expired resume handle",
+  ])("does not misclassify unrelated or malformed provider errors", (error) => {
+    expect(isExpiredSessionResumptionError(error)).toBe(false);
+  });
 });

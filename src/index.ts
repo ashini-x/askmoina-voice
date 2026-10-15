@@ -22,7 +22,7 @@ import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
-import { decideClientReattachment, shouldAcceptBrowserReattachment } from "./sessions/recovery-policy";
+import { decideClientReattachment, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -1173,6 +1173,16 @@ async function handleVoiceSocket(
     }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
+    // Closing during a resume attempt must also close the old upstream socket and drop
+    // retained audio/control queues, not just the currently selected candidate socket.
+    const staleProviderSocket = previousUpstreamSocket;
+    previousUpstreamSocket = null;
+    resumptionInProgress = false;
+    replayInProgress = false;
+    providerRotationPending = false;
+    pendingDrainInProgress = false;
+    clientNeedsResumeSetup = false;
+    clientResumeSetupReceived = false;
     const analyticsOutcome = reason === "Session time limit reached" ? "session_timeout" :
       (reason === "Client disconnected" && code === 1000 ? (analyticsSetupComplete ? "completed" : "disconnected_before_setup") :
       (code === 1008 ? "protocol_error" : "provider_error"));
@@ -1220,15 +1230,29 @@ async function handleVoiceSocket(
 
     const safeCode = safeWebSocketCloseCode(code);
     try {
-      if (workerSocket.readyState === WebSocket.OPEN) workerSocket.close(safeCode, reason.slice(0, 100));
+      if (workerSocket.readyState === WebSocket.OPEN || workerSocket.readyState === WebSocket.CONNECTING) {
+        workerSocket.close(safeCode, reason.slice(0, 100));
+      }
     } catch {
       // Ignore duplicate close races.
     }
     try {
-      if (upstreamSocket.readyState === WebSocket.OPEN) upstreamSocket.close(safeCode, reason.slice(0, 100));
+      if (upstreamSocket.readyState === WebSocket.OPEN || upstreamSocket.readyState === WebSocket.CONNECTING) {
+        upstreamSocket.close(safeCode, reason.slice(0, 100));
+      }
     } catch {
       // Ignore duplicate close races.
     }
+    if (staleProviderSocket && staleProviderSocket !== upstreamSocket &&
+        (staleProviderSocket.readyState === WebSocket.OPEN || staleProviderSocket.readyState === WebSocket.CONNECTING)) {
+      try { staleProviderSocket.close(safeCode, "Stale Live recovery socket"); } catch { /* stale socket cleanup */ }
+    }
+    upstreamReplayBuffer.splice(0);
+    upstreamReplayBufferChars = 0;
+    pendingUpstreamMessages.splice(0);
+    pendingUpstreamMessagesChars = 0;
+    pendingClientFrames.splice(0);
+    pendingClientFramesChars = 0;
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
@@ -2254,6 +2278,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         status: providerError.status,
         message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
       }));
+      if (resumptionInProgress && isExpiredSessionResumptionError(providerError)) {
+        console.warn("[AskMoina] Provider rejected the Live resume handle; selecting the fresh-session path", JSON.stringify({
+          code: providerError.code,
+          status: providerError.status,
+          handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+        }));
+        closeBoth(1011, "Live session requires replacement");
+        return;
+      }
     }
 
     // Search calls are handled by the Worker in both standard voice and Co-Pilot.
