@@ -1802,6 +1802,18 @@
     }));
   }
 
+  function sendAudioStreamEnd() {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady) return;
+    // Hybrid VAD: after the locally detected utterance has ended, explicitly flush the
+    // final PCM/silence packets so server-side VAD doesn't leave the Live turn hanging.
+    // The Live API permits new audio messages to reopen the stream for the next utterance.
+    try {
+      socket.send(JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+    } catch (_) {
+      // The socket close/reconnect path owns recovery.
+    }
+  }
+
   function startAudioCapture() {
     if (!audioContext || !microphoneStream || processor) return;
     const audioTrack = microphoneStream.getAudioTracks()[0];
@@ -1862,6 +1874,7 @@
         micSpeechGateActive = false;
         micSpeechCandidateAt = 0;
       }
+      const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;
       if (micSpeechGateActive && !speechGateBeforeFrame) {
             syncLiveSearchStatusVisibility();
       } else if (!micSpeechGateActive && speechGateBeforeFrame) {
@@ -1876,9 +1889,11 @@
         applyVoiceEdgeEnergy(0, "microphone");
         if (now - lastMicVoiceAt > 240) stage.classList.remove("is-listening");
       }
-      // Audio always streams to Gemini. The local gate only controls visual feedback.
-      // Sustained local speech may start a neutral acknowledgement; transcripts and tool events determine search-specific status.
+      // Audio always streams to Gemini. The local gate controls visual feedback and
+      // also supplies a turn boundary after the last silence-bearing PCM chunk.
+      // This hybrid-VAD marker is sent only on speech -> silence, not for every quiet frame.
       sendAudioChunk(samples);
+      if (speechGateEnded) sendAudioStreamEnd();
     };
     microphoneSource.connect(processor);
     processor.connect(silentGain);
