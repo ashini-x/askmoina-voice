@@ -20,6 +20,7 @@
   let isAutomaticRetry = false;
   // Reuse the same session owner only while retrying this call; never across manual starts.
   let liveSessionId = null;
+  const LIVE_CLIENT_RECONNECT_CLOSE_CODE = 4001;
   let lastMicVoiceAt = 0;
   let micNoiseFloor = 0.003;
   let micNoiseCalibrationUntil = 0;
@@ -2315,7 +2316,7 @@
     stopRelayKeepalive(oldSocket);
     socket = null;
     if (oldSocket && oldSocket.readyState === WebSocket.OPEN) {
-      try { oldSocket.close(1000, "Client disconnected"); } catch (_) {}
+      try { oldSocket.close(silentDisconnect && !userInitiated ? LIVE_CLIENT_RECONNECT_CLOSE_CODE : 1000, silentDisconnect && !userInitiated ? "Reconnect handoff" : "Client disconnected"); } catch (_) {}
     } else if (oldSocket && oldSocket.readyState === WebSocket.CONNECTING) {
       try { oldSocket.close(); } catch (_) {}
     }
@@ -2892,16 +2893,21 @@
       setupTimer = null;
       setControls("End Co-Pilot", false);
       setConnectionState("LIVE", "live");
-      setStatus("Connected. Tell Moina what you want to do in your own words.");
+      setStatus(message.resumed === true ? "Your live conversation is continuing." : "Connected. Tell Moina what you want to do in your own words.");
       setAvailability("Camera frames stream at up to 768 px around once per second; audio is live.", "normal");
       setCameraState("Live · frames ~1/sec", "live");
       hideConnectionNotice(true);
       automaticReconnectAttempts = 0;
       playConnectionChime();
       greetingTurnPending = true;
-      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ initial_greeting: true }));
       if (greetingTimer) window.clearTimeout(greetingTimer);
-      greetingTimer = window.setTimeout(() => beginListeningAfterGreeting(), 10_000);
+      if (message.resumed === true) {
+        // Reuse the active model context; don't greet as though this were a new call.
+        beginListeningAfterGreeting();
+      } else {
+        if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ initial_greeting: true }));
+        greetingTimer = window.setTimeout(() => beginListeningAfterGreeting(), 10_000);
+      }
       startVideoFrames();
       return;
     }
@@ -3183,6 +3189,7 @@
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       wsUrl.searchParams.set("session_id", liveSessionId);
+      if (automaticRetry) wsUrl.searchParams.set("resume", "1");
       sessionSocket = new WebSocket(wsUrl.toString());
       socket = sessionSocket;
       sessionSocket.binaryType = "arraybuffer";
@@ -3889,7 +3896,7 @@
       }
       connectionNoticeAction.disabled = true;
       automaticReconnectAttempts = 0;
-      isAutomaticRetry = false;
+      isAutomaticRetry = Boolean(liveSessionId);
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
       if (active || starting) stopCopilot(false, null, null, true);
