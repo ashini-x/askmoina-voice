@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAdvanceSessionResumptionCheckpoint,
+  compactReplayMessagesForResumption,
   MAX_RESUME_REPLAY_CHARS,
   isCheckpointWithinSentMessageWindow,
   isReplayWindowComplete,
@@ -160,5 +161,31 @@ describe("camera model-side media resolution", () => {
     expect(voice).toBe(base);
     expect(voice).not.toHaveProperty("mediaResolution");
     expect(copilot).toEqual({ ...base, mediaResolution: "MEDIA_RESOLUTION_HIGH" });
+  });
+});
+
+
+describe("safe audiovisual replay compaction", () => {
+  it("drops stale camera snapshots but preserves PCM/control order", () => {
+    const input: ReplayMessage[] = [
+      { index: 3, encoded: "audio-1", kind: "audio" },
+      { index: 4, encoded: "camera-old", kind: "video" },
+      { index: 5, encoded: "audio-2", kind: "audio" },
+      { index: 6, encoded: "text", kind: "control" },
+      { index: 7, encoded: "camera-new", kind: "video" },
+      { index: 8, encoded: "audio-3", kind: "audio" },
+    ];
+    expect(compactReplayMessagesForResumption(input)).toEqual([
+      input[0], input[2], input[3], input[4], input[5],
+    ]);
+  });
+
+  it("leaves a speech-only replay unchanged", () => {
+    const input: ReplayMessage[] = [
+      { index: 1, encoded: "audio-1", kind: "audio" },
+      { index: 2, encoded: "audio-2", kind: "audio" },
+      { index: 3, encoded: "control", kind: "control" },
+    ];
+    expect(compactReplayMessagesForResumption(input)).toEqual(input);
   });
 });
