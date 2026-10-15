@@ -65,3 +65,13 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 - Follow-up branch: `phase-2/fresh-provider-after-network-loss`; candidate release `0.4.53`. Explicit browser offline now closes the old socket with code 4002, which the relay treats as termination rather than handoff. The user-requested Reconnect action then creates a new session UUID and starts one fresh provider session while keeping local camera preview available.
 - The production synthetic was changed to require zero `resuming`/`resumed` signals for this explicit replacement path, exactly one live browser socket after reconnect, clear preview/recovery UI, and two real microphone turns after the 170-second delay, each with fresh assistant audio and provider `turnComplete`.
 - Status at this candidate revision: PR validation, deployment and production spoken-turn verification remain pending. Phase 2 is not complete until the new deployed synthetic passes; the earlier `0.4.52` UI-only recovery pass does not meet the audio requirement.
+
+
+## Phase 2 audio-turn follow-up — explicit client VAD candidate `0.4.54`
+
+- The fresh-session change is verified at the transport/UI level, but production run [38806059263](https://github.com/ashini-x/askmoina-voice/actions/runs/38806059263) still showed no new assistant audio for the delayed microphone utterance after network replacement. It recorded the client audio-end marker; a text probe still received audio and the provider reported no error.
+- This confirms the outstanding issue is broader than session reattachment. The browser streamed more than two minutes of silence into an automatically detected audio stream and depended on a hybrid end marker, which was not reliably committing the delayed speech turn.
+- Candidate branch: `phase-2/deterministic-audio-activity`, release `0.4.54`.
+- Co-Pilot now keeps a bounded ~300 ms PCM pre-roll locally; while idle it sends no silence-only PCM. On voice onset it sends `activityStart`, flushes pre-roll, and streams PCM; after sustained local VAD silence it sends the final PCM frame and `activityEnd`. Provider setup disables automatic activity detection, as required by this explicit activity-boundary protocol. The continuity synthetic checks both activity markers and requires two fresh assistant-audio replies with `turnComplete` after the long pause.
+- The deterministic reconnect fixes from PRs #172 and #173 remain in place. No D1 history or Continue button was added.
+- Status: candidate release validation, deployment and the live browser synthetic remain pending. Do not mark Phase 2 complete unless the delayed spoken-turn assertions pass after deployment.
