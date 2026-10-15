@@ -111,3 +111,30 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
   if (media.mime_type !== (isVideo ? "image/jpeg" : "audio/pcm;rate=16000")) return null;
   return { kind: isVideo ? "video" : "audio", data: media.data };
 }
+
+
+/**
+ * Map the deliberately small browser protocol to Gemini Live's realtimeInput
+ * envelope. This preserves the snake_case browser contract and camelCase
+ * provider contract in one independently testable place.
+ */
+export function toProviderRealtimeInput(input: ParsedLiveClientInput): Record<string, unknown> | null {
+  switch (input.kind) {
+    case "audio":
+      return {
+        realtimeInput: {
+          audio: { data: input.data, mimeType: "audio/pcm;rate=16000" },
+        },
+      };
+    case "video":
+      return {
+        realtimeInput: {
+          video: { data: input.data, mimeType: "image/jpeg" },
+        },
+      };
+    case "audio_stream_end":
+      return { realtimeInput: { audioStreamEnd: true } };
+    default:
+      return null;
+  }
+}

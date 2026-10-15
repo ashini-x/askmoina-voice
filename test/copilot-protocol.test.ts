@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLiveClientInput } from "../src/sessions/copilot-protocol";
+import { parseLiveClientInput, toProviderRealtimeInput } from "../src/sessions/copilot-protocol";
 
 const audio = (data = "AAAA") => ({
   realtime_input: { audio: { data, mime_type: "audio/pcm;rate=16000" } },
@@ -113,5 +113,32 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ realtime_input: { audio_stream_end: false } }, true)).toBeNull();
     expect(parseLiveClientInput({ realtime_input: { audio: { data: "AAAA", mime_type: "audio/pcm;rate=16000" } }, extra: true }, true)).toBeNull();
     expect(parseLiveClientInput(null, true)).toBeNull();
+  });
+});
+
+
+describe("browser-to-provider realtime media mapping", () => {
+  it("preserves continuous PCM and its optional end-of-stream marker in Live's envelope", () => {
+    const parsedAudio = parseLiveClientInput(audio("AQIDBA=="), true);
+    const parsedEnd = parseLiveClientInput({ realtime_input: { audio_stream_end: true } }, true);
+    expect(parsedAudio).toEqual({ kind: "audio", data: "AQIDBA==" });
+    expect(parsedEnd).toEqual({ kind: "audio_stream_end" });
+    expect(toProviderRealtimeInput(parsedAudio!)).toEqual({
+      realtimeInput: {
+        audio: { data: "AQIDBA==", mimeType: "audio/pcm;rate=16000" },
+      },
+    });
+    expect(toProviderRealtimeInput(parsedEnd!)).toEqual({
+      realtimeInput: { audioStreamEnd: true },
+    });
+  });
+
+  it("maps camera JPEGs independently from PCM audio", () => {
+    const parsedVideo = parseLiveClientInput(video("AQIDBA=="), true);
+    expect(toProviderRealtimeInput(parsedVideo!)).toEqual({
+      realtimeInput: {
+        video: { data: "AQIDBA==", mimeType: "image/jpeg" },
+      },
+    });
   });
 });

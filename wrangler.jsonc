@@ -43,7 +43,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.47",
+    "APP_VERSION": "0.4.48",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -112,5 +112,45 @@
         "max_concurrency": 10
       }
     ]
+  },
+  "previews": {
+    "vars": {
+      "APP_VERSION": "0.4.48-preview",
+      "ENVIRONMENT": "preview",
+      "ADMIN_DASHBOARD_USER": "preview-admin",
+      "GEMINI_MODEL": "gemini-3.8-live",
+      "LIVE_VOICE_NAME": "Leda",
+      "LIVE_VOICE_ID": "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
+      "GEMINI_LOCATION": "us-central1",
+      "GCP_PROJECT_ID": "askmoina-preview",
+      "ANALYTICS_RAW_RETENTION_DAYS": "30"
+    },
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "USER_STATE",
+          "class_name": "UserState"
+        },
+        {
+          "name": "LIVE_SESSION_RELAY",
+          "class_name": "LiveSessionRelay"
+        }
+      ]
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "askmoina-preview",
+        "database_id": "43673f49-e099-46a5-b35b-e975a6f4984c"
+      }
+    ],
+    "queues": {
+      "producers": [
+        {
+          "binding": "BACKGROUND_QUEUE",
+          "queue": "askmoina-background-preview"
+        }
+      ]
+    }
   }
 }
