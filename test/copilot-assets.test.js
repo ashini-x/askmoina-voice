@@ -557,7 +557,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.52"');
+    expect(html).toContain('src="/copilot.js?v=0.4.53"');
   });
 });
 
