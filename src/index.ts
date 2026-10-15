@@ -4,6 +4,7 @@ import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { MAX_RESUME_REPLAY_CHARS, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
+import { buildLiveWebSocketUrl } from "./sessions/live-endpoint";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
 import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
@@ -1023,8 +1024,8 @@ async function handleVoiceSocket(
   const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-live";
   const upstreamHost =
     location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
-  const upstreamUrl =
-    `https://${upstreamHost}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+  // Gemini 3.8 Live uses the GA v1 service path. Older Live preview models remain on v1beta1.
+  const upstreamUrl = buildLiveWebSocketUrl(upstreamHost, model);
 
   let upstreamResponse: Response;
   try {
