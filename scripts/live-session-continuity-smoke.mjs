@@ -144,9 +144,9 @@ try {
     "Moina, this is my next spoken turn. Please answer aloud with one short sentence."
   );
   const silentPrelude = Buffer.alloc(16_000 * 2 * 170);
-  // Each utterance has one second of trailing silence. Add twenty more seconds before
-  // turn two so the first assistant response can complete.
-  const secondTurnGap = Buffer.alloc(16_000 * 2 * 20);
+  // Each utterance has one second of trailing silence. Add thirty-five more seconds
+  // before turn two so normal assistant response latency cannot overlap the two turns.
+  const secondTurnGap = Buffer.alloc(16_000 * 2 * 35);
   const fakeMicrophoneWavPath = join(mediaDirectory, "delayed-speech.wav");
   writeMonoPcm16Wav(fakeMicrophoneWavPath, Buffer.concat([
     silentPrelude, firstSpeechPcm, secondTurnGap, secondSpeechPcm
