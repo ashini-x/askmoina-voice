@@ -2,7 +2,7 @@ import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
-import { MAX_RESUME_REPLAY_CHARS, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
+import { MAX_RESUME_REPLAY_CHARS, compactReplayMessagesForResumption, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type ReplayMessage, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
 import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { buildLiveWebSocketUrl } from "./sessions/live-endpoint";
 import { RealtimeMediaRateLimiter } from "./sessions/audio-rate-limit";
@@ -1092,10 +1092,13 @@ async function handleVoiceSocket(
   let pendingResumeSessionCheckpoint: SessionResumptionCheckpoint | null = null;
   // Google requires one-based client message indexes; reset these per resumed connection.
   let nextClientMessageIndex = 1;
-  const upstreamReplayBuffer: Array<{ index: number; encoded: string }> = [];
+  const upstreamReplayBuffer: ReplayMessage[] = [];
   let upstreamReplayBufferChars = 0;
   let highestEvictedClientMessageIndex = -1;
   let resumptionInProgress = false;
+  // Resumed media must be replayed at a controlled cadence, not as a multi-megabyte burst.
+  let replayInProgress = false;
+  let pendingDrainInProgress = false;
   // The replay window spans sustained audio/video while the provider advances its latest safe checkpoint.
   const pendingUpstreamMessages: Array<{ payload: Record<string, unknown>; chars: number }> = [];
   let pendingUpstreamMessagesChars = 0;
@@ -1334,7 +1337,7 @@ async function handleVoiceSocket(
     } }));
     sendClientFrame(JSON.stringify({ setup_complete: true, resumed: true }));
     flushPendingClientFrames();
-    drainPendingUpstreamMessages();
+    void drainPendingUpstreamMessages();
   }
 
   // Replay indexes are local bookkeeping only: clientMessageIndex is not a field in
@@ -1353,10 +1356,19 @@ async function handleVoiceSocket(
     if (highestEvictedClientMessageIndex <= consumedIndex) highestEvictedClientMessageIndex = -1;
   }
 
+  function upstreamReplayMessageKind(payload: Record<string, unknown>): ReplayMessage["kind"] {
+    const realtimeInput = payload.realtimeInput;
+    if (!realtimeInput || typeof realtimeInput !== "object" || Array.isArray(realtimeInput)) return "control";
+    const media = realtimeInput as Record<string, unknown>;
+    if (media.audio && typeof media.audio === "object") return "audio";
+    if (media.video && typeof media.video === "object") return "video";
+    return "control";
+  }
+
   function rememberAndSendUpstreamMessage(payload: Record<string, unknown>) {
     const index = nextClientMessageIndex++;
     const encoded = JSON.stringify(payload);
-    upstreamReplayBuffer.push({ index, encoded });
+    upstreamReplayBuffer.push({ index, encoded, kind: upstreamReplayMessageKind(payload) });
     upstreamReplayBufferChars += encoded.length;
     const trimmed = trimReplayBufferToLimit(
       upstreamReplayBuffer,
@@ -1421,7 +1433,7 @@ async function handleVoiceSocket(
 
   function sendUpstreamMessage(payload: Record<string, unknown>) {
     if (closed) return;
-    if (upstreamSocket.readyState !== WebSocket.OPEN || !upstreamSetupReady || resumptionInProgress) {
+    if (upstreamSocket.readyState !== WebSocket.OPEN || !upstreamSetupReady || resumptionInProgress || replayInProgress || pendingDrainInProgress) {
       queuePendingUpstreamMessage(payload);
       return;
     }
@@ -1606,8 +1618,8 @@ async function handleVoiceSocket(
     return true;
   }
 
-  function replayUnconsumedMessages(reindexForNewConnection = false): boolean {
-    if (upstreamSocket.readyState !== WebSocket.OPEN) return false;
+  async function replayUnconsumedMessages(reindexForNewConnection = false): Promise<boolean> {
+    if (closed || upstreamSocket.readyState !== WebSocket.OPEN) return false;
     const checkpointConsumedIndex = checkpointConsumedMessageIndex();
     const replayWindowComplete = isReplayWindowComplete(
       highestEvictedClientMessageIndex,
@@ -1622,10 +1634,14 @@ async function handleVoiceSocket(
       closeBoth(1011, "Live input replay window incomplete");
       return false;
     }
-    const replay = upstreamReplayBuffer.filter((item) => item.index > checkpointConsumedIndex);
+    const unconsumed = upstreamReplayBuffer.filter((item) => item.index > checkpointConsumedIndex);
+    // Old camera snapshots are replaceable; retaining every PCM message is mandatory.
+    // Compact video only for a new upstream session and keep the newest snapshot in order.
+    const replay = reindexForNewConnection
+      ? compactReplayMessagesForResumption(unconsumed)
+      : unconsumed;
+    const compactedVideoFrames = unconsumed.length - replay.length;
     if (reindexForNewConnection) {
-      // The old handle includes context only through its paired checkpoint. Rebase all
-      // unacknowledged input to the new socket's one-based sequence before sending it.
       const resumedHandle = pendingResumeSessionCheckpoint?.handle ?? lastSessionResumptionCheckpoint?.handle;
       if (!resumedHandle) {
         closeBoth(1011, "Live session cannot be resumed safely");
@@ -1637,38 +1653,93 @@ async function handleVoiceSocket(
       highestEvictedClientMessageIndex = -1;
       lastSessionResumptionCheckpoint = { handle: resumedHandle, lastConsumedClientMessageIndex: 0 };
       pendingResumeSessionCheckpoint = null;
-      for (const item of replay) {
-        const index = nextClientMessageIndex++;
-        upstreamReplayBuffer.push({ index, encoded: item.encoded });
-        upstreamReplayBufferChars += item.encoded.length;
-        upstreamSocket.send(item.encoded);
-      }
-    } else {
-      for (const item of replay) upstreamSocket.send(item.encoded);
     }
+
+    const replayStartedAt = Date.now();
+    let sentAudioFrames = 0;
+    try {
+      for (const item of replay) {
+        if (closed || upstreamSocket.readyState !== WebSocket.OPEN) return false;
+        if (reindexForNewConnection) {
+          const index = nextClientMessageIndex++;
+          upstreamReplayBuffer.push({ index, encoded: item.encoded, kind: item.kind });
+          upstreamReplayBufferChars += item.encoded.length;
+          const trimmed = trimReplayBufferToLimit(
+            upstreamReplayBuffer,
+            MAX_RESUME_REPLAY_CHARS,
+            upstreamReplayBufferChars,
+            checkpointConsumedMessageIndex(),
+            highestEvictedClientMessageIndex,
+          );
+          upstreamReplayBufferChars = trimmed.bufferChars;
+          highestEvictedClientMessageIndex = trimmed.highestEvictedClientMessageIndex;
+          if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpointConsumedMessageIndex())) {
+            console.warn("[AskMoina] Live replay window exceeded during paced replay", JSON.stringify({
+              highestEvictedClientMessageIndex,
+              checkpointConsumedIndex: checkpointConsumedMessageIndex(),
+              replayedMessageCount: sentAudioFrames,
+            }));
+            closeBoth(1011, "Live input replay window incomplete");
+            return false;
+          }
+        }
+
+        upstreamSocket.send(item.encoded);
+        if (item.kind === "audio") {
+          sentAudioFrames += 1;
+          // Browser ScriptProcessor PCM chunks arrive at ~40–45 fps. Replay at a
+          // slightly faster-than-capture cadence to avoid quota-exhausting bursts.
+          await new Promise<void>((resolve) => setTimeout(resolve, 20));
+        }
+      }
+    } catch {
+      console.warn("[AskMoina] Live replay send interrupted", JSON.stringify({
+        reindexed: reindexForNewConnection,
+        replayedMessageCount: sentAudioFrames,
+        replayTotalMessages: replay.length,
+        elapsedMs: Date.now() - replayStartedAt,
+      }));
+      return false;
+    }
+
     console.info("[AskMoina] Resumed Live input replay", JSON.stringify({
       replayedMessageCount: replay.length,
       replayedChars: replay.reduce((total, item) => total + item.encoded.length, 0),
+      replayedAudioFrames: sentAudioFrames,
+      compactedVideoFrames,
       firstReplayIndex: reindexForNewConnection && replay.length ? 1 : replay[0]?.index ?? null,
       checkpointConsumedIndex,
       nextCheckpointConsumedIndex: checkpointConsumedMessageIndex(),
       replayWindowComplete,
       indexReset: reindexForNewConnection,
+      elapsedMs: Date.now() - replayStartedAt,
     }));
     return true;
   }
 
-  function drainPendingUpstreamMessages() {
-    if (closed || resumptionInProgress || !upstreamSetupReady || upstreamSocket.readyState !== WebSocket.OPEN) return;
-    const pending = pendingUpstreamMessages.splice(0);
-    pendingUpstreamMessagesChars = 0;
-    for (const item of pending) {
-      if (closed || !upstreamSetupReady || resumptionInProgress || upstreamSocket.readyState !== WebSocket.OPEN) {
-        queuePendingUpstreamMessage(item.payload);
-        continue;
+  async function drainPendingUpstreamMessages() {
+    if (closed || resumptionInProgress || replayInProgress || pendingDrainInProgress ||
+        !upstreamSetupReady || upstreamSocket.readyState !== WebSocket.OPEN) return;
+    pendingDrainInProgress = true;
+    try {
+      while (!closed && !resumptionInProgress && !replayInProgress &&
+          upstreamSetupReady && upstreamSocket.readyState === WebSocket.OPEN &&
+          pendingUpstreamMessages.length > 0) {
+        const item = pendingUpstreamMessages.shift()!;
+        pendingUpstreamMessagesChars = Math.max(0, pendingUpstreamMessagesChars - item.chars);
+        rememberAndSendUpstreamMessage(item.payload);
+        if (closed) return;
+        if (upstreamReplayMessageKind(item.payload) === "audio") {
+          await new Promise<void>((resolve) => setTimeout(resolve, 20));
+        }
       }
-      rememberAndSendUpstreamMessage(item.payload);
-      if (closed) return;
+    } finally {
+      pendingDrainInProgress = false;
+    }
+    if (!closed && !resumptionInProgress && !replayInProgress &&
+        upstreamSetupReady && upstreamSocket.readyState === WebSocket.OPEN &&
+        pendingUpstreamMessages.length > 0) {
+      void drainPendingUpstreamMessages();
     }
   }
 
@@ -1757,10 +1828,11 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           contextWindowCompression: {
-            // Compress early enough to leave headroom for continuous audio + video frames.
-            // Keep an 8k-token suffix to limit unnecessary conversation-history loss.
-            triggerTokens: 12_000,
-            slidingWindow: { targetTokens: 8_000 },
+            // The permanent system/personalization instructions are not sliding-window history.
+            // An 8k target was below observed prompt usage and produced "Untruncatable session".
+            // Compact before the audiovisual session nears the model's full context capacity.
+            triggerTokens: 48_000,
+            slidingWindow: { targetTokens: 32_000 },
           },
           // Keep the current session resumable; the relay stores the handle and replay window.
           sessionResumption: { transparent: true },
@@ -2054,8 +2126,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     if (providerMessage?.goAway) {
       console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
-        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber,
+        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber, replayInProgress,
       }));
+      if (replayInProgress || pendingDrainInProgress) {
+        console.warn("[AskMoina] Deferring provider rotation until buffered input drains");
+        return;
+      }
       if (!lastSessionResumptionCheckpoint?.handle) {
         closeBoth(1011, "Live session resumption handle unavailable");
         return;
@@ -2075,12 +2151,32 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         resumptionInProgress = false;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(true); }
-        const replayReady = replayUnconsumedMessages(true);
+        replayInProgress = true;
+        let replayReady = false;
+        try {
+          replayReady = await replayUnconsumedMessages(true);
+        } finally {
+          replayInProgress = false;
+        }
+        if (!replayReady) {
+          if (closed) return;
+          previousUpstreamSocket = null;
+          console.warn("[AskMoina] Resumed session could not replay pending input safely", JSON.stringify({
+            upstreamReadyState: upstreamSocket.readyState,
+            checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+          }));
+          if (upstreamSocket.readyState !== WebSocket.OPEN && lastSessionResumptionCheckpoint?.handle) {
+            void resumeLiveUpstream("replay_interrupted");
+          } else {
+            closeBoth(1011, "Live session replay was interrupted. Please reconnect.");
+          }
+          return;
+        }
+        previousUpstreamSocket = null;
         if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
           try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
         }
-        if (!replayReady) return;
-        drainPendingUpstreamMessages();
+        void drainPendingUpstreamMessages();
         try {
           sendClientFrame(JSON.stringify({ connection_status: {
             state: "resumed",
@@ -2422,8 +2518,18 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
       code: event.code, reason: event.reason.slice(0, 300), setupForwarded, setupCompleteReceived,
       lifetimeMs: Date.now() - upstreamStartedAt,
+      replayInProgress,
     }));
     if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
+    // These fatal provider responses do not recover by replaying the same buffer again.
+    // Stop rather than opening a rapid, quota-amplifying reconnect loop.
+    if (event.code === 1007 || (event.code === 1011 && /resource has been exhausted|quota/i.test(event.reason))) {
+      closeBoth(1011, event.code === 1007
+        ? "Live session context could not be compacted safely. Please reconnect."
+        : "Live provider resources were exhausted during recovery. Please reconnect.");
+      return;
+    }
+    if (replayInProgress) return;
     if (lastSessionResumptionCheckpoint?.handle) {
       void resumeLiveUpstream("provider_disconnect");
       return;
@@ -2432,8 +2538,9 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   });
   socketForConnection.addEventListener("error", () => {
     if (socketForConnection !== upstreamSocket || closed) return;
-    console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded }));
+    console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded, replayInProgress }));
     if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
+    if (replayInProgress) return;
     if (lastSessionResumptionCheckpoint?.handle) {
       void resumeLiveUpstream("provider_socket_error");
       return;
@@ -2443,7 +2550,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   }
 
   async function resumeLiveUpstream(reason: string) {
-    if (closed || resumptionInProgress) return;
+    if (closed || resumptionInProgress || replayInProgress || pendingDrainInProgress) return;
     const checkpoint = lastSessionResumptionCheckpoint;
     if (!securedSetupForResume || !checkpoint?.handle) {
       closeBoth(1011, "Live session cannot be resumed safely");
