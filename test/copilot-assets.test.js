@@ -91,6 +91,10 @@ describe("Live Co-Pilot browser assets", () => {
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
     expect(() => new Function(script)).not.toThrow();
     expect(script).toContain("copilot_mode: true");
+    expect(script).toContain("let copilotStartGeneration = 0;");
+    expect(script).toContain("if (reconnectTimer !== null) return;");
+    expect(script).toContain("forceFreshSessionOnReconnect");
+    expect(script).toContain("if (!isCurrentStart()) return;");
     expect(script).toContain("realtime_input: { video:");
     expect(script).toContain("tool_response: { function_responses:");
     expect(script).toContain("canvas.toDataURL(\"image/jpeg\"");
@@ -550,7 +554,7 @@ describe("Assistant-voiced search progress", () => {
 describe("Answer sheet minimize and restore control", () => {
   it("keeps the restore control outside the camera stage so minimizing does not hide it", () => {
     expect(script).toContain('if (responseCardRestoreButton && responseCardRestoreButton.parentElement !== document.body) document.body.appendChild(responseCardRestoreButton);');
-    expect(html).toContain('src="/copilot.js?v=0.4.51"');
+    expect(html).toContain('src="/copilot.js?v=0.4.52"');
   });
 });
 

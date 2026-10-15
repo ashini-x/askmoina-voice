@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import {
+  decideClientReattachment,
+  decideProviderRotation,
+  isExpiredSessionResumptionError,
+  isRecoverableLiveDisconnectCode,
+  shouldAcceptBrowserReattachment,
+} from "../src/sessions/recovery-policy";
+
+const healthy = {
+  relayClosed: false,
+  clientSetupReceived: true,
+  providerSetupReady: true,
+  providerSocketOpen: true,
+  resumptionInProgress: false,
+  replayInProgress: false,
+  resumeHandleAvailable: true,
+  securedSetupAvailable: true,
+};
+
+describe("deterministic Live reattachment", () => {
+  it("confirms only after client setup, provider setup, and replay are complete", () => {
+    expect(decideClientReattachment(healthy)).toBe("confirm_resumed");
+    expect(decideClientReattachment({ ...healthy, clientSetupReceived: false })).toBe("wait");
+    expect(decideClientReattachment({ ...healthy, replayInProgress: true })).toBe("wait");
+    expect(decideClientReattachment({ ...healthy, resumptionInProgress: true })).toBe("wait");
+  });
+
+  it("resumes only when a closed upstream has a paired handle and secured setup", () => {
+    expect(decideClientReattachment({ ...healthy, providerSetupReady: false, providerSocketOpen: false })).toBe("resume_provider");
+  });
+
+  it("selects replacement when the upstream is closed and its handle is absent/expired", () => {
+    expect(decideClientReattachment({ ...healthy, providerSetupReady: false, providerSocketOpen: false, resumeHandleAvailable: false })).toBe("replace_session");
+    expect(decideClientReattachment({ ...healthy, providerSetupReady: false, providerSocketOpen: false, securedSetupAvailable: false })).toBe("replace_session");
+  });
+
+  it("waits for delayed setup on an open provider rather than creating a duplicate", () => {
+    expect(decideClientReattachment({ ...healthy, providerSetupReady: false, providerSocketOpen: true })).toBe("wait");
+  });
+
+  it("does not announce resume for a detached relay", () => {
+    expect(decideClientReattachment({ ...healthy, relayClosed: true })).toBe("wait");
+  });
+
+  it("permits only one client attachment while setup is pending", () => {
+    expect(shouldAcceptBrowserReattachment(false, false)).toBe(true);
+    expect(shouldAcceptBrowserReattachment(false, true)).toBe(false);
+    expect(shouldAcceptBrowserReattachment(true, false)).toBe(false);
+  });
+});
+
+describe("bounded replacement recovery", () => {
+  it.each([
+    "provider_disconnected",
+    "provider_error",
+    "client_connection_error",
+    "session_recovery_failed",
+    "resume_handle_unavailable",
+    "input_replay_window_lost",
+  ])("marks %s as eligible for one fresh session", (code) => {
+    expect(isRecoverableLiveDisconnectCode(code)).toBe(true);
+  });
+
+  it.each(["session_timeout", "audio_rate_limit", "invalid_protocol", "", null, 1011])(
+    "does not silently retry fatal or malformed code %s",
+    (code) => expect(isRecoverableLiveDisconnectCode(code)).toBe(false),
+  );
+});
+
+
+describe("expired provider session-resumption handles", () => {
+  it.each([
+    { status: "INVALID_ARGUMENT", message: "Session resumption handle is expired" },
+    { code: "FAILED_PRECONDITION", message: "The resume handle is no longer valid" },
+    { message: "Unknown session resumption handle" },
+  ])("recognizes an explicit stale-handle error", (error) => {
+    expect(isExpiredSessionResumptionError(error)).toBe(true);
+  });
+
+  it.each([
+    { code: "RESOURCE_EXHAUSTED", message: "Audio input quota exceeded" },
+    { status: "UNAVAILABLE", message: "Temporary network error" },
+    { message: "Invalid audio packet" },
+    null,
+    "expired resume handle",
+  ])("does not misclassify unrelated or malformed provider errors", (error) => {
+    expect(isExpiredSessionResumptionError(error)).toBe(false);
+  });
+});
+
+
+describe("provider-requested Live rotation", () => {
+  it("defers GoAway during paced replay and resumes once the replay window is idle", () => {
+    expect(decideProviderRotation(true, true, true)).toBe("defer");
+    expect(decideProviderRotation(false, true, true)).toBe("resume");
+  });
+
+  it("selects a fresh session when the rotation lacks a usable handle/setup pair", () => {
+    expect(decideProviderRotation(false, false, true)).toBe("replace_session");
+    expect(decideProviderRotation(false, true, false)).toBe("replace_session");
+  });
+});

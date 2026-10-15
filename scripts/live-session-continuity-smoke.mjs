@@ -338,6 +338,67 @@ try {
   );
   assert.equal(liveSockets.length, 1, "a single authenticated Live WebSocket should open");
 
+  // Force a real browser network interruption before the delayed speech window.
+  // This exercises the actual offline/online callbacks, relay handoff, and replacement
+  // socket, then the microphone WAV fixture speaks only after the recovered session ages.
+  await context.setOffline(true);
+  await page.waitForFunction(() => {
+    const title = document.querySelector("#connectionNoticeTitle");
+    const action = document.querySelector("#connectionNoticeAction");
+    return navigator.onLine === false &&
+      title?.textContent?.trim() === "You're offline" &&
+      action instanceof HTMLButtonElement && !action.hidden &&
+      document.querySelector("#connectionPill")?.dataset.state === "error";
+  }, null, { timeout: 15_000 });
+  const disconnectedPreview = await page.locator("#videoPreview").evaluate((element) => ({
+    filter: getComputedStyle(element).filter,
+    stageClass: element.parentElement?.className || "",
+  }));
+  assert.equal(disconnectedPreview.filter, "none",
+    "camera preview must remain sharp during forced disconnect; " + JSON.stringify(disconnectedPreview));
+  assert.ok(disconnectedPreview.stageClass.includes("recovery-preview-clear"),
+    "forced disconnect must keep recovery preview clear");
+  await page.waitForFunction(() => (window.__askmoinaSocketClosures || []).length >= 1,
+    null, { timeout: 10_000 });
+
+  await context.setOffline(false);
+  await page.waitForFunction(() => navigator.onLine === true &&
+    document.querySelector("#connectionNoticeTitle")?.textContent?.trim() === "Network restored",
+    null, { timeout: 15_000 });
+  await page.locator("#connectionNoticeAction").click();
+  await page.waitForFunction(() => document.querySelector("#connectionPill")?.dataset.state === "live",
+    null, { timeout: 45_000 });
+  await page.waitForFunction(() => {
+    const stage = document.querySelector("#videoPreview")?.parentElement;
+    return Boolean(stage && !stage.classList.contains("recovery-preview-clear") &&
+      document.querySelector("#connectionNotice")?.hidden);
+  }, null, { timeout: 10_000 });
+  await page.waitForTimeout(500);
+  const forcedRecoveryDiagnostics = await page.evaluate(() => {
+    const signals = window.__askmoinaConnectionSignals || [];
+    return {
+      state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
+      noticeVisible: Boolean(document.querySelector("#connectionNotice") && !document.querySelector("#connectionNotice").hidden),
+      openSocketCount: (window.__askmoinaContinuitySockets || []).filter((candidate) => candidate.readyState === WebSocket.OPEN).length,
+      resumedSignals: signals.filter((signal) => signal.state === "resumed").length,
+      resumingSignals: signals.filter((signal) => signal.state === "resuming").length,
+      socketClosures: (window.__askmoinaSocketClosures || []).slice(-5),
+    };
+  });
+  assert.equal(liveSockets.length, 2,
+    "one network interruption must produce exactly one recovery socket; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(closedSockets.length, 1,
+    "only the intentionally interrupted browser socket may close; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(forcedRecoveryDiagnostics.openSocketCount, 1,
+    "recovery must leave exactly one open browser socket; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(forcedRecoveryDiagnostics.resumedSignals, 1,
+    "recovery must emit one resumed signal, not loop; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.ok(forcedRecoveryDiagnostics.resumingSignals <= 1,
+    "recovery must not enter repeated resuming loops; " + JSON.stringify(forcedRecoveryDiagnostics));
+  assert.equal(forcedRecoveryDiagnostics.state, "live", "the new session must finish setup before returning to LIVE");
+  assert.equal(forcedRecoveryDiagnostics.noticeVisible, false, "successful recovery must clear the reconnect notice");
+  console.log("Production forced-disconnect recovery: PASS (1 network loss, 1 recovered socket, 1 resumed signal, no stuck UI).");
+
   const sessionStartedAt = Date.now();
   await page.evaluate(() => {
     const pill = document.querySelector("#connectionPill");
@@ -650,16 +711,17 @@ try {
     assistantAudioFrames,
     continuityReplyAudioFrames: assistantAudioFrames - assistantAudioFramesBeforeTurn,
   }));
-  assert.equal(finalState, "live", "Live session should still be active after 155 seconds");
+  assert.equal(finalState, "live", "recovered Live session should remain active through the 155-second window");
   assert.equal(buttonPressed, "true", "call controls should remain in active state");
-  assert.deepEqual(closedSockets, [], "browser-facing Live socket must not close during the continuity window");
+  assert.equal(closedSockets.length, 1, "only the deliberate network interruption may close a browser socket");
+  assert.equal(liveSockets.length, 2, "exactly one recovered browser-facing socket should exist");
   assert.ok(diagnostics.timeline.some((item) => item.state === "live"),
-    "the browser must have entered the live state");
+    "the browser must enter LIVE after provider setup");
   assert.ok(diagnostics.timeline.every((item) => ["live", "connecting"].includes(item.state)),
-    "the session must not fall back to ready/error during continuity");
+    "the recovered session must not fall back to a stuck ready/error state");
   assert.equal(diagnostics.noticeVisible, false,
     "no stale reconnect overlay should remain after a stable long-running session");
-  console.log("Production audiovisual Live continuity: PASS (over 155 seconds, two completed spoken turns each received new assistant audio, browser socket stayed open).");
+  console.log("Production audiovisual Live recovery + continuity: PASS (forced network loss, one socket recovery, two completed post-170-second spoken turns with fresh assistant audio, no stale UI/resume loop).");
 
   await page.locator("#toggleCopilot").click();
   await page.waitForTimeout(700);

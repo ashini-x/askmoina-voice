@@ -22,6 +22,7 @@ import { SingleFlight } from "./sessions/single-flight";
 import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
+import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 
 export { UserState } from "./sessions/user-state";
@@ -1140,6 +1141,7 @@ async function handleVoiceSocket(
   let guardHeartbeatInFlight = false;
   let clientAttached = true;
   let clientNeedsResumeSetup = false;
+  let clientResumeSetupReceived = false;
   let lastClientDetachedAt = 0;
   let detachedClientTimeout: ReturnType<typeof setTimeout> | null = null;
   const pendingClientFrames: string[] = [];
@@ -1171,6 +1173,16 @@ async function handleVoiceSocket(
     }
 
     const notice = getUserFacingDisconnectNotice(reason, reservation.maxDurationSeconds, code);
+    // Closing during a resume attempt must also close the old upstream socket and drop
+    // retained audio/control queues, not just the currently selected candidate socket.
+    const staleProviderSocket = previousUpstreamSocket;
+    previousUpstreamSocket = null;
+    resumptionInProgress = false;
+    replayInProgress = false;
+    providerRotationPending = false;
+    pendingDrainInProgress = false;
+    clientNeedsResumeSetup = false;
+    clientResumeSetupReceived = false;
     const analyticsOutcome = reason === "Session time limit reached" ? "session_timeout" :
       (reason === "Client disconnected" && code === 1000 ? (analyticsSetupComplete ? "completed" : "disconnected_before_setup") :
       (code === 1008 ? "protocol_error" : "provider_error"));
@@ -1218,15 +1230,29 @@ async function handleVoiceSocket(
 
     const safeCode = safeWebSocketCloseCode(code);
     try {
-      if (workerSocket.readyState === WebSocket.OPEN) workerSocket.close(safeCode, reason.slice(0, 100));
+      if (workerSocket.readyState === WebSocket.OPEN || workerSocket.readyState === WebSocket.CONNECTING) {
+        workerSocket.close(safeCode, reason.slice(0, 100));
+      }
     } catch {
       // Ignore duplicate close races.
     }
     try {
-      if (upstreamSocket.readyState === WebSocket.OPEN) upstreamSocket.close(safeCode, reason.slice(0, 100));
+      if (upstreamSocket.readyState === WebSocket.OPEN || upstreamSocket.readyState === WebSocket.CONNECTING) {
+        upstreamSocket.close(safeCode, reason.slice(0, 100));
+      }
     } catch {
       // Ignore duplicate close races.
     }
+    if (staleProviderSocket && staleProviderSocket !== upstreamSocket &&
+        (staleProviderSocket.readyState === WebSocket.OPEN || staleProviderSocket.readyState === WebSocket.CONNECTING)) {
+      try { staleProviderSocket.close(safeCode, "Stale Live recovery socket"); } catch { /* stale socket cleanup */ }
+    }
+    upstreamReplayBuffer.splice(0);
+    upstreamReplayBufferChars = 0;
+    pendingUpstreamMessages.splice(0);
+    pendingUpstreamMessagesChars = 0;
+    pendingClientFrames.splice(0);
+    pendingClientFramesChars = 0;
     ctx.waitUntil(releaseVoiceSession(env, reservation));
   };
 
@@ -1293,6 +1319,7 @@ async function handleVoiceSocket(
     workerSocket.accept();
     clientAttached = !resumingClient;
     clientNeedsResumeSetup = resumingClient;
+    clientResumeSetupReceived = false;
     if (clientAttached && detachedClientTimeout !== null) {
       clearTimeout(detachedClientTimeout);
       detachedClientTimeout = null;
@@ -1324,9 +1351,24 @@ async function handleVoiceSocket(
     }
   }
 
-  function flushResumedClientSetup() {
-    if (closed || !clientNeedsResumeSetup) return;
+  function clientReattachmentDecision() {
+    return decideClientReattachment({
+      relayClosed: closed,
+      clientSetupReceived: clientResumeSetupReceived,
+      providerSetupReady: upstreamSetupReady,
+      providerSocketOpen: upstreamSocket.readyState === WebSocket.OPEN,
+      resumptionInProgress,
+      replayInProgress,
+      resumeHandleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+      securedSetupAvailable: Boolean(securedSetupForResume),
+    });
+  }
+
+  function flushResumedClientSetup(): boolean {
+    // Never announce LIVE while setup/resumption/replay is still pending.
+    if (!clientNeedsResumeSetup || clientReattachmentDecision() !== "confirm_resumed") return false;
     clientNeedsResumeSetup = false;
+    clientResumeSetupReceived = false;
     clientAttached = true;
     if (detachedClientTimeout !== null) {
       clearTimeout(detachedClientTimeout);
@@ -1339,6 +1381,7 @@ async function handleVoiceSocket(
     sendClientFrame(JSON.stringify({ setup_complete: true, resumed: true }));
     flushPendingClientFrames();
     void drainPendingUpstreamMessages();
+    return true;
   }
 
   // Replay indexes are local bookkeeping only: clientMessageIndex is not a field in
@@ -1786,7 +1829,17 @@ async function handleVoiceSocket(
         closeBoth(1008, "Invalid Live resume setup");
         return;
       }
-      flushResumedClientSetup();
+      clientResumeSetupReceived = true;
+      const reattachment = clientReattachmentDecision();
+      if (reattachment === "confirm_resumed") {
+        flushResumedClientSetup();
+      } else if (reattachment === "resume_provider") {
+        void resumeLiveUpstream("browser_reattach");
+      } else if (reattachment === "replace_session") {
+        closeBoth(1011, "Live session requires replacement");
+      }
+      // Delayed provider setup/resumption retains this request. Its completion path
+      // decides whether the original can resume or a replacement is required.
       return;
     }
 
@@ -2136,16 +2189,25 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
 
     if (providerMessage?.goAway) {
+      const rotationDecision = decideProviderRotation(
+        replayInProgress,
+        Boolean(lastSessionResumptionCheckpoint?.handle),
+        Boolean(securedSetupForResume),
+      );
       console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
-        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber, replayInProgress,
+        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+        securedSetupAvailable: Boolean(securedSetupForResume),
+        frameNumber,
+        replayInProgress,
+        decision: rotationDecision,
       }));
-      if (replayInProgress) {
+      if (rotationDecision === "defer") {
         providerRotationPending = true;
         console.warn("[AskMoina] Deferring provider rotation until paced replay finishes");
         return;
       }
-      if (!lastSessionResumptionCheckpoint?.handle) {
-        closeBoth(1011, "Live session resumption handle unavailable");
+      if (rotationDecision === "replace_session") {
+        closeBoth(1011, "Live session requires replacement");
         return;
       }
       void resumeLiveUpstream("provider_go_away");
@@ -2188,12 +2250,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
           try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
         }
-        try {
-          sendClientFrame(JSON.stringify({ connection_status: {
-            state: "resumed",
-            message: "Back live. Your conversation is continuing.",
-          } }));
-        } catch { /* browser may already be closing */ }
+        if (clientNeedsResumeSetup) {
+          if (clientResumeSetupReceived) flushResumedClientSetup();
+        } else {
+          try {
+            sendClientFrame(JSON.stringify({ connection_status: {
+              state: "resumed",
+              message: "Back live. Your conversation is continuing.",
+            } }));
+          } catch { /* browser may already be closing */ }
+        }
         if (providerRotationPending) {
           providerRotationPending = false;
           void resumeLiveUpstream("provider_go_away");
@@ -2206,6 +2272,12 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         upstreamConnectedToSetupMs: Date.now() - upstreamStartedAt,
         resumed: resumedSessionSetupComplete,
       }));
+      // A client can reattach while the original provider setup is delayed. Complete
+      // that handshake only after setupComplete arrives on the real provider socket.
+      if (!resumedSessionSetupComplete && clientNeedsResumeSetup && clientResumeSetupReceived) {
+        flushResumedClientSetup();
+        return;
+      }
     }
 
     if (providerMessage?.error) {
@@ -2215,6 +2287,15 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         status: providerError.status,
         message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
       }));
+      if (resumptionInProgress && isExpiredSessionResumptionError(providerError)) {
+        console.warn("[AskMoina] Provider rejected the Live resume handle; selecting the fresh-session path", JSON.stringify({
+          code: providerError.code,
+          status: providerError.status,
+          handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
+        }));
+        closeBoth(1011, "Live session requires replacement");
+        return;
+      }
     }
 
     // Search calls are handled by the Worker in both standard voice and Co-Pilot.
@@ -2570,7 +2651,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     if (closed || resumptionInProgress || replayInProgress) return;
     const checkpoint = lastSessionResumptionCheckpoint;
     if (!securedSetupForResume || !checkpoint?.handle) {
-      closeBoth(1011, "Live session cannot be resumed safely");
+      closeBoth(1011, "Live session requires replacement");
       return;
     }
     if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpoint.lastConsumedClientMessageIndex)) {
@@ -2646,7 +2727,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     }
     resumptionInProgress = false;
     previousUpstreamSocket = null;
-    closeBoth(1011, "Live session could not be resumed. Please restart Co-Pilot.");
+    closeBoth(1011, "Live session requires replacement");
   }
   attachUpstreamHandlers(upstreamSocket);
   registerRelay?.({
@@ -2656,7 +2737,8 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       return true;
     },
     isClosed: () => closed,
-    isAttached: () => clientAttached && workerSocket.readyState === WebSocket.OPEN,
+    // A socket in its one pending setup handshake owns the attachment slot too.
+    isAttached: () => (clientAttached || clientNeedsResumeSetup) && workerSocket.readyState === WebSocket.OPEN,
     detachedAt: () => lastClientDetachedAt,
   });
 
@@ -2689,6 +2771,10 @@ export class LiveSessionRelay {
     const wantsResume = new URL(request.url).searchParams.get("resume") === "1";
     if (wantsResume && this.activeRelay && !this.activeRelay.isClosed()) {
       const wasAttached = this.activeRelay.isAttached();
+      if (!shouldAcceptBrowserReattachment(this.activeRelay.isClosed(), wasAttached)) {
+        console.warn("[AskMoina] Rejected duplicate browser reattachment while the existing socket owns the session");
+        return json({ error: "live_session_already_attached" }, 409);
+      }
       const detachedForMs = this.activeRelay.detachedAt() ? Date.now() - this.activeRelay.detachedAt() : 0;
       const pair = new WebSocketPair();
       const [clientSocket, relaySocket] = Object.values(pair) as [WebSocket, WebSocket];

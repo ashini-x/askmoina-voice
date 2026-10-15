@@ -11,7 +11,8 @@ export interface UserDisconnectNotice {
     | "invalid_protocol"
     | "provider_protocol_error"
     | "input_replay_window_lost"
-    | "silent_response_recovery_failed";
+    | "silent_response_recovery_failed"
+    | "session_recovery_failed";
   message: string;
 }
 
@@ -61,11 +62,25 @@ export function getUserFacingDisconnectNotice(
     };
   }
 
+  if ([
+    "Live session requires replacement",
+    "Live session cannot be resumed safely",
+    "Live session resumption handle unavailable",
+    "Live session could not be resumed. Please restart Co-Pilot.",
+    "Live session replay was interrupted. Please reconnect.",
+  ].includes(reason)) {
+    return {
+      state: "ended",
+      code: "session_recovery_failed",
+      message: "The previous live session could not be resumed. I'm opening a fresh session now. Please repeat your last request if it was interrupted.",
+    };
+  }
+
   if (reason === "Voice provider socket error") {
     return {
       state: "ended",
       code: "provider_error",
-      message: "The voice service encountered a connection error. Tap Start talking to start a new conversation.",
+      message: "The voice service encountered a connection error. I'm restoring the live session now. Tap Start talking if recovery fails.",
     };
   }
 

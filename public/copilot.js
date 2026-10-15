@@ -437,6 +437,9 @@
   let starting = false;
   let active = false;
   let stopping = false;
+  // Invalidate pending permission/preflight promises so stale starts cannot own media or sockets.
+  let copilotStartGeneration = 0;
+  let forceFreshSessionOnReconnect = false;
   let setupReady = false;
   let recoveryPreviewClear = false;
   let setupTimer = null;
@@ -772,6 +775,8 @@
       showConnectionNotice("You're offline", "Waiting for your network. Tap Reconnect now when you're back online.", "slow");
       return;
     }
+    // error, close, and setup timeout may report the same incident. One retry timer owns it.
+    if (reconnectTimer !== null) return;
     if (automaticReconnectAttempts >= 3) {
       automaticReconnectAttempts = 0;
       stopCopilot(false, message || "The connection could not be restored. Check your network and try again.", "error", true);
@@ -787,11 +792,19 @@
     stage.classList.add("is-connecting");
     setConnectionState("RECONNECTING", "connecting");
     setStatus(message || "The network is taking longer than usual. Reconnecting…", "warning");
-    showConnectionNotice("Network is slow", "The connection was interrupted. Checking the network and reconnecting…", "slow");
+    showConnectionNotice("Network is slow", message || "The connection was interrupted. Checking the network and reconnecting…", "slow");
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null;
       if (active || starting) return;
-      isAutomaticRetry = true;
+      if (forceFreshSessionOnReconnect) {
+        // A missing/expired handle or unsafe replay means a genuinely new session.
+        // Never replay buffered audio or label the replacement as the same conversation.
+        liveSessionId = null;
+        forceFreshSessionOnReconnect = false;
+        isAutomaticRetry = false;
+      } else {
+        isAutomaticRetry = true;
+      }
       void startCopilot();
     }, automaticReconnectAttempts === 1 ? 700 : automaticReconnectAttempts === 2 ? 1400 : 2500);
   }
@@ -2316,6 +2329,8 @@
   }
 
   function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false) {
+    copilotStartGeneration += 1;
+    if (userInitiated) forceFreshSessionOnReconnect = false;
     lastSessionEndedAt = Date.now();
     const wasConnected = active && setupReady;
     if (wasConnected) recoveryPreviewClear = true;
@@ -2826,6 +2841,7 @@
   }
 
   async function handleServerMessage(raw, sessionSocket) {
+    if (socket !== sessionSocket || stopping) return;
     let message;
     try {
       let payload;
@@ -2895,6 +2911,22 @@
     }
     if (message.connection_status && message.connection_status.state === "ended") {
       if (liveSearchActive) cancelLiveSearchProgress();
+      const disconnectCode = message.connection_status.code;
+      if ([
+        "provider_disconnected",
+        "provider_error",
+        "client_connection_error",
+        "session_recovery_failed",
+        "resume_handle_unavailable",
+        "input_replay_window_lost",
+      ].includes(disconnectCode)) {
+        forceFreshSessionOnReconnect =
+          disconnectCode === "session_recovery_failed" ||
+          disconnectCode === "resume_handle_unavailable" ||
+          disconnectCode === "input_replay_window_lost";
+        retryConnection(message.connection_status.message || "The live connection was interrupted. Restoring the connection…");
+        return;
+      }
       stopCopilot(false, message.connection_status.message || "The live session ended. Start again to continue.", "warning");
       return;
     }
@@ -3117,10 +3149,10 @@
   }
 
   async function startCopilot() {
-    if (starting || active) {
-      if (active || starting) stopCopilot(true);
-      return;
-    }
+    // Two timer/event callbacks must not cancel and restart an awaited start operation.
+    if (starting || active) return;
+    const startGeneration = ++copilotStartGeneration;
+    const isCurrentStart = () => startGeneration === copilotStartGeneration && starting && !stopping;
     const automaticRetry = isAutomaticRetry;
     isAutomaticRetry = false;
     if (!automaticRetry || !liveSessionId) liveSessionId = crypto.randomUUID();
@@ -3134,6 +3166,7 @@
     stage.classList.add("is-connecting");
     syncDisconnectedPreviewAppearance();
     if (previewPromise) { try { await previewPromise; } catch (_) {} }
+    if (!isCurrentStart()) return;
     recordRealityLoopEvent("session_starting");
     clearOverlay();
     setControls("Starting…", true);
@@ -3146,6 +3179,7 @@
       // Keep preflight inside the guarded start path so a rejected fetch cannot
       // strand the camera stage in a stale connecting/recovery state.
       const preflight = await refreshAvailabilityAfterRelease();
+      if (!isCurrentStart()) return;
       if (preflight && !preflight.available) {
         starting = false;
         recoveryPreviewClear = true;
@@ -3179,6 +3213,10 @@
           autoGainControl: true
         }
       });
+      if (!isCurrentStart()) {
+        captured.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
+        return;
+      }
       if (previewTrack && captured.getAudioTracks()[0]) {
         microphoneStream = new MediaStream([previewTrack, ...captured.getAudioTracks()]);
         previewStream = null;
@@ -3191,6 +3229,7 @@
       }
       video.srcObject = microphoneStream;
       await video.play();
+      if (!isCurrentStart()) return;
       recordRealityLoopEvent("camera_ready");
       initializeZoom();
       stage.classList.add("has-camera");
@@ -3199,7 +3238,9 @@
       const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextConstructor) throw new Error("This browser does not support live audio.");
       audioContext = new AudioContextConstructor();
-      await audioContext.resume();
+      const startingAudioContext = audioContext;
+      await startingAudioContext.resume();
+      if (!isCurrentStart()) return;
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -3210,7 +3251,7 @@
       sessionSocket.binaryType = "arraybuffer";
 
       sessionSocket.addEventListener("open", () => {
-        if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
+        if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         const setupPayload = { setup: {}, copilot_mode: true };
         try {
           const memory = readOptedInMemoryContext();
@@ -3220,7 +3261,7 @@
         startRelayKeepalive(sessionSocket);
         setStatus("Camera ready. Connecting securely to Moina…");
         setupTimer = window.setTimeout(() => {
-          if (!setupReady && socket === sessionSocket) {
+          if (isCurrentStart() && !setupReady && socket === sessionSocket) {
             retryConnection("The connection is taking longer than usual. Checking the network and trying again…");
           }
         }, 15000);
@@ -3256,6 +3297,7 @@
       if (sessionSocket && sessionSocket.readyState < WebSocket.CLOSING) {
         try { sessionSocket.close(); } catch (_) {}
       }
+      if (!isCurrentStart()) return;
       cleanupMedia();
       starting = false;
       active = false;
@@ -3911,7 +3953,13 @@
       }
       connectionNoticeAction.disabled = true;
       automaticReconnectAttempts = 0;
-      isAutomaticRetry = Boolean(liveSessionId);
+      if (forceFreshSessionOnReconnect) {
+        liveSessionId = null;
+        forceFreshSessionOnReconnect = false;
+        isAutomaticRetry = false;
+      } else {
+        isAutomaticRetry = Boolean(liveSessionId);
+      }
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
       if (active || starting) stopCopilot(false, null, null, true);
