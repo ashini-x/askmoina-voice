@@ -9,7 +9,8 @@ export interface UserDisconnectNotice {
     | "audio_rate_limit"
     | "invalid_client_frame"
     | "invalid_protocol"
-    | "provider_protocol_error";
+    | "provider_protocol_error"
+    | "input_replay_window_lost";
   message: string;
 }
 
@@ -28,6 +29,14 @@ export function getUserFacingDisconnectNotice(
       state: "ended",
       code: "session_timeout",
       message: `This conversation reached its time limit (about ${minutes} minute${minutes === 1 ? "" : "s"}). Tap Start talking to begin another conversation.`,
+    };
+  }
+
+  if (reason === "Live input replay window incomplete") {
+    return {
+      state: "ended",
+      code: "input_replay_window_lost",
+      message: "The connection was interrupted long enough that I could not safely retain every part of the live input. I stopped rather than pretend the task continued. Start Co-Pilot again and show me the task so we can continue safely.",
     };
   }
 
