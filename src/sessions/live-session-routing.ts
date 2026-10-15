@@ -15,3 +15,11 @@ export function liveSessionObjectName(owner: string, sessionId: string): string 
   }
   return "live-v1:" + owner.trim().slice(0, 300) + ":" + normalizedSessionId;
 }
+
+/** Close code reserved by the browser when a retry is handing off the client socket. */
+export const LIVE_CLIENT_RECONNECT_CLOSE_CODE = 4001;
+
+/** Preserve the upstream conversation on reconnect hand-offs and unexplained network drops. */
+export function shouldDetachLiveSessionOnClientClose(code: number, reason: string): boolean {
+  return code === LIVE_CLIENT_RECONNECT_CLOSE_CODE || (code === 1006 && !reason.trim());
+}
