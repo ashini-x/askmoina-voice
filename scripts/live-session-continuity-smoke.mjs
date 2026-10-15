@@ -449,6 +449,8 @@ try {
   assert.ok(turnDispatch.chunksSent > 0, "the real browser microphone must send PCM after the >2-minute boundary");
   assert.ok(microphoneVadObserved && turnDispatch.sent,
     "the actual microphone/VAD path must detect speech onset and end-of-speech on the delayed WAV stimulus");
+  assert.ok(turnDispatch.audioStreamEndFramesSent > 0,
+    "the browser must send Live an explicit end-of-speech marker after the delayed microphone utterance");
 
   // Give the PCM turn its own bounded response window. If it stays silent, send a
   // deterministic text turn over the same open socket to distinguish audio/VAD failure
