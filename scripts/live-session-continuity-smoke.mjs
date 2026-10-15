@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -21,6 +21,7 @@ if (!match) throw new Error("A verified synthetic account cookie is required.");
 let browser;
 let context;
 let page;
+let microphoneFixture;
 const liveSockets = [];
 const closedSockets = [];
 let assistantAudioFrames = 0;
@@ -100,6 +101,37 @@ function synthesizePcm16k(text) {
   }
 }
 
+function createContinuityMicrophoneFixture() {
+  const directory = mkdtempSync(join(tmpdir(), "askmoina-live-mic-"));
+  const wavPath = join(directory, "continuity-mic.wav");
+  const speech = synthesizePcm16k(
+    "Moina, can you hear me clearly? Please answer aloud in one short sentence."
+  );
+  const sampleRate = 16_000;
+  const bytesPerSample = 2;
+  const bytesPerSecond = sampleRate * bytesPerSample;
+  const pcm = Buffer.alloc(180 * bytesPerSecond);
+  // Speak after the live greeting, then remain silent so the independent
+  // post-two-minute PCM relay test can run without microphone overlap.
+  speech.copy(pcm, 25 * bytesPerSecond);
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write("WAVE", 8, "ascii");
+  header.write("fmt ", 12, "ascii");
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(bytesPerSecond, 28);
+  header.writeUInt16LE(bytesPerSample, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36, "ascii");
+  header.writeUInt32LE(pcm.length, 40);
+  writeFileSync(wavPath, Buffer.concat([header, pcm]));
+  return { directory, wavPath };
+}
+
 function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
   const chunks = [];
   for (let offset = 0; offset < pcm.length; offset += chunkBytes) {
@@ -109,12 +141,14 @@ function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
   return chunks;
 }
 try {
+  microphoneFixture = createContinuityMicrophoneFixture();
   browser = await chromium.launch({
     headless: true,
     args: [
       "--no-sandbox",
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
+      `--use-file-for-fake-audio-capture=${microphoneFixture.wavPath}`,
       "--autoplay-policy=no-user-gesture-required"
     ]
   });
@@ -131,6 +165,21 @@ try {
   // Expose only the active test socket so the synthetic can send one deliberate
   // post-start user turn without changing the production UI or logging user content.
   await page.addInitScript(() => {
+    try {
+      const mediaDevices = navigator.mediaDevices;
+      const nativeGetUserMedia = mediaDevices?.getUserMedia?.bind(mediaDevices);
+      if (nativeGetUserMedia) {
+        Object.defineProperty(mediaDevices, "getUserMedia", {
+          configurable: true,
+          writable: true,
+          value: async (constraints) => {
+            const stream = await nativeGetUserMedia(constraints);
+            if (constraints && constraints.audio) window.__askmoinaMicCaptureStartedAt = Date.now();
+            return stream;
+          },
+        });
+      }
+    } catch { /* The smoke fails clearly if capture timing cannot be observed. */ }
     const nativeSend = WebSocket.prototype.send;
     // This handle is test-only: it lets the synthetic inject real PCM speech while
     // the fake microphone is paused, without the observer's silence filter dropping it.
@@ -315,6 +364,32 @@ try {
     }
   });
 
+  await page.waitForFunction(
+    () => Number.isFinite(window.__askmoinaMicCaptureStartedAt),
+    null,
+    { timeout: 30_000 }
+  );
+  const microphoneCaptureStartedAt = await page.evaluate(() => window.__askmoinaMicCaptureStartedAt);
+  await page.waitForTimeout(Math.max(0, microphoneCaptureStartedAt + 23_000 - Date.now()));
+  const assistantAudioFramesBeforeMicrophoneTurn = assistantAudioFrames;
+  const inputTranscriptionsBeforeMicrophoneTurn = inputTranscriptionFrames;
+  while (Date.now() < microphoneCaptureStartedAt + 50_000 &&
+         assistantAudioFrames <= assistantAudioFramesBeforeMicrophoneTurn) {
+    await page.waitForTimeout(250);
+  }
+  const microphoneTurnAudioFrames = assistantAudioFrames - assistantAudioFramesBeforeMicrophoneTurn;
+  const microphoneTurnTranscriptionFrames =
+    inputTranscriptionFrames - inputTranscriptionsBeforeMicrophoneTurn;
+  console.log("Production microphone/VAD turn: " + JSON.stringify({
+    audioFramesReceived: microphoneTurnAudioFrames,
+    inputTranscriptionFrames: microphoneTurnTranscriptionFrames,
+    elapsedMs: Date.now() - sessionStartedAt,
+    microphoneCaptureStartedAt,
+    providerErrors,
+  }));
+  assert.ok(microphoneTurnAudioFrames > 0,
+    "speech captured by Chromium's real microphone route must traverse local VAD and produce assistant audio");
+
   // Keep real camera/microphone tracks active beyond the reported ~2-minute cutoff.
   // Then send a deterministic user turn and verify the provider actually speaks again.
   // A silent fake microphone alone cannot verify compression/continuity by itself.
@@ -349,6 +424,8 @@ try {
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
     statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
     status: (document.querySelector("#status")?.textContent || "").slice(0, 120),
+    audioTracksLive: Boolean(document.querySelector("#videoPreview")?.srcObject?.getAudioTracks?.().some((track) => track.readyState === "live")),
+    cameraTracksLive: Boolean(document.querySelector("#videoPreview")?.srcObject?.getVideoTracks?.().some((track) => track.readyState === "live")),
     noticeVisible: Boolean(document.querySelector("#connectionNotice") && !document.querySelector("#connectionNotice").hidden),
     noticeKind: document.querySelector("#connectionNotice")?.dataset.kind || "none",
     noticeTitle: (document.querySelector("#connectionNoticeTitle")?.textContent || "").slice(0, 80),
@@ -382,6 +459,8 @@ try {
     recentFrameShapes,
     providerErrors,
   }));
+  assert.equal(beforeTurnDiagnostics.audioTracksLive, true, "the microphone track must remain live beyond two minutes");
+  assert.equal(beforeTurnDiagnostics.cameraTracksLive, true, "the camera track must remain live beyond two minutes");
   assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the post-2-minute speech turn");
   assert.ok(turnDispatch.chunksSent > 0, "the synthetic must send a real PCM speech turn");
 
@@ -507,7 +586,7 @@ try {
     "the session must not fall back to ready/error during continuity");
   assert.equal(diagnostics.noticeVisible, false,
     "no stale reconnect overlay should remain after a stable long-running session");
-  console.log("Production audiovisual Live continuity: PASS (155 seconds, post-start AI reply, browser socket stayed open).");
+  console.log("Production audiovisual Live continuity: PASS (155+ seconds, real microphone/VAD turn plus post-two-minute PCM turn, camera/mic tracks live, browser socket stayed open).");
 
   await page.locator("#toggleCopilot").click();
   await page.waitForTimeout(700);
@@ -534,4 +613,5 @@ try {
 } finally {
   if (context) await context.close().catch(() => undefined);
   if (browser) await browser.close().catch(() => undefined);
+  if (microphoneFixture?.directory) rmSync(microphoneFixture.directory, { recursive: true, force: true });
 }
