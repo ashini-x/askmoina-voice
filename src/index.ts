@@ -2,6 +2,8 @@ import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
+import { parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isReplayWindowComplete, trimReplayBufferToLimit, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
+import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { TokenBucket } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
 import { handleContinuityRequest, ensureVisitor, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
@@ -1073,10 +1075,10 @@ async function handleVoiceSocket(
   let setupCompleteReceived = false;
   let upstreamSetupReady = false;
   let securedSetupForResume: Record<string, unknown> | null = null;
-  let lastSessionResumptionHandle: string | null = null;
-  let pendingResumeSessionHandle: string | null = null;
+  // A handle and the provider's consumed-message cursor are one inseparable checkpoint.
+  let lastSessionResumptionCheckpoint: SessionResumptionCheckpoint | null = null;
+  let pendingResumeSessionCheckpoint: SessionResumptionCheckpoint | null = null;
   // Google requires one-based client message indexes; reset these per resumed connection.
-  let lastConsumedClientMessageIndex = 0;
   let nextClientMessageIndex = 1;
   const upstreamReplayBuffer: Array<{ index: number; encoded: string }> = [];
   let upstreamReplayBufferChars = 0;
@@ -1200,12 +1202,17 @@ async function handleVoiceSocket(
   // Replay indexes are local bookkeeping only: clientMessageIndex is not a field in
   // the wire protocol. Index only messages actually sent upstream so checkpoint indexes
   // stay aligned with the order the provider saw.
+  function checkpointConsumedMessageIndex() {
+    return lastSessionResumptionCheckpoint?.lastConsumedClientMessageIndex ?? 0;
+  }
+
   function pruneConsumedReplayMessages() {
-    while (upstreamReplayBuffer.length && upstreamReplayBuffer[0].index <= lastConsumedClientMessageIndex) {
+    const consumedIndex = checkpointConsumedMessageIndex();
+    while (upstreamReplayBuffer.length && upstreamReplayBuffer[0].index <= consumedIndex) {
       const removed = upstreamReplayBuffer.shift()!;
       upstreamReplayBufferChars -= removed.encoded.length;
     }
-    if (highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex) highestEvictedClientMessageIndex = -1;
+    if (highestEvictedClientMessageIndex <= consumedIndex) highestEvictedClientMessageIndex = -1;
   }
 
   function rememberAndSendUpstreamMessage(payload: Record<string, unknown>) {
@@ -1213,14 +1220,27 @@ async function handleVoiceSocket(
     const encoded = JSON.stringify(payload);
     upstreamReplayBuffer.push({ index, encoded });
     upstreamReplayBufferChars += encoded.length;
-    while (upstreamReplayBufferChars > MAX_RESUME_REPLAY_CHARS && upstreamReplayBuffer.length > 0) {
-      const removed = upstreamReplayBuffer.shift()!;
-      upstreamReplayBufferChars -= removed.encoded.length;
-      if (removed.index > lastConsumedClientMessageIndex) {
-        highestEvictedClientMessageIndex = Math.max(highestEvictedClientMessageIndex, removed.index);
-      }
-    }
+    const trimmed = trimReplayBufferToLimit(
+      upstreamReplayBuffer,
+      MAX_RESUME_REPLAY_CHARS,
+      upstreamReplayBufferChars,
+      checkpointConsumedMessageIndex(),
+      highestEvictedClientMessageIndex,
+    );
+    upstreamReplayBufferChars = trimmed.bufferChars;
+    highestEvictedClientMessageIndex = trimmed.highestEvictedClientMessageIndex;
+
+    // Send the current packet before stopping, but never keep claiming continuity after
+    // an unacknowledged packet has been evicted from the only replay copy.
     upstreamSocket.send(encoded);
+    if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpointConsumedMessageIndex())) {
+      console.warn("[AskMoina] Live replay window exceeded; continuity can no longer be guaranteed", JSON.stringify({
+        highestEvictedClientMessageIndex,
+        checkpointConsumedIndex: checkpointConsumedMessageIndex(),
+        bufferedMessageCount: upstreamReplayBuffer.length,
+      }));
+      closeBoth(1011, "Live input replay window incomplete");
+    }
   }
 
   function queuePendingUpstreamMessage(payload: Record<string, unknown>) {
@@ -1428,18 +1448,37 @@ async function handleVoiceSocket(
     return true;
   }
 
-  function replayUnconsumedMessages(reindexForNewConnection = false) {
-    if (upstreamSocket.readyState !== WebSocket.OPEN) return;
-    const replay = upstreamReplayBuffer.filter((item) => item.index > lastConsumedClientMessageIndex);
-    const replayWindowComplete = highestEvictedClientMessageIndex <= lastConsumedClientMessageIndex;
+  function replayUnconsumedMessages(reindexForNewConnection = false): boolean {
+    if (upstreamSocket.readyState !== WebSocket.OPEN) return false;
+    const checkpointConsumedIndex = checkpointConsumedMessageIndex();
+    const replayWindowComplete = isReplayWindowComplete(
+      highestEvictedClientMessageIndex,
+      checkpointConsumedIndex,
+    );
+    if (!replayWindowComplete) {
+      console.warn("[AskMoina] Refusing unsafe Live input replay", JSON.stringify({
+        highestEvictedClientMessageIndex,
+        checkpointConsumedIndex,
+        replayedMessageCount: 0,
+      }));
+      closeBoth(1011, "Live input replay window incomplete");
+      return false;
+    }
+    const replay = upstreamReplayBuffer.filter((item) => item.index > checkpointConsumedIndex);
     if (reindexForNewConnection) {
-      // The resumption handle already contains acknowledged context; send only unconsumed
-      // frames and restart their client-managed sequence at 1 on this WebSocket connection.
+      // The old handle includes context only through its paired checkpoint. Rebase all
+      // unacknowledged input to the new socket's one-based sequence before sending it.
+      const resumedHandle = pendingResumeSessionCheckpoint?.handle ?? lastSessionResumptionCheckpoint?.handle;
+      if (!resumedHandle) {
+        closeBoth(1011, "Live session cannot be resumed safely");
+        return false;
+      }
       upstreamReplayBuffer.splice(0);
       upstreamReplayBufferChars = 0;
-      lastConsumedClientMessageIndex = 0;
       nextClientMessageIndex = 1;
       highestEvictedClientMessageIndex = -1;
+      lastSessionResumptionCheckpoint = { handle: resumedHandle, lastConsumedClientMessageIndex: 0 };
+      pendingResumeSessionCheckpoint = null;
       for (const item of replay) {
         const index = nextClientMessageIndex++;
         upstreamReplayBuffer.push({ index, encoded: item.encoded });
@@ -1453,10 +1492,12 @@ async function handleVoiceSocket(
       replayedMessageCount: replay.length,
       replayedChars: replay.reduce((total, item) => total + item.encoded.length, 0),
       firstReplayIndex: reindexForNewConnection && replay.length ? 1 : replay[0]?.index ?? null,
-      lastConsumedClientMessageIndex,
+      checkpointConsumedIndex,
+      nextCheckpointConsumedIndex: checkpointConsumedMessageIndex(),
       replayWindowComplete,
       indexReset: reindexForNewConnection,
     }));
+    return true;
   }
 
   function drainPendingUpstreamMessages() {
@@ -1529,11 +1570,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   memoryContext,
 );
         copilotMode = enableCopilotForSetup;
+        const generationConfig = voicePreviewRequested
+          ? buildVoiceGenerationConfig(requestedPreviewVoice)
+          : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
-          generationConfig: voicePreviewRequested
-            ? buildVoiceGenerationConfig(requestedPreviewVoice)
-            : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID),
+          // High model-side media resolution is limited to camera Co-Pilot sessions;
+          // ordinary audio-only voice sessions keep their existing token/latency profile.
+          generationConfig: configureCopilotMediaResolution(generationConfig, enableCopilotForSetup),
           // Route both modes through the same server-executed grounded search function.
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
           tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
@@ -1779,30 +1823,39 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     if (providerMessage?.sessionResumptionUpdate) {
       const update = providerMessage.sessionResumptionUpdate;
-      if (update.resumable === true && typeof update.newHandle === "string" && update.newHandle.length > 0 && update.newHandle.length <= 4_096) {
-        if (resumptionInProgress) pendingResumeSessionHandle = update.newHandle;
-        else lastSessionResumptionHandle = update.newHandle;
-      }
-      const consumedValue = update.lastConsumedClientMessageIndex;
-      const consumedIndex = typeof consumedValue === "number" ? consumedValue :
-        typeof consumedValue === "string" && consumedValue.trim() ? Number(consumedValue) : Number.NaN;
-      if (!resumptionInProgress && Number.isSafeInteger(consumedIndex) && consumedIndex >= lastConsumedClientMessageIndex) {
-        lastConsumedClientMessageIndex = consumedIndex;
-        pruneConsumedReplayMessages();
+      const candidateCheckpoint = parseSessionResumptionCheckpoint(update);
+      let checkpointAccepted = false;
+      if (candidateCheckpoint) {
+        if (resumptionInProgress) {
+          if (canAdvanceSessionResumptionCheckpoint(pendingResumeSessionCheckpoint, candidateCheckpoint)) {
+            pendingResumeSessionCheckpoint = candidateCheckpoint;
+            checkpointAccepted = true;
+          }
+        } else if (
+          candidateCheckpoint.lastConsumedClientMessageIndex <= nextClientMessageIndex - 1 &&
+          canAdvanceSessionResumptionCheckpoint(lastSessionResumptionCheckpoint, candidateCheckpoint)
+        ) {
+          // Advance the handle and replay cursor atomically. Empty/invalid handles cannot
+          // prune input because their consumed index does not describe a resumable snapshot.
+          lastSessionResumptionCheckpoint = candidateCheckpoint;
+          pruneConsumedReplayMessages();
+          checkpointAccepted = true;
+        }
       }
       console.info("[AskMoina] Live session resumption checkpoint", JSON.stringify({
-        handleAvailable: Boolean(lastSessionResumptionHandle),
+        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
         resumable: update.resumable === true,
+        checkpointAccepted,
         pendingReplayMessages: upstreamReplayBuffer.length,
-        lastConsumedClientMessageIndex,
+        checkpointConsumedIndex: checkpointConsumedMessageIndex(),
       }));
     }
 
     if (providerMessage?.goAway) {
       console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
-        handleAvailable: Boolean(lastSessionResumptionHandle), frameNumber,
+        handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle), frameNumber,
       }));
-      if (!lastSessionResumptionHandle) {
+      if (!lastSessionResumptionCheckpoint?.handle) {
         closeBoth(1011, "Live session resumption handle unavailable");
         return;
       }
@@ -1816,17 +1869,16 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       analyticsSetupComplete = true;
       requestToSetupMs = Date.now() - analyticsStartedAt;
       if (resumedSessionSetupComplete) {
-        if (pendingResumeSessionHandle) lastSessionResumptionHandle = pendingResumeSessionHandle;
-        pendingResumeSessionHandle = null;
         const oldSocket = previousUpstreamSocket;
         previousUpstreamSocket = null;
         resumptionInProgress = false;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         if (resolveResumeSetup) { const resolve = resolveResumeSetup; resolveResumeSetup = null; resolve(true); }
-        replayUnconsumedMessages(true);
+        const replayReady = replayUnconsumedMessages(true);
         if (oldSocket && oldSocket !== upstreamSocket && oldSocket.readyState === WebSocket.OPEN) {
           try { oldSocket.close(1000, "Live session resumed on replacement socket"); } catch { /* stale socket cleanup */ }
         }
+        if (!replayReady) return;
         drainPendingUpstreamMessages();
         try {
           workerSocket.send(JSON.stringify({ connection_status: {
@@ -2126,7 +2178,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       lifetimeMs: Date.now() - upstreamStartedAt,
     }));
     if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
-    if (lastSessionResumptionHandle) {
+    if (lastSessionResumptionCheckpoint?.handle) {
       void resumeLiveUpstream("provider_disconnect");
       return;
     }
@@ -2136,7 +2188,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     if (socketForConnection !== upstreamSocket || closed) return;
     console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded }));
     if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
-    if (lastSessionResumptionHandle) {
+    if (lastSessionResumptionCheckpoint?.handle) {
       void resumeLiveUpstream("provider_socket_error");
       return;
     }
@@ -2146,14 +2198,19 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
   async function resumeLiveUpstream(reason: string) {
     if (closed || resumptionInProgress) return;
-    if (!securedSetupForResume || !lastSessionResumptionHandle) {
+    const checkpoint = lastSessionResumptionCheckpoint;
+    if (!securedSetupForResume || !checkpoint?.handle) {
       closeBoth(1011, "Live session cannot be resumed safely");
       return;
     }
-    const handleToResume = lastSessionResumptionHandle;
+    if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpoint.lastConsumedClientMessageIndex)) {
+      closeBoth(1011, "Live input replay window incomplete");
+      return;
+    }
+    const handleToResume = checkpoint.handle;
     const previousSocket = upstreamSocket;
     previousUpstreamSocket = previousSocket;
-    pendingResumeSessionHandle = null;
+    pendingResumeSessionCheckpoint = null;
     resumptionInProgress = true;
     upstreamSetupReady = false;
     setupCompleteReceived = false;
@@ -2204,14 +2261,14 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
         upstreamSetupReady = false;
         previousUpstreamSocket = previousSocket;
-        pendingResumeSessionHandle = null;
+        pendingResumeSessionCheckpoint = null;
         console.warn("[AskMoina] Live session resume did not complete setup", JSON.stringify({ attempt, reason }));
       } catch {
         if (candidate) { try { candidate.close(1011, "Resume attempt failed"); } catch {} }
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
         upstreamSetupReady = false;
         previousUpstreamSocket = previousSocket;
-        pendingResumeSessionHandle = null;
+        pendingResumeSessionCheckpoint = null;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         resolveResumeSetup = null;
         console.warn("[AskMoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));
