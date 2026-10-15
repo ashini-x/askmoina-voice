@@ -5,6 +5,7 @@
  * and microphone streaming for 155 seconds. Never logs credentials, audio or transcripts.
  */
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const rawBaseUrl = process.env.BASE_URL || "https://askmoina-voice.thenewtongs.workers.dev";
@@ -33,6 +34,67 @@ const framePayloadTypeCounts = {};
 const audioMimeTypeCounts = {};
 const recentFrameShapes = [];
 const providerErrors = [];
+
+function synthesizePcm16k(text) {
+  // Use espeak-ng to generate a synthetic spoken turn, then convert it to the
+  // exact mono 16-bit, 16 kHz PCM format accepted by the Live relay.
+  const wav = execFileSync("espeak-ng", ["-v", "en-us", "-s", "135", "--stdout", text], {
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  if (wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
+    throw new Error("espeak-ng did not produce a valid WAV stream.");
+  }
+
+  let format = 0;
+  let channels = 0;
+  let sourceRate = 0;
+  let bitsPerSample = 0;
+  let pcm = null;
+  for (let offset = 12; offset + 8 <= wav.length;) {
+    const chunkName = wav.toString("ascii", offset, offset + 4);
+    const chunkSize = wav.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    const end = start + chunkSize;
+    if (end > wav.length) throw new Error("espeak-ng produced a truncated WAV chunk.");
+    if (chunkName === "fmt " && chunkSize >= 16) {
+      format = wav.readUInt16LE(start);
+      channels = wav.readUInt16LE(start + 2);
+      sourceRate = wav.readUInt32LE(start + 4);
+      bitsPerSample = wav.readUInt16LE(start + 14);
+    } else if (chunkName === "data") {
+      pcm = wav.subarray(start, end);
+    }
+    offset = end + (chunkSize & 1);
+  }
+  if (format !== 1 || channels !== 1 || bitsPerSample !== 16 || !sourceRate || !pcm || pcm.length < 4) {
+    throw new Error("espeak-ng returned an unsupported PCM WAV format.");
+  }
+
+  const sourceSampleCount = Math.floor(pcm.length / 2);
+  const outputSampleCount = Math.max(1, Math.floor(sourceSampleCount * 16000 / sourceRate));
+  const output = Buffer.alloc(outputSampleCount * 2);
+  for (let i = 0; i < outputSampleCount; i += 1) {
+    const position = i * sourceRate / 16000;
+    const left = Math.min(Math.floor(position), sourceSampleCount - 1);
+    const right = Math.min(left + 1, sourceSampleCount - 1);
+    const fraction = position - left;
+    const a = pcm.readInt16LE(left * 2);
+    const b = pcm.readInt16LE(right * 2);
+    const sample = Math.round(a * (1 - fraction) + b * fraction);
+    output.writeInt16LE(Math.max(-32768, Math.min(32767, sample)), i * 2);
+  }
+  return output;
+}
+
+function splitPcmIntoBase64Chunks(pcm, chunkBytes = 3_200) {
+  const chunks = [];
+  for (let offset = 0; offset < pcm.length; offset += chunkBytes) {
+    chunks.push(pcm.subarray(offset, Math.min(offset + chunkBytes, pcm.length)).toString("base64"));
+  }
+  if (!chunks.length) throw new Error("Synthetic speech generator returned no PCM audio.");
+  return chunks;
+}
 try {
   browser = await chromium.launch({
     headless: true,
@@ -57,6 +119,9 @@ try {
   // post-start user turn without changing the production UI or logging user content.
   await page.addInitScript(() => {
     const nativeSend = WebSocket.prototype.send;
+    // This handle is test-only: it lets the synthetic inject real PCM speech while
+    // the fake microphone is paused, without the observer's silence filter dropping it.
+    window.__askmoinaNativeContinuitySend = (socket, data) => nativeSend.call(socket, data);
     const observedSockets = [];
     window.__askmoinaContinuitySockets = observedSockets;
     window.__askmoinaSocketClosures = [];
@@ -236,21 +301,29 @@ try {
   // A silent fake microphone alone cannot verify compression/continuity by itself.
   await page.waitForTimeout(125_000);
   const assistantAudioFramesBeforeTurn = assistantAudioFrames;
-  const turnDispatch = await page.evaluate(() => {
+  const syntheticPcm = synthesizePcm16k(
+    "Moina, can you still hear me? Please answer aloud in one short sentence confirming our camera conversation is continuing."
+  );
+  const syntheticAudioChunks = splitPcmIntoBase64Chunks(syntheticPcm);
+  const turnDispatch = await page.evaluate(async (chunks) => {
     const sockets = window.__askmoinaContinuitySockets || [];
     const ws = [...sockets].reverse().find((candidate) => candidate.readyState === WebSocket.OPEN);
-    const before = [...document.querySelectorAll("#transcript .from-moina .transcript-text")]
-      .map((node) => node.textContent || "").join(" ").trim();
-    if (!ws) return { sent: false, reason: "no-open-voice-socket" };
+    if (!ws) return { sent: false, reason: "no-open-voice-socket", chunksSent: 0 };
+    const sendNative = window.__askmoinaNativeContinuitySend;
+    if (typeof sendNative !== "function") return { sent: false, reason: "native-test-sender-missing", chunksSent: 0 };
+    // Pause the silent fake mic and inject a properly completed, speech-bearing PCM turn.
+    // This tests the same real-time audio path as a user, instead of sending clientContent
+    // during an intentionally unfinished silent microphone stream.
     window.__askmoinaPauseContinuityAudio = true;
-    // The fake microphone is intentionally silent and may not have opened an audio stream.
-    // Sending audio_stream_end in that state can disrupt the subsequent deterministic text turn.
-    ws.send(JSON.stringify({
-      text_input: "Continuity verification: please respond aloud in one short sentence confirming our live camera conversation is still active. Do not call tools."
-    }));
-    window.__askmoinaContinuityAssistantBaseline = before;
-    return { sent: true, baselineChars: before.length };
-  });
+    for (const chunk of chunks) {
+      sendNative(ws, JSON.stringify({
+        realtime_input: { audio: { data: chunk, mime_type: "audio/pcm;rate=16000" } }
+      }));
+      await new Promise((resolve) => setTimeout(resolve, 85));
+    }
+    sendNative(ws, JSON.stringify({ realtime_input: { audio_stream_end: true } }));
+    return { sent: true, chunksSent: chunks.length };
+  }, syntheticAudioChunks);
   const beforeTurnDiagnostics = await page.evaluate(() => ({
     state: document.querySelector("#connectionPill")?.dataset.state || "unknown",
     statusKind: document.querySelector("#status")?.dataset.kind || "unknown",
@@ -286,7 +359,8 @@ try {
     recentFrameShapes,
     providerErrors,
   }));
-  assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the continuity turn");
+  assert.equal(turnDispatch.sent, true, "the browser must still have an open voice socket for the post-2-minute speech turn");
+  assert.ok(turnDispatch.chunksSent > 0, "the synthetic must send a real PCM speech turn");
 
   const replyDeadline = Date.now() + 30_000;
   while (Date.now() < replyDeadline && assistantAudioFrames <= assistantAudioFramesBeforeTurn) {
