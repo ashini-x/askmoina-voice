@@ -23,7 +23,7 @@ jobs:
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate Co-Pilot synthetic script syntax
-        run: python -m py_compile scripts/live-response-card-smoke.py scripts/live-ranked-list-smoke.py
+        run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
