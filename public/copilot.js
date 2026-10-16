@@ -4252,13 +4252,13 @@
       const maxDistance = Math.max(1, showProblemButton.clientWidth - (slideHandle ? slideHandle.offsetWidth : 50) - 10);
       showProblemButton.dataset.progress = String(safeProgress);
       showProblemButton.style.setProperty("--slide-distance", (maxDistance * safeProgress) + "px");
-      if (slideLabel) slideLabel.textContent = safeProgress >= 0.82 ? "release to start" : "slide to start";
+      if (slideLabel) slideLabel.textContent = safeProgress >= 0.82 ? "Release to start" : "Slide to start";
     };
     const resetSlide = () => {
       showProblemButton.dataset.progress = "0";
       showProblemButton.style.setProperty("--slide-distance", "0px");
       showProblemButton.classList.remove("is-sliding", "is-complete");
-      if (slideLabel) slideLabel.textContent = "slide to start";
+      if (slideLabel) slideLabel.textContent = "Slide to start";
     };
     const completeSlide = () => {
       showProblemButton.dataset.progress = "1";

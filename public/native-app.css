@@ -144,3 +144,79 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
     bottom:calc(14% + env(safe-area-inset-bottom,0px)*.15)!important;
   }
 }
+
+
+/* Quiet, premium monochrome welcome screen. Let the typography and slider carry the interface. */
+.native-camera-welcome{
+  top:40%;
+  width:min(328px,calc(100% - 46px));
+  color:#f5f5f7;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-align:center;
+}
+.native-camera-orb{
+  width:72px;height:72px;margin:0 0 24px;
+  border:0;border-radius:0;background:transparent;box-shadow:none;
+}
+.native-camera-orb:before,.native-camera-orb:after{display:none!important;animation:none!important}
+.native-camera-orb img{width:53px;height:53px;filter:none;object-fit:contain}
+.native-camera-kicker{display:none!important}
+.native-camera-welcome h1{
+  max-width:14ch;margin:0;color:#fafafc;
+  font-size:clamp(31px,8vw,36px);font-weight:620;line-height:1.04;
+  letter-spacing:-.065em;text-wrap:balance;
+}
+.native-camera-caption{
+  max-width:27ch;margin:13px 0 0;color:rgba(245,245,248,.72);
+  font-size:14px;font-weight:400;line-height:1.48;letter-spacing:-.018em;
+  text-wrap:balance;
+}
+/* The iOS-style slider uses porcelain, graphite and a calm monochrome progress fill. */
+.camera-stage.pre-start .camera-controls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+.show-problem-button{
+  bottom:calc(19% + env(safe-area-inset-bottom,0px)*.2);
+  width:min(352px,calc(100% - 34px));height:64px;min-height:64px;padding:4px;
+  border:1px solid rgba(255,255,255,.82);border-radius:999px;
+  background:rgba(250,250,252,.96);color:#171719;
+  box-shadow:0 14px 44px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.96);
+  backdrop-filter:blur(32px) saturate(130%);-webkit-backdrop-filter:blur(32px) saturate(130%);
+  letter-spacing:0;
+}
+.vision-slide-track{padding:0 39px 0 56px;border-radius:999px}
+.vision-slide-track:before{
+  left:2px;top:2px;bottom:2px;width:calc(50px + var(--slide-distance,0px));
+  max-width:calc(100% - 4px);border-radius:999px;
+  background:linear-gradient(90deg,rgba(20,20,22,.12),rgba(20,20,22,.035));
+}
+.vision-slide-label{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+  font-size:14px;font-weight:600;letter-spacing:-.025em;text-transform:none;color:#202024;
+}
+.vision-slide-arrows{color:#7a7a80;font-size:18px;font-weight:400;letter-spacing:-.13em;opacity:.8}
+.vision-slide-handle{
+  left:4px;top:4px;width:48px;height:48px;border:1px solid rgba(255,255,255,.16);
+  border-radius:50%;background:#171719;color:#fff;
+  box-shadow:0 2px 7px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.vision-slide-handle svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.7;fill:none}
+.show-problem-button.is-complete{
+  background:rgba(247,247,249,.98);border-color:#fff;
+  box-shadow:0 0 0 4px rgba(255,255,255,.09),0 10px 32px rgba(0,0,0,.22);
+}
+.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 4px);background:rgba(20,20,22,.1)}
+.camera-stage.is-connecting .camera-controls{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+@media(max-height:720px){
+ .native-camera-welcome{top:39%}
+ .native-camera-orb{width:65px;height:65px;margin-bottom:19px}
+ .native-camera-orb img{width:49px;height:49px}
+ .native-camera-welcome h1{font-size:clamp(29px,7.8vw,33px)}
+ .native-camera-caption{margin-top:10px;font-size:13px}
+ .show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}
+}
+@media(max-width:380px){
+ .show-problem-button{width:calc(100% - 28px);height:60px;min-height:60px}
+ .vision-slide-track{padding-right:33px;padding-left:52px}
+ .vision-slide-label{font-size:13px}
+ .vision-slide-handle{width:46px;height:46px;left:3px;top:3px}
+}
