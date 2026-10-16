@@ -132,3 +132,15 @@ body[data-page="login"] .entry-status:empty{display:none}
 @media(max-height:720px){.native-camera-welcome{top:39%}.native-camera-orb{width:92px;height:92px;margin-bottom:19px}.native-camera-orb img{width:49px;height:49px}.native-camera-kicker{margin-bottom:8px}.native-camera-welcome h1{font-size:29px}.native-camera-caption{margin-top:9px;font-size:13px}.show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}}
 @media(max-width:360px){.native-camera-orb{width:88px;height:88px}.native-camera-welcome h1{font-size:27px}.native-camera-caption{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.native-camera-orb:before,.native-camera-orb:after{animation:none!important}.native-camera-welcome,.native-app-menu-trigger{transition:none!important}}
+
+
+/* The primary camera entry remains visible above decorative overlays on small screens. */
+body[data-page="app"] .camera-stage.pre-start #showProblemButton{
+  display:flex!important;visibility:visible!important;opacity:1!important;
+  pointer-events:auto!important;z-index:96!important;
+}
+@media(max-height:680px){
+  body[data-page="app"] .camera-stage.pre-start #showProblemButton{
+    bottom:calc(14% + env(safe-area-inset-bottom,0px)*.15)!important;
+  }
+}
