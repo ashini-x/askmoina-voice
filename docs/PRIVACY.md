@@ -2,7 +2,7 @@
 
 AskMoina streams microphone audio to Google Cloud Vertex AI only after the user presses **Start talking** and grants microphone permission. The current UI discloses this data flow before recording starts.
 
-AskMoina does not save raw microphone audio or a persistent transcript archive by default. Transcript text received from the live model is displayed in the current page. It is not saved to the app's D1 analytics tables.
+AskMoina does not save raw microphone audio or raw camera video. Finalized user/assistant transcript text, rolling summaries, and task state are saved to account-owned History in D1's conversation tables, separate from analytics. The Co-Pilot does not display live speech or assistant answers as captions or response cards; text is visible when the user opens a saved conversation.
 
 ## Conversation history and Key Memories
 
