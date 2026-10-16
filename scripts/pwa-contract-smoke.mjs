@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (path) => readFileSync(resolve(root, path), "utf8");
+
+const manifest = JSON.parse(read("public/manifest.webmanifest"));
+assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
+assert.equal(manifest.scope, "/", "manifest scope must cover the app");
+assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
+assert.equal(manifest.icons[0].src, "/askmoina-bird-final.png", "manifest must use the existing AskMoina bird icon");
+assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "PWA icon asset is missing");
+
+const gate = read("public/pwa-gate.js");
+assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");
+assert.ok(gate.includes("window.navigator.standalone === true"), "gate must support iOS standalone detection");
+assert.ok(gate.includes('window.location.replace("/install.html")'), "browser-tab users must be routed to the install landing page");
+assert.doesNotMatch(gate, /location\\.search|searchParams\\s*\\.\\s*get/, "a query string must not unlock the app");
+
+const worker = read("src/index.ts");
+assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
+assert.ok(worker.includes("body = withPwaStandaloneGate(body)"), "Co-Pilot standalone gate missing");
+assert.ok(worker.includes("assetHtml = withPwaStandaloneGate(assetHtml)"), "sign-in standalone gate missing");
+
+const serviceWorker = read("public/service-worker.js");
+assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
+assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");
+assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation network-first behavior is required");
+assert.ok(!serviceWorker.includes('"/app.js"'), "app JavaScript must not be precached");
+assert.ok(!serviceWorker.includes('"/copilot.js"'), "Co-Pilot JavaScript must not be precached");
+
+for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js"]) {
+  execFileSync(process.execPath, ["--check", resolve(root, path)], { stdio: "pipe" });
+}
+
+console.log("PWA contract smoke: passed");
