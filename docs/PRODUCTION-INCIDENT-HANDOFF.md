@@ -2,14 +2,13 @@
 
 Last updated: 2026-10-16 UTC.
 
-## Current status: Phase 1 and Phase 2 production gates passed; Phase 3 implementation in review
+## Current status: Phase 1 and Phase 2 production gates passed; Phase 3 merged and live-transcript integration in progress
 
-- Repository checkpoint before Phase 3: `3ab61049137097ccd20b5f751bd26ae6f959823c` on `main`.
-- Production Worker release: `0.4.54`, confirmed by the production health response in [workflow run 38879042914](https://github.com/ashini-x/askmoina-voice/actions/runs/38879042914).
-- Phase 1 long-session speech criterion: passed in production using real microphone capture and two delayed spoken turns with fresh assistant audio and `turnComplete`; see [deployment/synthetic run 38793224730](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224730).
-- Phase 2 forced network-recovery criterion: passed in the production synthetic on release `0.4.54`: forced network loss, fresh session recovery, and two post-170-second real spoken turns receiving fresh audio; see [deployment/synthetic run 38809174681](https://github.com/ashini-x/askmoina-voice/actions/runs/38809174681).
-- The full deployment workflow remains red on separate web-grounding, response-card and voice-memory scenarios. Those are recorded as outstanding product issues, not treated as evidence that the specific Phase 2 recovery gate failed.
-- Phase 3 scope: add owner-scoped D1 conversation/topic and finalized-turn persistence, summary/task progress, idempotency, pagination, archive/delete, migration application, and a production API smoke. No sidebar or Continue UI in this phase.
+- Production checkpoint before Phase 3: `3ab61049137097ccd20b5f751bd26ae6f959823c`; Phase 3 persistence API merge: `6c81c739631c671b49cc2a6ed68f3eade0334ed6`.
+- Production Worker before the follow-up: `0.4.54`. The first Phase 3 deployment workflow [run 38885100705](https://github.com/ashini-x/askmoina-voice/actions/runs/38885100705) stopped before Worker upload because the GitHub Actions token has Worker deployment permission but lacks D1 query permission (Cloudflare API error 7403).
+- Through the separate authorized Cloudflare control plane, migration `0006_conversation_history.sql` was applied and schema verified. The `d1_migrations` tracking table was initialized with the six pre-existing migration filenames plus `0006`, after confirming their corresponding schemas were already present.
+- The Phase 3 follow-up connects finalized browser voice transcripts to the new history API and extends the real-microphone continuity synthetic to require a saved user turn, assistant turn, summary and task state. Candidate release: `0.4.56`.
+- Phase 1 and Phase 2 acceptance remains as below. Unrelated live-grounding/card/voice-memory synthetic failures are known and remain outside this focused Phase 3 fix.
 
 ## Evidence and diagnosis
 
@@ -71,11 +70,14 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 - Production verification: deployed release `0.4.54` is reported healthy; run [38809174681](https://github.com/ashini-x/askmoina-voice/actions/runs/38809174681) explicitly recorded `Production audiovisual Live recovery + continuity: PASS`, with one live browser socket after recovery and two completed post-170-second spoken turns with fresh assistant audio. The full workflow conclusion is still failure only because independent web-grounding, response-card and voice-memory checks failed. Phase 1 and Phase 2 exit criteria for speech continuity and forced recovery are considered met.
 
 
-## Phase 3 — persistent conversation history (implementation candidate)
+## Phase 3 — persistent conversation history (API merged; browser integration release candidate)
 
-- Dedicated branch: `phase-3/persistent-conversation-history`; release candidate: `0.4.55`.
-- D1 schema: `conversations` uses authenticated `account_users.user_id` as owner and stores title, compact summary, bounded JSON task progress, active/archived status, timestamps and the next turn sequence. `conversation_turns` stores only finalized user/assistant text with server IDs, sequence numbers, timestamps and a per-conversation idempotency key. Composite foreign keys and owner/order indexes enforce/account for ownership and deletion.
-- APIs: `GET/POST /api/conversations`, `GET/PATCH/DELETE /api/conversations/:id`, and `POST /api/conversations/:id/turns`. Reads and writes are owner-scoped; writes require same-origin requests; requests and persisted content are bounded. A conflicting idempotency-key retry returns 409 rather than rewriting an existing turn.
-- Retention/privacy: history is retained until the user deletes a conversation or the account is deleted. Analytics retention cleanup does not delete conversation content. Deleting a conversation removes its turns transactionally. Raw audio, video, model sockets, session-resumption handles and replay buffers are not stored in D1.
-- Deployment workflow applies the additive D1 migrations before Worker promotion and includes a disposable-account production smoke for owner isolation, ordering, idempotency, summary/task restore, archive and delete.
-- Status at this revision: PR validation and production API verification are pending. Do not call Phase 3 complete until the migration is applied, release `0.4.55` is confirmed healthy, and the production history smoke passes. Update this section with the exact PR, commit, workflow run and deployed Worker version after verification.
+- API/schema PR: [#175 — Phase 3: Add secure persistent conversation history](https://github.com/ashini-x/askmoina-voice/pull/175), merged as `6c81c739631c671b49cc2a6ed68f3eade0334ed6`.
+- Dedicated browser integration branch: `phase-3/connect-live-transcripts`; candidate release `0.4.56`.
+- D1 schema: `conversations` is owned by authenticated `account_users.user_id` and stores a title, compact summary, bounded JSON task progress, active/archived status and timestamps. `conversation_turns` stores only finalized user/assistant text with server IDs, sequence numbers and per-conversation idempotency keys. Composite foreign keys and owner/order indexes enforce ownership and deletion.
+- APIs: `GET/POST /api/conversations`, `GET/PATCH/DELETE /api/conversations/:id`, and `POST /api/conversations/:id/turns`. Reads and writes are owner-scoped; writes require same-origin requests; body/content limits are enforced; conflicting idempotency-key reuse returns 409.
+- Browser integration: real finalized transcripts now enqueue owner-scoped turns in order, attach compact summary/task progress to assistant turns, retry transient append errors with the same idempotency key, and fail open so D1 errors do not stop live voice. The first-call greeting alone is not stored. A new manual topic gets a new conversation scope; automatic reconnect keeps the same scope.
+- Retention/privacy: history remains until owner deletion or account deletion. Analytics cleanup does not delete conversation history. Conversation deletion cascades to turns. Raw audio/video, live sockets, resume handles and replay buffers are not stored in D1.
+- Migration rollout: migration 0006 and its Wrangler filename tracking are verified on production via the authorized Cloudflare control plane. The GitHub deployment token lacks D1 API permission (Cloudflare code 7403), so remote migration application was removed from the Worker deploy workflow; do not add a pending D1 migration without applying/verifying it through an authorized migration process first.
+- Production acceptance now includes both the disposable-account direct API smoke and an extension to the real-microphone continuity synthetic that verifies a saved user turn, assistant turn, summary and task state without printing transcript text.
+- Status at this revision: browser integration PR, release validation and production end-to-end verification are pending. Do not call Phase 3 complete until release `0.4.56` is deployed and both API and real-microphone transcript persistence checks pass.

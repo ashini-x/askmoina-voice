@@ -456,6 +456,14 @@
   let assistantVoiceEnergy = 0;
   let currentTranscriptNodes = { user: null, assistant: null };
   let transcriptStarted = false;
+  // Finalized transcript persistence uses D1 as canonical storage. Keep IDs scoped
+  // to one in-page task/session so automatic reconnects continue the same topic.
+  let conversationScope = 0;
+  let conversationUserTurnPending = false;
+  let conversationScopeHasActivity = false;
+  const conversationIdsByScope = new Map();
+  const conversationCreatePromisesByScope = new Map();
+  let conversationPersistenceQueue = Promise.resolve();
   let voiceAvailability = null;
   let availabilitySequence = 0;
   let facingMode = "environment";
@@ -1769,7 +1777,145 @@
     if (role === "assistant") ensureTranscriptFallbackCard(false);
   }
 
+  function conversationTaskProgressSnapshot(fallbackGoal = "") {
+    const state = taskWorldModel && typeof taskWorldModel === "object" ? taskWorldModel : createTaskWorldModel();
+    const events = Array.isArray(state.events) ? state.events.slice(-6) : [];
+    return {
+      goal: String(state.goal || fallbackGoal || "").trim().slice(0, 1_000),
+      currentState: String(state.currentState || "").trim().slice(0, 2_000),
+      nextAction: String(state.intendedAction || "").trim().slice(0, 1_000),
+      expectedEvidence: String(state.expectedEvidence || "").trim().slice(0, 1_000),
+      uncertainty: (Array.isArray(state.uncertainties) ? state.uncertainties : []).slice(0, 5).map((item) => String(item || "").trim().slice(0, 140)).filter(Boolean).join("; ").slice(0, 1_000),
+      constraints: (Array.isArray(state.constraints) ? state.constraints : []).slice(0, 12).map((item) => String(item || "").trim().slice(0, 300)).filter(Boolean),
+      recentEvents: events.map((event) => ({
+        kind: String(event && event.kind || "task_event").slice(0, 50),
+        text: String(event && event.detail || "").trim().slice(0, 300),
+        ...(Number.isFinite(event && event.at) && event.at > 0 ? { at: new Date(event.at).toISOString() } : {})
+      })).filter((event) => event.text)
+    };
+  }
+
+  async function ensureConversationForScope(scope, firstUserText) {
+    if (conversationIdsByScope.has(scope)) return conversationIdsByScope.get(scope);
+    if (conversationCreatePromisesByScope.has(scope)) return conversationCreatePromisesByScope.get(scope);
+    const titleSeed = String((taskWorldModel && taskWorldModel.goal) || firstUserText || "New conversation")
+      .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+    const title = titleSeed.slice(0, 120) || "New conversation";
+    const promise = (async () => {
+      try {
+        const response = await fetch("/api/conversations", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ title })
+        });
+        if (!response.ok) {
+          console.warn("[AskMoina] Conversation history could not be initialized", response.status);
+          return null;
+        }
+        const data = await response.json();
+        const id = data && data.conversation && typeof data.conversation.conversationId === "string"
+          ? data.conversation.conversationId : null;
+        if (id) conversationIdsByScope.set(scope, id);
+        else console.warn("[AskMoina] Conversation history returned no conversation ID");
+        return id;
+      } catch (_) {
+        // History is best-effort and must never interrupt the live voice/camera loop.
+        console.warn("[AskMoina] Conversation history initialization was interrupted");
+        return null;
+      } finally {
+        conversationCreatePromisesByScope.delete(scope);
+      }
+    })();
+    conversationCreatePromisesByScope.set(scope, promise);
+    return promise;
+  }
+
+  async function appendConversationTurnWithRetry(conversationId, role, text, idempotencyKey, extraFields = {}) {
+    const payload = {
+      role,
+      text: String(text || "").trim().slice(0, 20_000),
+      idempotencyKey,
+      ...extraFields
+    };
+    if (!payload.text) return true;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/turns", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (response.ok) return true;
+        if (response.status < 500 || attempt === 2) {
+          console.warn("[AskMoina] A finalized conversation turn was not saved", response.status);
+          return false;
+        }
+      } catch (_) {
+        if (attempt === 2) {
+          console.warn("[AskMoina] A finalized conversation turn could not reach storage");
+          return false;
+        }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    }
+    return false;
+  }
+
+  function queueFinalizedConversationTurn(userText, assistantText) {
+    const user = String(userText || "").trim().slice(0, 20_000);
+    const assistant = String(assistantText || "").trim().slice(0, 20_000);
+    if (!user && !assistant) return;
+    const scope = conversationScope;
+    conversationScopeHasActivity = true;
+    const userKey = user ? "voice-" + crypto.randomUUID() : "";
+    const assistantKey = assistant ? "voice-" + crypto.randomUUID() : "";
+    const progress = conversationTaskProgressSnapshot(user || assistant);
+    const summaryLines = [
+      progress.goal ? "Goal: " + progress.goal : "",
+      "Latest user request: " + (user || "not present in this finalized event"),
+      "Latest Moina response: " + (assistant || "not yet received"),
+      progress.currentState ? "Current state: " + progress.currentState : "",
+      progress.nextAction ? "Next action: " + progress.nextAction : "",
+      progress.expectedEvidence ? "Expected evidence: " + progress.expectedEvidence : "",
+      progress.constraints.length ? "Constraints: " + progress.constraints.join("; ") : "",
+      progress.uncertainty ? "Uncertainty: " + progress.uncertainty : ""
+    ].filter(Boolean).join("\n").slice(0, 4_000);
+
+    conversationPersistenceQueue = conversationPersistenceQueue.then(async () => {
+      const conversationId = await ensureConversationForScope(scope, user || assistant);
+      if (!conversationId) return;
+      if (user) {
+        const savedUser = await appendConversationTurnWithRetry(conversationId, "user", user, userKey);
+        if (!savedUser) return;
+      }
+      if (assistant) {
+        await appendConversationTurnWithRetry(conversationId, "assistant", assistant, assistantKey, {
+          summary: summaryLines,
+          taskProgress: progress
+        });
+      }
+    }).catch(() => {
+      // Do not let persistence faults turn into a Live session fault.
+      console.warn("[AskMoina] Conversation persistence queue recovered after an error");
+    });
+  }
+
   function finalizeTurn() {
+    const userText = currentTranscriptNodes.user && currentTranscriptNodes.user.text
+      ? currentTranscriptNodes.user.text.trim() : "";
+    const assistantText = currentTranscriptNodes.assistant && currentTranscriptNodes.assistant.text
+      ? currentTranscriptNodes.assistant.text.trim() : "";
+    if (userText) conversationUserTurnPending = true;
+    // Ignore first-call greetings. Persist only assistant text associated with an
+    // actual user turn, including replies arriving in a later provider turn.
+    if (conversationUserTurnPending && (userText || assistantText)) {
+      queueFinalizedConversationTurn(userText, assistantText);
+      if (assistantText) conversationUserTurnPending = false;
+    }
     currentTranscriptNodes = { user: null, assistant: null };
   }
 
@@ -3188,6 +3334,13 @@
     const isCurrentStart = () => startGeneration === copilotStartGeneration && starting && !stopping;
     const automaticRetry = isAutomaticRetry;
     isAutomaticRetry = false;
+    // A deliberate new start opens a new topic if this page already saved a turn;
+    // automatic network recovery keeps the original conversation scope.
+    if (!automaticRetry && conversationScopeHasActivity) {
+      conversationScope += 1;
+      conversationScopeHasActivity = false;
+      conversationUserTurnPending = false;
+    }
     if (!automaticRetry || !liveSessionId) liveSessionId = crypto.randomUUID();
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
