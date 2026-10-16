@@ -110,11 +110,17 @@ class MemoryD1 {
         if (progress !== null) conversation.task_progress_json = progress;
         changes = 1;
       }
-    } else if (sql.includes("UPDATE conversations SET title =")) {
-      const [title, status, summary, progress, updatedAt, conversationId, ownerId] = args;
-      const conversation = this.conversations.get(String(conversationId));
-      if (conversation && conversation.owner_id === String(ownerId)) {
-        Object.assign(conversation, { title, status, summary, task_progress_json: progress, updated_at: updatedAt });
+    } else if (sql.includes("UPDATE conversations SET ") && sql.includes("WHERE conversation_id = ? AND owner_id = ?")) {
+      const setClause = sql.slice(sql.indexOf(" SET ") + 5, sql.indexOf(" WHERE "));
+      const columns = setClause.split(",").map((part) => part.split("=")[0].trim());
+      const conversationId = String(args[columns.length]);
+      const ownerId = String(args[columns.length + 1]);
+      const conversation = this.conversations.get(conversationId);
+      if (conversation && conversation.owner_id === ownerId) {
+        columns.forEach((column, index) => {
+          const property = column === "task_progress_json" ? "task_progress_json" : column;
+          conversation[property] = args[index];
+        });
         changes = 1;
       }
     } else if (sql.includes("DELETE FROM conversation_turns")) {
