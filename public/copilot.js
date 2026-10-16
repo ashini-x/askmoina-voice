@@ -406,7 +406,7 @@
 
   async function refreshCrossSessionRecallContext(force = false) {
     if (crossSessionRecallRequest) return crossSessionRecallRequest;
-    if (!force && crossSessionRecallContext && Date.now() - crossSessionRecallLoadedAt < 180_000) return crossSessionRecallContext;
+    if (!force && Date.now() - crossSessionRecallLoadedAt < 180_000) return crossSessionRecallContext;
     crossSessionRecallRequest = (async () => {
       try {
         const listing = await apiJson("/api/conversations?status=all&limit=20");
@@ -2001,6 +2001,8 @@
           taskProgress: progress
         });
         void refreshAccountMemories();
+        // The session index is now stale; refresh it before the next Live setup.
+        crossSessionRecallLoadedAt = 0;
       }
     }).catch(() => {
       // Do not let persistence faults turn into a Live session fault.
