@@ -1387,7 +1387,7 @@ button{touch-action:manipulation}
 
 
 
-/* AskMoina Signature Orb — exact SVG silhouette, circular shell, animated state lighting. */
+/* AskMoina Signature Orb — original white mark above an independent, fluid energy field. */
 .camera-controls .primary-control-row {
   display:flex!important;
   flex-direction:row!important;
@@ -1438,10 +1438,10 @@ button{touch-action:manipulation}
   padding:0!important;
   border-radius:50%!important;
   border:1px solid rgba(249,250,255,.24)!important;
-  background:radial-gradient(circle at 34% 24%,#30333e 0%,#151720 43%,#08090e 100%)!important;
+  background:radial-gradient(circle at 34% 24%,#242630 0%,#11131b 45%,#030406 100%)!important;
   color:#f8f8fc!important;
-  box-shadow:0 9px 28px rgba(0,0,0,.38),inset 0 1px 1px rgba(255,255,255,.16),inset 0 -8px 18px rgba(0,0,0,.24)!important;
-  transition:background .24s ease,border-color .24s ease,box-shadow .24s ease,opacity .24s ease!important;
+  box-shadow:0 9px 28px rgba(0,0,0,.38),inset 0 1px 1px rgba(255,255,255,.13),inset 0 -8px 18px rgba(0,0,0,.24)!important;
+  transition:background .3s ease,border-color .3s ease,box-shadow .3s ease,opacity .3s ease!important;
 }
 #toggleCopilot.askmoina-orb-control:before,
 #toggleCopilot.askmoina-orb-control:after {
@@ -1452,154 +1452,235 @@ button{touch-action:manipulation}
   border-radius:50%!important;
 }
 #toggleCopilot.askmoina-orb-control:before {
-  z-index:1;
-  inset:-2px;
-  border:1px solid rgba(245,247,255,.30);
+  z-index:3;
+  inset:0;
+  border:1px solid rgba(245,247,255,.32);
   background:transparent;
-  opacity:.62;
-  box-shadow:0 0 12px rgba(255,255,255,.04);
+  opacity:.54;
+  box-shadow:0 0 12px rgba(255,255,255,.04),inset 0 0 7px rgba(255,255,255,.025);
 }
 #toggleCopilot.askmoina-orb-control:after {
-  z-index:2;
-  inset:-7px;
+  z-index:6;
+  inset:-5px;
   border:0;
-  background:conic-gradient(from 0deg,rgba(99,232,246,.04),rgba(99,232,246,.95),rgba(152,132,255,.92),rgba(244,157,220,.90),rgba(255,204,131,.78),rgba(99,232,246,.04));
+  background:conic-gradient(from 12deg,rgba(99,232,246,.02),rgba(99,232,246,.82),rgba(96,160,255,.82),rgba(152,132,255,.82),rgba(244,157,220,.78),rgba(99,232,246,.02));
   opacity:0;
   filter:drop-shadow(0 0 5px rgba(159,153,255,.15));
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));
   mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));
-  transform:rotate(0deg);
+}
+.askmoina-orb-interior {
+  position:absolute;
+  z-index:1;
+  inset:3px;
+  display:block;
+  overflow:hidden;
+  border-radius:50%;
+  isolation:isolate;
+  pointer-events:none;
+  background:radial-gradient(circle at 33% 23%,rgba(255,255,255,.055),transparent 34%),radial-gradient(ellipse at 58% 76%,#0b0d14 0%,#050609 72%);
+}
+.askmoina-orb-flow {
+  position:absolute;
+  display:block;
+  pointer-events:none;
+  width:94%;
+  height:60%;
+  left:3%;
+  top:21%;
+  border-radius:57% 43% 64% 36% / 48% 34% 66% 52%;
+  opacity:0;
+  mix-blend-mode:screen;
+  filter:blur(5px);
+  transform:translate(-4%,-2%) rotate(-12deg) scale(.92,.88);
+  will-change:transform,border-radius,opacity;
+}
+.askmoina-orb-flow-cyan {
+  background:radial-gradient(ellipse at 32% 43%,rgba(56,224,255,.82),rgba(54,205,255,.28) 35%,transparent 64%),linear-gradient(122deg,transparent 8%,rgba(39,197,255,.18) 39%,rgba(91,163,255,.22) 54%,transparent 83%);
+}
+.askmoina-orb-flow-blue {
+  width:87%;
+  height:66%;
+  left:18%;
+  top:6%;
+  border-radius:44% 56% 48% 52% / 56% 45% 55% 44%;
+  background:radial-gradient(ellipse at 52% 39%,rgba(58,128,255,.66),rgba(65,161,255,.20) 42%,transparent 69%);
+  filter:blur(7px);
+}
+.askmoina-orb-flow-violet {
+  width:88%;
+  height:67%;
+  left:12%;
+  top:34%;
+  border-radius:38% 62% 61% 39% / 37% 43% 57% 63%;
+  background:radial-gradient(ellipse at 62% 43%,rgba(155,113,255,.78),rgba(166,113,255,.24) 40%,transparent 70%),linear-gradient(145deg,transparent 21%,rgba(151,124,255,.14) 52%,transparent 81%);
+  filter:blur(6px);
+}
+.askmoina-orb-flow-pink {
+  width:74%;
+  height:47%;
+  left:-5%;
+  top:45%;
+  border-radius:55% 45% 43% 57% / 60% 45% 55% 40%;
+  background:radial-gradient(ellipse at 45% 52%,rgba(245,133,222,.68),rgba(234,125,222,.19) 42%,transparent 69%);
+  filter:blur(7px);
 }
 .askmoina-control-mark {
   position:absolute!important;
-  z-index:4!important;
+  z-index:8!important;
   left:50%!important;
   top:50%!important;
   display:block!important;
-  width:54px!important;
-  height:38px!important;
+  width:44px!important;
+  height:auto!important;
   max-width:none!important;
   object-fit:contain!important;
-  opacity:0!important;
-  transform:translate(-50%,-50%)!important;
-  filter:drop-shadow(0 0 5px rgba(244,248,255,.22));
-  pointer-events:none!important;
-  transition:opacity .24s ease,filter .24s ease!important;
-}
-.askmoina-control-wave {
-  position:absolute;
-  z-index:4;
-  left:50%;
-  top:50%;
-  display:block;
-  width:54px;
-  height:38px;
-  border-radius:50%;
-  pointer-events:none;
-  opacity:0;
-  transform:translate(-50%,-50%);
-  background:linear-gradient(118deg,#70e9f1 0%,#8b91ff 19%,#b5a0ff 34%,#f0a7dc 49%,#ffc77c 64%,#80ebd4 81%,#70e9f1 100%);
-  background-size:240% 220%;
-  -webkit-mask-image:url("/askmoina-mark.svg?v=0.4.74");
-  -webkit-mask-position:center;
-  -webkit-mask-repeat:no-repeat;
-  -webkit-mask-size:contain;
-  mask-image:url("/askmoina-mark.svg?v=0.4.74");
-  mask-position:center;
-  mask-repeat:no-repeat;
-  mask-size:contain;
-  filter:drop-shadow(0 0 5px rgba(135,204,255,.34)) drop-shadow(0 0 12px rgba(191,142,255,.16));
-  transition:opacity .22s ease,filter .22s ease!important;
-}
-/* Listening and live response reveal the unmodified official signature geometry. */
-#toggleCopilot.askmoina-orb-control[data-orb-state="listening"],
-#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] {
-  border-color:rgba(231,238,255,.64)!important;
-  background:radial-gradient(circle at 34% 24%,#343847 0%,#131722 52%,#08090e 100%)!important;
-  box-shadow:0 0 18px rgba(102,200,255,.20),0 0 34px rgba(180,137,255,.16),0 9px 28px rgba(0,0,0,.34),inset 0 1px 1px rgba(255,255,255,.2)!important;
-}
-#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:before,
-#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:before {
-  opacity:.96;
-  border-color:rgba(233,239,255,.88);
-  box-shadow:0 0 18px rgba(131,210,255,.26),0 0 27px rgba(192,151,255,.16);
-}
-#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-control-mark,
-#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-control-mark,
-.camera-stage.is-listening .askmoina-orb-control .askmoina-control-mark,
-.camera-stage.is-speaking .askmoina-orb-control .askmoina-control-mark {
   opacity:1!important;
-  filter:drop-shadow(0 0 5px rgba(249,250,255,.28)) drop-shadow(0 0 13px rgba(134,194,255,.20));
+  transform:translate(-50%,-50%)!important;
+  filter:drop-shadow(0 0 4px rgba(244,248,255,.18));
+  pointer-events:none!important;
+  transition:filter .3s ease!important;
 }
-#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-control-wave,
-#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-control-wave {
-  opacity:0!important;
+/* Idle: almost-black glass and a restrained silver outline. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-flow,
+#toggleCopilot.askmoina-orb-control:not([data-orb-state]) .askmoina-orb-flow {opacity:.012}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] {
+  border-color:rgba(245,247,255,.20)!important;
+  box-shadow:0 8px 26px rgba(0,0,0,.36),inset 0 1px 1px rgba(255,255,255,.08)!important;
 }
-.camera-stage.is-listening .askmoina-orb-control:after,
-.camera-stage.is-speaking .askmoina-orb-control:after {
-  opacity:.92;
-  background:conic-gradient(from 0deg,rgba(99,232,246,.10),rgba(99,232,246,.96),rgba(152,132,255,.95),rgba(244,157,220,.95),rgba(255,204,131,.86),rgba(99,232,246,.10));
-  animation:askmoina-orb-sweep 3.35s linear infinite;
-  filter:drop-shadow(0 0 7px rgba(135,186,255,.34)) drop-shadow(0 0 13px rgba(200,142,255,.22));
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"]:before {opacity:.46;border-color:rgba(245,247,255,.44)}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"]:after {opacity:0}
+/* Ready: a delicate white pulse, without starting the colour current. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] {
+  border-color:rgba(246,248,255,.37)!important;
+  box-shadow:0 0 16px rgba(239,244,255,.055),0 9px 28px rgba(0,0,0,.34),inset 0 1px 1px rgba(255,255,255,.15)!important;
 }
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"]:before {
+  opacity:.78;
+  border-color:rgba(246,248,255,.82);
+  box-shadow:0 0 12px rgba(245,247,255,.14);
+  animation:askmoina-orb-ready-pulse 2.7s ease-in-out infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"]:after {opacity:.10;animation:askmoina-orb-rim-breathe 3.6s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-flow {opacity:.015}
+/* A connecting session gets only a quiet silver glint. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="connecting"] {border-color:rgba(245,247,255,.32)!important}
 #toggleCopilot.askmoina-orb-control[data-orb-state="connecting"]:after {
-  opacity:.46;
-  background:conic-gradient(from 0deg,transparent,rgba(245,247,255,.86),rgba(182,193,226,.18),transparent);
-  animation:askmoina-orb-sweep 2.4s linear infinite;
+  opacity:.30;
+  background:conic-gradient(from 12deg,transparent,rgba(245,247,255,.76),rgba(182,193,226,.12),transparent);
+  animation:askmoina-orb-rim-breathe 2.6s ease-in-out infinite;
 }
-/* Processing replaces the static mark with the animated, full-colour signature wave. */
+/* Active: cyan and electric-blue light drifts around the inner glass and rim. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"],
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"],
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"],
+.camera-stage.is-listening #toggleCopilot.askmoina-orb-control,
+.camera-stage.is-speaking #toggleCopilot.askmoina-orb-control {
+  border-color:rgba(222,237,255,.58)!important;
+  background:radial-gradient(circle at 34% 24%,#252c3b 0%,#111622 50%,#05070b 100%)!important;
+  box-shadow:0 0 18px rgba(80,211,255,.13),0 0 30px rgba(151,130,255,.12),0 9px 28px rgba(0,0,0,.34),inset 0 1px 1px rgba(255,255,255,.18)!important;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"]:before,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:before,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:before,
+.camera-stage.is-listening #toggleCopilot.askmoina-orb-control:before,
+.camera-stage.is-speaking #toggleCopilot.askmoina-orb-control:before {
+  opacity:.94;border-color:rgba(235,242,255,.78);
+  box-shadow:0 0 14px rgba(131,210,255,.20),0 0 24px rgba(192,151,255,.12);
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"]:after,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after,
+.camera-stage.is-listening #toggleCopilot.askmoina-orb-control:after,
+.camera-stage.is-speaking #toggleCopilot.askmoina-orb-control:after {
+  opacity:.82;
+  animation:askmoina-orb-rim-breathe 3.4s ease-in-out infinite;
+  filter:drop-shadow(0 0 6px rgba(104,211,255,.30)) drop-shadow(0 0 13px rgba(190,142,255,.18));
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"] .askmoina-orb-flow-cyan,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-flow-cyan,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-flow-cyan {opacity:.76;animation:askmoina-flow-cyan 8.6s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"] .askmoina-orb-flow-blue,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-flow-blue,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-flow-blue {opacity:.56;animation:askmoina-flow-blue 10.8s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"] .askmoina-orb-flow-violet,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-flow-violet,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-flow-violet {opacity:.48;animation:askmoina-flow-violet 9.7s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="active"] .askmoina-orb-flow-pink,
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-flow-pink,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-flow-pink {opacity:.17;animation:askmoina-flow-pink 12.4s ease-in-out infinite}
+/* Processing: richer, translucent smoke moves independently behind the untouched white mark. */
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] {
-  border-color:rgba(223,232,255,.42)!important;
-  box-shadow:0 0 19px rgba(99,232,246,.20),0 0 37px rgba(177,119,255,.21),0 0 50px rgba(244,157,220,.10),0 9px 28px rgba(0,0,0,.36),inset 0 1px 1px rgba(255,255,255,.18)!important;
+  border-color:rgba(223,235,255,.53)!important;
+  background:radial-gradient(circle at 35% 22%,#202a3a 0%,#0e1420 48%,#030508 100%)!important;
+  box-shadow:0 0 20px rgba(73,212,255,.18),0 0 32px rgba(164,122,255,.19),0 0 40px rgba(243,140,222,.07),0 9px 28px rgba(0,0,0,.36),inset 0 1px 1px rgba(255,255,255,.18)!important;
 }
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before {
-  opacity:.90;
-  border-color:rgba(245,247,255,.62);
-  box-shadow:0 0 17px rgba(124,202,255,.19),0 0 25px rgba(203,139,255,.17);
-  animation:askmoina-orb-process-breathe 1.55s ease-in-out infinite;
+  opacity:.95;border-color:rgba(245,248,255,.78);
+  box-shadow:0 0 16px rgba(124,202,255,.22),0 0 24px rgba(203,139,255,.12);
+  animation:askmoina-orb-ready-pulse 2.1s ease-in-out infinite;
 }
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {
-  opacity:.98;
-  background:conic-gradient(from 0deg,rgba(99,232,246,.08),rgba(99,232,246,.98),rgba(152,132,255,.98),rgba(244,157,220,.98),rgba(255,204,131,.90),rgba(128,235,212,.96),rgba(99,232,246,.08));
-  animation:askmoina-orb-sweep 2.2s linear infinite;
-  filter:drop-shadow(0 0 8px rgba(104,211,255,.42)) drop-shadow(0 0 15px rgba(191,135,255,.26));
+  opacity:.94;
+  background:conic-gradient(from 12deg,rgba(99,232,246,.04),rgba(71,220,255,.9),rgba(88,157,255,.86),rgba(152,132,255,.92),rgba(244,157,220,.86),rgba(128,235,212,.84),rgba(99,232,246,.04));
+  animation:askmoina-orb-rim-breathe 2.9s ease-in-out infinite;
+  filter:drop-shadow(0 0 7px rgba(104,211,255,.36)) drop-shadow(0 0 14px rgba(191,135,255,.22));
 }
-#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-wave {
-  opacity:1;
-  animation:askmoina-signature-flow 2.2s ease-in-out infinite;
-}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan {opacity:.94;animation:askmoina-flow-cyan 7.1s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-blue {opacity:.82;animation:askmoina-flow-blue 9.3s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-violet {opacity:.86;animation:askmoina-flow-violet 8.4s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-pink {opacity:.48;animation:askmoina-flow-pink 10.2s ease-in-out infinite}
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-control-mark,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-control-mark,
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
-  opacity:0!important;
+  opacity:1!important;
+  filter:drop-shadow(0 0 4px rgba(249,250,255,.24)) drop-shadow(0 0 10px rgba(134,194,255,.15));
 }
-@keyframes askmoina-orb-sweep { to { transform:rotate(360deg); } }
-@keyframes askmoina-orb-process-breathe {
-  0%,100% { transform:scale(1); filter:brightness(1); }
-  50% { transform:scale(1.035); filter:brightness(1.17); }
+@keyframes askmoina-orb-ready-pulse {
+  0%,100% {opacity:.48;filter:brightness(1)}
+  50% {opacity:.86;filter:brightness(1.16)}
 }
-@keyframes askmoina-signature-flow {
-  0%,100% { background-position:0% 52%; filter:drop-shadow(0 0 5px rgba(110,218,255,.34)) drop-shadow(0 0 12px rgba(190,135,255,.17)); }
-  50% { background-position:100% 48%; filter:drop-shadow(0 0 8px rgba(245,157,220,.45)) drop-shadow(0 0 16px rgba(105,237,215,.27)); }
+@keyframes askmoina-orb-rim-breathe {
+  0%,100% {opacity:.56;filter:brightness(.92)}
+  50% {opacity:1;filter:brightness(1.18)}
+}
+@keyframes askmoina-flow-cyan {
+  0%,100% {transform:translate(-6%,-3%) rotate(-13deg) scale(.92,.87);border-radius:57% 43% 64% 36% / 48% 34% 66% 52%}
+  34% {transform:translate(2%,4%) rotate(-5deg) scale(1.04,.95);border-radius:42% 58% 48% 52% / 62% 43% 57% 38%}
+  68% {transform:translate(5%,-2%) rotate(7deg) scale(.97,1.03);border-radius:61% 39% 55% 45% / 39% 59% 41% 61%}
+}
+@keyframes askmoina-flow-blue {
+  0%,100% {transform:translate(5%,-4%) rotate(8deg) scale(.94,1.02);border-radius:44% 56% 48% 52% / 56% 45% 55% 44%}
+  38% {transform:translate(-3%,2%) rotate(-7deg) scale(1.04,.93);border-radius:57% 43% 39% 61% / 39% 57% 43% 61%}
+  71% {transform:translate(-6%,5%) rotate(2deg) scale(.9,1.04);border-radius:48% 52% 61% 39% / 55% 36% 64% 45%}
+}
+@keyframes askmoina-flow-violet {
+  0%,100% {transform:translate(2%,5%) rotate(4deg) scale(.95,.98);border-radius:38% 62% 61% 39% / 37% 43% 57% 63%}
+  32% {transform:translate(-4%,-4%) rotate(-11deg) scale(1.05,.93);border-radius:56% 44% 46% 54% / 49% 62% 38% 51%}
+  69% {transform:translate(4%,1%) rotate(9deg) scale(.91,1.04);border-radius:45% 55% 65% 35% / 60% 39% 61% 40%}
+}
+@keyframes askmoina-flow-pink {
+  0%,100% {transform:translate(-5%,3%) rotate(-10deg) scale(.96,.91);border-radius:55% 45% 43% 57% / 60% 45% 55% 40%}
+  36% {transform:translate(6%,-2%) rotate(5deg) scale(1.03,1.08);border-radius:42% 58% 61% 39% / 48% 61% 39% 52%}
+  72% {transform:translate(0%,6%) rotate(-2deg) scale(.92,.95);border-radius:62% 38% 48% 52% / 39% 53% 47% 61%}
 }
 @media(max-width:380px) {
-  .camera-controls .primary-control-row { gap:9px!important; padding:0 8px!important; }
+  .camera-controls .primary-control-row {gap:9px!important;padding:0 8px!important}
   .camera-controls .primary-control-row #muteMic,
   .camera-controls .primary-control-row #flipCamera {
-    flex-basis:48px!important;width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;min-height:48px!important;max-height:48px!important;
+    flex-basis:48px!important;width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;min-height:48px!important;max-height:48px!important
   }
   .camera-controls .primary-control-row #toggleCopilot.askmoina-orb-control {
-    flex-basis:72px!important;width:72px!important;height:72px!important;min-width:72px!important;max-width:72px!important;min-height:72px!important;max-height:72px!important;
+    flex-basis:72px!important;width:72px!important;height:72px!important;min-width:72px!important;max-width:72px!important;min-height:72px!important;max-height:72px!important
   }
-  .askmoina-control-mark,.askmoina-control-wave { width:51px!important;height:36px!important; }
+  .askmoina-control-mark {width:41px!important}
 }
 @media(prefers-reduced-motion:reduce) {
   #toggleCopilot.askmoina-orb-control:before,
   #toggleCopilot.askmoina-orb-control:after,
-  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-wave,
-  #toggleCopilot.askmoina-orb-control[data-orb-state="listening"],
-  #toggleCopilot.askmoina-orb-control[data-orb-state="responding"] {
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-flow {
     animation:none!important;
-    transform:none!important;
   }
-  .askmoina-control-mark,.askmoina-control-wave { transition:none!important; }
+  .askmoina-control-mark {transition:none!important}
 }
 
