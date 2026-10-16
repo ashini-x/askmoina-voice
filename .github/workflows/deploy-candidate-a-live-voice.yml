@@ -331,11 +331,13 @@ jobs:
           grep -q 'src="/pwa-gate.js"' /tmp/moina-home.html
           echo "Main app standalone gate: OK"
 
-          status="$(fetch_status /login.html /tmp/moina-login.html)"
-          test "$status" = "200"
-          grep -q 'data-askmoina-pwa-gate="pending"' /tmp/moina-login.html
-          grep -q 'src="/pwa-gate.js"' /tmp/moina-login.html
-          echo "Auth-served sign-in standalone gate: OK"
+          # The legacy /login.html route now redirects into the same camera-first
+          # sign-in shell used at /. Validate the real shell instead of the retired page.
+          grep -q 'Continue with Face ID or Touch ID' /tmp/moina-home.html
+          grep -q 'OR USE YOUR PHONE' /tmp/moina-home.html
+          grep -q 'data-askmoina-pwa-gate="pending"' /tmp/moina-home.html
+          grep -q 'src="/pwa-gate.js"' /tmp/moina-home.html
+          echo "Native sign-in PWA gate: OK"
 
       - name: Synthetic live web-grounding and voice-memory verification
         shell: bash
