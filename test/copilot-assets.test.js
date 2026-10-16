@@ -138,6 +138,25 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).not.toContain("videoBase64");
   });
 
+  it("offers account-scoped conversation history, full transcript restore, and persistent Key Memories controls", () => {
+    expect(html).toContain('id="openLibrary"');
+    expect(html).toContain('id="librarySheet"');
+    expect(html).toContain('id="conversationList"');
+    expect(html).toContain('id="conversationDetailView"');
+    expect(html).toContain('id="continueConversation"');
+    expect(html).toContain('id="memoryEnabledSwitch"');
+    expect(html).toContain('id="clearAllMemories"');
+    expect(script).toContain('apiJson("/api/conversations?status=all&limit=500")');
+    expect(script).toContain('fetchEntireConversation(conversationId)');
+    expect(script).toContain('resumeConversationForNextStart.conversation.conversationId');
+    expect(script).toContain('RESUMED CONVERSATION');
+    expect(script).toContain('PERSISTENT USER PREFERENCES');
+    expect(script).toContain('PATCH", body: JSON.stringify({ enabled })');
+    expect(script).toContain('DELETE');
+    expect(css).toContain(".library-panel");
+    expect(css).toContain(".apple-switch input:checked+span");
+  });
+
   it("offers a gated WebXR surface-anchor mode without replacing the V2 fallback", () => {
     expect(html).toContain('id="spatialArButton"');
     expect(html).toContain('id="spatialHud"');

@@ -22,9 +22,9 @@ describe("selected memory context", () => {
   });
 
   it("bounds context and strips unsafe control characters", () => {
-    const prompt = buildPersonalizedSystemInstruction("base", "Raaz\u0000" + "x".repeat(4000));
+    const prompt = buildPersonalizedSystemInstruction("base", "Raaz\u0000" + "x".repeat(20_000));
     expect(prompt).not.toContain("\u0000");
     expect(prompt).toContain("x".repeat(100));
-    expect(prompt.length).toBeLessThan(3600);
+    expect(prompt.length).toBeLessThan(16_700);
   });
 });

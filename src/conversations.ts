@@ -1,5 +1,6 @@
 import type { Env } from "./config/env";
 import { getAuthenticatedUserId } from "./auth/accounts";
+import { observeUserPreferenceFromTurn } from "./user-memory";
 
 type Speaker = "user" | "assistant";
 type TaskProgress = {
@@ -453,6 +454,13 @@ async function appendTurn(request: Request, env: Env, ownerId: string, conversat
     if (Number(batchResult[0]?.meta?.changes || 0) === 1) {
       const saved = await getTurnByKey(env, ownerId, conversationId, idempotencyKey);
       if (!saved) return json({ error: "turn_persist_failed" }, 500);
+      if (body.role === "user") {
+        try {
+          await observeUserPreferenceFromTurn(env, ownerId, text);
+        } catch (error) {
+          console.warn("[AskMoina] Preference memory capture was skipped", error instanceof Error ? error.name : "unknown");
+        }
+      }
       return json({ turn: turnFromRow(saved), replayed: false }, 201);
     }
 

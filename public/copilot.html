@@ -18,7 +18,48 @@
   <div class="connection-notice-progress" id="connectionNoticeProgress" aria-hidden="true"><span></span></div>
   <button type="button" class="connection-notice-action" id="connectionNoticeAction" hidden>Try again</button>
 </div>
-<header class="floating-top"><button type="button" id="backButton" class="back-control" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button><div class="top-actions"><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
+<header class="floating-top"><button type="button" id="backButton" class="back-control" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button><div class="top-actions"><button type="button" id="openLibrary" class="library-open-control" aria-label="History and Key Memories" title="History and Key Memories"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7v5l3.2 1.9"/></svg></button><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
+<section id="librarySheet" class="library-sheet" hidden aria-hidden="true">
+  <button type="button" class="library-scrim" id="libraryScrim" aria-label="Close Library"></button>
+  <div class="library-panel" role="dialog" aria-modal="true" aria-labelledby="libraryTitle">
+    <header class="library-header">
+      <div><p class="library-eyebrow">YOUR SPACE</p><h2 id="libraryTitle">History &amp; Key Memories</h2><p class="library-subtitle">Pick up where you left off.</p></div>
+      <button type="button" id="closeLibrary" class="library-close" aria-label="Close Library">×</button>
+    </header>
+    <nav class="library-tabs" aria-label="Your library">
+      <button type="button" class="library-tab is-selected" data-library-tab="history" aria-selected="true">History</button>
+      <button type="button" class="library-tab" data-library-tab="memories" aria-selected="false">Key Memories</button>
+    </nav>
+    <p id="libraryStatus" class="library-status" role="status" aria-live="polite"></p>
+    <section id="libraryHistoryView" class="library-view" aria-label="Past conversations">
+      <label class="library-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input id="conversationSearch" type="search" autocomplete="off" placeholder="Search your conversations" aria-label="Search your conversations"></label>
+      <div id="conversationList" class="library-list"></div>
+    </section>
+    <section id="conversationDetailView" class="library-view" hidden aria-label="Conversation details">
+      <button type="button" id="conversationDetailBack" class="library-back">‹ <span>All conversations</span></button>
+      <h3 id="detailTitle" class="library-detail-title">Conversation</h3>
+      <p id="detailMeta" class="library-detail-meta"></p>
+      <div id="detailSummary" class="library-summary" hidden></div>
+      <div id="detailTask" class="library-task" hidden></div>
+      <div id="detailTranscript" class="detail-transcript" aria-label="Saved transcript"></div>
+      <div class="library-detail-footer"><button type="button" id="continueConversation" class="library-primary">Continue with Moina <span aria-hidden="true">↗</span></button></div>
+    </section>
+    <section id="libraryMemoryView" class="library-view" hidden aria-label="Key Memories and preferences">
+      <div class="memory-setting-row">
+        <div class="memory-setting-copy"><h3>Learn my preferences</h3><p>Remember preferences you state directly and use them in future conversations.</p></div>
+        <label class="apple-switch"><input id="memoryEnabledSwitch" type="checkbox" checked aria-label="Turn preference memory on or off"><span aria-hidden="true"></span></label>
+      </div>
+      <p class="memory-privacy-note">AskMoina saves reusable preferences you explicitly express, like your preferred language or answer style. It does not intentionally save sensitive personal disclosures or credentials. You can edit or delete memories any time.</p>
+      <form id="memoryAddForm" class="memory-add-form">
+        <label for="memoryInput" class="sr-only">Add a memory</label>
+        <input id="memoryInput" type="text" maxlength="240" autocomplete="off" placeholder="Add a preference…" required>
+        <button type="submit" aria-label="Save memory">Add</button>
+      </form>
+      <div class="memory-list-heading"><h3>Saved for you</h3><button type="button" id="clearAllMemories" class="library-text-action">Clear all</button></div>
+      <div id="memoryList" class="memory-list"></div>
+    </section>
+  </div>
+</section>
 <div class="camera-top-badge sr-only" id="frameBadge"><span class="live-dot"></span> WAITING FOR CAMERA</div><span class="camera-state sr-only" id="cameraState"><span class="state-dot"></span> Camera paused</span>
 <div class="focus-marker" id="focusMarker" data-region="center" hidden><div class="focus-brackets" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="focus-card"><span class="focus-eyebrow">MOINA'S FOCUS</span><strong id="focusLabel">Target</strong><span class="focus-hint" id="focusHint"></span><p id="focusInstruction"></p></div><button type="button" id="clearMarker" class="clear-marker" aria-label="Clear focus marker">×</button></div>
 <div class="approx-tag sr-only" id="approxTag" hidden>Approximate focus · not world-locked AR</div>

@@ -1,6 +1,7 @@
 import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest } from "./conversations";
+import { handleUserMemoryRequest } from "./user-memory";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { MAX_RESUME_REPLAY_CHARS, compactReplayMessagesForResumption, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type ReplayMessage, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
@@ -1853,8 +1854,8 @@ async function handleVoiceSocket(
       try {
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
         const allowedKeys = ["setup", "memory_context", "copilot_mode"];
-        const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 3_000) : "";
-        if (event.data.length > 4_096 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && typeof message.memory_context !== "string") || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
+        const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 16_000) : "";
+        if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
@@ -2940,6 +2941,8 @@ export default {
         return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
       }
     }
+    const memoryResponse = await handleUserMemoryRequest(request, env);
+    if (memoryResponse) return memoryResponse;
     const conversationResponse = await handleConversationRequest(request, env);
     if (conversationResponse) return conversationResponse;
     const continuityResponse = await handleContinuityRequest(request, env, ctx);

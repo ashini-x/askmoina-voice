@@ -74,8 +74,8 @@ jobs:
 
       # Production D1 migrations are managed through the authorized Cloudflare control plane.
       # GitHub's Worker deployment token does not have D1 API permission (Cloudflare code 7403).
-      # Migration 0006 was applied and recorded in d1_migrations before this release; the
-      # authenticated history smoke below verifies that the deployed API can use the schema.
+      # Migrations 0006_conversation_history.sql and 0007_user_memories.sql were applied and verified
+      # through the authorized Cloudflare control plane and recorded in d1_migrations before promotion.
 
       - name: Upload validated AskMoina version without changing triggers
         id: upload

@@ -16,6 +16,8 @@ let cookieB = "";
 const nonce = randomUUID();
 let conversationId = "";
 let failure = null;
+let automaticMemoryId = "";
+let manualMemoryId = "";
 
 async function request(path, method, cookie, body, expectedStatus) {
   const headers = { Cookie: cookie, Accept: "application/json" };
@@ -43,19 +45,57 @@ function assert(condition, message) {
 try {
   const anonymous = await fetch(baseUrl + "/api/conversations", { cache: "no-store" });
   assert(anonymous.status === 401, "anonymous list must be denied");
+  const anonymousMemories = await fetch(baseUrl + "/api/memories", { cache: "no-store" });
+  assert(anonymousMemories.status === 401, "anonymous preference-memory access must be denied");
+
+  const copilotPage = await fetch(baseUrl + "/copilot", { headers: { Cookie: cookieA }, cache: "no-store" });
+  assert(copilotPage.status === 200, "authenticated Co-Pilot page did not load");
+  const copilotHtml = await copilotPage.text();
+  assert(copilotHtml.includes('id="openLibrary"') && copilotHtml.includes('id="librarySheet"') &&
+    copilotHtml.includes('id="continueConversation"') && copilotHtml.includes('id="memoryEnabledSwitch"'),
+    "production Co-Pilot page is missing History, resume, or Key Memories UI");
 
   const created = await request("/api/conversations", "POST", cookieA, {
-    title: "Phase 3 temporary verification " + nonce.slice(0, 8),
+    title: "Phase 4 temporary verification " + nonce.slice(0, 8),
   }, 201);
   conversationId = created.data.conversation?.conversationId;
   assert(typeof conversationId === "string" && conversationId.startsWith("conv_"), "create response missing conversation ID");
 
   const userTurn = {
     role: "user",
-    text: "Synthetic only: restore the context for request " + nonce.slice(0, 8) + ".",
-    idempotencyKey: "phase3-" + nonce + "-user",
+    text: "I prefer concise synthetic answers for fixture " + nonce.slice(0, 8),
+    idempotencyKey: "phase4-" + nonce + "-user",
   };
   const appended = await request("/api/conversations/" + conversationId + "/turns", "POST", cookieA, userTurn, 201);
+  const memoriesAfterUserTurn = await request("/api/memories", "GET", cookieA, undefined, 200);
+  assert(memoriesAfterUserTurn.data.enabled === true, "preference memory must default on for the signed-in account");
+  const automaticMemory = memoriesAfterUserTurn.data.memories?.find((item) =>
+    item.content?.includes(nonce.slice(0, 8)) && item.source === "automatic");
+  assert(automaticMemory && automaticMemory.id, "directly stated synthetic preference was not saved automatically");
+  automaticMemoryId = automaticMemory.id;
+
+  const manualMemory = await request("/api/memories", "POST", cookieA, {
+    content: "Prefer concise synthetic test style " + nonce.slice(0, 8),
+  }, 201);
+  manualMemoryId = manualMemory.data.memory?.id;
+  assert(typeof manualMemoryId === "string", "manual preference save did not return a memory ID");
+  const editedMemory = await request("/api/memories/" + manualMemoryId, "PATCH", cookieA, {
+    content: "Prefer one synthetic test sentence " + nonce.slice(0, 8),
+  }, 200);
+  assert(editedMemory.data.memory?.content?.includes("one synthetic test sentence"), "manual preference edit failed");
+
+  await request("/api/memories/settings", "PATCH", cookieA, { enabled: false }, 200);
+  const disabledTurn = await request("/api/conversations/" + conversationId + "/turns", "POST", cookieA, {
+    role: "user",
+    text: "I always prefer synthetic disabled memory disabled-" + nonce.slice(0, 8),
+    idempotencyKey: "phase4-" + nonce + "-disabled",
+  }, 201);
+  assert(disabledTurn.data.turn, "a paused memory setting should not interrupt conversation history");
+  const memoriesWhileDisabled = await request("/api/memories", "GET", cookieA, undefined, 200);
+  assert(memoriesWhileDisabled.data.enabled === false, "memory-off preference did not persist");
+  assert(!memoriesWhileDisabled.data.memories?.some((item) => item.content?.includes("disabled-" + nonce.slice(0, 8))),
+    "memory-off still captured a new preference");
+  await request("/api/memories/settings", "PATCH", cookieA, { enabled: true }, 200);
   const replay = await request("/api/conversations/" + conversationId + "/turns", "POST", cookieA, userTurn, 200);
   assert(replay.data.replayed === true && replay.data.turn?.turnId === appended.data.turn?.turnId, "retry created a duplicate turn");
 
@@ -77,7 +117,7 @@ try {
   }, 201);
 
   const restored = await request("/api/conversations/" + conversationId + "?limit=20", "GET", cookieA, undefined, 200);
-  assert(restored.data.turns?.length === 2, "restored conversation did not include two finalized turns");
+  assert(restored.data.turns?.length === 3, "restored conversation did not include three finalized turns");
   assert(restored.data.turns[0].sequence < restored.data.turns[1].sequence, "turn order is incorrect");
   assert(restored.data.conversation?.summary?.includes("retrieve the next action"), "saved summary not restored");
   assert(restored.data.conversation?.taskProgress?.nextAction === progress.nextAction, "saved task progress not restored");
@@ -95,6 +135,9 @@ try {
 
   const listB = await request("/api/conversations?status=all", "GET", cookieB, undefined, 200);
   assert(!listB.data.conversations?.some((item) => item.conversationId === conversationId), "foreign conversation leaked into another user's list");
+  const memoriesB = await request("/api/memories", "GET", cookieB, undefined, 200);
+  assert(!memoriesB.data.memories?.some((item) => item.content?.includes(nonce.slice(0, 8))),
+    "foreign preference memory leaked into another account");
   await request("/api/conversations/" + conversationId, "GET", cookieB, undefined, 404);
   await request("/api/conversations/" + conversationId, "PATCH", cookieB, { title: "Unauthorized" }, 404);
   await request("/api/conversations/" + conversationId, "DELETE", cookieB, undefined, 404);
@@ -110,10 +153,21 @@ try {
 
   await request("/api/conversations/" + conversationId, "DELETE", cookieA, undefined, 200);
   conversationId = "";
-  console.log("Synthetic conversation history: PASS (owner-scoped create/read/append, ordered turns, idempotent retry, summary/task restore, cross-user denial, archive and delete).");
+  await request("/api/memories/" + automaticMemoryId, "DELETE", cookieA, undefined, 200);
+  automaticMemoryId = "";
+  await request("/api/memories/" + manualMemoryId, "DELETE", cookieA, undefined, 200);
+  manualMemoryId = "";
+  const memoryIdsAfterDelete = await request("/api/memories", "GET", cookieA, undefined, 200);
+  assert(!memoryIdsAfterDelete.data.memories?.some((item) => item.content?.includes(nonce.slice(0, 8))),
+    "memory delete did not remove the synthetic preferences");
+  console.log("Synthetic history and Key Memories: PASS (owner isolation, transcript/task restore, automatic preference capture, memory pause, manual add/edit/delete, cross-account denial, and live UI markers).");
 } catch (error) {
   failure = error instanceof Error ? error.message : "unknown failure";
 } finally {
+  if (cookieA) {
+    try { await request("/api/memories/settings", "PATCH", cookieA, { enabled: true }, 200); } catch { /* best-effort reset of synthetic memory preference */ }
+    try { await request("/api/memories", "DELETE", cookieA, undefined, 200); } catch { /* best-effort synthetic memory cleanup */ }
+  }
   if (conversationId) {
     try { await request("/api/conversations/" + conversationId, "DELETE", cookieA, undefined, 200); } catch { /* best-effort test-data cleanup */ }
   }
