@@ -1258,3 +1258,7 @@ body.site-info-body .site-info-card{width:100%}
  .library-detail-footer{margin-left:-21px;margin-right:-21px;padding-left:21px;padding-right:21px}
 }
 @media(prefers-reduced-motion:reduce){.library-panel,.library-open-control,.library-tab,.apple-switch span,.apple-switch span:after{animation:none!important;transition:none!important}}
+
+.library-sheet,.library-panel,.library-view{touch-action:pan-y}
+.library-status[data-kind="error"]{color:#a43e3e}
+.library-history-item.is-archived{background:rgba(245,245,247,.88)}
