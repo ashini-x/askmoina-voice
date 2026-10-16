@@ -16,7 +16,9 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).toContain("id=\"showProblemButton\"");
     expect(html).toContain("id=\"backButton\"");
     expect(html).toContain("SHOW ME YOUR PROBLEM");
-    expect(html).toContain("Tap to open camera");
+    expect(html).toContain("slide to start");
+    expect(html).not.toContain("Tap to open camera");
+    expect(css).toContain(".camera-stage.pre-start .camera-controls");
     expect(html).not.toContain('id="intelligenceIntro"');
     expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
