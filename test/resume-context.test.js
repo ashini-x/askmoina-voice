@@ -46,7 +46,7 @@ describe("cumulative saved conversation context", () => {
   });
 
   it("restores the cumulative summary on resume and sends it with recent transcript and task state", () => {
-    expect(script).toContain("conversationSummariesByScope.set(conversationScope, String(resumeConversationForNextStart.conversation.summary || \\"\\")");
+    expect(script).toContain('conversationSummariesByScope.set(conversationScope, String(resumeConversationForNextStart.conversation.summary || ""))');
     expect(script).toContain("Saved cumulative summary and prior interaction notes:");
     expect(script).toContain("Recent saved transcript (chronological; the full history remains available in the History screen)");
     expect(script).toContain("Saved task state:");
