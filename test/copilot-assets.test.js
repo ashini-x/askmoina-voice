@@ -384,6 +384,7 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(workerSource).toContain('authenticated ? "camera" : "login"');
     expect(workerSource).toContain("const NATIVE_APP_HEADER_AUTH");
     expect(workerSource).toContain("const NATIVE_APP_HEADER_GUEST");
+    expect(workerSource).toContain('else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST)');
   });
 
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
