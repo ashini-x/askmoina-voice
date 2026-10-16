@@ -20,6 +20,7 @@ jobs:
       - run: node --check public/copilot.js
       - run: node --check public/auth.js
       - run: node --check public/session-ui.js
+      - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate Co-Pilot synthetic script syntax
         run: python -m py_compile scripts/live-response-card-smoke.py scripts/live-ranked-list-smoke.py
@@ -38,6 +39,8 @@ jobs:
           NODE
       - run: npm run benchmark:validate
       - run: npm test
+      - name: Validate D1 migrations against local SQLite
+        run: npx wrangler d1 migrations apply askmoina-prod --local
       - run: npx wrangler deploy --dry-run --outdir=dist
       - name: Verify M29/M30 Worker bundle contracts
         run: |
@@ -75,6 +78,11 @@ jobs:
           echo "M37 production voice/Co-Pilot contract: OK"
           npm run benchmark:validate
           echo "M38 versioned benchmark suites: OK"
+      - name: Verify Phase 3 conversation persistence bundle
+        run: |
+          grep -R -q 'handleConversationRequest' dist/
+          grep -R -q 'conversation_turns' dist/
+          grep -q 'CREATE TABLE IF NOT EXISTS conversation_turns' migrations/0006_conversation_history.sql
       - uses: actions/upload-artifact@v4
         with:
           name: askmoina-worker-bundle
