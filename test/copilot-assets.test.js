@@ -761,3 +761,17 @@ describe("Native-first app experience v2", () => {
     expect(nativeAppCss).toContain('body[data-page="login"] .entry-page-heading.auth-page-heading:before');
   });
 });
+
+
+describe("Primary camera entry", () => {
+  it("allows a direct tap as well as the existing slide gesture to enter camera mode", () => {
+    expect(html).toContain('aria-label="Tap to open camera, or slide to begin"');
+    expect(html).toContain('id="visionSlideLabel">Tap to open camera</span>');
+    expect(script).toContain("a tap should start the camera too");
+    expect(script).toContain("The primary camera entry action works with a simple tap");
+    expect(script).not.toContain("if (event.detail > 0) return;");
+    expect(script).toContain('if (!active && !starting) void startCopilot();');
+    expect(css).toContain(".camera-stage.pre-start #showProblemButton");
+    expect(css).toContain("z-index:95!important");
+  });
+});
