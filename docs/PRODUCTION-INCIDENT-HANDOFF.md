@@ -97,11 +97,18 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 - Phase 3 acceptance is met for persistent history, account isolation, idempotent ordered turns, summary/task restoration, deletion and real-browser microphone transcription. The aggregate workflow remains red only for previously deferred live grounding/ranked-list/voice-memory tests and a post-pass teardown timeout; branch `phase-3/fix-smoke-cleanup-click` makes that final stop-button teardown best-effort without lowering acceptance assertions.
 
 
-## Phase 4 — Apple-style History and Key Memories (implementation branch; not yet deployed)
+## Phase 4 — Apple-style History and Key Memories (deployed in 0.4.58)
 
 - Feature PR: [#179 — Apple-style conversation history and persistent Key Memories](https://github.com/ashini-x/askmoina-voice/pull/179).
 - Browser assets add a compact History control above the camera and a responsive Library sheet: searchable conversations; saved transcript, summary and task context; archive/restore/delete; Continue with Moina; and a Key Memories editor with pause, edit, delete and clear-all controls.
 - Resuming a conversation loads its full transcript through bounded pages for display, restores task progress, reuses the original conversation ID for future saved turns, and passes a bounded summary/task/recent-transcript context to the next Gemini Live session. The model prompt is bounded for latency and provider context limits; the full transcript remains available in History.
 - New user-memory API and migration 0007_user_memories.sql add account-scoped memory settings and reusable interaction preferences, separate from transcript records. Only direct, reusable preference statements are automatically captured; one-off commands and obvious sensitive disclosures/credentials are excluded. Users can turn learning off, edit or delete memories, or clear all. New memory tables store text, not raw video or microphone audio. Guest access remains disabled.
 - The live history synthetic now checks account isolation, automatic preference capture, memory-off behavior, manual create/edit/delete, and presence of the authenticated Library UI.
-- **Schema gate:** 0007_user_memories.sql is now applied and verified in production D1, including both tables, the owner-cascading foreign keys, index, and migration tracking row. The Worker/UI code in this PR is still not deployed; merge and live verification remain required. The GitHub deployment token cannot apply D1 migrations (Cloudflare error 7403).
+- **Schema gate:** 0007_user_memories.sql was applied and verified in production D1, including both tables, owner-cascading foreign keys, index, and migration tracking row. Worker/UI release 0.4.58 is now deployed and its production health and critical routes passed. The combined synthetic job ended red because pre-existing live web-grounding and voice-memory tests failed; the new History/Key Memories test passed, as did response cards, ranked lists, browser network recovery, and long-running Live continuity. The GitHub deployment token cannot apply D1 migrations (Cloudflare error 7403).
+
+
+## Phase 4.1 — Cumulative resume context (follow-up branch; not yet deployed)
+
+- Follow-up branch: feature/cumulative-resume-context. Release target: 0.4.59.
+- The 0.4.58 history UI restores all saved turns for display, but its summary previously represented mostly the latest turn. This follow-up keeps a bounded rolling summary of recent interaction notes plus stable goal/constraints, restores that summary when resuming, and sends it alongside recent transcript and current task progress.
+- The model prompt remains bounded to keep reconnect/resume fast; the complete transcript continues to be available in the History screen. Added a unit test for retention of older notes across subsequent turns, legacy summary compatibility, and the size cap.
