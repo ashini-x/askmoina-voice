@@ -1688,3 +1688,33 @@ button{touch-action:manipulation}
   .askmoina-control-mark {transition:none!important}
 }
 
+
+/* Apple-like control rhythm: generous spacing, confident tap targets, and clear line icons. */
+.camera-controls .primary-control-row {
+  gap:clamp(14px,3.8vw,19px)!important;
+  padding:0 12px!important;
+}
+.camera-controls .primary-control-row #muteMic,
+.camera-controls .primary-control-row #flipCamera {
+  flex:0 0 56px!important;
+  width:56px!important;height:56px!important;
+  min-width:56px!important;max-width:56px!important;
+  min-height:56px!important;max-height:56px!important;
+}
+.camera-controls .primary-control-row #muteMic svg,
+.camera-controls .primary-control-row #flipCamera svg {
+  width:28px!important;height:28px!important;stroke-width:1.65!important;
+}
+@media(max-width:380px) {
+  .camera-controls .primary-control-row {gap:13px!important;padding:0 8px!important}
+  .camera-controls .primary-control-row #muteMic,
+  .camera-controls .primary-control-row #flipCamera {
+    flex:0 0 52px!important;width:52px!important;height:52px!important;
+    min-width:52px!important;max-width:52px!important;
+    min-height:52px!important;max-height:52px!important;
+  }
+  .camera-controls .primary-control-row #muteMic svg,
+  .camera-controls .primary-control-row #flipCamera svg {
+    width:27px!important;height:27px!important;
+  }
+}
