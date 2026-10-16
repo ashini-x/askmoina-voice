@@ -407,7 +407,7 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(workerSource).toContain('.replace(\'<script src="/session-ui.js" defer></script>\', "")');
     expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="/auth.js" defer></script></body>\'');
     expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(self)');
-    expect(workerSource).toContain("No guest access");
+    expect(workerSource).toContain("There is no guest access.");
   });
 
   it("keeps History and Key Memories in the existing camera app and uses a mobile sheet", () => {
