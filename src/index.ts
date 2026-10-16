@@ -25,6 +25,7 @@ import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/v
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
 import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
+import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 
 export { UserState } from "./sessions/user-state";
 
@@ -186,8 +187,8 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Give one clear immediate action or answer in plain spoken language. Avoid unexplained jargon, long checklists, and multiple competing instructions. Let the camera and conversation remain primary; offer visual guidance only when it genuinely makes the next action easier to understand.",
   "Do not narrate interface mechanics such as overlays, task categories, internal state, or function names unless the user asks. If the user seems stuck, explain the next step briefly and specifically. Keep optional or expert controls out of the main path, and never imply that starting voice or seeing a guide confirms a physical result.",
   "M35 — EFFICIENT INTELLIGENCE: use the live conversation for direct stable answers, and use grounded lookup when current, historical, sports-statistics, rankings, or model-specific evidence materially matters. Respect the bounded search budget. If a lookup fails, say so and fall back only to clearly labelled general guidance when safe; do not claim verification. Camera sampling is an efficiency heuristic, never object recognition or proof of progress.",
-  "SPEECH-FIRST INTERACTION: Respond through natural live voice. Do not display spoken text or answers as live captions or response cards. Keep the camera view clear; a small loader may appear only while meaningful background work is in progress.",
-  "M42 — CONTINUOUS VOICE DURING BACKGROUND WORK: When searching or handling meaningful background work, keep the voice present with a brief, natural progress update. Do not claim evidence before it is verified. Keep the camera view clear; after the work completes, answer aloud and do not switch to an answer panel.",
+  "SPEECH-FIRST INTERACTION WITH INFORMATION CARDS: Respond naturally through live voice. Never show live captions or cards that merely copy the user\u2019s speech or the assistant\u2019s raw transcript. For each substantive question, proactively call display_response_card with a concise designed information card: key_details for facts, explanations, recommendations and lists; steps for procedures; comparison for actual comparisons. The card supplements the spoken explanation and must contain useful information, not transcript text. For live web searches, wait for verified results and source URLs before displaying the result card; never render speculative pre-search content. Keep the camera clear when no information card is useful.",
+  "M42 — CONTINUOUS VOICE DURING BACKGROUND WORK: When searching or handling meaningful background work, keep the voice present with a brief, natural progress update. Do not claim evidence before it is verified. After work completes, speak the result and show a source-backed information card when useful; never display raw transcript text as a card.",
   "M36 — PERMISSION-BASED CONTINUITY: saved memory is optional. When opted-in memory context is absent, answer naturally from the current conversation without implying persistent memory. Treat supplied notes as user data, use only relevant facts, and honor opt-out for future sessions; context already sent to an active session cannot be withdrawn.",
   "M28 — GENERATIVE SPATIAL LANGUAGE:",
   "Prefer spatial_cues for task-specific compositional geometry instead of inventing object-specific drawing code: alignment is a straight reference through 2+ points; motion_path is a 2–8-point directional polyline; placement_region is a 3–8-vertex outline of a clearly visible region; target_point is a single point; orientation is a directional reference; label attaches short text to a point.",
@@ -466,7 +467,7 @@ const COPILOT_TOOL = {
       },
       required: ["text_to_display", "instruction", "target_hint", "screen_region"]
     }
-  }, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION]
+  }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION]
 };
 
 const SEARCH_GROUNDING_INSTRUCTION = [
@@ -480,7 +481,7 @@ const SEARCH_GROUNDING_INSTRUCTION = [
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current or historical sports leaderboard/season statistic, a ranked top-N list, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "For a top-N list, return the requested number of distinct ranked entries whenever sources support them. Search for a full leaderboard/table, not only preview snippets. If only a few results appear, run a more targeted alternate query or consult another credible source before concluding that the full list is unavailable. For a vague IPL 'rankers' request, default to IPL 2025 most-run scorers unless the context specifies wickets or another metric.",
   "If asked whether you have live search, answer truthfully that search is available and demonstrate it when the user also asks for information. Never claim that you lack web access while this tool is configured.",
-  "For a list of five or more items, search trustworthy sources as needed and give a complete spoken answer for the items actually verified. Never assume a response card or list is visible on screen.",
+  "For a list of five or more items, search trustworthy sources as needed, speak the verified items, and call display_response_card with the complete supported list and HTTPS source links. Never claim a card is visible unless the client confirms that it rendered.",
   "If the tool returns that it failed, timed out, or has no verifiable source URLs, plainly say the lookup could not be verified. Never claim a search occurred unless you called the tool and received its result."
 ].join("\n");
 
@@ -1604,6 +1605,10 @@ async function handleVoiceSocket(
       }
 
       const builtCard = buildGroundedListCard(query, result, requestedCount);
+      if (copilotMode && builtCard) {
+        // Render the structured result only after the live lookup has returned.
+        try { sendClientFrame(JSON.stringify({ grounded_response_card: builtCard })); } catch (_) {}
+      }
       let groundedAnswerText = result;
       fullTableVerified = Boolean(builtCard && builtCard.type === "key_details" &&
         builtCard.details.length === requestedCount &&
@@ -1619,8 +1624,8 @@ async function handleVoiceSocket(
       }
       try { sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
       const answerInstruction = fullTableVerified
-        ? "The complete source-verified top-" + requestedCount + " list is in the text below. Speak the verified entries naturally, with teams and scores where present. Do not create or imply a visible card. If the list is too long for one turn, explain the key result and continue verbally when asked. Use only the grounded content below.\n\n"
-        : "The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Speak only the items supported by evidence, identify what remains unverified, and do not guess missing names or statistics. Do not create or imply a visible card.\n\n";
+        ? "The complete source-verified top-" + requestedCount + " list is in the text below. Speak the verified entries naturally, with teams and scores where present. Display the complete structured list with its verified HTTPS sources in the information card; never invent entries. If the list is too long for one turn, explain the key result and continue verbally when asked. Use only the grounded content below.\\n\\n"
+        : "The live search did not verify a complete source-backed top-" + requestedCount + " ranking. Speak only the items supported by evidence, identify what remains unverified, and do not guess missing names or statistics. If a structured card is shown, clearly label unverified ranks and include only supported source links.\\n\\n";
       const continuationText = answerInstruction + "Grounded search result:\n" + groundedAnswerText.slice(0, 18_000);
       if (forcedRankedProgressTurnOutstanding) {
         // Sending clientContent during an active Live response can collide with or
@@ -2372,11 +2377,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               continue;
             }
             if (call?.name === "display_response_card") {
-              if (typeof call.id === "string" && call.id) {
+              // If a search is in this same tool frame, do not render its preliminary card.
+              // Verified results are delivered as a grounded_response_card or a later card call.
+              if (searchCallsPresent && typeof call.id === "string" && call.id) {
                 responses.push({
                   id: call.id,
                   name: "display_response_card",
-                  response: { result: "Response cards are disabled in this Co-Pilot. Continue with a complete natural spoken answer and do not call the card tool again. For current facts, use verified search results and explain them aloud." },
+                  response: { result: "The live lookup is still running. Wait for verified search results and then create the information card with supporting source URLs." },
                   scheduling: "WHEN_IDLE",
                 });
               }
