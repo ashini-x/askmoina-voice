@@ -72,6 +72,16 @@
   const clearTranscriptButton = $("#clearTranscript");
   const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
   const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
+  // Account-scoped memory and history are loaded from the authenticated Worker APIs.
+  let accountMemories = [];
+  let accountMemoryEnabled = true;
+  let accountMemoriesLoaded = false;
+  let accountMemoryRequest = null;
+  let libraryConversations = [];
+  let currentLibraryConversation = null;
+  let resumedConversationContext = null;
+  let resumeConversationForNextStart = null;
+  let editingMemoryId = null;
 
   let responseCardExpanded = true;
   let responseCardRenderedForTurn = false;
@@ -360,15 +370,50 @@
   }
 
   function readOptedInMemoryContext() {
-    try {
-      const consent = localStorage.getItem(MEMORY_CONSENT_KEY);
-      if (consent === "disabled") return "";
-      const value = String(localStorage.getItem(MEMORY_CONTEXT_KEY) || sessionStorage.getItem(MEMORY_CONTEXT_KEY) || "").trim().slice(0, 3000);
-      if (value && consent !== "enabled") {
-        try { localStorage.setItem(MEMORY_CONSENT_KEY, "enabled"); } catch (_) {}
+    const sections = [];
+    if (accountMemoryEnabled && Array.isArray(accountMemories) && accountMemories.length) {
+      const lines = [];
+      let used = 0;
+      for (const memory of accountMemories.slice(0, 40)) {
+        const content = String(memory && memory.content || "").trim().slice(0, 240);
+        if (!content || used + content.length > 3_200) continue;
+        lines.push("- " + content);
+        used += content.length;
       }
-      return value;
-    } catch (_) { return ""; }
+      if (lines.length) sections.push("PERSISTENT USER PREFERENCES (saved to this signed-in account):\n" + lines.join("\n"));
+    }
+    const resumed = resumedConversationContext;
+    if (resumed && resumed.conversation) {
+      const conversation = resumed.conversation;
+      const task = conversation.taskProgress && typeof conversation.taskProgress === "object"
+        ? JSON.stringify(conversation.taskProgress).slice(0, 1_300) : "{}";
+      const summary = String(conversation.summary || "").trim().slice(0, 1_500);
+      const turns = Array.isArray(resumed.turns) ? resumed.turns : [];
+      const lines = [];
+      let used = 0;
+      for (let index = turns.length - 1; index >= 0; index -= 1) {
+        const turn = turns[index];
+        const label = turn && turn.role === "assistant" ? "Moina" : "User";
+        let line = label + ": " + String(turn && turn.text || "").trim();
+        if (!line.slice(label.length + 2).trim()) continue;
+        const remaining = 8_600 - used;
+        if (remaining <= 0) break;
+        if (line.length > remaining) line = line.slice(0, Math.max(label.length + 3, remaining - 1)) + "…";
+        lines.push(line);
+        used += line.length + 1;
+        if (used >= 8_600) break;
+      }
+      lines.reverse();
+      const context = [
+        "RESUMED CONVERSATION — continue this existing task instead of treating it as a new topic.",
+        "Title: " + String(conversation.title || "Previous conversation").slice(0, 120),
+        summary ? "Saved summary: " + summary : "",
+        task !== "{}" ? "Saved task state: " + task : "",
+        lines.length ? "Recent saved transcript (chronological; the full history remains available in the History screen):\n" + lines.join("\n") : ""
+      ].filter(Boolean).join("\n");
+      sections.push(context);
+    }
+    return sections.join("\n\n").slice(0, 15_500);
   }
 
   window.addEventListener("storage", (event) => {
@@ -1897,6 +1942,7 @@
           summary: summaryLines,
           taskProgress: progress
         });
+        void refreshAccountMemories();
       }
     }).catch(() => {
       // Do not let persistence faults turn into a Live session fault.
@@ -3338,12 +3384,20 @@
     const isCurrentStart = () => startGeneration === copilotStartGeneration && starting && !stopping;
     const automaticRetry = isAutomaticRetry;
     isAutomaticRetry = false;
-    // A deliberate new start opens a new topic if this page already saved a turn;
-    // automatic network recovery keeps the original conversation scope.
-    if (!automaticRetry && conversationScopeHasActivity) {
+    // A deliberate resume reuses the saved conversation ID; ordinary new starts
+    // open a fresh topic, while automatic reconnects keep the active scope.
+    if (!automaticRetry && resumeConversationForNextStart) {
+      conversationScope += 1;
+      conversationIdsByScope.set(conversationScope, resumeConversationForNextStart.conversation.conversationId);
+      conversationScopeHasActivity = true;
+      conversationUserTurnPending = false;
+      resumedConversationContext = resumeConversationForNextStart;
+      resumeConversationForNextStart = null;
+    } else if (!automaticRetry && conversationScopeHasActivity) {
       conversationScope += 1;
       conversationScopeHasActivity = false;
       conversationUserTurnPending = false;
+      resumedConversationContext = null;
     }
     if (!automaticRetry || !liveSessionId) liveSessionId = crypto.randomUUID();
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
@@ -3368,7 +3422,10 @@
     try {
       // Keep preflight inside the guarded start path so a rejected fetch cannot
       // strand the camera stage in a stale connecting/recovery state.
-      const preflight = await refreshAvailabilityAfterRelease();
+      const [preflight] = await Promise.all([
+        refreshAvailabilityAfterRelease(),
+        refreshAccountMemories()
+      ]);
       if (!isCurrentStart()) return;
       if (preflight && !preflight.available) {
         starting = false;
@@ -5443,6 +5500,556 @@
 
   exitSpatialArButton.addEventListener("click", () => { void requestSpatialArExit(); });
   spatialArButton.addEventListener("click", () => { void startSpatialAr(); });
+
+
+  const librarySheet = $("#librarySheet");
+  const libraryOpenButton = $("#openLibrary");
+  const libraryCloseButton = $("#closeLibrary");
+  const libraryScrim = $("#libraryScrim");
+  const libraryStatus = $("#libraryStatus");
+  const libraryTabs = Array.from(document.querySelectorAll("[data-library-tab]"));
+  const libraryHistoryView = $("#libraryHistoryView");
+  const conversationDetailView = $("#conversationDetailView");
+  const libraryMemoryView = $("#libraryMemoryView");
+  const conversationList = $("#conversationList");
+  const conversationSearch = $("#conversationSearch");
+  const detailTitle = $("#detailTitle");
+  const detailMeta = $("#detailMeta");
+  const detailSummary = $("#detailSummary");
+  const detailTask = $("#detailTask");
+  const detailTranscript = $("#detailTranscript");
+  const continueConversationButton = $("#continueConversation");
+  const memoryEnabledSwitch = $("#memoryEnabledSwitch");
+  const memoryForm = $("#memoryAddForm");
+  const memoryInput = $("#memoryInput");
+  const memoryList = $("#memoryList");
+  const clearAllMemoriesButton = $("#clearAllMemories");
+  let activeLibraryTab = "history";
+  let conversationDetailLoading = false;
+
+  function setLibraryStatus(message, error = false) {
+    if (!libraryStatus) return;
+    libraryStatus.textContent = String(message || "");
+    libraryStatus.dataset.kind = error ? "error" : "normal";
+  }
+
+  async function apiJson(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      cache: "no-store",
+      ...options,
+      headers: {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers || {})
+      }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      location.href = "/login";
+      throw new Error("Sign in again to access your saved history and memories.");
+    }
+    if (!response.ok) throw new Error(String(data.message || data.error || "Request failed."));
+    return data;
+  }
+
+  async function refreshAccountMemories() {
+    if (accountMemoryRequest) return accountMemoryRequest;
+    accountMemoryRequest = (async () => {
+      try {
+        const data = await apiJson("/api/memories");
+        accountMemories = Array.isArray(data.memories) ? data.memories : [];
+        accountMemoryEnabled = data.enabled !== false;
+        accountMemoriesLoaded = true;
+        if (memoryEnabledSwitch) memoryEnabledSwitch.checked = accountMemoryEnabled;
+        renderMemoryList();
+        return data;
+      } catch (error) {
+        accountMemoriesLoaded = false;
+        if (librarySheet && !librarySheet.hidden) setLibraryStatus(error.message || "Memories could not be loaded.", true);
+        return null;
+      } finally {
+        accountMemoryRequest = null;
+      }
+    })();
+    return accountMemoryRequest;
+  }
+
+  async function refreshConversationList() {
+    if (!conversationList) return;
+    conversationList.replaceChildren();
+    conversationList.appendChild(makeLibraryEmpty("Loading your history…", "Your saved conversations are on their way."));
+    try {
+      const data = await apiJson("/api/conversations?status=all&limit=500");
+      libraryConversations = Array.isArray(data.conversations) ? data.conversations : [];
+      renderConversationList();
+      setLibraryStatus("");
+    } catch (error) {
+      renderLibraryEmpty(conversationList, "History unavailable", error.message || "Check your connection and try again.");
+      setLibraryStatus("Your conversation history could not be loaded.", true);
+    }
+  }
+
+  function makeLibraryEmpty(title, description) {
+    const box = document.createElement("div");
+    box.className = "library-empty";
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    const message = document.createElement("p");
+    message.textContent = description;
+    box.append(heading, message);
+    return box;
+  }
+
+  function renderLibraryEmpty(target, title, description) {
+    target.replaceChildren(makeLibraryEmpty(title, description));
+  }
+
+  function formatLibraryDate(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "Saved conversation";
+    try {
+      const day = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+      const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+      return day + " · " + time;
+    } catch (_) {
+      return date.toLocaleDateString();
+    }
+  }
+
+  function renderConversationList() {
+    if (!conversationList) return;
+    const query = String(conversationSearch && conversationSearch.value || "").trim().toLocaleLowerCase();
+    const filtered = libraryConversations.filter((item) => {
+      const task = item.taskProgress && item.taskProgress.goal || "";
+      const haystack = [item.title, item.summaryPreview, task, item.status].join(" ").toLocaleLowerCase();
+      return !query || haystack.includes(query);
+    });
+    conversationList.replaceChildren();
+    if (!filtered.length) {
+      renderLibraryEmpty(conversationList, query ? "No matches" : "Nothing here yet", query
+        ? "Try a different word or phrase."
+        : "Your conversations will appear here after you talk with Moina.");
+      return;
+    }
+    for (const item of filtered) {
+      const card = document.createElement("article");
+      card.className = "library-history-item" + (item.status === "archived" ? " is-archived" : "");
+      const main = document.createElement("button");
+      main.type = "button";
+      main.className = "library-history-main";
+      main.dataset.openConversation = item.conversationId;
+      const title = document.createElement("span");
+      title.className = "library-history-title";
+      title.textContent = item.title || "Conversation";
+      const meta = document.createElement("span");
+      meta.className = "library-history-meta";
+      meta.textContent = formatLibraryDate(item.lastActivityAt || item.updatedAt) + (item.status === "archived" ? " · Archived" : "");
+      main.append(title, meta);
+      const summaryText = String(item.summaryPreview || item.taskProgress && item.taskProgress.goal || "").trim();
+      if (summaryText) {
+        const summary = document.createElement("span");
+        summary.className = "library-history-summary";
+        summary.textContent = summaryText;
+        main.appendChild(summary);
+      }
+      const actions = document.createElement("div");
+      actions.className = "library-history-actions";
+      const archive = document.createElement("button");
+      archive.type = "button";
+      archive.className = "library-history-action";
+      archive.dataset.archiveConversation = item.conversationId;
+      archive.dataset.nextStatus = item.status === "archived" ? "active" : "archived";
+      archive.textContent = item.status === "archived" ? "Restore" : "Archive";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "library-history-action is-destructive";
+      remove.dataset.deleteConversation = item.conversationId;
+      remove.textContent = "Delete";
+      actions.append(archive, remove);
+      card.append(main, actions);
+      conversationList.appendChild(card);
+    }
+  }
+
+  async function fetchEntireConversation(conversationId) {
+    let beforeSequence = null;
+    let firstPage = null;
+    const turns = [];
+    do {
+      const suffix = beforeSequence ? "&before_sequence=" + encodeURIComponent(beforeSequence) : "";
+      const page = await apiJson("/api/conversations/" + encodeURIComponent(conversationId) + "?limit=500" + suffix);
+      if (!firstPage) firstPage = page;
+      turns.unshift(...(Array.isArray(page.turns) ? page.turns : []));
+      if (!page.hasMore || !page.nextBeforeSequence) break;
+      beforeSequence = page.nextBeforeSequence;
+    } while (true);
+    if (!firstPage || !firstPage.conversation) throw new Error("This conversation could not be found.");
+    return { ...firstPage, turns };
+  }
+
+  function showLibraryView(view) {
+    if (libraryHistoryView) libraryHistoryView.hidden = view !== "history";
+    if (conversationDetailView) conversationDetailView.hidden = view !== "detail";
+    if (libraryMemoryView) libraryMemoryView.hidden = view !== "memories";
+  }
+
+  function renderConversationDetail(data) {
+    currentLibraryConversation = data;
+    const conversation = data.conversation || {};
+    if (detailTitle) detailTitle.textContent = conversation.title || "Conversation";
+    if (detailMeta) detailMeta.textContent = formatLibraryDate(conversation.lastActivityAt || conversation.updatedAt) + " · " + (data.turns || []).length + " saved turns";
+    if (detailSummary) {
+      const summary = String(conversation.summary || "").trim();
+      detailSummary.hidden = !summary;
+      detailSummary.textContent = summary ? summary : "";
+    }
+    if (detailTask) {
+      const progress = conversation.taskProgress || {};
+      const bits = [
+        progress.goal ? "Goal: " + progress.goal : "",
+        progress.currentState ? "Progress: " + progress.currentState : "",
+        progress.nextAction ? "Next: " + progress.nextAction : ""
+      ].filter(Boolean);
+      detailTask.hidden = !bits.length;
+      detailTask.replaceChildren();
+      if (bits.length) {
+        const heading = document.createElement("strong");
+        heading.textContent = "TASK CONTEXT";
+        const copy = document.createElement("p");
+        copy.textContent = bits.join("\n");
+        detailTask.append(heading, copy);
+      }
+    }
+    if (detailTranscript) {
+      detailTranscript.replaceChildren();
+      const turns = Array.isArray(data.turns) ? data.turns : [];
+      for (const turn of turns) {
+        const isUser = turn.role === "user";
+        const row = document.createElement("article");
+        row.className = "detail-turn" + (isUser ? " from-user" : "");
+        const label = document.createElement("span");
+        label.className = "detail-turn-label";
+        label.textContent = isUser ? "You" : "Moina";
+        const copy = document.createElement("p");
+        copy.className = "detail-turn-text";
+        copy.textContent = String(turn.text || "");
+        row.append(label, copy);
+        detailTranscript.appendChild(row);
+      }
+      if (!turns.length) detailTranscript.appendChild(makeLibraryEmpty("No saved turns", "This conversation has no finalized transcript yet."));
+    }
+    if (continueConversationButton) continueConversationButton.disabled = conversation.status === "archived";
+    showLibraryView("detail");
+    setLibraryStatus("");
+  }
+
+  async function openConversationDetail(id) {
+    if (conversationDetailLoading) return;
+    conversationDetailLoading = true;
+    showLibraryView("detail");
+    if (detailTitle) detailTitle.textContent = "Opening conversation…";
+    if (detailMeta) detailMeta.textContent = "Loading saved context";
+    if (detailTranscript) renderLibraryEmpty(detailTranscript, "Loading transcript…", "Fetching the full saved conversation.");
+    if (continueConversationButton) continueConversationButton.disabled = true;
+    setLibraryStatus("");
+    try {
+      const data = await fetchEntireConversation(id);
+      renderConversationDetail(data);
+    } catch (error) {
+      showLibraryView("history");
+      setLibraryStatus(error.message || "Could not open this conversation.", true);
+    } finally {
+      conversationDetailLoading = false;
+    }
+  }
+
+  function renderMemoryList() {
+    if (!memoryList) return;
+    memoryList.replaceChildren();
+    if (!accountMemoryEnabled) {
+      memoryList.appendChild(makeLibraryEmpty("Preference memory is paused", "Saved memories stay here, but Moina will not learn or use them until you turn memory back on."));
+    }
+    if (!accountMemories.length && accountMemoryEnabled) {
+      memoryList.appendChild(makeLibraryEmpty("Your memory starts here", "Say “I prefer short answers” or add a preference above. You can review everything Moina remembers."));
+      return;
+    }
+    for (const memory of accountMemories) {
+      const card = document.createElement("article");
+      card.className = "memory-item";
+      if (editingMemoryId === memory.id) {
+        const form = document.createElement("form");
+        form.className = "memory-edit-form";
+        form.dataset.memoryEditForm = memory.id;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 240;
+        input.required = true;
+        input.value = memory.content || "";
+        input.setAttribute("aria-label", "Edit saved preference");
+        const save = document.createElement("button");
+        save.type = "submit";
+        save.textContent = "Save";
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.dataset.cancelMemoryEdit = "true";
+        cancel.textContent = "Cancel";
+        form.append(input, save, cancel);
+        card.appendChild(form);
+      } else {
+        const copy = document.createElement("p");
+        copy.className = "memory-text";
+        copy.textContent = memory.content || "";
+        const kind = document.createElement("span");
+        kind.className = "memory-kind";
+        kind.textContent = String(memory.kind || "preference").replace(/_/g, " ");
+        const actions = document.createElement("div");
+        actions.className = "memory-item-actions";
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.dataset.editMemory = memory.id;
+        edit.textContent = "Edit";
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "memory-delete";
+        remove.dataset.deleteMemory = memory.id;
+        remove.textContent = "Delete";
+        actions.append(edit, remove);
+        card.append(copy, kind, actions);
+      }
+      memoryList.appendChild(card);
+    }
+  }
+
+  async function openLibrary(tab = "history") {
+    if (!librarySheet) return;
+    librarySheet.hidden = false;
+    librarySheet.setAttribute("aria-hidden", "false");
+    document.body.classList.add("library-is-open");
+    setLibraryTab(tab);
+    if (tab === "history") await refreshConversationList();
+    else await refreshAccountMemories();
+    const focus = tab === "memories" ? memoryInput : conversationSearch;
+    if (focus) focus.focus({ preventScroll: true });
+  }
+
+  function closeLibrary() {
+    if (!librarySheet || librarySheet.hidden) return;
+    librarySheet.hidden = true;
+    librarySheet.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("library-is-open");
+    if (libraryOpenButton) libraryOpenButton.focus({ preventScroll: true });
+  }
+
+  function setLibraryTab(tab) {
+    activeLibraryTab = tab === "memories" ? "memories" : "history";
+    for (const button of libraryTabs) {
+      const selected = button.dataset.libraryTab === activeLibraryTab;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-selected", String(selected));
+    }
+    showLibraryView(activeLibraryTab);
+    setLibraryStatus("");
+    if (activeLibraryTab === "memories") void refreshAccountMemories();
+  }
+
+  async function changeConversationStatus(id, status) {
+    try {
+      await apiJson("/api/conversations/" + encodeURIComponent(id), {
+        method: "PATCH", body: JSON.stringify({ status })
+      });
+      await refreshConversationList();
+      setLibraryStatus(status === "archived" ? "Conversation archived." : "Conversation restored.");
+    } catch (error) {
+      setLibraryStatus(error.message || "Could not update this conversation.", true);
+    }
+  }
+
+  async function deleteSavedConversation(id) {
+    if (!window.confirm("Delete this conversation and its saved transcript? This cannot be undone.")) return;
+    try {
+      await apiJson("/api/conversations/" + encodeURIComponent(id), { method: "DELETE" });
+      if (currentLibraryConversation && currentLibraryConversation.conversation &&
+          currentLibraryConversation.conversation.conversationId === id) currentLibraryConversation = null;
+      await refreshConversationList();
+      setLibraryStatus("Conversation deleted.");
+    } catch (error) {
+      setLibraryStatus(error.message || "Could not delete this conversation.", true);
+    }
+  }
+
+  async function saveMemoryPreference(content, memoryId = "") {
+    try {
+      if (memoryId) {
+        await apiJson("/api/memories/" + encodeURIComponent(memoryId), {
+          method: "PATCH", body: JSON.stringify({ content })
+        });
+        editingMemoryId = null;
+        setLibraryStatus("Memory updated.");
+      } else {
+        await apiJson("/api/memories", {
+          method: "POST", body: JSON.stringify({ content })
+        });
+        if (memoryInput) memoryInput.value = "";
+        setLibraryStatus("Preference saved for future conversations.");
+      }
+      accountMemoryRequest = null;
+      await refreshAccountMemories();
+    } catch (error) {
+      setLibraryStatus(error.message || "Could not save this preference.", true);
+    }
+  }
+
+  async function deleteMemoryPreference(id) {
+    if (!window.confirm("Delete this saved memory? Moina will stop using it in future conversations.")) return;
+    try {
+      await apiJson("/api/memories/" + encodeURIComponent(id), { method: "DELETE" });
+      accountMemories = accountMemories.filter((item) => item.id !== id);
+      editingMemoryId = null;
+      renderMemoryList();
+      setLibraryStatus("Memory deleted.");
+    } catch (error) {
+      setLibraryStatus(error.message || "Could not delete this memory.", true);
+    }
+  }
+
+  async function togglePersistentMemory(enabled) {
+    if (memoryEnabledSwitch) memoryEnabledSwitch.disabled = true;
+    try {
+      const data = await apiJson("/api/memories/settings", {
+        method: "PATCH", body: JSON.stringify({ enabled })
+      });
+      accountMemoryEnabled = data.enabled === true;
+      if (memoryEnabledSwitch) memoryEnabledSwitch.checked = accountMemoryEnabled;
+      renderMemoryList();
+      setLibraryStatus(accountMemoryEnabled ? "Preference memory is on." : "Preference memory is paused. Your saved memories have not been deleted.");
+    } catch (error) {
+      if (memoryEnabledSwitch) memoryEnabledSwitch.checked = accountMemoryEnabled;
+      setLibraryStatus(error.message || "Could not update memory settings.", true);
+    } finally {
+      if (memoryEnabledSwitch) memoryEnabledSwitch.disabled = false;
+    }
+  }
+
+  function appendResumedTranscript(turns) {
+    if (!transcriptNode) return;
+    resetTranscript();
+    const empty = transcriptNode.querySelector(".empty-state");
+    if (empty) empty.remove();
+    transcriptStarted = true;
+    for (const turn of turns || []) {
+      const user = turn.role === "user";
+      const row = document.createElement("div");
+      row.className = "transcript-entry " + (user ? "from-you" : "from-moina") + " restored-transcript-entry";
+      const label = document.createElement("span");
+      label.className = "transcript-label";
+      label.textContent = user ? "YOU" : "MOINA";
+      const copy = document.createElement("p");
+      copy.className = "transcript-text";
+      copy.textContent = String(turn.text || "");
+      row.append(label, copy);
+      transcriptNode.appendChild(row);
+    }
+    currentTranscriptNodes = { user: null, assistant: null };
+    transcriptNode.scrollTop = transcriptNode.scrollHeight;
+  }
+
+  function restoreTaskProgress(progress) {
+    const state = progress && typeof progress === "object" ? progress : {};
+    taskWorldModel = {
+      ...createTaskWorldModel(),
+      goal: String(state.goal || "").slice(0, 220),
+      currentState: String(state.currentState || "").slice(0, 220),
+      intendedAction: String(state.nextAction || "").slice(0, 220),
+      expectedEvidence: String(state.expectedEvidence || "").slice(0, 220),
+      constraints: Array.isArray(state.constraints) ? state.constraints.slice(0, 12).map((item) => String(item).slice(0, 300)) : [],
+      uncertainties: state.uncertainty ? [String(state.uncertainty).slice(0, 200)] : [],
+      events: Array.isArray(state.recentEvents) ? state.recentEvents.slice(-6).map((event) => ({
+        kind: String(event.kind || "restored").slice(0, 50),
+        detail: String(event.text || "").slice(0, 300),
+        at: event.at ? Date.parse(event.at) || Date.now() : Date.now()
+      })) : [],
+      updatedAt: Date.now()
+    };
+  }
+
+  if (libraryOpenButton) libraryOpenButton.addEventListener("click", () => { void openLibrary("history"); });
+  if (libraryCloseButton) libraryCloseButton.addEventListener("click", closeLibrary);
+  if (libraryScrim) libraryScrim.addEventListener("click", closeLibrary);
+  for (const button of libraryTabs) button.addEventListener("click", () => {
+    const tab = button.dataset.libraryTab === "memories" ? "memories" : "history";
+    setLibraryTab(tab);
+    if (tab === "history") void refreshConversationList();
+  });
+  if (conversationDetailBack) conversationDetailBack.addEventListener("click", () => {
+    showLibraryView("history");
+    currentLibraryConversation = null;
+    setLibraryStatus("");
+  });
+  if (conversationSearch) conversationSearch.addEventListener("input", renderConversationList);
+  if (conversationList) conversationList.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!target) return;
+    if (target.dataset.openConversation) void openConversationDetail(target.dataset.openConversation);
+    else if (target.dataset.archiveConversation) void changeConversationStatus(target.dataset.archiveConversation, target.dataset.nextStatus);
+    else if (target.dataset.deleteConversation) void deleteSavedConversation(target.dataset.deleteConversation);
+  });
+  if (continueConversationButton) continueConversationButton.addEventListener("click", () => {
+    if (!currentLibraryConversation || !currentLibraryConversation.conversation ||
+        currentLibraryConversation.conversation.status === "archived") return;
+    resumeConversationForNextStart = currentLibraryConversation;
+    resumedConversationContext = currentLibraryConversation;
+    restoreTaskProgress(currentLibraryConversation.conversation.taskProgress);
+    appendResumedTranscript(currentLibraryConversation.turns || []);
+    closeLibrary();
+    setStatus("Restoring this conversation and reconnecting to Moina…");
+    void startCopilot();
+  });
+  if (memoryEnabledSwitch) memoryEnabledSwitch.addEventListener("change", () => { void togglePersistentMemory(memoryEnabledSwitch.checked); });
+  if (memoryForm) memoryForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const content = String(memoryInput && memoryInput.value || "").trim();
+    if (content) void saveMemoryPreference(content);
+  });
+  if (memoryList) memoryList.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!target) return;
+    if (target.dataset.editMemory) {
+      editingMemoryId = target.dataset.editMemory;
+      renderMemoryList();
+      const input = memoryList.querySelector(".memory-edit-form input");
+      if (input) input.focus({ preventScroll: true });
+    } else if (target.dataset.cancelMemoryEdit) {
+      editingMemoryId = null;
+      renderMemoryList();
+    } else if (target.dataset.deleteMemory) void deleteMemoryPreference(target.dataset.deleteMemory);
+  });
+  if (memoryList) memoryList.addEventListener("submit", (event) => {
+    const form = event.target instanceof HTMLFormElement ? event.target : null;
+    if (!form || !form.dataset.memoryEditForm) return;
+    event.preventDefault();
+    const input = form.querySelector("input");
+    const value = String(input && input.value || "").trim();
+    if (value) void saveMemoryPreference(value, form.dataset.memoryEditForm);
+  });
+  if (clearAllMemoriesButton) clearAllMemoriesButton.addEventListener("click", async () => {
+    if (!accountMemories.length || !window.confirm("Clear every saved preference for this account? This cannot be undone.")) return;
+    try {
+      await apiJson("/api/memories", { method: "DELETE" });
+      accountMemories = [];
+      editingMemoryId = null;
+      renderMemoryList();
+      setLibraryStatus("All saved preferences were deleted.");
+    } catch (error) {
+      setLibraryStatus(error.message || "Could not clear memories.", true);
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && librarySheet && !librarySheet.hidden) closeLibrary();
+  });
+
+  // Warm account memory in the background while the camera preview initializes.
+  void refreshAccountMemories();
 
   if (!window.AudioContext && window.webkitAudioContext) window.AudioContext = window.webkitAudioContext;
 
