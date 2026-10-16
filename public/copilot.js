@@ -376,7 +376,7 @@
       let used = 0;
       for (const memory of accountMemories.slice(0, 40)) {
         const content = String(memory && memory.content || "").trim().slice(0, 240);
-        if (!content || used + content.length > 3_200) continue;
+        if (!content || used + content.length > 2_800) continue;
         lines.push("- " + content);
         used += content.length;
       }
@@ -386,8 +386,16 @@
     if (resumed && resumed.conversation) {
       const conversation = resumed.conversation;
       const task = conversation.taskProgress && typeof conversation.taskProgress === "object"
-        ? JSON.stringify(conversation.taskProgress).slice(0, 1_300) : "{}";
-      const summary = String(conversation.summary || "").trim().slice(0, 1_500);
+        ? JSON.stringify(conversation.taskProgress).slice(0, 1_200) : "{}";
+      const rawSummary = String(conversation.summary || "").trim();
+      const summaryMarker = "Recent conversation notes:\n";
+      const markerAt = rawSummary.indexOf(summaryMarker);
+      const summaryAnchor = (markerAt >= 0 ? rawSummary.slice(0, markerAt) : rawSummary).trim().slice(0, 900);
+      const recentSummaryNotes = markerAt >= 0
+        ? rawSummary.slice(markerAt + summaryMarker.length).trim().slice(-1_300)
+        : (rawSummary.length > 900 ? rawSummary.slice(-1_300) : "");
+      const summary = [summaryAnchor, recentSummaryNotes ? "Accumulated history notes:\n" + recentSummaryNotes : ""]
+        .filter(Boolean).join("\n").slice(0, 2_250);
       const turns = Array.isArray(resumed.turns) ? resumed.turns : [];
       const lines = [];
       let used = 0;
@@ -396,18 +404,18 @@
         const label = turn && turn.role === "assistant" ? "Moina" : "User";
         let line = label + ": " + String(turn && turn.text || "").trim();
         if (!line.slice(label.length + 2).trim()) continue;
-        const remaining = 8_600 - used;
+        const remaining = 8_200 - used;
         if (remaining <= 0) break;
         if (line.length > remaining) line = line.slice(0, Math.max(label.length + 3, remaining - 1)) + "…";
         lines.push(line);
         used += line.length + 1;
-        if (used >= 8_600) break;
+        if (used >= 8_200) break;
       }
       lines.reverse();
       const context = [
         "RESUMED CONVERSATION — continue this existing task instead of treating it as a new topic.",
         "Title: " + String(conversation.title || "Previous conversation").slice(0, 120),
-        summary ? "Saved summary: " + summary : "",
+        summary ? "Saved cumulative summary and prior interaction notes:\n" + summary : "",
         task !== "{}" ? "Saved task state: " + task : "",
         lines.length ? "Recent saved transcript (chronological; the full history remains available in the History screen):\n" + lines.join("\n") : ""
       ].filter(Boolean).join("\n");
@@ -507,6 +515,7 @@
   let conversationUserTurnPending = false;
   let conversationScopeHasActivity = false;
   const conversationIdsByScope = new Map();
+  const conversationSummariesByScope = new Map();
   const conversationCreatePromisesByScope = new Map();
   let conversationPersistenceQueue = Promise.resolve();
   let voiceAvailability = null;
@@ -1910,6 +1919,28 @@
     return false;
   }
 
+  const CONVERSATION_SUMMARY_RECENT_MARKER = "\n\nRecent conversation notes:\n";
+
+  function mergeConversationSummary(previousSummary, latestSummary, progress) {
+    const previous = String(previousSummary || "").trim();
+    const latest = String(latestSummary || "").trim().slice(0, 1_700);
+    const markerAt = previous.indexOf(CONVERSATION_SUMMARY_RECENT_MARKER);
+    const priorNotes = markerAt >= 0
+      ? previous.slice(markerAt + CONVERSATION_SUMMARY_RECENT_MARKER.length).trim()
+      : previous;
+    const combinedNotes = [priorNotes, latest].filter(Boolean).join("\n\n").slice(-2_400);
+    const stableLines = [
+      progress && progress.goal ? "Goal: " + String(progress.goal).slice(0, 700) : "",
+      progress && progress.constraints && progress.constraints.length
+        ? "Stable constraints: " + progress.constraints.join("; ").slice(0, 500) : "",
+      progress && progress.expectedEvidence ? "Success evidence: " + String(progress.expectedEvidence).slice(0, 260) : ""
+    ].filter(Boolean);
+    return [
+      stableLines.join("\n"),
+      combinedNotes ? "Recent conversation notes:\n" + combinedNotes : ""
+    ].filter(Boolean).join("\n\n").slice(0, 4_000);
+  }
+
   function queueFinalizedConversationTurn(userText, assistantText) {
     const user = String(userText || "").trim().slice(0, 20_000);
     const assistant = String(assistantText || "").trim().slice(0, 20_000);
@@ -1919,16 +1950,16 @@
     const userKey = user ? "voice-" + crypto.randomUUID() : "";
     const assistantKey = assistant ? "voice-" + crypto.randomUUID() : "";
     const progress = conversationTaskProgressSnapshot(user || assistant);
-    const summaryLines = [
-      progress.goal ? "Goal: " + progress.goal : "",
-      "Latest user request: " + (user || "not present in this finalized event"),
-      "Latest Moina response: " + (assistant || "not yet received"),
+    const latestSummary = [
+      user ? "User: " + user.slice(0, 700) : "",
+      assistant ? "Moina: " + assistant.slice(0, 1_100) : "",
       progress.currentState ? "Current state: " + progress.currentState : "",
       progress.nextAction ? "Next action: " + progress.nextAction : "",
-      progress.expectedEvidence ? "Expected evidence: " + progress.expectedEvidence : "",
-      progress.constraints.length ? "Constraints: " + progress.constraints.join("; ") : "",
       progress.uncertainty ? "Uncertainty: " + progress.uncertainty : ""
-    ].filter(Boolean).join("\n").slice(0, 4_000);
+    ].filter(Boolean).join("\n").slice(0, 1_700);
+    const previousSummary = conversationSummariesByScope.get(scope) || "";
+    const summaryLines = mergeConversationSummary(previousSummary, latestSummary, progress);
+    conversationSummariesByScope.set(scope, summaryLines);
 
     conversationPersistenceQueue = conversationPersistenceQueue.then(async () => {
       const conversationId = await ensureConversationForScope(scope, user || assistant);
@@ -3392,6 +3423,7 @@
       conversationScopeHasActivity = true;
       conversationUserTurnPending = false;
       resumedConversationContext = resumeConversationForNextStart;
+      conversationSummariesByScope.set(conversationScope, String(resumeConversationForNextStart.conversation.summary || ""));
       resumeConversationForNextStart = null;
     } else if (!automaticRetry && conversationScopeHasActivity) {
       conversationScope += 1;
