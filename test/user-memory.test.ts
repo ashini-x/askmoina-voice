@@ -6,6 +6,8 @@ describe("automatic preference memory", () => {
     expect(extractPreference("I prefer short answers with clear examples.")).toContain("I prefer short answers");
     expect(extractPreference("Please remember that I prefer Assamese-English replies")).toContain("I prefer Assamese-English replies");
     expect(extractPreference("From now on, answer me in simple words")).toContain("answer me in simple words");
+    expect(extractPreference("Moi Assamese-English mixed replies bhal pau")).toContain("bhal pau");
+    expect(extractPreference("Mok Moina buli matiba")).toContain("buli matiba");
   });
 
   it("does not treat ordinary questions and conversation topics as preferences", () => {
@@ -18,5 +20,6 @@ describe("automatic preference memory", () => {
     expect(extractPreference("I prefer concise answers, and my medical condition is ...")).toBeNull();
     expect(extractPreference("My password is hunter2")).toBeNull();
     expect(extractPreference("I prefer to get OTP codes by text")).toBeNull();
+    expect(extractPreference("Moi Hindu dhormo bhal pau")).toBeNull();
   });
 });
