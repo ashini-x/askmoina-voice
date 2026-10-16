@@ -40,7 +40,7 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 - A scheduled production health workflow checks the public health endpoint and confirms the Worker still reports its Vertex AI route. This is a configuration smoke test, not proof of successful live audio or Assamese speech quality.
 - Configure Cloudflare Access in front of `/admin*` as an additional protection where practical.
 - App-level usage limits are not Google Cloud billing hard caps. Use Google Cloud budgets and billing reports for actual spend.
-- Raw audio and transcripts are not saved by default.
+- Raw microphone audio and camera video are not saved. Finalized user/assistant transcript text is saved in account-owned conversation history, not analytics logs, so the user can review it later.
 
 ## Build, tests and deployment
 
