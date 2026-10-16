@@ -287,8 +287,11 @@ jobs:
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             test "$status" = "200"
           done
-          grep -q 'askmoina-pwa-shell-v1' /tmp/moina-pwa-asset 2>/dev/null || true
-          echo "PWA install/offline shell assets: OK"
+          status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
+          test "$status" = "200"
+          grep -q 'askmoina-pwa-shell-v1' /tmp/moina-service-worker.js
+          grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
+          echo "PWA install/offline shell assets and update-safe service worker: OK"
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
