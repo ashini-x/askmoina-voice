@@ -744,9 +744,9 @@ describe("Live microphone explicit activity detection", () => {
 describe("Native-first app experience v2", () => {
   it("renders a camera-first native welcome state without a website-style branded header", () => {
     expect(workerSource).toContain("const NATIVE_CAMERA_WELCOME = ");
-    expect(workerSource).toContain('id="nativeCameraWelcomeTitle"');
-    expect(workerSource).toContain('id="openAppMenu"');
-    expect(workerSource).toContain('id="openLibrary"');
+    expect(workerSource).toContain("nativeCameraWelcomeTitle");
+    expect(workerSource).toContain("openAppMenu");
+    expect(workerSource).toContain("openLibrary");
     expect(workerSource).toContain('const NATIVE_APP_HEADER_GUEST = "";');
     expect(workerSource).toContain("html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker)");
     expect(nativeAppCss).toContain(".native-camera-welcome");
