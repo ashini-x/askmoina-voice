@@ -146,7 +146,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('id="continueConversation"');
     expect(html).toContain('id="memoryEnabledSwitch"');
     expect(html).toContain('id="clearAllMemories"');
-    expect(script).toContain('fetch("/api/conversations?status=all&limit=500")');
+    expect(script).toContain('apiJson("/api/conversations?status=all&limit=500")');
     expect(script).toContain('fetchEntireConversation(conversationId)');
     expect(script).toContain('resumeConversationForNextStart.conversation.conversationId');
     expect(script).toContain('RESUMED CONVERSATION');
