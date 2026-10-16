@@ -1,0 +1,49 @@
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; min-height: 100dvh; margin: 0; }
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + env(safe-area-inset-top)) max(18px, env(safe-area-inset-left))
+    calc(24px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-right));
+}
+.panel {
+  width: min(100%, 540px);
+  padding: clamp(24px, 6vw, 44px);
+  border: 1px solid rgba(29, 29, 31, .07);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 18px 56px rgba(29, 29, 31, .055);
+}
+.brand-mark { width: 56px; height: 56px; display: grid; place-items: center; margin-bottom: 26px; }
+.brand-mark img { width: 52px; height: 52px; object-fit: contain; }
+.eyebrow { margin: 0 0 12px; color: #6e6e73; font-size: 11px; letter-spacing: .13em; font-weight: 650; }
+h1 { max-width: 440px; margin: 0; font-size: clamp(30px, 6.5vw, 44px); line-height: 1.08; letter-spacing: -.045em; font-weight: 650; }
+.intro { max-width: 420px; margin: 16px 0 24px; color: #6e6e73; font-size: 16px; line-height: 1.55; }
+.install-button {
+  width: 100%; min-height: 50px; border: 0; border-radius: 14px; padding: 14px 18px;
+  background: #1d1d1f; color: white; font: inherit; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.install-button:focus-visible { outline: 3px solid #86868b; outline-offset: 3px; }
+.status { min-height: 20px; margin: 12px 0 24px; color: #6e6e73; font-size: 12px; line-height: 1.5; }
+.install-help { border-top: 1px solid #e5e5ea; padding-top: 20px; }
+h2 { margin: 0 0 14px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.steps { display: grid; gap: 12px; }
+.step { padding: 14px 15px; background: #f5f5f7; border-radius: 14px; }
+.step-label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 650; }
+.step p { margin: 0; color: #6e6e73; font-size: 13px; line-height: 1.55; }
+.step strong { color: #1d1d1f; font-weight: 650; }
+.footnote { margin: 20px 0 0; color: #86868b; font-size: 11px; line-height: 1.55; }
+@media (max-width: 380px) { .panel { padding: 23px 19px; border-radius: 23px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
