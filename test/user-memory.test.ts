@@ -11,6 +11,7 @@ describe("automatic preference memory", () => {
   it("does not treat ordinary questions and conversation topics as preferences", () => {
     expect(extractPreference("Can you explain how a circuit breaker works?")).toBeNull();
     expect(extractPreference("The weather is nice today.")).toBeNull();
+    expect(extractPreference("I want you to fix this phone right now.")).toBeNull();
   });
 
   it("does not automatically store explicit sensitive disclosures or credentials", () => {
