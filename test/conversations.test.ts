@@ -18,7 +18,7 @@ class MemoryD1 {
   sessions = new Map<string, Session>();
   conversations = new Map<string, AnyRow>();
   turns = new Map<string, AnyRow>();
-  async prepare(sql: string) { return new MemoryStatement(this, sql); }
+  prepare(sql: string) { return new MemoryStatement(this, sql); }
   async batch(statements: MemoryStatement[]) {
     return statements.map((statement) => this.runSync(statement.sql, statement.args));
   }
