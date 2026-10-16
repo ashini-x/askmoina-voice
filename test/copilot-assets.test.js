@@ -44,7 +44,8 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("uses a camera-lens Vision mark, obvious authentication button, and wider live edge pulses", () => {
     expect(html).not.toContain("toggleCaptions");
-    expect(html).toContain('<rect x="3.2" y="6.6" width="11.5" height="10.8" rx="2.2"/>');
+    expect(html).toContain('class="icon-start"');
+    expect(html).toContain("M7.1 4.2");
     expect(css).toContain("@keyframes edge-width-pulse");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
     expect(css).toContain(".camera-stage.is-speaking .edge-glow:after");
