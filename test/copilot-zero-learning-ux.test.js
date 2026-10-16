@@ -22,7 +22,8 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).not.toContain('id="secondaryControls"');
     expect(html).not.toContain('id="toggleMoreControls"');
-    expect(html).toContain('id="vaultButton" href="/vault"');
+    expect(html).not.toContain('id="vaultButton" href="/vault"');
+    expect(html).toContain('id="openLibrary"');
   });
 
   it("provides a compact natural-language invitation and optional examples", () => {
@@ -36,9 +37,9 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(css).toContain(".presence-orb");
   });
 
-  it("pins crisp slide arrows, gives Vault a lock at far left, and uses a native camera-flip icon", () => {
-    expect(html.indexOf('id="vaultButton"')).toBeLessThan(html.indexOf('id="muteMic"'));
-    expect(html).toContain('<path d="M7 10V7.5a5 5 0 0 1 10 0V10"/>');
+  it("keeps the camera controls simple without a Vault lock and uses a native camera-flip icon", () => {
+    expect(html).not.toContain('id="vaultButton"');
+    expect(html).toContain('id="openLibrary"');
     expect(html).toContain('<circle cx="12" cy="12" r="2.1"/>');
     expect(html).not.toContain("vision-slide-chevron");
     expect(css).not.toContain("vision-slide-chevron");
