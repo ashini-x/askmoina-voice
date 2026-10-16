@@ -30,29 +30,19 @@ describe("AskMoina continuity identity", () => {
   });
 });
 
-describe("Encrypted vault API boundary", () => {
-  it("requires the high-entropy recovery capability to read a backup", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/api/vault/123e4567-e89b-42d3-a456-426614174000"),
-      mockEnv(), ctx,
-    );
-    expect(response?.status).toBe(401);
-    expect(await response?.json()).toMatchObject({ error: "recovery_code_required" });
+describe("Legacy Vault route retirement", () => {
+  it("does not expose the retired Vault page, client script, or backup API", async () => {
+    for (const route of [
+      "/vault",
+      "/vault.js",
+      "/api/vault/123e4567-e89b-42d3-a456-426614174000",
+    ]) {
+      expect(await handleContinuityRequest(new Request("https://askmoina.test" + route), mockEnv(), ctx)).toBeNull();
+    }
   });
+});
 
-  it("rejects cross-origin backup writes", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/api/vault/123e4567-e89b-42d3-a456-426614174000", {
-        method: "PUT",
-        headers: { Authorization: "Bearer " + "A".repeat(43), "Content-Type": "application/json", Origin: "https://attacker.example" },
-        body: JSON.stringify({}),
-      }),
-      mockEnv(), ctx,
-    );
-    expect(response?.status).toBe(403);
-    expect(await response?.json()).toMatchObject({ error: "forbidden_origin" });
-  });
-
+describe("Continuity admin access", () => {
   it("makes the signed admin session available to same-origin voice routes", async () => {
     const env = {
       ...mockEnv(),
@@ -156,124 +146,3 @@ describe("Encrypted vault API boundary", () => {
   });
 });
 
-describe("selected browser memory reaches the Vertex session setup frame", () => {
-  it("adds explicitly staged memory to the first setup frame", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/continuity.js"),
-      mockEnv(), ctx,
-    );
-    expect(response?.status).toBe(200);
-    const source = await response!.text();
-
-    function FakeWebSocket(this: { url: string; sent: string[] }, url: string) {
-      this.url = url;
-      this.sent = [];
-    }
-    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) {
-      this.sent.push(data);
-    };
-
-    const stagedMemory = "my name is Raaz, so call me Raaz when you interact with me";
-    const localStorage = { getItem: (key: string) => key === "askmoina.memory.context" ? stagedMemory : null };
-    const sessionStorage = { getItem: (_key: string) => null };
-    const window = { WebSocket: FakeWebSocket };
-    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
-
-    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
-    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
-    socket.send(JSON.stringify({ setup: { generationConfig: { responseModalities: ["AUDIO"] } } }));
-
-    expect(socket.sent).toHaveLength(1);
-    expect(JSON.parse(socket.sent[0]).memory_context).toBe(stagedMemory);
-  });
-
-  it("bounds browser-staged memory before sending it over the socket", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/continuity.js"),
-      mockEnv(), ctx,
-    );
-    const source = await response!.text();
-
-    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
-    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
-    const localStorage = { getItem: (_key: string) => "x".repeat(4_000) };
-    const sessionStorage = { getItem: (_key: string) => null };
-    const window = { WebSocket: FakeWebSocket };
-    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
-
-    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
-    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
-    socket.send(JSON.stringify({ setup: {} }));
-    expect(JSON.parse(socket.sent[0]).memory_context).toHaveLength(3_000);
-  });
-});
-
-
-describe("M36 cross-tab memory consent", () => {
-  it("does not inject stale tab memory after an explicit opt-out", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx,
-    );
-    const source = await response!.text();
-    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
-    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
-    const localValues: Record<string, string> = {
-      "askmoina.memory.context": "stale preferred-name note",
-      "askmoina.memory.consent.v1": "disabled",
-    };
-    const sessionValues: Record<string, string> = { "askmoina.memory.context": "stale preferred-name note" };
-    const localStorage = {
-      getItem: (key: string) => localValues[key] ?? null,
-      setItem: (key: string, value: string) => { localValues[key] = value; },
-      removeItem: (key: string) => { delete localValues[key]; },
-    };
-    const sessionStorage = {
-      getItem: (key: string) => sessionValues[key] ?? null,
-      setItem: (key: string, value: string) => { sessionValues[key] = value; },
-      removeItem: (key: string) => { delete sessionValues[key]; },
-    };
-    const window = { WebSocket: FakeWebSocket };
-    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
-    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
-    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
-    socket.send(JSON.stringify({ setup: {} }));
-    expect(socket.sent).toHaveLength(1);
-    expect(JSON.parse(socket.sent[0]).memory_context).toBeUndefined();
-    expect(sessionValues["askmoina.memory.context"]).toBeUndefined();
-  });
-});
-
-
-describe("M36 cross-tab memory consent", () => {
-  it("does not inject stale tab memory after an explicit opt-out", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx,
-    );
-    const source = await response!.text();
-    function FakeWebSocket(this: { sent: string[] }, _url: string) { this.sent = []; }
-    FakeWebSocket.prototype.send = function(this: { sent: string[] }, data: string) { this.sent.push(data); };
-    const localValues: Record<string, string> = {
-      "askmoina.memory.context": "stale preferred-name note",
-      "askmoina.memory.consent.v1": "disabled",
-    };
-    const sessionValues: Record<string, string> = { "askmoina.memory.context": "stale preferred-name note" };
-    const localStorage = {
-      getItem: (key: string) => localValues[key] ?? null,
-      setItem: (key: string, value: string) => { localValues[key] = value; },
-      removeItem: (key: string) => { delete localValues[key]; },
-    };
-    const sessionStorage = {
-      getItem: (key: string) => sessionValues[key] ?? null,
-      setItem: (key: string, value: string) => { sessionValues[key] = value; },
-      removeItem: (key: string) => { delete sessionValues[key]; },
-    };
-    const window = { WebSocket: FakeWebSocket };
-    new Function("window", "localStorage", "sessionStorage", source)(window, localStorage, sessionStorage);
-    const SocketConstructor = window.WebSocket as unknown as new (url: string) => { send(data: string): void; sent: string[] };
-    const socket = new SocketConstructor("wss://askmoina.test/api/voice/socket");
-    socket.send(JSON.stringify({ setup: {} }));
-    expect(socket.sent).toHaveLength(1);
-    expect(JSON.parse(socket.sent[0]).memory_context).toBeUndefined();
-    expect(sessionValues["askmoina.memory.context"]).toBeUndefined();
-  });
-});
