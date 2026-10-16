@@ -1626,7 +1626,7 @@ async function handleVoiceSocket(
       if (builtCard && builtCard.type === "key_details" && builtCard.details.length) {
         const spokenRows = builtCard.details.map((row, index) =>
           (index + 1) + ". " + String(row.label || "").replace(/^\s*\d{1,2}[.)\s:—-]+/, "").trim() +
-          ": " + String(row.value || "") + (row.unit ? " " + String(row.unit) : "")
+          ": " + String(row.value || "")
         ).join("\n");
         groundedAnswerText = "Ranked entries extracted from live search result:\n" + spokenRows +
           "\n\nSupporting source result:\n" + result;
