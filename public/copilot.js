@@ -948,7 +948,7 @@
     const state = stage.classList.contains("is-connecting") && !active ? "connecting"
       : stage.classList.contains("is-speaking") ? "responding"
       : stage.classList.contains("is-listening") ? "listening"
-      : stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing ? "processing"
+      : active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing) ? "processing"
       : active ? "ready" : "idle";
     toggleButton.dataset.orbState = state;
   }
