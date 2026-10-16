@@ -14,7 +14,7 @@ const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.met
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
-const signatureGeometryPath = signatureMark.match(/<path\\b[^>]*\\bd="([^"]+)"/)?.[1] ?? "";
+const signatureGeometryPath = signatureMark.match(/<path[^>]* d="([^"]+)"/)?.[1] ?? "";
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
