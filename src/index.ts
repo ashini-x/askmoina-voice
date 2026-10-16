@@ -97,7 +97,10 @@ async function withSiteChromeResponse(response: Response, pathname: string, auth
   if (!shouldUseSiteChrome(pathname) || response.status !== 200 ||
       !response.headers.get("Content-Type")?.toLowerCase().includes("text/html")) return response;
   const html = await response.text();
-  const decorated = withSiteChrome(html, authenticated);
+  const siteDecorated = withSiteChrome(html, authenticated);
+  const decorated = isPwaStandaloneAppPath(pathname)
+    ? withPwaStandaloneGate(siteDecorated)
+    : siteDecorated;
   if (decorated === html) return new Response(html, { status: response.status, statusText: response.statusText, headers: response.headers });
   const headers = new Headers(response.headers);
   headers.delete("Content-Length");
