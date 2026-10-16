@@ -76,6 +76,18 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
   });
 
+  it("morphs the liquid orb from live microphone and assistant playback energy", () => {
+    expect(script).toContain("function syncLiquidOrbEnergy(energy)");
+    expect(script).toContain("syncLiquidOrbEnergy(energy);");
+    expect(script).toContain('setProperty("--orb-radius-" + key');
+    expect(script).toContain("function getPlaybackAnalyser()");
+    expect(script).toContain("startPlaybackPulse();");
+    expect(css).toContain("var(--orb-radius-a,50%)");
+    expect(css).toContain("var(--orb-scale-x,1)");
+    expect(css).toContain("var(--orb-flow-brightness,1)");
+    expect(css).toContain("transition:transform 45ms linear,border-radius 45ms linear,filter 45ms linear;");
+  });
+
   it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
