@@ -2259,6 +2259,34 @@
     stage.classList.remove("is-speaking");
   }
 
+  function syncLiquidOrbEnergy(energy) {
+    if (!toggleButton) return;
+    const level = Math.min(1, Math.max(0, Number.isFinite(energy) ? energy : 0));
+    const now = performance.now();
+    const phase = now * 0.0054;
+    // Keep a little slow organic motion at silence; speech amplitude drives the larger deformation.
+    const wobble = 2.2 + level * 12;
+    const waveA = Math.sin(phase) * wobble;
+    const waveB = Math.sin(phase * 1.17 + 1.7) * wobble;
+    const waveC = Math.sin(phase * 0.81 + 2.6) * wobble;
+    const waveD = Math.cos(phase * 1.07 + 0.3) * wobble;
+    const radii = [50 + waveA, 50 - waveA, 50 + waveB, 50 - waveB, 50 + waveC, 50 - waveC, 50 + waveD, 50 - waveD];
+    toggleButton.style.setProperty("--orb-energy", level.toFixed(3));
+    toggleButton.style.setProperty("--orb-scale-x", (1 + level * 0.115 + Math.sin(phase * 0.83) * level * 0.035).toFixed(3));
+    toggleButton.style.setProperty("--orb-scale-y", (1 + level * 0.085 + Math.cos(phase * 1.1) * level * 0.03).toFixed(3));
+    toggleButton.style.setProperty("--orb-rotation", (Math.sin(phase * 0.72) * level * 4.5).toFixed(2) + "deg");
+    toggleButton.style.setProperty("--orb-brightness", (1 + level * 0.38).toFixed(3));
+    toggleButton.style.setProperty("--orb-saturation", (1 + level * 0.72).toFixed(3));
+    toggleButton.style.setProperty("--orb-flow-brightness", (1 + level * 0.58).toFixed(3));
+    toggleButton.style.setProperty("--orb-blur-base", Math.max(2.6, 5.6 - level * 2.4).toFixed(2) + "px");
+    toggleButton.style.setProperty("--orb-blur-blue", Math.max(3.1, 7.2 - level * 3.0).toFixed(2) + "px");
+    toggleButton.style.setProperty("--orb-blur-violet", Math.max(2.8, 6.2 - level * 2.2).toFixed(2) + "px");
+    toggleButton.style.setProperty("--orb-blur-pink", Math.max(3.0, 7.1 - level * 2.6).toFixed(2) + "px");
+    ["a", "b", "c", "d", "e", "f", "g", "h"].forEach((key, index) => {
+      toggleButton.style.setProperty("--orb-radius-" + key, radii[index].toFixed(2) + "%");
+    });
+  }
+
   function applyVoiceEdgeEnergy(level, source) {
     const normalized = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0));
     if (source === "microphone") microphoneVoiceEnergy = normalized;
@@ -2269,6 +2297,7 @@
     stage.style.setProperty("--voice-halo-width", (3.2 + energy * 8.2).toFixed(2) + "px");
     stage.style.setProperty("--voice-halo-opacity", (0.22 + energy * 0.62).toFixed(3));
     stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
+    syncLiquidOrbEnergy(energy);
   }
 
   function getPlaybackAnalyser() {
