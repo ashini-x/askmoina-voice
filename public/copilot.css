@@ -1264,3 +1264,7 @@ body.site-info-body .site-info-card{width:100%}
 .library-history-item.is-archived{background:rgba(245,245,247,.88)}
 
 .camera-stage.library-open-active{touch-action:pan-y}
+
+
+/* Speech is delivered aloud and saved to History, not displayed as live captions. */
+.caption-dock { display: none !important; }
