@@ -305,12 +305,13 @@ jobs:
               !manifest.icons.some(icon => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192") ||
               !manifest.icons.some(icon => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
               !manifest.icons.some(icon => icon.src === "/askmoina-bird-final.png")) {
+            console.error("Manifest icon entries received:", JSON.stringify(manifest.icons));
             throw new Error("Manifest must include 192x192 and 512x512 icons and preserve the AskMoina brand icon fallback.");
           }
           console.log("PWA manifest contract: OK");
           NODE
 
-          for asset in /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg; do
+          for asset in /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg /askmoina-app-icon-180.png /askmoina-mark.svg /askmoina-mark-dark.svg /askmoina-app-icon.svg /askmoina-app-icon-light.svg /askmoina-logo.svg /askmoina-logo-dark.svg /askmoina-social-avatar.svg /askmoina-visual-guide.svg; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             if [[ "$status" != "200" ]]; then
               echo "::error::PWA asset $asset returned HTTP $status"
@@ -320,7 +321,7 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v1' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v2' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"
 
