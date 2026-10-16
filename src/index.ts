@@ -126,11 +126,11 @@ function isPwaStandaloneAppPath(pathname: string): boolean {
  * as proof of installation.
  */
 function withPwaStandaloneGate(html: string): string {
-  if (!/<html\\b/i.test(html) || !/<\\/head>/i.test(html) ||
+  if (!/<html\b/i.test(html) || !/<\/head>/i.test(html) ||
       html.includes('<meta name="askmoina-pwa-shell"')) return html;
 
-  html = html.replace(/<html\\b([^>]*)>/i, (match, attrs: string) =>
-    /\\bdata-askmoina-pwa-gate\\s*=/.test(attrs)
+  html = html.replace(/<html\b([^>]*)>/i, (match, attrs: string) =>
+    /\bdata-askmoina-pwa-gate\s*=/.test(attrs)
       ? match
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
@@ -144,7 +144,7 @@ function withPwaStandaloneGate(html: string): string {
     '<noscript><meta http-equiv="refresh" content="0;url=/install.html"></noscript>' +
     '<script src="/pwa-gate.js"></script>' +
     '<script src="/pwa-runtime.js" defer></script>';
-  return html.replace(/<\\/head>/i, `${tags}</head>`);
+  return html.replace(/<\/head>/i, `${tags}</head>`);
 }
 
 const providerFrameDecoder = new TextDecoder();
