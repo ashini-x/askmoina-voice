@@ -41,28 +41,28 @@ describe("authenticated live synthetic verification", () => {
     expect(copilot).toContain('call.name === "search_current_web"');
     expect(copilot).not.toContain("if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);");
     expect(copilotHtml).toContain('<section class="caption-dock" hidden');
-    expect(copilotHtml).not.toContain('id="responseCardTray"');
-    expect(copilotHtml).not.toContain('id="responseCardRestore"');
+    expect(copilotHtml).toContain('id="responseCardTray"');
+    expect(copilotHtml).toContain('id="responseCardRestore"');
     expect(copilotHtml).not.toContain('id="vaultButton" href="/vault"');
   });
 
-  it("validates grounded ranked answers as spoken results rather than cards", () => {
+  it("validates grounded ranked answers as source-backed information cards and speech", () => {
     expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
     expect(workerSource).toContain("Mandatory ranked-list grounding started");
     expect(workerSource).toContain("const answerInstruction = fullTableVerified");
-    expect(workerSource).toContain("Do not create or imply a visible card");
-    expect(rankedList).toContain("A response-card tool call was emitted after the card UI was retired");
-    expect(rankedList).not.toContain("grounded_response_card");
+    expect(workerSource).toContain("grounded_response_card: builtCard");
+    expect(rankedList).toContain("structured information card with verified source links");
+    expect(rankedList).toContain("grounded_response_card");
     expect(rankedList).toContain("get_audio_payload_bytes(message)");
     expect(rankedList).toContain("post_lookup_audio_bytes > 0");
   });
 
-  it("exposes account-scoped past-session retrieval and no response-card tool", () => {
+  it("exposes account-scoped past-session retrieval and structured information cards", () => {
     expect(workerSource).toContain('name: "search_past_conversations"');
     expect(workerSource).toContain("searchPriorConversationHistory(env, ownerId, query)");
-    expect(workerSource).toContain("SPEECH-FIRST");
-    expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).not.toContain("MANDATORY RESPONSE CARDS — EVERY INFORMATIVE ANSWER");
+    expect(workerSource).toContain("SPEECH-FIRST INTERACTION WITH INFORMATION CARDS");
+    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).not.toContain("Response cards are disabled in this Co-Pilot");
     expect(workerSource).not.toContain("EXPLICIT CARD REQUEST OVERRIDE");
   });
 
