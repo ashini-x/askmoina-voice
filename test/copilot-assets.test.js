@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "../src/copilot-assets";
 
@@ -13,6 +14,7 @@ const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.met
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
+const signatureGeometryPath = signatureMark.match(/<path\\b[^>]*\\bd="([^"]+)"/)?.[1] ?? "";
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -54,6 +56,12 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-logo.svg"');
     expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
+  });
+
+  it("locks the approved AskMoina signature geometry at v1.0", () => {
+    const geometryDigest = createHash("sha256").update(signatureGeometryPath).digest("hex");
+    expect(geometryDigest).toBe("d62b384a92a4b488841095aa86af28dc1b675cd7b248ffb65df12507da25f206");
+    expect(signatureMark).toContain('viewBox="0 0 163 115"');
   });
 
   it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
