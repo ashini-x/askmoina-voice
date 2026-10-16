@@ -111,7 +111,7 @@ body[data-page="login"] .native-app-chrome-guest{display:none!important}
 .vision-slide-label{letter-spacing:-.012em;font-size:14px;font-weight:650}
 body[data-page="login"] .entry-auth-panel{padding-top:25px}
 body[data-page="login"] .entry-page-heading.auth-page-heading{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:23px}
-body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-bird-final.png") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
 body[data-page="login"] .entry-page-heading.auth-page-heading h2{max-width:12ch;font-size:30px;letter-spacing:-.06em}
 body[data-page="login"] .entry-page-heading.auth-page-heading p{max-width:27ch;font-size:14px;line-height:1.48}
 body[data-page="login"] .entry-passkey{justify-content:center;border-radius:17px}
@@ -220,3 +220,20 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
  .vision-slide-label{font-size:13px}
  .vision-slide-handle{width:46px;height:46px;left:3px;top:3px}
 }
+
+
+/* AskMoina brand lock: the welcome orb shares the same restrained live-signal language. */
+.native-camera-orb{overflow:visible;border-color:rgba(248,248,250,.58);background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.14),rgba(255,255,255,.025) 57%,rgba(8,9,12,.94) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.04),0 8px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.18)}
+.native-camera-orb:before{display:block!important;inset:-6px;border-color:rgba(246,247,250,.32);box-shadow:0 0 20px rgba(245,246,250,.07);animation:none;opacity:.9}
+.native-camera-orb:after{display:block!important;inset:-14px;background:conic-gradient(from 8deg,transparent 0deg,rgba(248,248,250,.02) 44deg,rgba(231,235,249,.16) 95deg,rgba(183,193,222,.1) 154deg,transparent 225deg,transparent 360deg);filter:blur(14px);opacity:0;animation:none}
+.native-camera-orb img{width:67px;height:48px;filter:drop-shadow(0 1px 5px rgba(255,255,255,.1))}
+.camera-stage.is-connecting .native-camera-orb:before{opacity:1;border-color:rgba(255,255,255,.75);box-shadow:0 0 25px rgba(244,246,255,.2);animation:askmoina-orb-breathe 1.4s ease-in-out infinite}
+.camera-stage.is-connecting .native-camera-orb:after{opacity:.78;animation:askmoina-orb-sweep 1.8s linear infinite}
+.camera-stage.voice-active .native-camera-orb:before{opacity:.6;animation:askmoina-orb-breathe 4.1s ease-in-out infinite}
+.camera-stage.is-listening .native-camera-orb:before{opacity:var(--voice-halo-opacity,.6);border-color:rgba(211,221,255,.76);box-shadow:0 0 22px rgba(201,213,255,.17);animation:askmoina-orb-breathe 1.25s ease-in-out infinite}
+.camera-stage.is-speaking .native-camera-orb:before{opacity:.95;border-color:rgba(246,247,255,.92);box-shadow:0 0 24px rgba(224,231,255,.22);animation:askmoina-orb-response 1.05s ease-in-out infinite alternate}
+.camera-stage.is-speaking .native-camera-orb:after,.camera-stage.is-listening .native-camera-orb:after{opacity:var(--voice-halo-opacity,.66);animation:askmoina-orb-sweep 4s linear infinite}
+@keyframes askmoina-orb-sweep{to{transform:rotate(360deg)}}
+@keyframes askmoina-orb-breathe{0%,100%{transform:scale(1);filter:brightness(.98)}50%{transform:scale(1.035);filter:brightness(1.12)}}
+@keyframes askmoina-orb-response{from{transform:scale(1)}to{transform:scale(1.055)}}
+@media(prefers-reduced-motion:reduce){.native-camera-orb:before,.native-camera-orb:after{animation:none!important;transform:none!important;transition:none!important}}

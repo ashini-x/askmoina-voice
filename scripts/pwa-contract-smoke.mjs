@@ -13,8 +13,12 @@ assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
 assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
 assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
-assert.ok(manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png" && icon.sizes === "128x128"), "manifest must preserve the existing AskMoina bird icon fallback");
-assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "PWA icon asset is missing");
+assert.ok(manifest.icons.some((icon) => icon.src === "/askmoina-app-icon-180.png" && icon.sizes === "180x180" && icon.type === "image/png"), "manifest needs the monochrome 180x180 Home Screen icon");
+assert.ok(existsSync(resolve(root, "public/askmoina-app-icon-180.png")), "AskMoina monochrome app icon is missing");
+assert.ok(existsSync(resolve(root, "public/askmoina-mark.svg")), "AskMoina primary mark is missing");
+assert.ok(existsSync(resolve(root, "public/askmoina-logo.svg")), "AskMoina wordmark is missing");
+assert.ok(existsSync(resolve(root, "public/askmoina-social-avatar.svg")), "AskMoina social avatar is missing");
+assert.ok(existsSync(resolve(root, "public/askmoina-visual-guide.svg")), "AskMoina visual guide mark is missing");
 
 const gate = read("public/pwa-gate.js");
 assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");

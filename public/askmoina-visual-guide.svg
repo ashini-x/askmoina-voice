@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="AskMoina visual guide">
+  <path d="M140 53A61 61 0 1 0 142 108" fill="none" stroke="#e8e8eb" stroke-opacity=".76" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M134 37 151 41 147 57" fill="none" stroke="#f8f8fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M27 91C48 87 66 75 79 56C89 42 98 25 117 22C130 20 142 24 153 29C137 36 133 49 128 61C120 80 104 93 87 105C92 94 90 87 82 83C70 78 51 89 27 91Z" fill="#f8f8fa" transform="translate(28 30) scale(.69)"/>
+</svg>

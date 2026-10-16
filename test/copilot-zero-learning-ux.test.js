@@ -15,7 +15,7 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).toContain("id=\"toggleCopilot\"");
     expect(html).toContain("id=\"showProblemButton\"");
     expect(html).toContain("id=\"backButton\"");
-    expect(html).toContain("Slide to start AskMoina camera and live call.");
+    expect(html).toContain("Slide to start AskMoina camera guidance.");
     expect(html).toContain("Slide to start");
     expect(html).not.toContain("Tap to open camera");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
@@ -36,7 +36,7 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).not.toContain("Explain this");
     expect(html).not.toContain('id="toggleCaptions"');
     expect(html).toContain('aria-label="Mute microphone"');
-    expect(html).toContain('aria-label="Start call"');
+    expect(html).toContain('aria-label="Start AskMoina"');
     expect(css).toContain(".presence-orb");
   });
 

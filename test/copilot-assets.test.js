@@ -42,10 +42,15 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
-  it("uses a camera-lens Vision mark, obvious authentication button, and wider live edge pulses", () => {
+  it("uses the AskMoina signature orb and state-reactive live edge pulses", () => {
     expect(html).not.toContain("toggleCaptions");
-    expect(html).toContain('class="icon-start"');
-    expect(html).toContain("M7.1 4.2");
+    expect(html).toContain("askmoina-orb-control");
+    expect(html).toContain('src="/askmoina-mark.svg"');
+    expect(html).not.toContain("M7.1 4.2");
+    expect(script).toContain('toggleButton.dataset.orbState = state');
+    expect(css).toContain(".camera-stage.is-listening .askmoina-orb-control:after");
+    expect(css).toContain(".camera-stage.is-speaking .askmoina-orb-control:after");
+    expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain("@keyframes edge-width-pulse");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
     expect(css).toContain(".camera-stage.is-speaking .edge-glow:after");
@@ -771,7 +776,7 @@ describe("Native-first app experience v2", () => {
 
 describe("Primary camera entry", () => {
   it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
-    expect(html).toContain('aria-label="Slide to start the camera and call"');
+    expect(html).toContain('aria-label="Slide to start AskMoina camera guidance"');
     expect(html).toContain('id="visionSlideLabel">Slide to start</span>');
     expect(html).toContain('class="vision-slide-arrows"');
     expect(script).toContain('showProblemButton.addEventListener("pointerup"');
@@ -786,7 +791,7 @@ describe("Primary camera entry", () => {
     expect(css).toContain("background:#171719;color:#fff");
     expect(css).not.toContain("background:#34c759;color:#fff");
     expect(css).not.toContain("rgba(52,199,89");
-    expect(html).toContain("M7.1 4.2");
+    expect(html).toContain("askmoina-orb-control");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
   });

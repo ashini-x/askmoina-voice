@@ -938,6 +938,20 @@
       : '<span class="live-dot"></span> WAITING FOR CAMERA';
   }
 
+  function syncAskMoinaOrbState() {
+    if (!toggleButton || !stage) return;
+    const state = stage.classList.contains("is-connecting") && !active ? "connecting"
+      : stage.classList.contains("is-speaking") ? "responding"
+      : stage.classList.contains("is-listening") ? "listening"
+      : active ? "ready" : "idle";
+    toggleButton.dataset.orbState = state;
+  }
+  if (stage && toggleButton && typeof MutationObserver !== "undefined") {
+    const askMoinaOrbStateObserver = new MutationObserver(syncAskMoinaOrbState);
+    askMoinaOrbStateObserver.observe(stage, { attributes: true, attributeFilter: ["class"] });
+    syncAskMoinaOrbState();
+  }
+
   function setControls(label, disabled) {
     buttonLabel.textContent = label;
     toggleButton.disabled = Boolean(disabled);
@@ -945,8 +959,8 @@
     stage.classList.toggle("voice-active", active);
     stage.classList.toggle("is-connecting", starting && !active);
     syncDisconnectedPreviewAppearance();
-    toggleButton.setAttribute("aria-label", active ? "End call" : "Start call");
-    toggleButton.title = active ? "End call" : "Start call";
+    toggleButton.setAttribute("aria-label", active ? "Stop AskMoina" : "Start AskMoina");
+    toggleButton.title = active ? "Stop AskMoina" : "Start AskMoina";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     const cameraStream = active ? microphoneStream : previewStream;
     const cameraAvailable = Boolean(cameraStream && !cameraSuspendedForSpatialAr &&
