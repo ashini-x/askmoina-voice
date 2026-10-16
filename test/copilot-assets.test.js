@@ -47,7 +47,7 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps the manifest fallback stable and serves the complete AskMoina brand asset family", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
-    expect(workerSource).toContain('icon.src === "/askmoina-bird-final.png"');
+    expect(workerSource).toContain('(icon.src || "").split("?")[0] === "/askmoina-bird-final.png"');
     expect(workerSource).toContain('manifest.icons.push({');
     expect(workerSource).toContain('const manifestText = await assetResponse.text()');
     expect(workerSource).not.toContain('assetResponse.clone().json()');
@@ -103,18 +103,18 @@ describe("Live Co-Pilot browser assets", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
     expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.75"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.76"');
     expect(html).toContain('class="askmoina-control-mark"');
     expect(css).toContain(".askmoina-control-mark");
     expect(css).toContain("width:44px!important;");
     expect(css).toContain("height:auto!important;");
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.75")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.76")');
   });
 
   it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.75"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.76"');
     expect(html).not.toContain("M7.1 4.2");
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
@@ -128,7 +128,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain("askmoina-control-wave");
     expect(html.indexOf('id="muteMic"')).toBeLessThan(html.indexOf('id="toggleCopilot"'));
     expect(html.indexOf('id="toggleCopilot"')).toBeLessThan(html.indexOf('id="flipCamera"'));
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.75")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.76")');
     expect(css).toContain("border-radius:50%!important");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).not.toContain("askmoina-orb-sweep");
