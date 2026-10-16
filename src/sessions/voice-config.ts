@@ -1,6 +1,6 @@
 export const DEFAULT_LIVE_VOICE_NAME = "Leda";
 
-/** Candidate A was configured as a stored prompted voice before the Vertex prebuilt-voice audition. */
+/** Legacy stored TTS voice ID; the Gemini Live API does not accept this ID in its live VoiceConfig. */
 export const CANDIDATE_A_LIVE_VOICE_ID = "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05";
 
 /** Voice names and style descriptors published for Gemini Live on Vertex AI. */
@@ -43,20 +43,10 @@ export function isPrebuiltLiveVoiceName(value: string | undefined): value is Pre
   return typeof value === "string" && PREBUILT_LIVE_VOICES.some((voice) => voice.name === value);
 }
 
-/** Native Live voice output is AUDIO-only; session setup separately enables input/output audio transcription. */
-export function buildVoiceGenerationConfig(configuredVoiceName?: string, configuredVoiceId?: string) {
-  const voiceId = configuredVoiceId?.trim();
-  if (voiceId) {
-    return {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          voice: voiceId,
-        },
-      },
-    };
-  }
-
+/** Native Live voice output is AUDIO-only; only the Live API's supported prebuilt voice schema is sent. */
+export function buildVoiceGenerationConfig(configuredVoiceName?: string, _legacyConfiguredVoiceId?: string) {
+  // LIVE_VOICE_ID was a stored TTS/voice-design ID. Gemini Live rejects that value
+  // in voiceConfig.voice; do not forward it or let it override the selected Live voice.
   const voiceName = configuredVoiceName?.trim() || DEFAULT_LIVE_VOICE_NAME;
   return {
     responseModalities: ["AUDIO"],

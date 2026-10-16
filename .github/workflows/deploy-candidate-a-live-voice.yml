@@ -152,7 +152,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected="$(node -p "(()=>{const c=JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')); return c.vars.LIVE_VOICE_ID?.trim() || c.vars.LIVE_VOICE_NAME})()")"
+          expected="$(node -p "(()=>{const c=JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')); return c.vars.LIVE_VOICE_NAME})()")"
           version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')).vars.APP_VERSION")"
           body="$(mktemp)"
           trap 'rm -f "$body"' EXIT

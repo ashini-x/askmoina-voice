@@ -56,3 +56,9 @@ body.site-chrome-page{min-height:100vh;min-height:100dvh}
   .entry-site-menu-panel a:hover,.entry-site-menu-panel .entry-menu-logout:hover{background:transparent}
   .entry-site-menu-panel a:active,.entry-site-menu-panel .entry-menu-logout:active{background:rgba(118,118,128,.12)}
 }
+
+
+/* Use the platform system sans-serif on both Android and iOS while keeping the same chrome geometry. */
+.entry-site-header,.entry-site-menu-panel a,.entry-site-menu-panel .entry-menu-logout{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,"Segoe UI",system-ui,sans-serif;
+}
