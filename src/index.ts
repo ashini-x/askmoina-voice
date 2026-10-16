@@ -168,10 +168,20 @@ function withPwaStandaloneGate(html: string): string {
       ? match
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
+  // Match the system bars to the actual app surface: the camera is dark and edge-to-edge,
+  // while the entry/account surfaces use the existing light AskMoina palette.
+  const cameraFirst = /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
+  const themeColor = cameraFirst ? "#090b0f" : "#f5f5f7";
+  const statusBarStyle = cameraFirst ? "black-translucent" : "default";
+  // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
+  html = html.replace(/<meta\s+name=["']theme-color["'][^>]*>/ig, "");
   const tags = '<meta name="askmoina-pwa-shell" content="1">' +
-    '<meta name="theme-color" content="#f5f5f7">' +
+    '<meta name="theme-color" content="' + themeColor + '">' +
+    '<meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes">' +
-    '<meta name="apple-mobile-web-app-status-bar-style" content="default">' +
+    '<meta name="apple-mobile-web-app-title" content="AskMoina">' +
+    '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
+    '<meta name="color-scheme" content="' + (cameraFirst ? "dark" : "light") + '">' +
     '<link rel="manifest" href="/manifest.webmanifest">' +
     '<link rel="apple-touch-icon" href="/askmoina-bird-final.png">' +
     '<link rel="stylesheet" href="/pwa-gate.css">' +
