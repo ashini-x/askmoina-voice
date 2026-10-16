@@ -948,12 +948,15 @@
     toggleButton.setAttribute("aria-label", active ? "End call" : "Start call");
     toggleButton.title = active ? "End call" : "Start call";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
-    const cameraAvailable = Boolean(microphoneStream && !cameraSuspendedForSpatialAr &&
-      microphoneStream.getVideoTracks().some((track) => track.readyState === "live"));
+    const cameraStream = active ? microphoneStream : previewStream;
+    const cameraAvailable = Boolean(cameraStream && !cameraSuspendedForSpatialAr &&
+      cameraStream.getVideoTracks().some((track) => track.readyState === "live"));
     const microphoneAvailable = Boolean(microphoneStream &&
       microphoneStream.getAudioTracks().some((track) => track.readyState === "live"));
-    flipButton.disabled = !active || !cameraAvailable;
-    muteButton.disabled = !active || !microphoneAvailable;
+    // Camera switching works on the local preview before joining a call. Mute can be
+    // selected before connecting and is applied to the microphone track when it is acquired.
+    flipButton.disabled = Boolean(starting || stopping || !cameraAvailable);
+    muteButton.disabled = Boolean(starting || stopping || (active && !microphoneAvailable));
     zoomSlider.disabled = !cameraAvailable;
     zoomInButton.disabled = !cameraAvailable || zoomLevel >= zoomMax;
     zoomOutButton.disabled = !cameraAvailable || zoomLevel <= zoomMin;
@@ -3346,6 +3349,7 @@
       if (video.srcObject !== previewStream) video.srcObject = previewStream;
       stage.classList.add("has-camera", "pre-start");
       try { await video.play(); } catch (_) {}
+      setControls(starting ? "Starting…" : active ? "End Co-Pilot" : "Start Co-Pilot", starting || stopping);
       return;
     }
     if (previewPromise) return previewPromise;
@@ -3365,6 +3369,7 @@
         await video.play();
         stage.classList.add("has-camera", "pre-start");
         setCameraState("Camera preview", "live");
+        setControls(starting ? "Starting…" : active ? "End Co-Pilot" : "Start Co-Pilot", starting || stopping);
       } catch (error) {
         if (stream) stream.getTracks().forEach((track) => track.stop());
         if (isMediaPermissionDenied(error)) {
@@ -3551,6 +3556,7 @@
           previewStream = null;
         }
       }
+      microphoneStream.getAudioTracks().forEach((track) => { track.enabled = !microphoneMuted; });
       video.srcObject = microphoneStream;
       await video.play();
       if (!isCurrentStart()) return;
@@ -4154,12 +4160,17 @@
   }
 
   function toggleMicrophoneMute() {
-    if (!microphoneStream) return;
+    if (starting || stopping) return;
     microphoneMuted = !microphoneMuted;
-    microphoneStream.getAudioTracks().forEach((track) => { track.enabled = !microphoneMuted; });
+    if (microphoneStream) {
+      microphoneStream.getAudioTracks().forEach((track) => { track.enabled = !microphoneMuted; });
+    }
     muteButton.innerHTML = microphoneMuted ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8M3 3l18 18"/></svg><span class="sr-only">Unmute microphone</span>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span>';
     muteButton.setAttribute("aria-pressed", microphoneMuted ? "true" : "false");
-    setStatus(microphoneMuted ? "Microphone muted. Tap Unmute when you're ready to speak." : "Microphone is on.");
+    muteButton.setAttribute("aria-label", microphoneMuted ? "Unmute microphone" : "Mute microphone");
+    setStatus(microphoneMuted
+      ? (microphoneStream ? "Microphone muted." : "Microphone will stay muted when the call starts.")
+      : (microphoneStream ? "Microphone is on." : "Microphone will be on when the call starts."));
   }
 
   function touchDistance(touches) {
@@ -4187,7 +4198,9 @@
   zoomInButton.addEventListener("click", () => { void applyZoom(zoomLevel + 0.25, true); });
   zoomOutButton.addEventListener("click", () => { void applyZoom(zoomLevel - 0.25, true); });
   async function flipCamera() {
-    if (!active || !microphoneStream) return;
+    if (starting || stopping) return;
+    const cameraStream = active ? microphoneStream : previewStream;
+    if (!cameraStream) return;
     const nextFacingMode = facingMode === "environment" ? "user" : "environment";
     invalidateSceneEvidence("camera-switch");
     flipButton.disabled = true;
@@ -4198,23 +4211,31 @@
       });
       const newTrack = cameraOnly.getVideoTracks()[0];
       if (!newTrack) throw new Error("No camera was available.");
-      const oldTrack = microphoneStream.getVideoTracks()[0];
+      const oldTrack = cameraStream.getVideoTracks()[0];
       if (oldTrack) {
-        microphoneStream.removeTrack(oldTrack);
+        cameraStream.removeTrack(oldTrack);
         oldTrack.stop();
       }
-      microphoneStream.addTrack(newTrack);
-      video.srcObject = microphoneStream;
+      cameraStream.addTrack(newTrack);
+      video.srcObject = cameraStream;
       await video.play();
-      initializeZoom();
       facingMode = nextFacingMode;
       updatePreviewTransform();
-      setStatus(facingMode === "environment" ? "Switched to the rear camera." : "Switched to the front camera.");
-      setCameraState("Live · frames ~1/sec", "live");
+      if (active) {
+        initializeZoom();
+        setStatus(facingMode === "environment" ? "Switched to the rear camera." : "Switched to the front camera.");
+        setCameraState("Live · frames ~1/sec", "live");
+      } else {
+        setStatus(facingMode === "environment" ? "Rear camera preview." : "Front camera preview.");
+        setCameraState(facingMode === "environment" ? "Rear camera preview" : "Front camera preview", "idle");
+      }
+      setControls(active ? "End Co-Pilot" : "Start Co-Pilot", false);
     } catch (error) {
       setStatus(error && error.message ? error.message : "Couldn't switch cameras.", "warning");
     } finally {
-      flipButton.disabled = !active;
+      const stream = active ? microphoneStream : previewStream;
+      flipButton.disabled = Boolean(starting || stopping || !stream ||
+        !stream.getVideoTracks().some((track) => track.readyState === "live"));
     }
   }
 
@@ -4222,14 +4243,28 @@
     let slidePointerId = null;
     let slideStartX = 0;
     let slideStartProgress = 0;
+    let keyboardSlideActive = false;
     const slideHandle = showProblemButton.querySelector(".vision-slide-handle");
     const slideLabel = showProblemButton.querySelector("#visionSlideLabel");
     const slideProgress = () => Math.max(0, Math.min(1, Number(showProblemButton.dataset.progress || 0)));
+    const setSlideProgress = (progress) => {
+      const safeProgress = Math.max(0, Math.min(1, progress));
+      const maxDistance = Math.max(1, showProblemButton.clientWidth - (slideHandle ? slideHandle.offsetWidth : 50) - 10);
+      showProblemButton.dataset.progress = String(safeProgress);
+      showProblemButton.style.setProperty("--slide-distance", (maxDistance * safeProgress) + "px");
+      if (slideLabel) slideLabel.textContent = safeProgress >= 0.82 ? "release to start" : "slide to start";
+    };
     const resetSlide = () => {
       showProblemButton.dataset.progress = "0";
       showProblemButton.style.setProperty("--slide-distance", "0px");
       showProblemButton.classList.remove("is-sliding", "is-complete");
-      if (slideLabel) slideLabel.textContent = "Tap to open camera";
+      if (slideLabel) slideLabel.textContent = "slide to start";
+    };
+    const completeSlide = () => {
+      showProblemButton.dataset.progress = "1";
+      showProblemButton.classList.add("is-complete");
+      if (slideLabel) slideLabel.textContent = "Connecting…";
+      if (!active && !starting) void startCopilot();
     };
     showProblemButton.addEventListener("pointerdown", (event) => {
       if (active || starting || (event.pointerType === "mouse" && event.button !== 0)) return;
@@ -4238,29 +4273,20 @@
       slideStartProgress = slideProgress();
       showProblemButton.classList.add("is-sliding");
       try { showProblemButton.setPointerCapture(event.pointerId); } catch (_) {}
-      // Do not cancel the native click: a tap should start the camera too.
     });
     showProblemButton.addEventListener("pointermove", (event) => {
       if (slidePointerId !== event.pointerId || !slideHandle) return;
       const maxDistance = Math.max(1, showProblemButton.clientWidth - slideHandle.offsetWidth - 10);
       const progress = Math.max(0, Math.min(1, slideStartProgress + (event.clientX - slideStartX) / maxDistance));
-      showProblemButton.dataset.progress = String(progress);
-      showProblemButton.style.setProperty("--slide-distance", (maxDistance * progress) + "px");
-      if (slideLabel) slideLabel.textContent = progress >= 0.82 ? "Release to begin" : "Tap to open camera";
+      setSlideProgress(progress);
     });
     showProblemButton.addEventListener("pointerup", (event) => {
       if (slidePointerId !== event.pointerId) return;
       slidePointerId = null;
       try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
       showProblemButton.classList.remove("is-sliding");
-      if (slideProgress() >= 0.82) {
-        showProblemButton.dataset.progress = "1";
-        showProblemButton.classList.add("is-complete");
-        if (slideLabel) slideLabel.textContent = "Opening Vision…";
-        if (!active && !starting) void startCopilot();
-      } else {
-        resetSlide();
-      }
+      if (slideProgress() >= 0.82) completeSlide();
+      else resetSlide();
     });
     showProblemButton.addEventListener("pointercancel", (event) => {
       if (slidePointerId !== event.pointerId) return;
@@ -4268,10 +4294,24 @@
       try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
       resetSlide();
     });
-    showProblemButton.addEventListener("click", () => {
-      // The primary camera entry action works with a simple tap, a complete slide, or keyboard activation.
-      if (!active && !starting) void startCopilot();
+    // Keyboard users can hold the right arrow to perform the same slide gesture.
+    showProblemButton.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowRight" || active || starting) return;
+      event.preventDefault();
+      keyboardSlideActive = true;
+      showProblemButton.classList.add("is-sliding");
+      setSlideProgress(slideProgress() + 0.24);
     });
+    showProblemButton.addEventListener("keyup", (event) => {
+      if (event.key !== "ArrowRight" || !keyboardSlideActive) return;
+      event.preventDefault();
+      keyboardSlideActive = false;
+      showProblemButton.classList.remove("is-sliding");
+      if (slideProgress() >= 0.82) completeSlide();
+      else resetSlide();
+    });
+    // A click/tap is intentionally not a start gesture; only a completed slide starts the call.
+    showProblemButton.addEventListener("click", (event) => { event.preventDefault(); });
   }
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {

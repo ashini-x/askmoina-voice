@@ -344,6 +344,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).not.toContain('stage.classList.toggle("controls-expanded", expanded)');
     expect(css).toContain("#zoomDock,.zoom-dock[hidden]{display:none!important");
     expect(css).toContain("min-width:61px!important;max-width:61px");
+    expect(css).toContain(".camera-stage.pre-start .camera-controls");
+    expect(script).toContain("const cameraStream = active ? microphoneStream : previewStream");
+    expect(script).toContain("track.enabled = !microphoneMuted");
+    expect(script).toContain("Microphone will stay muted when the call starts.");
   });
 
   it("makes Vision feel responsive and keeps error recovery in place", () => {
@@ -351,7 +355,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).toContain('class="vision-slide-copy"');
-    expect(html).toContain("Tap to open camera");
+    expect(html).toContain("slide to start");
+    expect(html).not.toContain("Tap to open camera");
     expect(script).toContain('showProblemButton.addEventListener("pointermove"');
     expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
     expect(script).toContain("function hideConnectionNotice(resolved = false)");
@@ -764,14 +769,19 @@ describe("Native-first app experience v2", () => {
 
 
 describe("Primary camera entry", () => {
-  it("allows a direct tap as well as the existing slide gesture to enter camera mode", () => {
-    expect(html).toContain('aria-label="Tap to open camera, or slide to begin"');
-    expect(html).toContain('id="visionSlideLabel">Tap to open camera</span>');
-    expect(script).toContain("a tap should start the camera too");
-    expect(script).toContain("The primary camera entry action works with a simple tap");
-    expect(script).not.toContain("if (event.detail > 0) return;");
-    expect(script).toContain('if (!active && !starting) void startCopilot();');
+  it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
+    expect(html).toContain('aria-label="Slide to start the camera and call"');
+    expect(html).toContain('id="visionSlideLabel">slide to start</span>');
+    expect(html).toContain('class="vision-slide-arrows"');
+    expect(script).toContain('showProblemButton.addEventListener("pointerup"');
+    expect(script).toContain('showProblemButton.addEventListener("click", (event) => { event.preventDefault(); });');
+    expect(script).toContain("keyboardSlideActive");
+    expect(script).not.toContain("a tap should start the camera too");
+    expect(script).not.toContain("The primary camera entry action works with a simple tap");
     expect(css).toContain(".camera-stage.pre-start #showProblemButton");
+    expect(css).toContain(".camera-stage.pre-start .camera-controls");
+    expect(css).toContain(".camera-stage.pre-start #toggleCopilot");
+    expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
   });
 });
