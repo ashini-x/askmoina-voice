@@ -1,10 +1,18 @@
-const CACHE_NAME = "askmoina-pwa-shell-v1";
+const CACHE_NAME = "askmoina-pwa-shell-v2";
 const SHELL_URLS = [
   "/install",
   "/install.css",
   "/offline",
   "/manifest.webmanifest",
-  "/askmoina-bird-final.png",
+  "/askmoina-app-icon-180.png",
+  "/askmoina-mark.svg",
+  "/askmoina-mark-dark.svg",
+  "/askmoina-app-icon.svg",
+  "/askmoina-app-icon-light.svg",
+  "/askmoina-logo.svg",
+  "/askmoina-logo-dark.svg",
+  "/askmoina-social-avatar.svg",
+  "/askmoina-visual-guide.svg",
   "/pwa-icon-192.svg",
   "/pwa-icon-512.svg",
   "/pwa-gate.css",

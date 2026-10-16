@@ -42,10 +42,15 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
-  it("uses a camera-lens Vision mark, obvious authentication button, and wider live edge pulses", () => {
+  it("uses the AskMoina signature orb and state-reactive live edge pulses", () => {
     expect(html).not.toContain("toggleCaptions");
-    expect(html).toContain('class="icon-start"');
-    expect(html).toContain("M7.1 4.2");
+    expect(html).toContain("askmoina-orb-control");
+    expect(html).toContain('src="/askmoina-mark.svg"');
+    expect(html).not.toContain("M7.1 4.2");
+    expect(script).toContain('toggleButton.dataset.orbState = state');
+    expect(css).toContain(".camera-stage.is-listening .askmoina-orb-control:after");
+    expect(css).toContain(".camera-stage.is-speaking .askmoina-orb-control:after");
+    expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain("@keyframes edge-width-pulse");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
     expect(css).toContain(".camera-stage.is-speaking .edge-glow:after");
