@@ -64,7 +64,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".camera-stage.is-listening .askmoina-orb-control:after");
     expect(css).toContain(".camera-stage.is-speaking .askmoina-orb-control:after");
     expect(css).toContain("#toggleCopilot.askmoina-orb-control");
-    expect(css).toContain("top:-76px!important");
+    expect(html).toContain('class="askmoina-control-wave"');
+    expect(html.indexOf('id="muteMic"')).toBeLessThan(html.indexOf('id="toggleCopilot"'));
+    expect(html.indexOf('id="toggleCopilot"')).toBeLessThan(html.indexOf('id="flipCamera"'));
+    expect(css).toContain('mask-image:url("/askmoina-mark.svg")');
+    expect(css).toContain('border-radius:50%!important');
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-wave');
+    expect(css).not.toContain("top:-76px!important");
     expect(css).toContain('data-orb-state="processing"');
     expect(css).toContain("@keyframes askmoina-orb-process-breathe");
     expect(script).toContain("function setOrbProcessing(processing)");
