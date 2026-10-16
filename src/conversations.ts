@@ -339,27 +339,40 @@ async function updateConversation(request: Request, env: Env, ownerId: string, c
   }
   if (Object.keys(body).length === 0) return json({ error: "empty_update" }, 400);
 
-  const title = body.title === undefined ? existing.title : parseTitle(body.title);
-  if (!title) return json({ error: "invalid_title" }, 400);
-  let status = existing.status;
+  const assignments: string[] = [];
+  const values: unknown[] = [];
+  if (body.title !== undefined) {
+    const title = parseTitle(body.title);
+    if (!title) return json({ error: "invalid_title" }, 400);
+    assignments.push("title = ?");
+    values.push(title);
+  }
   if (body.status !== undefined) {
     if (body.status !== "active" && body.status !== "archived") return json({ error: "invalid_status" }, 400);
-    status = body.status;
+    assignments.push("status = ?");
+    values.push(body.status);
   }
-  const summary = body.summary === undefined ? existing.summary : parseSummary(body.summary);
-  if (summary === null) return json({ error: "invalid_summary" }, 400);
-  let progressJson = existing.task_progress_json;
+  if (body.summary !== undefined) {
+    const summary = parseSummary(body.summary);
+    if (summary === null) return json({ error: "invalid_summary" }, 400);
+    assignments.push("summary = ?");
+    values.push(summary);
+  }
   if (body.taskProgress !== undefined) {
     const progress = parseTaskProgress(body.taskProgress);
     if (!progress) return json({ error: "invalid_task_progress" }, 400);
-    progressJson = JSON.stringify(progress);
+    assignments.push("task_progress_json = ?");
+    values.push(JSON.stringify(progress));
   }
 
-  const now = new Date().toISOString();
+  // Update only fields explicitly supplied by the caller so concurrent title,
+  // summary and task-progress edits do not overwrite one another.
+  assignments.push("updated_at = ?");
+  values.push(new Date().toISOString());
+  values.push(conversationId, ownerId);
   await env.DB.prepare(
-    "UPDATE conversations SET title = ?, status = ?, summary = ?, task_progress_json = ?, updated_at = ? " +
-    "WHERE conversation_id = ? AND owner_id = ?",
-  ).bind(title, status, summary, progressJson, now, conversationId, ownerId).run();
+    "UPDATE conversations SET " + assignments.join(", ") + " WHERE conversation_id = ? AND owner_id = ?",
+  ).bind(...values).run();
   const updated = await getConversation(env, ownerId, conversationId);
   if (!updated) return json({ error: "not_found" }, 404);
   return json({ conversation: conversationFromRow(updated) });
