@@ -277,13 +277,16 @@ jobs:
           if (manifest.display !== "standalone") throw new Error("PWA manifest must use standalone display mode.");
           if (manifest.start_url !== "/?source=pwa") throw new Error("PWA manifest start_url mismatch.");
           if (manifest.scope !== "/") throw new Error("PWA manifest scope mismatch.");
-          if (!Array.isArray(manifest.icons) || !manifest.icons.some(icon => icon.src === "/askmoina-bird-final.png")) {
-            throw new Error("Manifest must use the existing AskMoina brand icon.");
+          if (!Array.isArray(manifest.icons) ||
+              !manifest.icons.some(icon => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192") ||
+              !manifest.icons.some(icon => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
+              !manifest.icons.some(icon => icon.src === "/askmoina-bird-final.png")) {
+            throw new Error("Manifest must include 192x192 and 512x512 icons and preserve the AskMoina brand icon fallback.");
           }
           console.log("PWA manifest contract: OK");
           NODE
 
-          for asset in /install.css /offline.html /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png; do
+          for asset in /install.css /offline.html /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             test "$status" = "200"
           done

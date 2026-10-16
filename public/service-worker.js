@@ -5,6 +5,8 @@ const SHELL_URLS = [
   "/offline.html",
   "/manifest.webmanifest",
   "/askmoina-bird-final.png",
+  "/pwa-icon-192.svg",
+  "/pwa-icon-512.svg",
   "/pwa-gate.css",
   "/pwa-gate.js",
   "/pwa-runtime.js"

@@ -11,7 +11,9 @@ const manifest = JSON.parse(read("public/manifest.webmanifest"));
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
 assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
-assert.equal(manifest.icons[0].src, "/askmoina-bird-final.png", "manifest must use the existing AskMoina bird icon");
+assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
+assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
+assert.ok(manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png" && icon.sizes === "128x128"), "manifest must preserve the existing AskMoina bird icon fallback");
 assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "PWA icon asset is missing");
 
 const gate = read("public/pwa-gate.js");
