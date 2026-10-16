@@ -98,7 +98,7 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "display_screen_overlay", response: { result: "x".repeat(3_001) } }] } }, true)).toBeNull();
     expect(parseLiveClientInput({ tool_response: { function_responses: [{ id: "tool_call_1", name: "external_purchase" }] } }, true)).toBeNull();
     expect(parseLiveClientInput({
-      tool_response: { function_responses: [{ id: "card_call_1", name: "display_response_card", response: { result: "The card payload passed validation; rendering is not enabled yet." } }] }
+      tool_response: { function_responses: [{ id: "card_call_1", name: "display_response_card", response: { result: "The card payload passed validation; the client is responsible for rendering the designed information card." } }] }
     }, true)).toEqual({
       kind: "tool_response",
       responses: [{ id: "card_call_1", name: "display_response_card", result: "The card payload passed validation; rendering is not enabled yet." }]
