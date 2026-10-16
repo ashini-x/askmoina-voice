@@ -43,3 +43,11 @@ body{min-height:100dvh;overscroll-behavior-y:contain}
   .voice-button:hover:not(:disabled){transform:translateX(-50%);background:#1d1d1f;box-shadow:0 8px 25px rgba(25,25,20,.12)}
   .voice-button.is-live:hover:not(:disabled){background:#e7e6e1;box-shadow:0 0 0 1px rgba(255,255,255,.8),0 7px 24px rgba(25,25,20,.07)}
 }
+
+
+/* Shared installed-app polish for Android Chrome and iOS Safari. */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,"Segoe UI",system-ui,sans-serif}
+html,body{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+@media(hover:none) and (pointer:coarse){
+  button,a,[role="button"]{touch-action:manipulation}
+}
