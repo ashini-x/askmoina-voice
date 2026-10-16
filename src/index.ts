@@ -109,6 +109,32 @@ async function withSiteChromeResponse(response: Response, pathname: string, auth
   return new Response(decorated, { status: response.status, statusText: response.statusText, headers });
 }
 
+const PWA_PUBLIC_STATIC_PATHS = new Set([
+  "/manifest.webmanifest",
+  "/install.html",
+  "/install.css",
+  "/offline.html",
+  "/service-worker.js",
+  "/pwa-gate.css",
+  "/pwa-gate.js",
+  "/pwa-runtime.js",
+  "/pwa-icon-192.svg",
+  "/pwa-icon-512.svg",
+]);
+
+const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
+  "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
+  "/install.html": "text/html; charset=utf-8",
+  "/offline.html": "text/html; charset=utf-8",
+  "/install.css": "text/css; charset=utf-8",
+  "/pwa-gate.css": "text/css; charset=utf-8",
+  "/pwa-gate.js": "text/javascript; charset=utf-8",
+  "/pwa-runtime.js": "text/javascript; charset=utf-8",
+  "/service-worker.js": "text/javascript; charset=utf-8",
+  "/pwa-icon-192.svg": "image/svg+xml; charset=utf-8",
+  "/pwa-icon-512.svg": "image/svg+xml; charset=utf-8",
+};
+
 const PWA_STANDALONE_APP_PATHS = new Set([
   "/",
   "/index.html",
@@ -2797,6 +2823,26 @@ export class LiveSessionRelay {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // PWA shell resources are public static assets, not authenticated app pages.
+    // Route them before the global login guard so the browser can load the
+    // manifest, install landing page, service worker, and icon assets.
+    if (PWA_PUBLIC_STATIC_PATHS.has(url.pathname) &&
+        (request.method === "GET" || request.method === "HEAD")) {
+      const assetResponse = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetResponse.headers);
+      const contentType = PWA_PUBLIC_STATIC_CONTENT_TYPES[url.pathname];
+      if (contentType) headers.set("Content-Type", contentType);
+      headers.set("Cache-Control", "no-store");
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("Cross-Origin-Resource-Policy", "same-origin");
+      return new Response(request.method === "HEAD" ? null : assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers,
+      });
+    }
+
     if (url.pathname === "/vault" || url.pathname === "/vault/" || url.pathname === "/vault.js" || url.pathname === "/api/vault" || url.pathname.startsWith("/api/vault/")) return json({ error: "not_found" }, 404);
 
     if ((url.pathname === "/account" || url.pathname === "/account.html") &&
