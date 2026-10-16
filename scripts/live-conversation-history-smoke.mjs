@@ -117,7 +117,7 @@ try {
   }, 201);
 
   const restored = await request("/api/conversations/" + conversationId + "?limit=20", "GET", cookieA, undefined, 200);
-  assert(restored.data.turns?.length === 2, "restored conversation did not include two finalized turns");
+  assert(restored.data.turns?.length === 3, "restored conversation did not include three finalized turns");
   assert(restored.data.turns[0].sequence < restored.data.turns[1].sequence, "turn order is incorrect");
   assert(restored.data.conversation?.summary?.includes("retrieve the next action"), "saved summary not restored");
   assert(restored.data.conversation?.taskProgress?.nextAction === progress.nextAction, "saved task progress not restored");
