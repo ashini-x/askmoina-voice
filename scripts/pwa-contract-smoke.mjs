@@ -18,7 +18,7 @@ const gate = read("public/pwa-gate.js");
 assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");
 assert.ok(gate.includes("window.navigator.standalone === true"), "gate must support iOS standalone detection");
 assert.ok(gate.includes('window.location.replace("/install.html")'), "browser-tab users must be routed to the install landing page");
-assert.doesNotMatch(gate, /location\\.search|searchParams\\s*\\.\\s*get/, "a query string must not unlock the app");
+assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
 assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
