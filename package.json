@@ -10,13 +10,19 @@
     "check": "tsc --noEmit",
     "test": "vitest run && node scripts/pwa-contract-smoke.mjs",
     "test:watch": "vitest",
-    "benchmark:validate": "node scripts/reality-benchmark.mjs --validate"
+    "benchmark:validate": "node scripts/reality-benchmark.mjs --validate",
+    "precheck": "node scripts/prepare-chess-assets.mjs",
+    "pretest": "node scripts/prepare-chess-assets.mjs",
+    "predeploy": "node scripts/prepare-chess-assets.mjs",
+    "chess:smoke": "node scripts/chess-engine-smoke.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260914.1",
     "typescript": "5.9.3",
     "vitest": "4.1.11",
-    "wrangler": "4.135.0"
+    "wrangler": "4.135.0",
+    "chess.js": "1.4.0",
+    "stockfish": "19.0.1"
   },
   "dependencies": {
     "@simplewebauthn/server": "14.0.3"

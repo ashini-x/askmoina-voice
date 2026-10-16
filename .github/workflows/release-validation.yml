@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, feat/chess-stockfish-phase-1-engine]
 permissions:
   contents: read
 jobs:
@@ -39,6 +39,8 @@ jobs:
           NODE
       - run: npm run benchmark:validate
       - run: npm test
+      - name: Execute the actual Stockfish UCI smoke test
+        run: npm run chess:smoke
       - name: Validate D1 migrations against local SQLite
         run: npx wrangler d1 migrations apply askmoina-prod --local
       - run: npx wrangler deploy --dry-run --outdir=dist
