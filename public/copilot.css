@@ -485,7 +485,7 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 /* Video-first entry and Apple-like frosted overlays. */
 .camera-stage.pre-start #videoPreview{filter:blur(13px) saturate(.78) brightness(.66);transform:scale(1.055);transition:filter .65s ease,transform .65s ease}
 .camera-stage.pre-start{background:radial-gradient(ellipse at 50% 46%,#181b24 0,#0b0c11 54%,#07080b 100%)}
-.camera-stage.pre-start .camera-controls,.camera-stage.is-connecting .camera-controls{opacity:0;pointer-events:none;transition:opacity .25s ease}
+.camera-stage.pre-start .camera-controls,.camera-stage.is-connecting .camera-controls{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .25s ease}
 .camera-stage.pre-start .show-problem-button{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}
 .camera-stage.is-connecting .show-problem-button,.camera-stage.voice-active .show-problem-button{opacity:0;pointer-events:none;transform:translate(-50%,9px) scale(.97)}
 .show-problem-button{position:absolute;z-index:45;left:50%;bottom:calc(23% + env(safe-area-inset-bottom)*.1);display:flex;align-items:center;justify-content:center;gap:12px;width:max-content;max-width:calc(100% - 38px);min-height:61px;padding:0 clamp(20px,4vw,30px);border:1px solid #ffffffb3;border-radius:20px;background:#f9f9f7e8;color:#1d1d1f;font-size:clamp(.76rem,2.8vw,.91rem);font-weight:740;letter-spacing:.075em;box-shadow:0 15px 54px #0004,inset 0 1px #ffffffd9;backdrop-filter:blur(34px) saturate(150%);-webkit-backdrop-filter:blur(34px) saturate(150%);cursor:pointer;transition:opacity .25s ease,transform .25s ease,background .2s ease;white-space:nowrap}
@@ -542,7 +542,7 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 .entry-product-card.is-disabled .entry-product-icon{color:#9b9ba0;background:#f4f4f28f;border-color:#ffffff99}.entry-product-card.is-disabled .entry-product-meta{color:#aaaab0}
 .entry-signout{position:fixed;z-index:4;top:max(19px,env(safe-area-inset-top));right:max(19px,env(safe-area-inset-right));display:grid;place-items:center;width:39px;height:39px;border:1px solid #ffffffb3;border-radius:50%;background:#ffffff99;color:#3b3b40;box-shadow:0 5px 19px #14191e0d;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
 .entry-signout svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.entry-signout:disabled{opacity:.45}
-body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .floating-top,body[data-entry-state] .camera-controls,body[data-entry-state] .show-problem-button{display:none!important}
+body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .floating-top,body[data-entry-state="login"] .camera-controls,body[data-entry-state="products"] .camera-controls,body[data-entry-state="login"] .show-problem-button,body[data-entry-state="products"] .show-problem-button{display:none!important}
 @keyframes entry-fade{from{opacity:0}to{opacity:1}}@keyframes entry-arrive{from{opacity:0;transform:translateY(11px) scale(.992)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:520px){.entry-overlay{padding-left:12px;padding-right:12px}.entry-auth-panel{border-radius:25px;padding:23px 17px 20px}.entry-products{grid-template-columns:1fr;gap:11px}.entry-product-panel{padding:0;width:min(100%,400px)}.entry-product-card{min-height:clamp(135px,22vh,190px);border-radius:23px;padding:20px}.entry-product-icon{width:46px;height:46px;border-radius:16px}.entry-product-arrow{right:20px;bottom:20px}.entry-mode-icons{margin-bottom:17px}.entry-divider{margin-top:22px}.show-problem-button{min-height:56px;padding:0 17px;font-size:.73rem;gap:9px}}
 @media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.show-problem-button,.edge-glow:before,.edge-glow:after{animation:none!important;transition:none!important}}
@@ -1298,3 +1298,50 @@ button{touch-action:manipulation}
   font-weight:680;
   letter-spacing:-.015em;
 }
+
+
+/* iOS-inspired call slider and always-findable live controls. */
+.show-problem-button{
+  width:min(354px,calc(100% - 34px));
+  height:66px;
+  min-height:66px;
+  bottom:calc(23% + env(safe-area-inset-bottom)*.1);
+  padding:4px;
+  border:1px solid rgba(255,255,255,.68);
+  border-radius:999px;
+  background:rgba(246,246,249,.92);
+  color:#303036;
+  box-shadow:0 12px 38px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.95);
+  backdrop-filter:blur(28px) saturate(155%);
+  -webkit-backdrop-filter:blur(28px) saturate(155%);
+  cursor:ew-resize;
+  touch-action:none;
+}
+.vision-slide-track{padding:0 47px 0 56px;border-radius:999px}
+.vision-slide-track:before{
+  left:2px;top:2px;bottom:2px;width:calc(50px + var(--slide-distance,0px));
+  max-width:calc(100% - 4px);border-radius:999px;
+  background:linear-gradient(90deg,rgba(52,199,89,.2),rgba(52,199,89,.06));
+  transition:width .14s ease;
+}
+.vision-slide-copy{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px;min-width:0}
+.vision-slide-label{font-size:14px;font-weight:650;letter-spacing:-.02em;text-transform:none}
+.vision-slide-arrows{display:inline-block;flex:0 0 auto;color:#737780;font-size:19px;line-height:1;letter-spacing:-.12em;opacity:.82;animation:ios-slide-arrow-nudge 1.25s ease-in-out infinite}
+.vision-slide-handle{
+  left:4px;top:4px;width:50px;height:50px;border:1px solid rgba(255,255,255,.95);
+  border-radius:50%;background:#34c759;color:#fff;
+  box-shadow:0 2px 7px rgba(0,0,0,.15),inset 0 1px rgba(255,255,255,.28);
+  transform:translateX(var(--slide-distance,0px));
+}
+.vision-slide-handle svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.85;fill:none}
+.show-problem-button.is-complete{background:rgba(242,249,244,.98);border-color:#a8e8b9;box-shadow:0 0 0 4px rgba(52,199,89,.15),0 10px 32px rgba(0,0,0,.2)}
+.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 4px);background:rgba(52,199,89,.2)}
+.camera-stage.pre-start .camera-controls,.camera-stage.is-connecting .camera-controls{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+.camera-stage.pre-start #toggleCopilot{display:none!important;visibility:hidden!important;pointer-events:none!important}
+.camera-stage.pre-start .camera-controls{z-index:90;bottom:calc(max(20px,env(safe-area-inset-bottom) + 12px))}
+.camera-stage.pre-start .camera-controls .primary-control-row{gap:clamp(25px,9vw,38px)}
+.camera-stage.pre-start .camera-controls .control-icon:disabled{opacity:.6}
+.camera-stage.is-connecting .camera-controls .control-icon:disabled{opacity:.46}
+@keyframes ios-slide-arrow-nudge{0%,100%{transform:translateX(0);opacity:.55}50%{transform:translateX(3px);opacity:1}}
+@media(prefers-reduced-motion:reduce){.vision-slide-arrows{animation:none!important}}
+@media(max-width:380px){.show-problem-button{width:calc(100% - 28px);height:62px;min-height:62px}.vision-slide-track{padding-right:37px;padding-left:53px}.vision-slide-arrows{font-size:17px}.vision-slide-label{font-size:13px}.vision-slide-handle{width:48px;height:48px;left:3px;top:3px}}
