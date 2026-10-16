@@ -70,8 +70,6 @@
   const focusInstruction = $("#focusInstruction");
   const approxTag = $("#approxTag");
   const clearTranscriptButton = $("#clearTranscript");
-  const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
-  const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
   // Account-scoped memory and history are loaded from the authenticated Worker APIs.
   let accountMemories = [];
   let accountMemoryEnabled = true;
@@ -460,12 +458,6 @@
     return crossSessionRecallRequest;
   }
 
-  window.addEventListener("storage", (event) => {
-    if ((event.key === MEMORY_CONSENT_KEY && event.newValue !== "enabled") ||
-        (event.key === MEMORY_CONTEXT_KEY && event.newValue === null)) {
-      try { sessionStorage.removeItem(MEMORY_CONTEXT_KEY); } catch (_) {}
-    }
-  });
   const muteButton = $("#muteMic");
   const zoomSlider = $("#zoomSlider");
   const zoomLabel = $("#zoomLabel");
@@ -2009,7 +2001,6 @@
           taskProgress: progress
         });
         void refreshAccountMemories();
-  void refreshCrossSessionRecallContext();
       }
     }).catch(() => {
       // Do not let persistence faults turn into a Live session fault.
@@ -3560,6 +3551,7 @@
           const memory = readOptedInMemoryContext();
           if (memory) setupPayload.memory_context = memory;
         } catch (_) {}
+        if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         sessionSocket.send(JSON.stringify(setupPayload));
         startRelayKeepalive(sessionSocket);
         setStatus("Camera ready. Connecting securely to Moina…");
@@ -4043,7 +4035,7 @@
     }
   }
   stage.addEventListener("click", (event) => {
-    if (event.target.closest(".floating-top,.camera-controls,.caption-dock,.zoom-dock,.camera-top-badge,.camera-state,.approx-tag,.focus-card,.clear-marker,.vision-pill,.vault-link")) return;
+    if (event.target.closest(".floating-top,.camera-controls,.caption-dock,.zoom-dock,.camera-top-badge,.camera-state,.approx-tag,.focus-card,.clear-marker,.vision-pill")) return;
     if (!microphoneStream || !active || !setupReady) return;
     const isTargetSelection = awaitingTargetSelection;
     const selectedPoint = startLocalTracking(event.clientX, event.clientY, isTargetSelection);
