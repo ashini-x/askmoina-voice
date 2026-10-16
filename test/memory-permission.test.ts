@@ -18,38 +18,27 @@ function mockEnv() {
 }
 const ctx = { waitUntil(_promise: Promise<unknown>) {} } as unknown as ExecutionContext;
 
-describe("M36 permission-based memory continuity", () => {
-  it("shows memory sharing off by default and previewable", async () => {
-    const response = await handleContinuityRequest(new Request("https://askmoina.test/vault"), mockEnv(), ctx);
-    const html = await response!.text();
-    expect(html).toContain('id="useInVoice"> Use saved memories in new voice conversations on this browser');
-    expect(html).toContain('id="voiceContextPreview"');
-    expect(html).toContain("Off by default");
-    expect(html).toContain("cannot retract notes already sent to a connected conversation");
+describe("legacy Vault retirement", () => {
+  it("does not serve the retired Vault page or script", async () => {
+    expect(await handleContinuityRequest(new Request("https://askmoina.test/vault"), mockEnv(), ctx)).toBeNull();
+    expect(await handleContinuityRequest(new Request("https://askmoina.test/vault.js"), mockEnv(), ctx)).toBeNull();
   });
 
-  it("makes saved notes editable and deletable", async () => {
-    const response = await handleContinuityRequest(new Request("https://askmoina.test/vault.js"), mockEnv(), ctx);
-    const script = await response!.text();
-    expect(script).toContain('edit.textContent="Edit memory"');
-    expect(script).toContain('save.textContent="Save changes"');
-    expect(script).toContain('del.textContent="Delete memory"');
-    expect(script).toContain('m.text=next');
-    expect(script).toContain('renderConsentPreview()');
+  it("does not expose the old cross-tab context injector", async () => {
+    expect(await handleContinuityRequest(new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx)).toBeNull();
   });
 
-  it("guards setup injection with opt-out consent and clears tab fallback", async () => {
-    const response = await handleContinuityRequest(new Request("https://askmoina.test/continuity.js"), mockEnv(), ctx);
-    const script = await response!.text();
-    expect(script).toContain('const consentKey = "askmoina.memory.consent.v1"');
-    expect(script).toContain('if (consent !== "disabled")');
-    expect(script).toContain('sessionStorage.removeItem(contextKey)');
-    expect(script).toContain('window.addEventListener("storage"');
-  });
-
-  it("keeps ordinary sessions useful without any memory context", () => {
+  it("keeps normal live sessions useful without any optional memory context", () => {
     const base = "base instruction";
     expect(buildPersonalizedSystemInstruction(base, "")).toBe(base);
     expect(buildPersonalizedSystemInstruction(base, null)).toBe(base);
+  });
+
+  it("adds bounded saved context only when context exists", () => {
+    const base = "base instruction";
+    const result = buildPersonalizedSystemInstruction(base, "Earlier session: I prefer short answers");
+    expect(result).toContain(base);
+    expect(result).toContain("BEGIN USER-SAVED MEMORIES");
+    expect(result).toContain("I prefer short answers");
   });
 });
