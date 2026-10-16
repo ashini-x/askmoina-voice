@@ -16,6 +16,11 @@ try {
   browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    // Account setup is tested from the installed-app context because /login
+    // intentionally redirects normal browser tabs to the install landing page.
+    Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+  });
   await page.goto(baseUrl + "/login", { waitUntil: "domcontentloaded", timeout: 30000 });
 
   const cdp = await context.newCDPSession(page);

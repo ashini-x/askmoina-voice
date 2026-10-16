@@ -176,6 +176,8 @@ try {
   // Expose only the active test socket so the synthetic can send one deliberate
   // post-start user turn without changing the production UI or logging user content.
   await page.addInitScript(() => {
+    // This synthetic browser represents an installed PWA, not an ordinary tab.
+    Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
     const nativeSend = WebSocket.prototype.send;
     // Test-only observer records frame counts and local VAD edge times, never audio or transcripts.
     window.__askmoinaNativeContinuitySend = (socket, data) => nativeSend.call(socket, data);

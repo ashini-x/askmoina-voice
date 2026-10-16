@@ -37,6 +37,10 @@ try {
     sameSite: "Lax"
   }]);
   page = await context.newPage();
+  await page.addInitScript(() => {
+    // This synthetic browser represents an installed PWA, not an ordinary tab.
+    Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+  });
   page.on("websocket", (webSocket) => {
     try {
       if (new URL(webSocket.url()).pathname === "/api/voice/socket") liveSocketEvents.push(webSocket);
