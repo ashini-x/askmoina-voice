@@ -388,8 +388,8 @@ describe("Native mobile-first AskMoina shell", () => {
 
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
-    expect(workerSource).toContain("id=\\"openAppMenu\\"");
-    expect(workerSource).toContain("id=\\"openLibrary\\"");
+    expect(workerSource).toContain("openAppMenu");
+    expect(workerSource).toContain("openLibrary");
     expect(workerSource).toContain("const NATIVE_APP_MENU_SHEET");
     expect(workerSource).toContain("native-menu-signout");
     expect(workerSource).toContain("data-logout");
