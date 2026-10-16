@@ -106,6 +106,47 @@ async function withSiteChromeResponse(response: Response, pathname: string, auth
   return new Response(decorated, { status: response.status, statusText: response.statusText, headers });
 }
 
+const PWA_STANDALONE_APP_PATHS = new Set([
+  "/",
+  "/index.html",
+  "/copilot",
+  "/copilot.html",
+  "/login",
+  "/login.html",
+]);
+
+function isPwaStandaloneAppPath(pathname: string): boolean {
+  return PWA_STANDALONE_APP_PATHS.has(pathname);
+}
+
+/**
+ * Keep the browser-tab experience on the install landing page. The actual
+ * display-mode check is performed before body scripts run, so the app UI
+ * does not flash into view before the redirect. A query string is never used
+ * as proof of installation.
+ */
+function withPwaStandaloneGate(html: string): string {
+  if (!/<html\b/i.test(html) || !/<\/head>/i.test(html) ||
+      html.includes('<meta name="askmoina-pwa-shell"')) return html;
+
+  html = html.replace(/<html\b([^>]*)>/i, (match, attrs: string) =>
+    /\bdata-askmoina-pwa-gate\s*=/.test(attrs)
+      ? match
+      : `<html${attrs} data-askmoina-pwa-gate="pending">`);
+
+  const tags = '<meta name="askmoina-pwa-shell" content="1">' +
+    '<meta name="theme-color" content="#f5f5f7">' +
+    '<meta name="apple-mobile-web-app-capable" content="yes">' +
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">' +
+    '<link rel="manifest" href="/manifest.webmanifest">' +
+    '<link rel="apple-touch-icon" href="/askmoina-bird-final.png">' +
+    '<link rel="stylesheet" href="/pwa-gate.css">' +
+    '<noscript><meta http-equiv="refresh" content="0;url=/install.html"></noscript>' +
+    '<script src="/pwa-gate.js"></script>' +
+    '<script src="/pwa-runtime.js" defer></script>';
+  return html.replace(/<\/head>/i, `${tags}</head>`);
+}
+
 const providerFrameDecoder = new TextDecoder();
 
 function configuredTokenRate(value?: string): number | null {
@@ -2814,6 +2855,7 @@ export default {
         html = html.replace("</body>", renderSiteMenu(false) + authOverlay + ENTRY_FOOTER + "<script src=\"/auth.js\" defer></script><script src=\"/entry-menu.js\" defer></script></body>");
       }
       html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
+      if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
@@ -2845,7 +2887,8 @@ export default {
       }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
-      const body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION);
+      let body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION);
+      if (!isScript && !isStyle && isPwaStandaloneAppPath(url.pathname)) body = withPwaStandaloneGate(body);
       const contentType = isScript ? "text/javascript; charset=utf-8" :
         isStyle ? "text/css; charset=utf-8" : "text/html; charset=utf-8";
       const headers = new Headers({
@@ -2955,7 +2998,9 @@ export default {
       headers.delete("ETag");
     } else if (request.method === "GET" && assetResponse.status === 200 &&
         shouldUseSiteChrome(url.pathname) && headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
-      responseBody = withSiteChrome(await assetResponse.text(), authenticatedForMenu);
+      let assetHtml = withSiteChrome(await assetResponse.text(), authenticatedForMenu);
+      if (isPwaStandaloneAppPath(url.pathname)) assetHtml = withPwaStandaloneGate(assetHtml);
+      responseBody = assetHtml;
       headers.delete("Content-Length");
       headers.delete("ETag");
     }

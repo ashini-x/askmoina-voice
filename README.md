@@ -60,3 +60,13 @@ Apply migrations in order (including `migrations/0002_continuity_vault.sql`) to 
 - Real device/mobile acceptance, a security review of the cryptographic lifecycle and the AI provider data-flow/retention configuration are required before making high-assurance privacy claims or opening access broadly.
 
 See `docs/ARCHITECTURE.md`, `docs/SECURITY_MODEL.md`, `docs/PRIVACY.md`, and `docs/RELEASE_PROCESS.md`.
+
+## Standalone PWA behavior
+
+AskMoina can be installed from a supported browser as a Progressive Web App (PWA). The installed window uses the manifest's `standalone` display mode. Opening the protected home, sign-in, or Co-Pilot screen in a normal browser tab routes to `/install.html`; the `?source=pwa` start URL is not treated as proof of installation. This gate controls the product experience, not authorization. Sign-in and authenticated API checks remain the security boundary.
+
+On iPhone/iPad, open the site in Safari, choose **Share → Add to Home Screen**, enable **Open as Web App** if offered, and add it. On Android/desktop, use the browser's install action when available or follow the on-page instructions.
+
+### How updates reach the standalone app
+
+GitHub edits do not reach a user's device until they are committed to the deployed branch and the Cloudflare deployment succeeds. After deployment, the installed PWA loads the latest HTML, JavaScript, CSS, and manifest from the Worker on the next app launch or reload; the service worker precaches only the small installation/offline shell and does not cache active app code or authenticated API responses. An already-open session is not forcibly hot-reloaded mid-conversation, so users may need to close and reopen AskMoina (or reload when safe) to pick up a release. No separate app-store binary update is required for ordinary web-code changes.

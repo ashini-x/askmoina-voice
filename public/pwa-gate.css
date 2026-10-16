@@ -1,0 +1,3 @@
+html[data-askmoina-pwa-gate="pending"] {
+  visibility: hidden !important;
+}
