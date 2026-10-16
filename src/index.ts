@@ -21,7 +21,6 @@ import { parseLiveClientInput, toProviderRealtimeInput } from "./sessions/copilo
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
-import { validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
 import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
@@ -2420,38 +2419,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               continue;
             }
             if (call?.name === "display_response_card") {
-              const validation = copilotMode ? validateResponseCard(call.args) : { valid: false as const, reason: "copilot_only" };
-              if (validation.valid) {
-                const card = validation.card;
-                const itemCount = card.type === "steps" ? card.steps.length : card.type === "key_details" ? card.details.length : card.options.length;
-                console.info("[AskMoina] Response card contract validated", JSON.stringify({ mode: copilotMode ? "copilot" : "voice", cardType: card.type, itemCount }));
-                if (searchCallsPresent && typeof call.id === "string" && call.id) {
-                  responses.push({
-                    id: call.id,
-                    name: "display_response_card",
-                    response: { result: "The requested live lookup is still running. Do not display or finalize a card from pre-search information. After search_current_web returns, call display_response_card again using the returned verified details, and keep your natural spoken progress going while waiting." },
-                    scheduling: "WHEN_IDLE",
-                  });
-                }
-              } else {
-                const completeRankedFallbackRecentlySent =
-                  copilotMode && completeRankedFallbackCardSentAt > 0 &&
-                  Date.now() - completeRankedFallbackCardSentAt < 45_000;
-                if (completeRankedFallbackRecentlySent) {
-                  console.info("[AskMoina] Skipped redundant response-card replacement after complete grounded ranked list");
-                } else {
-                  console.warn("[AskMoina] Response card contract rejected", JSON.stringify({ reason: validation.reason, mode: copilotMode ? "copilot" : "voice" }));
-                }
-                if (typeof call.id === "string" && call.id) {
-                  responses.push({
-                    id: call.id,
-                    name: "display_response_card",
-                    response: { result: completeRankedFallbackRecentlySent
-                      ? "The complete source-backed ranked card is already visible, with all requested rows verified. Your replacement payload is unnecessary; do not call display_response_card again and do not repeat the list on screen. Continue speaking now: briefly summarize the top entries and the takeaway from the full list."
-                      : `The response-card payload was rejected because of this schema issue: ${validation.reason}. Retry display_response_card once with the same complete supported details and correct only that issue. For a requested leaderboard, preserve all supported rows up to ten and omit optional source links if they cause a validation problem; never substitute speech-only names for the visible list. Do not claim the card is visible until the client acknowledges it.` },
-                    ...(searchCallsPresent ? { scheduling: "WHEN_IDLE" as const } : {}),
-                  });
-                }
+              if (typeof call.id === "string" && call.id) {
+                responses.push({
+                  id: call.id,
+                  name: "display_response_card",
+                  response: { result: "Response cards are disabled in this Co-Pilot. Continue with a complete natural spoken answer and do not call the card tool again. For current facts, use verified search results and explain them aloud." },
+                  scheduling: "WHEN_IDLE",
+                });
               }
               continue;
             }
@@ -2502,19 +2476,18 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             clientFrameText = "";
             startForcedRankedListLookup(forcedRankedTriggerText);
           }
-          const invalidCardPresent = calls.some((call) =>
-            call?.name === "display_response_card" && !validateResponseCard(call.args).valid
-          );
-          if (invalidCardPresent && !forwardedToolFrameEarly) {
+          const retiredCardCallPresent = calls.some((call) => call?.name === "display_response_card");
+          const historySearchPresent = calls.some((call) => call?.name === "search_past_conversations");
+          if ((retiredCardCallPresent || historySearchPresent) && !forwardedToolFrameEarly) {
             const remainingCalls = calls.filter((call) =>
-              call?.name !== "display_response_card" || validateResponseCard(call.args).valid
+              call?.name !== "display_response_card" && call?.name !== "search_past_conversations"
             );
             if (toolFrame.toolCall && Array.isArray(toolFrame.toolCall.functionCalls)) {
               toolFrame.toolCall.functionCalls = remainingCalls;
-              clientFrameText = JSON.stringify(toolFrame);
+              clientFrameText = remainingCalls.length ? JSON.stringify(toolFrame) : "";
             } else if (toolFrame.tool_call && Array.isArray(toolFrame.tool_call.function_calls)) {
               toolFrame.tool_call.function_calls = remainingCalls;
-              clientFrameText = JSON.stringify(toolFrame);
+              clientFrameText = remainingCalls.length ? JSON.stringify(toolFrame) : "";
             }
           }
         }
