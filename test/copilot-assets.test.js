@@ -12,6 +12,7 @@ const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.m
 const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.meta.url), "utf8");
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
+const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
@@ -55,10 +56,18 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
   });
 
+  it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
+    expect(signatureMark).toContain('viewBox="0 0 163 115"');
+    expect(signatureMark).toContain('M162 5 L152 5');
+    expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.74"');
+    expect(css).toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
+  });
+
   it("uses the AskMoina signature orb and state-reactive live edge pulses", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.74"');
     expect(html).not.toContain("M7.1 4.2");
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain(".camera-stage.is-listening .askmoina-orb-control:after");
@@ -67,7 +76,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain('class="askmoina-control-wave"');
     expect(html.indexOf('id="muteMic"')).toBeLessThan(html.indexOf('id="toggleCopilot"'));
     expect(html.indexOf('id="toggleCopilot"')).toBeLessThan(html.indexOf('id="flipCamera"'));
-    expect(css).toContain('mask-image:url("/askmoina-mark.svg")');
+    expect(css).toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
     expect(css).toContain('border-radius:50%!important');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-wave');
     expect(css).not.toContain("top:-76px!important");

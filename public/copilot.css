@@ -1500,11 +1500,11 @@ button{touch-action:manipulation}
   transform:translate(-50%,-50%);
   background:linear-gradient(118deg,#70e9f1 0%,#8b91ff 19%,#b5a0ff 34%,#f0a7dc 49%,#ffc77c 64%,#80ebd4 81%,#70e9f1 100%);
   background-size:240% 220%;
-  -webkit-mask-image:url("/askmoina-mark.svg");
+  -webkit-mask-image:url("/askmoina-mark.svg?v=0.4.74");
   -webkit-mask-position:center;
   -webkit-mask-repeat:no-repeat;
   -webkit-mask-size:contain;
-  mask-image:url("/askmoina-mark.svg");
+  mask-image:url("/askmoina-mark.svg?v=0.4.74");
   mask-position:center;
   mask-repeat:no-repeat;
   mask-size:contain;
