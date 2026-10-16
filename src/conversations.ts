@@ -134,6 +134,112 @@ function parseSummary(value: unknown): string | null {
   return value;
 }
 
+const SUMMARY_LABELS = [
+  "Original goal",
+  "Earlier context",
+  "History so far",
+  "Latest exchange",
+  "Latest user request",
+  "Latest Moina response",
+  "Goal",
+  "Current state",
+  "Next action",
+  "Expected evidence",
+  "Constraints",
+  "Uncertainty",
+] as const;
+
+function readSummaryField(summary: string, label: string): string {
+  const lines = summary.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.startsWith(label + ":"));
+  if (start < 0) return "";
+  const first = lines[start].slice(label.length + 1).trim();
+  const rest: string[] = first ? [first] : [];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (SUMMARY_LABELS.some((known) => lines[index].startsWith(known + ":"))) break;
+    rest.push(lines[index]);
+  }
+  return rest.join("\n").trim();
+}
+
+function fitSummarySection(value: string, max: number): string {
+  const clean = value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim();
+  if (clean.length <= max) return clean;
+  const marker = "\n[… older notes shortened …]\n";
+  const headLength = Math.floor((max - marker.length) * 0.62);
+  const tailLength = max - marker.length - headLength;
+  return clean.slice(0, headLength).trimEnd() + marker + clean.slice(-tailLength).trimStart();
+}
+
+/**
+ * Keep a bounded rolling conversation summary rather than replacing it with
+ * only the latest exchange. The raw finalized turns remain the source of truth.
+ */
+export function mergeConversationSummary(previousRaw: string, incomingRaw: string): string {
+  const previous = previousRaw.trim();
+  const incoming = incomingRaw.trim();
+  if (!incoming) return fitSummarySection(previous, MAX_SUMMARY_CHARS);
+  if (!previous) {
+    // Normalize older client summary formats into the durable rolling format.
+    const goal = fitSummarySection(readSummaryField(incoming, "Original goal") || readSummaryField(incoming, "Goal"), 300);
+    const user = fitSummarySection(readSummaryField(incoming, "Latest user request"), 560);
+    const assistant = fitSummarySection(readSummaryField(incoming, "Latest Moina response"), 560);
+    const state = fitSummarySection(readSummaryField(incoming, "Current state"), 300);
+    const next = fitSummarySection(readSummaryField(incoming, "Next action"), 200);
+    const evidence = fitSummarySection(readSummaryField(incoming, "Expected evidence"), 200);
+    const constraints = fitSummarySection(readSummaryField(incoming, "Constraints"), 280);
+    const uncertainty = fitSummarySection(readSummaryField(incoming, "Uncertainty"), 160);
+    return [
+      goal ? "Original goal: " + goal : "",
+      "Latest exchange:",
+      user ? "User: " + user : "",
+      assistant ? "Moina: " + assistant : "",
+      state ? "Current state: " + state : "",
+      next ? "Next action: " + next : "",
+      evidence ? "Expected evidence: " + evidence : "",
+      constraints ? "Constraints: " + constraints : "",
+      uncertainty ? "Uncertainty: " + uncertainty : "",
+    ].filter(Boolean).join("\n").slice(0, MAX_SUMMARY_CHARS);
+  }
+
+  const previousGoal = readSummaryField(previous, "Original goal") || readSummaryField(previous, "Goal");
+  const incomingGoal = readSummaryField(incoming, "Original goal") || readSummaryField(incoming, "Goal");
+  const goal = fitSummarySection(previousGoal || incomingGoal, 300);
+  const oldHistory = readSummaryField(previous, "Earlier context") || readSummaryField(previous, "History so far");
+  const priorExchange = readSummaryField(previous, "Latest exchange");
+  const priorUser = readSummaryField(previous, "Latest user request");
+  const priorAssistant = readSummaryField(previous, "Latest Moina response");
+  const legacyDetails = [
+    priorExchange,
+    !priorExchange && priorUser ? "User: " + priorUser : "",
+    !priorExchange && priorAssistant ? "Moina: " + priorAssistant : "",
+    readSummaryField(previous, "Constraints") ? "Prior constraints: " + readSummaryField(previous, "Constraints") : "",
+    // Older summaries lack a structured exchange field; retain their useful notes.
+    !priorExchange && !priorUser && !priorAssistant
+      ? fitSummarySection(previous.replace(/^Goal:[^\n]*(?:\n|$)/m, "").trim(), 900) : "",
+  ].filter(Boolean).join("\n");
+  const history = fitSummarySection([oldHistory, legacyDetails].filter(Boolean).join("\n"), 1_500);
+  const user = fitSummarySection(readSummaryField(incoming, "Latest user request"), 500);
+  const assistant = fitSummarySection(readSummaryField(incoming, "Latest Moina response"), 500);
+  const state = fitSummarySection(readSummaryField(incoming, "Current state"), 300);
+  const next = fitSummarySection(readSummaryField(incoming, "Next action"), 200);
+  const evidence = fitSummarySection(readSummaryField(incoming, "Expected evidence"), 200);
+  const constraints = fitSummarySection(readSummaryField(incoming, "Constraints"), 280);
+  const uncertainty = fitSummarySection(readSummaryField(incoming, "Uncertainty"), 160);
+  return [
+    goal ? "Original goal: " + goal : "",
+    history ? "Earlier context: " + history : "",
+    "Latest exchange:",
+    user ? "User: " + user : "",
+    assistant ? "Moina: " + assistant : "",
+    state ? "Current state: " + state : "",
+    next ? "Next action: " + next : "",
+    evidence ? "Expected evidence: " + evidence : "",
+    constraints ? "Constraints: " + constraints : "",
+    uncertainty ? "Uncertainty: " + uncertainty : "",
+  ].filter(Boolean).join("\n").slice(0, MAX_SUMMARY_CHARS);
+}
+
 function parseTaskProgress(value: unknown): TaskProgress | null {
   if (!isRecord(value)) return null;
   const allowed = ["goal", "currentState", "nextAction", "expectedEvidence", "uncertainty", "constraints", "recentEvents"];
@@ -434,6 +540,7 @@ async function appendTurn(request: Request, env: Env, ownerId: string, conversat
     if (!conversation) return json({ error: "not_found" }, 404);
     const turnId = "turn_" + crypto.randomUUID().replace(/-/g, "");
     const now = new Date().toISOString();
+    const mergedSummary = summary === null ? null : mergeConversationSummary(conversation.summary, summary);
     const inserted = env.DB.prepare(
       "INSERT INTO conversation_turns (turn_id, conversation_id, owner_id, sequence, role, text, idempotency_key, created_at) " +
       "SELECT ?, c.conversation_id, c.owner_id, c.next_turn_sequence, ?, ?, ?, ? " +
@@ -447,7 +554,7 @@ async function appendTurn(request: Request, env: Env, ownerId: string, conversat
       "summary = COALESCE(?, summary), task_progress_json = COALESCE(?, task_progress_json) " +
       "WHERE conversation_id = ? AND owner_id = ? AND next_turn_sequence = ? " +
       "AND EXISTS (SELECT 1 FROM conversation_turns WHERE turn_id = ? AND conversation_id = ? AND owner_id = ?)",
-    ).bind(now, now, summary, progressJson, conversationId, ownerId, conversation.next_turn_sequence,
+    ).bind(now, now, mergedSummary, progressJson, conversationId, ownerId, conversation.next_turn_sequence,
       turnId, conversationId, ownerId);
 
     const batchResult = await env.DB.batch([inserted, advance]);
