@@ -5828,6 +5828,7 @@
     librarySheet.hidden = false;
     librarySheet.setAttribute("aria-hidden", "false");
     document.body.classList.add("library-is-open");
+    stage.classList.add("library-open-active");
     setLibraryTab(tab);
     if (tab === "history") await refreshConversationList();
     else await refreshAccountMemories();
@@ -5840,6 +5841,7 @@
     librarySheet.hidden = true;
     librarySheet.setAttribute("aria-hidden", "true");
     document.body.classList.remove("library-is-open");
+    stage.classList.remove("library-open-active");
     if (libraryOpenButton) libraryOpenButton.focus({ preventScroll: true });
   }
 
