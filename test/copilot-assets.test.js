@@ -591,7 +591,7 @@ describe("Spoken ranked-list UX", () => {
     expect(workerSource).toContain("Mandatory ranked-list grounding started");
     expect(workerSource).toContain("const answerInstruction = fullTableVerified");
     expect(workerSource).toContain("Do not create or imply a visible card");
-    expect(workerSource).toContain("const groundedAnswerText = result");
+    expect(workerSource).toContain("let groundedAnswerText = result");
     expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
   });
 });
