@@ -1475,10 +1475,14 @@ button{touch-action:manipulation}
   inset:3px;
   display:block;
   overflow:hidden;
-  border-radius:50%;
+  border-radius:var(--orb-radius-a,50%) var(--orb-radius-b,50%) var(--orb-radius-c,50%) var(--orb-radius-d,50%)/var(--orb-radius-e,50%) var(--orb-radius-f,50%) var(--orb-radius-g,50%) var(--orb-radius-h,50%);
   isolation:isolate;
   pointer-events:none;
   background:radial-gradient(circle at 33% 23%,rgba(255,255,255,.055),transparent 34%),radial-gradient(ellipse at 58% 76%,#0b0d14 0%,#050609 72%);
+  transform:scale(var(--orb-scale-x,1),var(--orb-scale-y,1)) rotate(var(--orb-rotation,0deg));
+  filter:brightness(var(--orb-brightness,1)) saturate(var(--orb-saturation,1));
+  transition:transform 45ms linear,border-radius 45ms linear,filter 45ms linear;
+  will-change:transform,border-radius,filter;
 }
 .askmoina-orb-flow {
   position:absolute;
@@ -1491,7 +1495,7 @@ button{touch-action:manipulation}
   border-radius:57% 43% 64% 36% / 48% 34% 66% 52%;
   opacity:0;
   mix-blend-mode:screen;
-  filter:blur(5px);
+  filter:blur(var(--orb-blur-base,5px)) brightness(var(--orb-flow-brightness,1));
   transform:translate(-4%,-2%) rotate(-12deg) scale(.92,.88);
   will-change:transform,border-radius,opacity;
 }
@@ -1505,7 +1509,7 @@ button{touch-action:manipulation}
   top:6%;
   border-radius:44% 56% 48% 52% / 56% 45% 55% 44%;
   background:radial-gradient(ellipse at 52% 39%,rgba(58,128,255,.66),rgba(65,161,255,.20) 42%,transparent 69%);
-  filter:blur(7px);
+  filter:blur(var(--orb-blur-blue,7px)) brightness(var(--orb-flow-brightness,1));
 }
 .askmoina-orb-flow-violet {
   width:88%;
@@ -1514,7 +1518,7 @@ button{touch-action:manipulation}
   top:34%;
   border-radius:38% 62% 61% 39% / 37% 43% 57% 63%;
   background:radial-gradient(ellipse at 62% 43%,rgba(155,113,255,.78),rgba(166,113,255,.24) 40%,transparent 70%),linear-gradient(145deg,transparent 21%,rgba(151,124,255,.14) 52%,transparent 81%);
-  filter:blur(6px);
+  filter:blur(var(--orb-blur-violet,6px)) brightness(var(--orb-flow-brightness,1));
 }
 .askmoina-orb-flow-pink {
   width:74%;
@@ -1523,7 +1527,7 @@ button{touch-action:manipulation}
   top:45%;
   border-radius:55% 45% 43% 57% / 60% 45% 55% 40%;
   background:radial-gradient(ellipse at 45% 52%,rgba(245,133,222,.68),rgba(234,125,222,.19) 42%,transparent 69%);
-  filter:blur(7px);
+  filter:blur(var(--orb-blur-pink,7px)) brightness(var(--orb-flow-brightness,1));
 }
 .askmoina-control-mark {
   position:absolute!important;
