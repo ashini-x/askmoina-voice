@@ -264,9 +264,21 @@ jobs:
           }
 
           status="$(fetch_status /install.html /tmp/moina-install.html)"
-          test "$status" = "200"
-          grep -q 'Install AskMoina' /tmp/moina-install.html
-          grep -q 'Open as Web App' /tmp/moina-install.html
+          if [[ "$status" != "200" ]]; then
+            echo "::error::PWA install page returned HTTP $status"
+            head -c 1000 /tmp/moina-install.html || true
+            exit 1
+          fi
+          if ! grep -q 'Install AskMoina' /tmp/moina-install.html; then
+            echo "::error::PWA install page is missing the install CTA"
+            head -c 1000 /tmp/moina-install.html || true
+            exit 1
+          fi
+          if ! grep -q 'Open as Web App' /tmp/moina-install.html; then
+            echo "::error::PWA install page is missing iOS Open as Web App guidance"
+            head -c 1000 /tmp/moina-install.html || true
+            exit 1
+          fi
           echo "PWA installation landing: OK"
 
           status="$(fetch_status /manifest.webmanifest /tmp/moina-manifest.json)"
@@ -292,7 +304,11 @@ jobs:
 
           for asset in /install.css /offline.html /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
-            test "$status" = "200"
+            if [[ "$status" != "200" ]]; then
+              echo "::error::PWA asset $asset returned HTTP $status"
+              head -c 500 /tmp/moina-pwa-asset || true
+              exit 1
+            fi
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
