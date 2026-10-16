@@ -351,7 +351,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).toContain('class="vision-slide-copy"');
-    expect(html).toContain("Slide to show your problem");
+    expect(html).toContain("Tap to open camera");
     expect(script).toContain('showProblemButton.addEventListener("pointermove"');
     expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
     expect(script).toContain("function hideConnectionNotice(resolved = false)");
