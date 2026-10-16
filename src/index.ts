@@ -1,5 +1,6 @@
 import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
+import { handleConversationRequest } from "./conversations";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { MAX_RESUME_REPLAY_CHARS, compactReplayMessagesForResumption, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type ReplayMessage, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
