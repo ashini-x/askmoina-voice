@@ -199,16 +199,14 @@ jobs:
           echo "Health endpoint: OK"
 
           status="$(fetch_status /login.html /tmp/moina-login.html)"
-          test "$status" = "200"
-          grep -q 'Face ID' /tmp/moina-login.html
-          grep -q 'Touch ID' /tmp/moina-login.html
-          grep -q 'Phone number + OTP' /tmp/moina-login.html
+          test "$status" = "302"
+          echo "Legacy login URL redirects into the native app: OK"
           status="$(fetch_status /auth.js /tmp/moina-auth.js)"
           test "$status" = "200"
           grep -q 'navigator.credentials.create' /tmp/moina-auth.js
           grep -q 'navigator.credentials.get' /tmp/moina-auth.js
           node --check /tmp/moina-auth.js
-          echo "Passkey client and login page: OK"
+          echo "Passkey client: OK"
 
           status="$(fetch_status /session-ui.js /tmp/moina-session-ui.js)"
           test "$status" = "302"
@@ -235,6 +233,15 @@ jobs:
             exit 1
           fi
           echo "Anonymous home serves the sign-in entry: OK"
+
+          status="$(fetch_status '/?view=about' /tmp/moina-about.html)"
+          test "$status" = "200"
+          grep -q 'A camera-first co-pilot for the real world.' /tmp/moina-about.html
+          echo "Native About screen: OK"
+          status="$(fetch_status '/?view=privacy' /tmp/moina-privacy.html)"
+          test "$status" = "200"
+          grep -q 'Your camera. Your control.' /tmp/moina-privacy.html
+          echo "Native Privacy screen: OK"
 
           status="$(fetch_status /copilot /tmp/moina-copilot.html)"
           test "$status" = "302"
