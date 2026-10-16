@@ -54,7 +54,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.63",
+    "APP_VERSION": "0.4.64",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -125,7 +125,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.63-preview",
+      "APP_VERSION": "0.4.64-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",
