@@ -22,3 +22,24 @@ button,input{font:inherit}button,a{-webkit-tap-highlight-color:transparent}butto
 @keyframes orb-breathe{0%,100%{transform:scale(.965);filter:brightness(1)}50%{transform:scale(1.025);filter:brightness(1.025)}}@keyframes orbit-drift{from{rotate:0deg}to{rotate:360deg}}@keyframes fade-up{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 @media(max-width:560px){.shell{padding:10px 14px 20px}.app-toolbar{padding:0 6px}.app-nav{gap:7px}.app-nav a,.app-nav button{width:36px;height:36px}.hero{min-height:86svh;padding:65px 0 75px}.orb-wrap{width:min(86vw,400px);height:min(86vw,400px);max-height:46svh;max-width:46svh}.voice-button{bottom:17px;width:64px;height:64px}.captions-home-button{right:calc(50% - 112px);bottom:28px;width:40px;height:40px}.conversation{bottom:93px;max-height:35svh}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.orb,.orbit,.orb-glint,.hero>*{animation:none!important}.voice-button,.app-nav a,.app-nav button,.captions-home-button{transition:none!important}}
+
+
+/* iOS installed-app polish: dynamic viewport, safe-area-aware controls, and tactile web behavior. */
+html{min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{min-height:100dvh;overscroll-behavior-y:contain}
+.shell{min-height:100dvh;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+.app-toolbar{top:calc(17px + env(safe-area-inset-top,0px));padding-left:max(21px,env(safe-area-inset-left,0px));padding-right:max(21px,env(safe-area-inset-right,0px))}
+.voice-button{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.captions-home-button{bottom:calc(33px + env(safe-area-inset-bottom,0px))}
+.conversation{bottom:calc(105px + env(safe-area-inset-bottom,0px))}
+@media(max-width:560px){
+  .app-toolbar{top:calc(17px + env(safe-area-inset-top,0px));padding-left:max(6px,env(safe-area-inset-left,0px));padding-right:max(6px,env(safe-area-inset-right,0px))}
+  .voice-button{bottom:calc(17px + env(safe-area-inset-bottom,0px))}
+  .captions-home-button{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+  .conversation{bottom:calc(93px + env(safe-area-inset-bottom,0px))}
+}
+@media(hover:none) and (pointer:coarse){
+  .app-nav a:hover,.app-nav button:hover{transform:none;background:rgba(255,255,255,.65)}
+  .voice-button:hover:not(:disabled){transform:translateX(-50%);background:#1d1d1f;box-shadow:0 8px 25px rgba(25,25,20,.12)}
+  .voice-button.is-live:hover:not(:disabled){background:#e7e6e1;box-shadow:0 0 0 1px rgba(255,255,255,.8),0 7px 24px rgba(25,25,20,.07)}
+}
