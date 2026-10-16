@@ -426,7 +426,7 @@
             const summary = String(conversation.summary || item.summaryPreview || "").trim().slice(-220);
             const turnText = turns.map((turn) => {
               const role = turn && turn.role === "assistant" ? "Moina" : "User";
-              const text = String(turn && turn.text || "").replace(/\\s+/g, " ").trim().slice(0, 180);
+              const text = String(turn && turn.text || "").replace(/\s+/g, " ").trim().slice(0, 180);
               return text ? role + ": " + text : "";
             }).filter(Boolean).join("\n");
             return [
@@ -439,7 +439,7 @@
         const indexLines = conversations.slice(0, 12).map((item) => {
           const title = String(item.title || "Previous conversation").slice(0, 70);
           const date = String(item.lastActivityAt || item.updatedAt || "").slice(0, 10);
-          const summary = String(item.summaryPreview || "").replace(/\\s+/g, " ").trim().slice(0, 125);
+          const summary = String(item.summaryPreview || "").replace(/\s+/g, " ").trim().slice(0, 125);
           return "- " + title + (date ? " (" + date + ")" : "") + (summary ? ": " + summary : "");
         });
         const detailBlock = details.filter(Boolean).join("\n\n");
@@ -3295,7 +3295,7 @@
       if (serverContent.turn_complete || serverContent.turnComplete) {
 
         if (liveSearchActive && liveSearchLookupCompleted && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
-        if (liveSearchActive && liveSearchLookupCompleted && !liveSearchFinishing) completeLiveSearchProgress();
+
         // Captions stay hidden; finalization still stores user/assistant text in History.
         if (!liveSearchActive && !liveSearchFinishing) finalizeTurn();
         if (greetingTurnPending) beginListeningAfterGreeting();
@@ -3552,7 +3552,7 @@
       socket = sessionSocket;
       sessionSocket.binaryType = "arraybuffer";
 
-      sessionSocket.addEventListener("open", () => {
+      sessionSocket.addEventListener("open", async () => {
         if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         const setupPayload = { setup: {}, copilot_mode: true };
         try {
