@@ -397,12 +397,12 @@ async function createConversation(request: Request, env: Env, ownerId: string): 
 const HISTORY_SEARCH_STOPWORDS = new Set([
   "the","and","for","with","that","this","what","when","where","which","who","how","did","does","was","were",
   "from","about","have","had","you","your","our","their","then","than","into","onto","please","tell","show",
-  "remember","recall","previous","earlier","last","session","conversation","said","want","wanted","user"
+  "remember","recall","previous","earlier","last","session","conversation","said","want","wanted","user","in","on","at","my","of","to","a","an"
 ]);
 
 export function getHistorySearchTerms(rawQuery: string): string[] {
   const clean = String(rawQuery || "").slice(0, 300).replace(/[\u0000-\u001f\u007f]/g, " ");
-  const terms = clean.toLocaleLowerCase().match(/[\p{L}\p{N}]{2,}/gu) || [];
+  const terms = clean.toLocaleLowerCase().match(/[\p{L}\p{M}\p{N}]{2,}/gu) || [];
   const unique = new Set<string>();
   for (const term of terms) {
     if (term.length > 48 || HISTORY_SEARCH_STOPWORDS.has(term)) continue;
