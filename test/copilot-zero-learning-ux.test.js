@@ -43,7 +43,7 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
   it("keeps the camera controls simple without a Vault lock and uses a native camera-flip icon", () => {
     expect(html).not.toContain('id="vaultButton"');
     expect(html).toContain('id="openLibrary"');
-    expect(html).toContain('<circle cx="12" cy="12" r="2.1"/>');
+    expect(html).toContain('<circle cx="12" cy="12" r="2"/>');
     expect(html).not.toContain("vision-slide-chevron");
     expect(css).not.toContain("vision-slide-chevron");
     expect(css).not.toContain("vision-slide-hint");
