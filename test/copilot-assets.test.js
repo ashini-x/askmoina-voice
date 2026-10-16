@@ -9,6 +9,8 @@ const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "
 const protocolSource = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
 const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.meta.url), "utf8");
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
+const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.meta.url), "utf8");
+const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 
@@ -373,34 +375,71 @@ describe("Live Co-Pilot browser assets", () => {
 });
 
 
-describe("Apple-style entry navigation and disconnect cue", () => {
-  it("uses a shared menu on the sign-in, chooser, and standard-page surfaces", () => {
-    expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
-    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
-    expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Donations", "Illustrative demo total", "About askMoina", "Developer", "Feedback", "Privacy &amp; Security", "Investor Relations", "Sign out"]) {
-      expect(workerSource).toContain(label);
-    }
-    for (const route of ["/about", "/developer", "/help", "/privacy", "/pricing", "/donate"]) {
-      expect(workerSource).toContain('"' + route + '"');
-    }
-    expect(workerSource).toContain('url.pathname === "/entry-menu.js"');
-    expect(workerSource).toContain("renderSiteInfoPage(url.pathname)");
-    expect(html).not.toContain("entry-site-menu");
-    expect(css).toContain(".entry-site-menu{");
-    expect(entryMenuScript).toContain('document.addEventListener("pointerdown"');
-    expect(entryMenuScript).toContain('document.addEventListener("keydown"');
+describe("Native mobile-first AskMoina shell", () => {
+  it("lands signed-in users on the camera instead of a website product chooser", () => {
+    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.64\", authenticated)");
+    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.64\", true)");
+    expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
+    expect(workerSource).toContain('url.pathname === "/login" || url.pathname === "/login.html"');
+    expect(workerSource).toContain('authenticated ? "camera" : "login"');
+    expect(workerSource).toContain("const NATIVE_APP_HEADER_AUTH");
+    expect(workerSource).toContain("const NATIVE_APP_HEADER_GUEST");
   });
 
-
-  it("inserts a real newline, never literal backslash-n text, before the menu on both entry surfaces", () => {
-    expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
-    expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
-    expect(workerSource).not.toContain("ENTRY_AUTH_OVERLAY.replace(");
-    expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY.replace(");
+  it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
+    expect(workerSource).toContain("askmoina-bird-final.png");
+    expect(workerSource).toContain("id=\\"openAppMenu\\"");
+    expect(workerSource).toContain("id=\\"openLibrary\\"");
+    expect(workerSource).toContain("const NATIVE_APP_MENU_SHEET");
+    expect(workerSource).toContain("native-menu-signout");
+    expect(workerSource).toContain("data-logout");
+    expect(nativeAppCss).toContain(".native-app-chrome");
+    expect(nativeAppCss).toContain(".native-menu-sheet");
+    expect(nativeAppCss).toContain("min-width:44px");
+    expect(nativeAppScript).toContain('document.addEventListener("keydown"');
+    expect(nativeAppScript).toContain("event.key === \"Escape\"");
+    expect(nativeAppScript).toContain("returnFocus.focus");
   });
 
-  it("keeps the disconnect tone distinct and lets it finish before returning to the chooser", () => {
+  it("keeps camera and microphone startup behind account authentication", () => {
+    expect(workerSource).toContain("removeCopilotClientScript(html)");
+    expect(workerSource).toContain('.replace(\'<script src="/session-ui.js" defer></script>\', "")');
+    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="/auth.js" defer></script></body>\'');
+    expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(self)');
+    expect(workerSource).toContain("No guest access");
+  });
+
+  it("keeps History and Key Memories in the existing camera app and uses a mobile sheet", () => {
+    expect(html).toContain('id="librarySheet"');
+    expect(html).toContain('id="libraryTitle">History &amp; Key Memories');
+    expect(nativeAppCss).toContain(".library-panel");
+    expect(nativeAppCss).toContain("env(safe-area-inset-bottom,0px)");
+    expect(nativeAppCss).toContain("native-sheet-in");
+    expect(workerSource).toContain("NATIVE_APP_MENU_SHEET + \"</main>\"");
+  });
+
+  it("serves secondary information as mobile screens, not blank placeholders with a generic header", () => {
+    expect(workerSource).toContain("const NATIVE_SITE_INFO");
+    expect(workerSource).toContain("renderSiteInfoPage(url.pathname, env.APP_VERSION || \"0.4.64\")");
+    expect(workerSource).not.toContain("const pageHtml = withSiteChrome(infoPage");
+    for (const phrase of ["A camera-first co-pilot for the real world.", "Developer resources are being prepared.", "Your camera. Your control.", "Partnership and investor information is being prepared.", "Donation processing is not enabled on this page yet"]) {
+      expect(workerSource).toContain(phrase);
+    }
+    expect(nativeAppCss).toContain(".native-info-main");
+    expect(workerSource).toContain('"/account.html"');
+  });
+
+  it("keeps legacy menu routes reachable without a fake donation total on the home screen", () => {
+    for (const route of ["/account", "/about", "/developer", "/help", "/privacy", "/pricing", "/donate"]) {
+      expect(workerSource).toContain('href=\\"' + route + '\\"');
+    }
+    expect(workerSource).toContain("Hardware");
+    expect(workerSource).toContain("Under development");
+    expect(workerSource).not.toContain("Illustrative demo total");
+    expect(workerSource).not.toContain("data-donation-counter");
+  });
+
+  it("keeps the disconnect tone distinct and lets it finish before returning to the camera home", () => {
     expect(script).toContain("function playDisconnectSound()");
     expect(script).toContain("disconnectToneUntil = performance.now() + 560");
     expect(script).toContain("peak: 0.052");
@@ -408,118 +447,10 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(script).toContain('window.setTimeout(() => window.location.replace("/"), 570)');
   });
 
-  it("keeps non-camera pages narrow with an empty logo slot and hamburger aligned right", () => {
-    expect(workerSource).toContain("entry-site-header");
-    expect(workerSource).toContain("entry-logo-slot");
-    expect(css).toContain(".entry-site-header{");
-    expect(css).toContain("width:min(100%,430px)");
-    expect(css).toContain(".entry-overlay .entry-products{grid-template-columns:minmax(0,1fr)!important}");
-    expect(css).toContain("body.site-info-body .site-info-shell{width:min(100%,430px)");
-  });
-
-
-  it("keeps the Apple-style header at the page root with final bird logo and hamburger only", () => {
-    expect(workerSource).toContain("askmoina-bird-final.png");
-    expect(workerSource).toContain("function withSiteChrome(html: string, authenticated = false)");
-    expect(workerSource).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu)");
-    expect(workerSource).toContain("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay");
-    expect(workerSource).toContain("renderSiteMenu(false) + authOverlay");
-    expect(siteChromeCss).toContain("background:rgba(245,245,247,.88)");
-    expect(siteChromeCss).toContain("justify-content:space-between");
-    expect(siteChromeCss).toContain("width:min(100%,var(--site-chrome-width,430px))");
-    expect(siteChromeCss).toContain("right:0!important;left:auto!important");
-    expect(siteChromeCss).toContain("site-chrome-page>main:not(.camera-app)");
-    expect(logo.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
-  });
-
-
-  it("emits valid script src attributes for auth and menu handlers", () => {
-    const authInjection = workerSource.split("\n").find((line) => line.includes("renderSiteMenu(false) + authOverlay")) || "";
-    const productInjection = workerSource.split("\n").find((line) => line.includes("renderSiteMenu(Boolean(accountId || adminAccess)) + productsOverlay")) || "";
-    expect(authInjection).toContain(String.raw`src=\"/auth.js\"`);
-    expect(authInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
-    expect(productInjection).toContain(String.raw`src=\"/entry-menu.js\"`);
-    expect(authInjection).not.toContain(String.raw`src=\\\\"/auth.js`);
-  });
-
-
-  it("does not flash a custom confirmation sheet before the native passkey prompt", () => {
-    expect(authScript).not.toContain('showSheet("Confirm your identity"');
-    expect(authScript).not.toContain('showSheet("Confirm on your device"');
-    expect(authScript).toContain("navigator.credentials.get({ publicKey, signal: controller.signal })");
-    expect(authScript).toContain("navigator.credentials.create({ publicKey, signal: controller.signal })");
-  });
-
-  it("keeps user-specific navigation out of signed-out menu markup and retires Profile", () => {
-    expect(workerSource).not.toContain('>Profile <span aria-hidden="true">›</span></a>');
-    expect(workerSource).toContain("function renderSiteMenu(authenticated: boolean)");
-    expect(workerSource).toContain("authenticated ? ");
-    expect(workerSource).toContain("<!-- ASKMOINA_MENU_CONTENT -->");
-    expect(workerSource).toContain('"/donate"');
-    expect(workerSource).toContain('"/pricing"');
-    expect(workerSource).not.toContain("entry-header-donation");
-    expect(workerSource).toContain("Key Memories");
-    expect(workerSource).toContain("entry-menu-logout");
-    expect(siteChromeCss).toContain("color:#ff3b30");
-    expect(siteChromeCss).toContain("border-top:0");
-    expect(workerSource).toContain("Sign out");
-    expect(workerSource).toContain('url.pathname === "/account" || url.pathname === "/account.html"');
-  });
-
-  it("uses a no-network illustrative donation counter and balanced Apple-style pill links", () => {
-    expect(workerSource).toContain("entry-support-links");
-    expect(workerSource).toContain("entry-quick-link");
-    expect(workerSource).not.toContain("entry-donation-card");
-    expect(workerSource).toContain("Support");
-    expect(workerSource).toContain("₹1.09L");
-    expect(workerSource).toContain("data-donation-counter");
-    expect(workerSource).toContain("Illustrative demo total");
-    expect(workerSource).not.toContain("illustrative demo counter, not a verified total of money received");
-    expect(entryMenuScript).toContain("const baseAmount = 109000");
-    expect(entryMenuScript).toContain("const startAt = Date.UTC(2026, 9, 13, 4, 0, 0)");
-    expect(entryMenuScript).toContain("window.setTimeout(updateDonationCounter");
-    expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("fetch(");
-    expect(entryMenuScript.slice(entryMenuScript.indexOf("// A globally consistent illustrative demo counter"))).not.toContain("localStorage");
-    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-support-links{");
-    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-amount{");
-    expect(workerSource).toContain("entry-quick-link-icon");
-    expect(workerSource).toContain("Copyright &copy; 2026 askMoina. All rights reserved.");
-    expect(siteChromeCss).toContain("margin-top:14px");
-    expect(siteChromeCss).toContain(".entry-overlay .entry-products .entry-quick-link-icon{");
-    expect(siteChromeCss).toContain(".entry-footer{position:fixed;");
-    expect(css).toContain("box-shadow:0 2px 8px #1d1d1f08,0 8px 24px #1d1d1f0a");
-    expect(siteChromeCss).toContain("box-shadow:none");
-    expect(workerSource).not.toContain("entry-donation-status");
-    expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
-    expect(entryMenuScript).not.toContain('fetch("/api/auth/me"');
-  });
-
-  it("places the Donations and Support pill links below Hardware, not in the header", () => {
-    expect(workerSource).not.toContain("entry-header-donation");
-    expect(workerSource).not.toContain("entry-donation-status-dot");
-    expect(workerSource).not.toContain("entry-site-header-actions");
-    expect(siteChromeCss).not.toContain(".entry-site-header-actions{");
-    expect(siteChromeCss).not.toContain("@keyframes live-donation-pulse");
-    expect(siteChromeCss).not.toContain("@keyframes live-donation-shimmer");
-    expect(workerSource.indexOf("Hardware")).toBeLessThan(workerSource.indexOf("entry-support-links"));
-  });
-
-  it("caches reusable static CSS briefly but leaves personalized HTML uncached", () => {
-    expect(workerSource).toContain('"Cache-Control": "public, max-age=300, stale-while-revalidate=3600"');
-    expect(workerSource).toContain('"Cache-Control": isScript ? "private, max-age=300" : "no-store"');
-    expect(workerSource).toContain('headers.set("Cache-Control", "no-store")');
-  });
-
-  it("builds the requested auth-aware menu groups and blank static page placeholders", () => {
-    expect(workerSource).toContain("entry-menu-public");
-    expect(workerSource).toContain("entry-menu-pricing");
-    expect(workerSource).toContain("entry-menu-account");
-    expect(workerSource).toContain("aria-hidden");
-    expect(workerSource).toContain('"/pricing"');
-    expect(workerSource).toContain("const SITE_INFO_PATHS = new Set([");
-    expect(workerSource).toContain("if (!SITE_INFO_PATHS.has(pathname)) return null;");
-    expect(workerSource).not.toContain("No purchase or payment is available on this page today.");
-    expect(workerSource).not.toContain("Financial contributions");
+  it("keeps the existing Live Co-Pilot browser assets synchronized", () => {
+    expect(COPILOT_HTML).toBe(html);
+    expect(COPILOT_JS).toBe(script);
+    expect(COPILOT_CSS).toBe(css);
   });
 });
 
