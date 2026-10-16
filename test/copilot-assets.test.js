@@ -76,6 +76,20 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
   });
 
+  it("uses roomier Apple-like camera controls and a recognizable camera-switch icon", () => {
+    expect(html).toContain('id="muteMic"');
+    expect(html).toContain('id="toggleCopilot"');
+    expect(html).toContain('id="flipCamera" class="control-icon" disabled aria-label="Switch camera"');
+    expect(html).toContain('<circle cx="12" cy="12" r="2"/>');
+    expect(css).toContain("gap:clamp(14px,3.8vw,19px)!important;");
+    expect(css).toContain("flex:0 0 56px!important;");
+    expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
+    expect(css).toContain("@media(max-width:380px)");
+    expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
+    expect(html).toContain('/copilot.css?v=0.4.77');
+    expect(html).toContain('/copilot.js?v=0.4.77');
+  });
+
   it("morphs the liquid orb from live microphone and assistant playback energy", () => {
     expect(script).toContain("function syncLiquidOrbEnergy(energy)");
     expect(script).toContain("syncLiquidOrbEnergy(energy);");
