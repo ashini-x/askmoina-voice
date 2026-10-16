@@ -1415,3 +1415,44 @@ button{touch-action:manipulation}
 @keyframes askmoina-orb-breathe{0%,100%{transform:scale(1);filter:brightness(.98)}50%{transform:scale(1.035);filter:brightness(1.12)}}
 @keyframes askmoina-orb-response{from{transform:scale(1);box-shadow:0 0 12px rgba(235,239,255,.10)}to{transform:scale(1.075);box-shadow:0 0 32px rgba(222,231,255,.32)}}
 @media(prefers-reduced-motion:reduce){.askmoina-orb-control,.askmoina-control-mark{transition:none!important}.askmoina-orb-control:before,.askmoina-orb-control:after,.camera-stage.is-connecting .askmoina-orb-control:before,.camera-stage.is-listening .askmoina-orb-control:before,.camera-stage.is-listening .askmoina-orb-control:after,.camera-stage.is-speaking .askmoina-orb-control:before,.camera-stage.is-speaking .askmoina-orb-control:after{animation:none!important;transform:none!important}}
+
+
+/* Signature Orb placement: float above the centered camera-control pair. */
+#toggleCopilot.askmoina-orb-control {
+  position:absolute!important;
+  left:50%!important;
+  top:-76px!important;
+  bottom:auto!important;
+  transform:translateX(-50%)!important;
+  z-index:8;
+}
+#toggleCopilot.askmoina-orb-control:active:not(:disabled) {
+  transform:translateX(-50%) scale(.96)!important;
+}
+
+/* Processing is a real Live-turn state: a quiet silver pulse with a rotating edge glint. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before {
+  opacity:.92;
+  border-color:rgba(248,249,255,.94);
+  box-shadow:0 0 22px rgba(225,231,250,.22);
+  animation:askmoina-orb-process-breathe 1.55s ease-in-out infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {
+  opacity:.95;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(245,246,255,.12) 35deg,rgba(249,249,255,.98) 86deg,rgba(194,205,236,.38) 132deg,transparent 205deg,transparent 360deg);
+  animation:askmoina-orb-sweep 2.2s linear infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
+  filter:drop-shadow(0 0 7px rgba(240,243,255,.26));
+}
+@keyframes askmoina-orb-process-breathe {
+  0%,100% { transform:scale(1); filter:brightness(1); }
+  50% { transform:scale(1.055); filter:brightness(1.2); }
+}
+@media(prefers-reduced-motion:reduce) {
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {
+    animation:none!important;
+    transform:none!important;
+  }
+}
