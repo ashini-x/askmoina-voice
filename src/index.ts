@@ -200,7 +200,6 @@ function withPwaStandaloneGate(html: string): string {
   // Match the system bars to the actual app surface: the camera is dark and edge-to-edge,
   // while the entry/account surfaces use the existing light AskMoina palette.
     const cameraFirst = /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
-  const cameraFirst = !lightEntrySurface && /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
   const themeColor = cameraFirst ? "#090b0f" : "#f5f5f7";
   const statusBarStyle = cameraFirst ? "black-translucent" : "default";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
