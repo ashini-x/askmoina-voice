@@ -49,19 +49,21 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".entry-passkey-trailing");
   });
 
-  it("keeps the live Co-Pilot spoken-first with no Vault button, captions, or answer-card tray", () => {
+  it("keeps the live Co-Pilot spoken-first with information cards but no Vault or live transcript cards", () => {
     expect(html).not.toContain('id="vaultButton"');
     expect(html).not.toContain('href="/vault"');
     expect(html).toContain('id="openLibrary"');
     expect(html).toContain('<section class="caption-dock" hidden');
-    expect(html).not.toContain('id="responseCardTray"');
-    expect(html).not.toContain('id="responseCardRestore"');
+    expect(html).toContain('id="responseCardTray"');
+    expect(html).toContain('id="responseCardRestore"');
+    expect(html).toContain('id="liveSearchStatus"');
     expect(script).toContain("function queueFinalizedConversationTurn(userText, assistantText)");
     expect(script).toContain("function completeLiveSearchProgress()");
-    expect(workerSource).toContain("SPEECH-FIRST");
+    expect(workerSource).toContain("SPEECH-FIRST INTERACTION WITH INFORMATION CARDS");
     expect(workerSource).toContain('name: "search_past_conversations"');
-    expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).not.toContain("MANDATORY RESPONSE CARDS — EVERY INFORMATIVE ANSWER");
+    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).not.toContain("Response cards are disabled in this Co-Pilot");
+    expect(workerSource).not.toContain("Do not display spoken text or answers as live captions or response cards");
   });
 
   it("uses the guarded live protocol for audio, video, and overlay tool responses", () => {
