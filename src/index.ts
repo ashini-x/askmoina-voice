@@ -2436,11 +2436,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             clientFrameText = "";
             startForcedRankedListLookup(forcedRankedTriggerText);
           }
-          const retiredCardCallPresent = calls.some((call) => call?.name === "display_response_card");
           const historySearchPresent = calls.some((call) => call?.name === "search_past_conversations");
-          if ((retiredCardCallPresent || historySearchPresent) && !forwardedToolFrameEarly) {
+          const cardCallShouldBeWithheld = calls.some((call) => call?.name === "display_response_card") &&
+            (Boolean(forcedRankedTriggerText) || searchCallsPresent || historySearchPresent);
+          if ((cardCallShouldBeWithheld || historySearchPresent) && !forwardedToolFrameEarly) {
             const remainingCalls = calls.filter((call) =>
-              call?.name !== "display_response_card" && call?.name !== "search_past_conversations"
+              !(cardCallShouldBeWithheld && call?.name === "display_response_card") &&
+              call?.name !== "search_past_conversations"
             );
             if (toolFrame.toolCall && Array.isArray(toolFrame.toolCall.functionCalls)) {
               toolFrame.toolCall.functionCalls = remainingCalls;
