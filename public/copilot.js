@@ -3314,6 +3314,31 @@
   }
 
 
+  function isMediaPermissionDenied(error) {
+    const name = String(error && error.name || "");
+    return name === "NotAllowedError" || name === "PermissionDeniedError" || name === "SecurityError";
+  }
+
+  function describeMediaCaptureError(error) {
+    const name = String(error && error.name || "");
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return "Camera and microphone need a secure HTTPS app session. Close any embedded browser and reopen AskMoina from its installed app icon.";
+    }
+    if (isMediaPermissionDenied(error)) {
+      return "AskMoina is blocked from using your camera or microphone. On Android, open Chrome Site settings for AskMoina and allow Camera and Microphone (or check Android Settings → Apps → AskMoina/Chrome → Permissions). Then close and reopen the app and try again.";
+    }
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return "No usable camera or microphone was found. Check that this device has both, then try again.";
+    }
+    if (name === "NotReadableError" || name === "TrackStartError" || name === "AbortError") {
+      return "The camera or microphone is busy or unavailable. Close other apps using them, then tap Try again.";
+    }
+    if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+      return "This device could not start the requested camera mode. Try again after closing other camera apps.";
+    }
+    return error && error.message ? String(error.message).slice(0, 220) : "AskMoina could not start the camera or microphone. Check app permissions and try again.";
+  }
+
   async function prepareCameraPreview() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || active || stopping) return;
     const liveTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
@@ -3340,8 +3365,12 @@
         await video.play();
         stage.classList.add("has-camera", "pre-start");
         setCameraState("Camera preview", "live");
-      } catch (_) {
+      } catch (error) {
         if (stream) stream.getTracks().forEach((track) => track.stop());
+        if (isMediaPermissionDenied(error)) {
+          setCameraState("Camera permission needed", "error");
+          setStatus(describeMediaCaptureError(error), "warning");
+        }
       } finally {
         previewPromise = null;
       }
@@ -3604,11 +3633,16 @@
       stage.classList.add("pre-start");
       setControls("Try again", false);
       setConnectionState("READY", "error");
-      setStatus(error && error.name === "NotAllowedError"
-        ? "Camera or microphone permission was denied. Allow both permissions and try again."
-        : (error && error.message ? error.message : "Couldn't start the Co-Pilot. Please try again."), "error");
+      const permissionDenied = isMediaPermissionDenied(error);
+      setStatus(
+        permissionDenied || ["NotFoundError", "DevicesNotFoundError", "NotReadableError", "TrackStartError", "AbortError", "OverconstrainedError", "ConstraintNotSatisfiedError"].includes(String(error && error.name || ""))
+          ? describeMediaCaptureError(error)
+          : (error && error.message ? String(error.message).slice(0, 220) : "Couldn't start the Co-Pilot. Please try again."),
+        "error"
+      );
       syncDisconnectedPreviewAppearance();
-      void prepareCameraPreview();
+      // Do not immediately request the camera again after the user denied access.
+      if (!permissionDenied) void prepareCameraPreview();
     }
   }
 
