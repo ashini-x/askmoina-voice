@@ -5999,6 +5999,7 @@
         currentLibraryConversation.conversation.status === "archived") return;
     resumeConversationForNextStart = currentLibraryConversation;
     resumedConversationContext = currentLibraryConversation;
+    if (active || starting) stopCopilot(true, "", "normal");
     restoreTaskProgress(currentLibraryConversation.conversation.taskProgress);
     appendResumedTranscript(currentLibraryConversation.turns || []);
     closeLibrary();
