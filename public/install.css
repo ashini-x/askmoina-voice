@@ -47,3 +47,5 @@ h2 { margin: 0 0 14px; font-size: 15px; font-weight: 650; letter-spacing: -.01em
 .footnote { margin: 20px 0 0; color: #86868b; font-size: 11px; line-height: 1.55; }
 @media (max-width: 380px) { .panel { padding: 23px 19px; border-radius: 23px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+.retry-button { display: block; text-align: center; text-decoration: none; }
