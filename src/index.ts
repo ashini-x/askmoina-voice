@@ -111,8 +111,10 @@ async function withSiteChromeResponse(response: Response, pathname: string, auth
 
 const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/manifest.webmanifest",
+  "/install",
   "/install.html",
   "/install.css",
+  "/offline",
   "/offline.html",
   "/service-worker.js",
   "/pwa-gate.css",
@@ -124,7 +126,9 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
 
 const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
+  "/install": "text/html; charset=utf-8",
   "/install.html": "text/html; charset=utf-8",
+  "/offline": "text/html; charset=utf-8",
   "/offline.html": "text/html; charset=utf-8",
   "/install.css": "text/css; charset=utf-8",
   "/pwa-gate.css": "text/css; charset=utf-8",
@@ -170,7 +174,7 @@ function withPwaStandaloneGate(html: string): string {
     '<link rel="manifest" href="/manifest.webmanifest">' +
     '<link rel="apple-touch-icon" href="/askmoina-bird-final.png">' +
     '<link rel="stylesheet" href="/pwa-gate.css">' +
-    '<noscript><meta http-equiv="refresh" content="0;url=/install.html"></noscript>' +
+    '<noscript><meta http-equiv="refresh" content="0;url=/install"></noscript>' +
     '<script src="/pwa-gate.js"></script>' +
     '<script src="/pwa-runtime.js" defer></script>';
   return html.replace(/<\/head>/i, `${tags}</head>`);

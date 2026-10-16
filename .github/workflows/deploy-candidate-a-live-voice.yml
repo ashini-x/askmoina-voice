@@ -263,7 +263,7 @@ jobs:
             curl --silent --show-error --max-time 25 --output "$2" --write-out "%{http_code}" "$BASE_URL$1"
           }
 
-          status="$(fetch_status /install.html /tmp/moina-install.html)"
+          status="$(fetch_status /install /tmp/moina-install.html)"
           if [[ "$status" != "200" ]]; then
             echo "::error::PWA install page returned HTTP $status"
             head -c 1000 /tmp/moina-install.html || true
@@ -302,7 +302,7 @@ jobs:
           console.log("PWA manifest contract: OK");
           NODE
 
-          for asset in /install.css /offline.html /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg; do
+          for asset in /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             if [[ "$status" != "200" ]]; then
               echo "::error::PWA asset $asset returned HTTP $status"

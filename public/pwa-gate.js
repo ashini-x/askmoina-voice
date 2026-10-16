@@ -20,5 +20,5 @@
 
   // Deliberately do not trust ?source=pwa: a URL parameter is not proof that
   // the page was launched from an installed standalone app.
-  window.location.replace("/install.html");
+  window.location.replace("/install");
 })();

@@ -1,8 +1,8 @@
 const CACHE_NAME = "askmoina-pwa-shell-v1";
 const SHELL_URLS = [
-  "/install.html",
+  "/install",
   "/install.css",
-  "/offline.html",
+  "/offline",
   "/manifest.webmanifest",
   "/askmoina-bird-final.png",
   "/pwa-icon-192.svg",
@@ -51,7 +51,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request, { cache: "no-store" }).catch(async () => {
       if (request.mode !== "navigate") return Response.error();
-      const offline = await caches.match("/offline.html");
+      const offline = await caches.match("/offline");
       return offline || new Response(
         "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>AskMoina offline</title><p>AskMoina needs an internet connection for its live camera and voice experience.</p><a href=\"/\">Try again</a></html>",
         { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }

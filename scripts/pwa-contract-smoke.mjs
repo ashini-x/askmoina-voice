@@ -19,7 +19,7 @@ assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "PWA icon
 const gate = read("public/pwa-gate.js");
 assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");
 assert.ok(gate.includes("window.navigator.standalone === true"), "gate must support iOS standalone detection");
-assert.ok(gate.includes('window.location.replace("/install.html")'), "browser-tab users must be routed to the install landing page");
+assert.ok(gate.includes('window.location.replace("/install")'), "browser-tab users must be routed to the install landing page");
 assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
@@ -31,6 +31,8 @@ assert.ok(worker.includes('"/manifest.webmanifest": "application/manifest+json; 
 assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-served sign-in HTML must also pass through the standalone gate");
 
 const serviceWorker = read("public/service-worker.js");
+assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
+assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
 assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");
 assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation network-first behavior is required");
