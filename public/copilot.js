@@ -29,6 +29,8 @@
   // Google recommends 500–800 ms local end-of-speech tolerance for hybrid VAD.
   const LOCAL_VAD_END_SILENCE_MS = 700;
   let disconnectToneUntil = 0;
+  let orbProcessingTimer = null;
+  const ORB_PROCESSING_MAX_MS = 18_000;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
@@ -162,6 +164,7 @@
     liveSearchActive = true;
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
+    syncAskMoinaOrbState();
     liveSearchStartedAt = Date.now();
     liveSearchProgressStageIndex = 0;
     if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
@@ -244,6 +247,7 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     pendingResponseCards = [];
+    syncAskMoinaOrbState();
     if (liveSearchStatus) {
       liveSearchStatus.hidden = true;
       liveSearchStatus.classList.remove("is-complete", "is-acknowledging");
@@ -262,6 +266,7 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     pendingResponseCards = [];
+    syncAskMoinaOrbState();
     if (liveSearchStatus) {
       liveSearchStatus.hidden = true;
       liveSearchStatus.classList.remove("is-complete");
@@ -943,8 +948,26 @@
     const state = stage.classList.contains("is-connecting") && !active ? "connecting"
       : stage.classList.contains("is-speaking") ? "responding"
       : stage.classList.contains("is-listening") ? "listening"
+      : stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing ? "processing"
       : active ? "ready" : "idle";
     toggleButton.dataset.orbState = state;
+  }
+
+  function setOrbProcessing(processing) {
+    if (!stage) return;
+    if (orbProcessingTimer) window.clearTimeout(orbProcessingTimer);
+    orbProcessingTimer = null;
+    if (processing && active) {
+      stage.classList.add("is-processing");
+      orbProcessingTimer = window.setTimeout(() => {
+        orbProcessingTimer = null;
+        stage.classList.remove("is-processing");
+        syncAskMoinaOrbState();
+      }, ORB_PROCESSING_MAX_MS);
+    } else {
+      stage.classList.remove("is-processing");
+    }
+    syncAskMoinaOrbState();
   }
   if (stage && toggleButton && typeof MutationObserver !== "undefined") {
     const askMoinaOrbStateObserver = new MutationObserver(syncAskMoinaOrbState);
@@ -2173,8 +2196,10 @@
         micSpeechCandidateAt = 0;
       }
       const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;
+      if (speechGateEnded) setOrbProcessing(true);
       if (micSpeechGateActive && !speechGateBeforeFrame) {
-            syncLiveSearchStatusVisibility();
+        setOrbProcessing(false);
+        syncLiveSearchStatusVisibility();
       } else if (!micSpeechGateActive && speechGateBeforeFrame) {
         syncLiveSearchStatusVisibility();
       }
@@ -2303,6 +2328,7 @@
     nextPlaybackTime = startAt + buffer.duration;
     playbackNodes.add(source);
     stage.classList.add("is-speaking");
+    setOrbProcessing(false);
     startPlaybackPulse();
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
@@ -2626,6 +2652,7 @@
 
   function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false) {
     copilotStartGeneration += 1;
+    setOrbProcessing(false);
     if (userInitiated) forceFreshSessionOnReconnect = false;
     lastSessionEndedAt = Date.now();
     const wasConnected = active && setupReady;
@@ -3288,6 +3315,7 @@
       if (outputTranscription && typeof outputTranscription.text === "string") updateTranscript("assistant", outputTranscription.text);
       const wasInterrupted = serverContent.interrupted === true;
       if (wasInterrupted) {
+        setOrbProcessing(false);
         if (liveSearchActive) cancelLiveSearchProgress();
         stopPlayback();
         setStatus("Listening — go ahead.");
@@ -3303,6 +3331,7 @@
         }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
+        setOrbProcessing(false);
 
         if (liveSearchActive && liveSearchLookupCompleted && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
 
