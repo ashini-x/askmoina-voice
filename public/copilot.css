@@ -1268,3 +1268,17 @@ body.site-info-body .site-info-card{width:100%}
 
 /* Speech is delivered aloud and saved to History, not displayed as live captions. */
 .caption-dock { display: none !important; }
+
+
+/* iOS standalone app polish: use system typography and keep camera controls clear of the safe areas. */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,ui-sans-serif,system-ui,sans-serif}
+html,body{min-height:100%;min-height:100dvh;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+.floating-top{top:calc(env(safe-area-inset-top,0px) + 13px)}
+.camera-top-badge,.camera-state{top:calc(env(safe-area-inset-top,0px) + 65px)}
+.approx-tag{top:calc(env(safe-area-inset-top,0px) + 107px)}
+.control-pill{min-height:44px;touch-action:manipulation}
+button{touch-action:manipulation}
+@media(hover:none) and (pointer:coarse){
+  .control-pill:hover{filter:none}
+  .zoom-dock button:hover{background:#ffffff0c}
+}

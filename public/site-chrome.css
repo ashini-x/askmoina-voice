@@ -42,3 +42,17 @@ body.site-info-body .site-info-card{width:100%}
 /* Small, quiet details to keep the entry screen balanced. */
 .entry-overlay .entry-products .entry-quick-link-icon{display:block;width:14px;height:14px;flex:0 0 14px;fill:none;stroke:#86868b;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
 .entry-footer{position:fixed;z-index:202;left:max(14px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));width:min(calc(100% - 28px),390px);color:#a1a1a6;text-align:left;font:400 10px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.005em;pointer-events:none}
+
+
+/* iOS system integration: readable text, safe-area-aware fixed chrome, and native-size hit targets. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body.site-chrome-page{min-height:100vh;min-height:100dvh}
+.entry-site-header{padding-left:max(15px,env(safe-area-inset-left,0px));padding-right:max(15px,env(safe-area-inset-right,0px))}
+.entry-site-menu>summary{width:44px;height:44px;min-width:44px;min-height:44px;touch-action:manipulation}
+.entry-site-menu-panel{max-height:min(72dvh,520px,calc(100dvh - env(safe-area-inset-top,0px) - 18px));overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.entry-footer{bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+@media(hover:none) and (pointer:coarse){
+  .entry-site-menu>summary:active{transform:scale(.97)}
+  .entry-site-menu-panel a:hover,.entry-site-menu-panel .entry-menu-logout:hover{background:transparent}
+  .entry-site-menu-panel a:active,.entry-site-menu-panel .entry-menu-logout:active{background:rgba(118,118,128,.12)}
+}
