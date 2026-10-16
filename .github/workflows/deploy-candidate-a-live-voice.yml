@@ -51,6 +51,7 @@ jobs:
           set -euo pipefail
           npm run check
           npm test
+          npm run chess:smoke
           npx wrangler deploy --dry-run --outdir=dist
 
 

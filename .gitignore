@@ -9,3 +9,11 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+# Generated from pinned npm packages during check/test/deploy; do not commit engine binaries.
+/public/chess/chess.js
+/public/chess/stockfish-19-lite-single.js
+/public/chess/stockfish-19-lite-single.wasm
+/public/chess/COPYING-Stockfish-GPL-3.0.txt
+/public/chess/LICENSE-chess.js-BSD-2-Clause.txt
+/public/chess/THIRD-PARTY-NOTICES.md
