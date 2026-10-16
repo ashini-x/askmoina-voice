@@ -69,7 +69,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@keyframes askmoina-orb-process-breathe");
     expect(script).toContain("function setOrbProcessing(processing)");
     expect(script).toContain('if (speechGateEnded) setOrbProcessing(true);');
-    expect(script).toContain('|| liveSearchActive || liveSearchFinishing ? "processing"');
+    expect(script).toContain('active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing)');
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain("@keyframes edge-width-pulse");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
