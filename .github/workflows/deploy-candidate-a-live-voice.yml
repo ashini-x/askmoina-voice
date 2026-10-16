@@ -72,6 +72,12 @@ jobs:
           grep -R -q 'ASSAMESE SPEECH EVALUATION CONTRACT' dist/
           echo "Benchmarks and M29–M37 release bundle contracts: OK"
 
+      - name: Apply additive D1 conversation-history migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler d1 migrations apply askmoina-prod --remote
+
       - name: Upload validated AskMoina version without changing triggers
         id: upload
         shell: bash
@@ -295,6 +301,8 @@ jobs:
           NETWORK_RECOVERY_STATUS=$?
           node scripts/live-session-continuity-smoke.mjs
           LIVE_CONTINUITY_STATUS=$?
+          node scripts/live-conversation-history-smoke.mjs
+          CONVERSATION_HISTORY_STATUS=$?
           set -e
 
           cleanup
@@ -306,7 +314,8 @@ jobs:
             "ranked-list flow:$RANKED_LIST_STATUS" \
             "voice memory:$MEMORY_VOICE_STATUS" \
             "browser network recovery:$NETWORK_RECOVERY_STATUS" \
-            "long-running Live continuity:$LIVE_CONTINUITY_STATUS"; do
+            "long-running Live continuity:$LIVE_CONTINUITY_STATUS" \
+            "persistent conversation history:$CONVERSATION_HISTORY_STATUS"; do
             name="${result%:*}"
             status="${result##*:}"
             if [[ "$status" -eq 0 ]]; then
@@ -321,4 +330,5 @@ jobs:
           test "$MEMORY_VOICE_STATUS" -eq 0
           test "$NETWORK_RECOVERY_STATUS" -eq 0
           test "$LIVE_CONTINUITY_STATUS" -eq 0
+          test "$CONVERSATION_HISTORY_STATUS" -eq 0
 

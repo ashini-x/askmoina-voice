@@ -2,20 +2,14 @@
 
 Last updated: 2026-10-16 UTC.
 
-## Status: Phase 1 production speech continuity verified; Phase 2 in progress
+## Current status: Phase 1 and Phase 2 production gates passed; Phase 3 implementation in review
 
-The stricter post-two-minute speech test passed against the deployed `0.4.51` Worker. Phase 1 is considered closed for the speech-continuity criterion; the overall production workflow still reports a separate live web-grounding synthetic failure.
-
-- Repository: https://github.com/ashini-x/askmoina-voice
-- Current `main`: `d9a2ee82d31018a4b2d5ba414766a5fa803b1b05`
-- Deployed Worker release: `0.4.51`
-- Worker version deployed by production workflow: `e8fac2bf-5b23-4986-83f4-6e5b12eb2946`
-- Phase 1 long-session synthetic: [production run 38793224730](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224730)
-- Release validation: [run 38793224586](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224586); production health: [run 38793224567](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224567)
-- Phase 1 implementation: [PR #171 — Stabilize Live speech endpointing and verify two spoken turns](https://github.com/ashini-x/askmoina-voice/pull/171)
-- Phase 2 candidate: [PR #172 — Make Live session recovery deterministic](https://github.com/ashini-x/askmoina-voice/pull/172), branch `phase-2/deterministic-session-recovery`.
-
-Production run 38793224730 deployed `0.4.51` and its long-session synthetic passed. The first health poll observed the prior version during propagation; the next health poll confirmed `0.4.51`. The workflow's final conclusion is `failure` only because the independent live web-grounding synthetic failed; the two spoken turns, response card, ranked list, voice memory, browser network recovery, and long-session continuity synthetics passed.
+- Repository checkpoint before Phase 3: `3ab61049137097ccd20b5f751bd26ae6f959823c` on `main`.
+- Production Worker release: `0.4.54`, confirmed by the production health response in [workflow run 38879042914](https://github.com/ashini-x/askmoina-voice/actions/runs/38879042914).
+- Phase 1 long-session speech criterion: passed in production using real microphone capture and two delayed spoken turns with fresh assistant audio and `turnComplete`; see [deployment/synthetic run 38793224730](https://github.com/ashini-x/askmoina-voice/actions/runs/38793224730).
+- Phase 2 forced network-recovery criterion: passed in the production synthetic on release `0.4.54`: forced network loss, fresh session recovery, and two post-170-second real spoken turns receiving fresh audio; see [deployment/synthetic run 38809174681](https://github.com/ashini-x/askmoina-voice/actions/runs/38809174681).
+- The full deployment workflow remains red on separate web-grounding, response-card and voice-memory scenarios. Those are recorded as outstanding product issues, not treated as evidence that the specific Phase 2 recovery gate failed.
+- Phase 3 scope: add owner-scoped D1 conversation/topic and finalized-turn persistence, summary/task progress, idempotency, pagination, archive/delete, migration application, and a production API smoke. No sidebar or Continue UI in this phase.
 
 ## Evidence and diagnosis
 
@@ -74,4 +68,14 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 - Candidate branch: `phase-2/deterministic-audio-activity`, release `0.4.54`.
 - Co-Pilot now keeps a bounded ~300 ms PCM pre-roll locally; while idle it sends no silence-only PCM. On voice onset it sends `activityStart`, flushes pre-roll, and streams PCM; after sustained local VAD silence it sends the final PCM frame and `activityEnd`. Provider setup disables automatic activity detection, as required by this explicit activity-boundary protocol. The continuity synthetic checks both activity markers and requires two fresh assistant-audio replies with `turnComplete` after the long pause.
 - The deterministic reconnect fixes from PRs #172 and #173 remain in place. No D1 history or Continue button was added.
-- Status: candidate release validation, deployment and the live browser synthetic remain pending. Do not mark Phase 2 complete unless the delayed spoken-turn assertions pass after deployment.
+- Production verification: deployed release `0.4.54` is reported healthy; run [38809174681](https://github.com/ashini-x/askmoina-voice/actions/runs/38809174681) explicitly recorded `Production audiovisual Live recovery + continuity: PASS`, with one live browser socket after recovery and two completed post-170-second spoken turns with fresh assistant audio. The full workflow conclusion is still failure only because independent web-grounding, response-card and voice-memory checks failed. Phase 1 and Phase 2 exit criteria for speech continuity and forced recovery are considered met.
+
+
+## Phase 3 — persistent conversation history (implementation candidate)
+
+- Dedicated branch: `phase-3/persistent-conversation-history`; release candidate: `0.4.55`.
+- D1 schema: `conversations` uses authenticated `account_users.user_id` as owner and stores title, compact summary, bounded JSON task progress, active/archived status, timestamps and the next turn sequence. `conversation_turns` stores only finalized user/assistant text with server IDs, sequence numbers, timestamps and a per-conversation idempotency key. Composite foreign keys and owner/order indexes enforce/account for ownership and deletion.
+- APIs: `GET/POST /api/conversations`, `GET/PATCH/DELETE /api/conversations/:id`, and `POST /api/conversations/:id/turns`. Reads and writes are owner-scoped; writes require same-origin requests; requests and persisted content are bounded. A conflicting idempotency-key retry returns 409 rather than rewriting an existing turn.
+- Retention/privacy: history is retained until the user deletes a conversation or the account is deleted. Analytics retention cleanup does not delete conversation content. Deleting a conversation removes its turns transactionally. Raw audio, video, model sockets, session-resumption handles and replay buffers are not stored in D1.
+- Deployment workflow applies the additive D1 migrations before Worker promotion and includes a disposable-account production smoke for owner isolation, ordering, idempotency, summary/task restore, archive and delete.
+- Status at this revision: PR validation and production API verification are pending. Do not call Phase 3 complete until the migration is applied, release `0.4.55` is confirmed healthy, and the production history smoke passes. Update this section with the exact PR, commit, workflow run and deployed Worker version after verification.

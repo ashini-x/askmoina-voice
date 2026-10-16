@@ -2939,6 +2939,8 @@ export default {
         return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
       }
     }
+    const conversationResponse = await handleConversationRequest(request, env);
+    if (conversationResponse) return conversationResponse;
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return await withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu);
 
