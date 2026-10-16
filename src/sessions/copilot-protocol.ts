@@ -48,7 +48,7 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
         (rawResponse.name !== "display_screen_overlay" && rawResponse.name !== "display_response_card")
       ) return null;
       let result = rawResponse.name === "display_response_card"
-        ? "The response-card payload passed the RC2 contract; visual rendering is not available in this release."
+        ? "The response-card payload passed the RC2 contract; the client is responsible for rendering the designed information card."
         : "The on-screen target prompt or approximate overlay was handled by the client.";
       if (rawResponse.response !== undefined) {
         if (!isRecord(rawResponse.response) ||
