@@ -47,13 +47,7 @@
       "/vault/",
       "/vault.js",
       "/app.js",
-      "/session-ui.js",
-      "/about",
-      "/developer",
-      "/help",
-      "/privacy",
-      "/pricing",
-      "/donate"
+      "/session-ui.js"
     ]
   },
   "observability": {
