@@ -157,6 +157,14 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".apple-switch input:checked+span");
   });
 
+  it("keeps rolling summary notes available for older saved conversation context", () => {
+    expect(script).toContain("function mergeConversationSummary(previousSummary, latestSummary, progress)");
+    expect(script).toContain("CONVERSATION_SUMMARY_RECENT_MARKER");
+    expect(script).toContain("conversationSummariesByScope.set(scope, summaryLines)");
+    expect(script).toContain("Saved cumulative summary and prior interaction notes:");
+    expect(script).toContain("Accumulated history notes:");
+  });
+
   it("offers a gated WebXR surface-anchor mode without replacing the V2 fallback", () => {
     expect(html).toContain('id="spatialArButton"');
     expect(html).toContain('id="spatialHud"');
