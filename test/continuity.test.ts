@@ -124,25 +124,10 @@ describe("Continuity admin access", () => {
     expect(await response?.json()).toMatchObject({ error: "unauthorized" });
   });
 
-  it("serves parseable first-party client scripts", async () => {
-    for (const path of ["/vault.js", "/continuity.js", "/admin.js", "/admin-login.js"]) {
-      const response = await handleContinuityRequest(new Request("https://askmoina.test" + path), mockEnv(), ctx);
-      expect(response?.status).toBe(200);
-      const source = await response?.text();
-      expect(() => new Function(source || "")).not.toThrow();
+  it("does not serve the retired Vault or cross-tab memory injector", async () => {
+    for (const path of ["/vault", "/vault.js", "/continuity.js", "/api/vault/123e4567-e89b-42d3-a456-426614174000"]) {
+      expect(await handleContinuityRequest(new Request("https://askmoina.test" + path), mockEnv(), ctx)).toBeNull();
     }
-  });
-
-  it("serves the vault with no-store and anti-framing headers", async () => {
-    const response = await handleContinuityRequest(
-      new Request("https://askmoina.test/vault"),
-      mockEnv(), ctx,
-    );
-    expect(response?.status).toBe(200);
-    expect(response?.headers.get("Cache-Control")).toBe("no-store");
-    expect(response?.headers.get("X-Frame-Options")).toBe("DENY");
-    expect(response?.headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
-    expect(response?.headers.get("Set-Cookie")).toBeNull();
   });
 });
 
