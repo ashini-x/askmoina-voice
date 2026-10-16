@@ -5937,6 +5937,7 @@
     const empty = transcriptNode.querySelector(".empty-state");
     if (empty) empty.remove();
     transcriptStarted = true;
+    const fragment = document.createDocumentFragment();
     for (const turn of turns || []) {
       const user = turn.role === "user";
       const row = document.createElement("div");
@@ -5948,8 +5949,9 @@
       copy.className = "transcript-text";
       copy.textContent = String(turn.text || "");
       row.append(label, copy);
-      transcriptNode.appendChild(row);
+      fragment.appendChild(row);
     }
+    transcriptNode.appendChild(fragment);
     currentTranscriptNodes = { user: null, assistant: null };
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
   }
