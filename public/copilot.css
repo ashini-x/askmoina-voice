@@ -1262,3 +1262,5 @@ body.site-info-body .site-info-card{width:100%}
 .library-sheet,.library-panel,.library-view{touch-action:pan-y}
 .library-status[data-kind="error"]{color:#a43e3e}
 .library-history-item.is-archived{background:rgba(245,245,247,.88)}
+
+.camera-stage.library-open-active{touch-action:pan-y}
