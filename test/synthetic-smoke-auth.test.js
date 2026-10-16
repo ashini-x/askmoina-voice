@@ -30,7 +30,7 @@ describe("authenticated live synthetic verification", () => {
     expect(spokenTurnSmoke).toContain("if message is None:");
     expect(spokenTurnSmoke).toContain('raise RuntimeError("Live WebSocket sent an invalid JSON text frame.")');
     expect(spokenTurnSmoke).toContain("get_audio_payload_bytes(message)");
-    expect(spokenTurnSmoke).toContain("if total_audio_bytes > 0");
+    expect(spokenTurnSmoke).toContain("total_audio_bytes > 0 and not calls");
     expect(protocol).toContain("value.keepalive === true");
     expect(protocol).toContain('{ kind: "keepalive" }');
   });
@@ -54,7 +54,7 @@ describe("authenticated live synthetic verification", () => {
     expect(rankedList).toContain("A response-card tool call was emitted after the card UI was retired");
     expect(rankedList).not.toContain("grounded_response_card");
     expect(rankedList).toContain("get_audio_payload_bytes(message)");
-    expect(rankedList).toContain("continuation_dispatched");
+    expect(rankedList).toContain("post_lookup_audio_bytes > 0");
   });
 
   it("exposes account-scoped past-session retrieval and no response-card tool", () => {
