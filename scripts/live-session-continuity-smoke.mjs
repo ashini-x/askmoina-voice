@@ -704,6 +704,7 @@ try {
   const persistedHistory = await page.evaluate(async (startedAt) => {
     const cutoff = new Date(startedAt).toISOString();
     const deadline = Date.now() + 25_000;
+    let lastCandidateId = "";
     while (Date.now() < deadline) {
       try {
         const listResponse = await fetch("/api/conversations?status=all&limit=20", {
@@ -715,6 +716,7 @@ try {
             .filter((item) => typeof item.conversationId === "string" &&
               typeof item.lastActivityAt === "string" && item.lastActivityAt >= cutoff);
           for (const item of candidates) {
+            lastCandidateId = item.conversationId;
             const detailResponse = await fetch("/api/conversations/" + encodeURIComponent(item.conversationId) + "?limit=100", {
               credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
             });
@@ -733,7 +735,7 @@ try {
       } catch (_) {}
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return { ok: false };
+    return { ok: false, conversationId: lastCandidateId };
   }, sessionStartedAt);
   transcriptTestConversationId = typeof persistedHistory.conversationId === "string" ? persistedHistory.conversationId : "";
   assert.equal(persistedHistory.ok, true,
