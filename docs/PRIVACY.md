@@ -2,15 +2,15 @@
 
 AskMoina streams microphone audio to Google Cloud Vertex AI only after the user presses **Start talking** and grants microphone permission. The current UI discloses this data flow before recording starts.
 
-AskMoina does not save raw microphone audio or a persistent transcript archive by default. Transcript text received from the live model is displayed in the current page. It is not saved to the app's D1 analytics tables.
+AskMoina does not save raw microphone audio or raw camera video. Finalized user/assistant transcript text, rolling summaries, and task state are saved to account-owned History in D1's conversation tables, separate from analytics. The Co-Pilot does not display live speech or assistant answers as captions or response cards; text is visible when the user opens a saved conversation.
 
-## Memory Vault
+## Conversation history and Key Memories
 
-The optional Memory Vault stores user-entered notes encrypted in the browser before persisting them in IndexedDB. The cloud backup option stores only encrypted ciphertext and cryptographic metadata. The recovery code is generated on the device and is never sent to AskMoina; if it is lost and no usable device copy remains, the vault cannot be recovered by the company.
+Finalized user and assistant transcript text, rolling conversation summaries, and task state are saved to the signed-in account so the user can reopen prior sessions from History. Raw microphone audio and raw camera video are not saved as conversation history. The live Co-Pilot does not display user speech or assistant responses as transcripts or cards; conversation text is available when the user opens a saved conversation.
 
-Using saved context in a live conversation is a separate, explicit choice. When enabled, selected memory text is staged in local browser storage so it can be shared across AskMoina tabs, and is sent to Gemini with each new voice session's setup while the setting remains enabled. Unchecking the control or locking the vault clears the selected context cache. Microphone audio and selected context are processed by Google Cloud Vertex AI. The encrypted-vault claim must not be represented as end-to-end encryption of the live AI session.
+Reusable preferences the user states may be captured in account-scoped Key Memories. Users can review, edit, or delete these memories and pause preference learning. Conversation history is separate: pausing preference learning does not erase saved conversations.
 
-The initial release only saves the memories the user enters directly. It does not extract memories automatically from live speech. The encrypted vault is stored locally, but the opt-in context cache is plaintext in local browser storage while enabled so separate tabs can use it. This cache is not sent to AskMoina's D1 storage; selected content is sent to Gemini at session start. Local browser storage protects data at rest from the app's server, but does not protect an unlocked device from malware or malicious same-origin JavaScript.
+When a new live session begins, AskMoina includes bounded recent summaries and excerpts from the account's conversation history as continuity context. When the user asks about a specific older detail that is not in current context, the Co-Pilot can search only that same account's saved turns. The complete archive is available in History; only a bounded amount can be placed in the model's active context at once, so old details may require an explicit history search.
 
 ## Identity and operational telemetry
 

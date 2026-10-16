@@ -23,7 +23,7 @@ jobs:
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate Co-Pilot synthetic script syntax
-        run: python -m py_compile scripts/live-response-card-smoke.py scripts/live-ranked-list-smoke.py
+        run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'
@@ -68,10 +68,15 @@ jobs:
           echo "Provider usage parser contract: OK"
           grep -R -q 'PERMISSION-BASED CONTINUITY' dist/
           echo "M36 prompt contract: OK"
-          grep -R -q 'askmoina.memory.consent.v1' dist/
-          echo "Memory consent key contract: OK"
-          grep -R -q 'Edit memory' dist/
-          echo "Vault edit capability contract: OK"
+          grep -R -q 'SPEECH-FIRST INTERACTION' dist/
+          echo "Speech-first Co-Pilot prompt contract: OK"
+          grep -R -q 'search_past_conversations' dist/
+          echo "Account-scoped history recall tool contract: OK"
+          if grep -R -q 'function vaultPage' dist/; then
+            echo "Legacy Vault page is still bundled." >&2
+            exit 1
+          fi
+          echo "Legacy Vault implementation removed: OK"
       - name: Verify M37 speech contract and M38 benchmark suites
         run: |
           grep -R -q "ASSAMESE SPEECH EVALUATION CONTRACT" dist/

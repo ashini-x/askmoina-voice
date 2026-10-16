@@ -49,28 +49,30 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
-  it("continues speech instead of retrying an invalid replacement after a complete grounded ranked card is visible", () => {
-    expect(workerSource).toContain("let completeRankedFallbackCardSentAt = 0");
-    expect(workerSource).toContain("if (complete) completeRankedFallbackCardSentAt = Date.now()");
-    expect(workerSource).toContain("completeRankedFallbackRecentlySent");
-    expect(workerSource).toContain("The complete source-backed ranked card is already visible");
-    expect(workerSource).toContain("Continue speaking now: briefly summarize the top entries");
-    expect(workerSource).toContain("Skipped redundant response-card replacement after complete grounded ranked list");
+  it("speaks complete grounded ranked results without relying on an answer card", () => {
+    expect(workerSource).toContain("const builtCard = buildGroundedListCard(query, result, requestedCount)");
+    expect(workerSource).toContain("let groundedAnswerText = result");
+    expect(workerSource).toContain("fullTableVerified = Boolean(builtCard");
+    expect(workerSource).toContain("The complete source-verified top-");
+    expect(workerSource).toContain("Do not create or imply a visible card");
+    expect(workerSource).not.toContain("completeRankedFallbackRecentlySent");
   });
 
-  it("prioritizes explicit response-card requests before speech-only answers", () => {
-    expect(workerSource).toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
-    expect(workerSource).toContain("The user explicitly requested a visible response card");
-    expect(workerSource).toContain("Call display_response_card now with a valid complete payload");
-    expect(workerSource).toContain("const explicitCardRequest =");
+  it("does not expose a response-card tool or make cards mandatory", () => {
+    expect(workerSource).not.toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
+    expect(workerSource).not.toContain("Call display_response_card now with a valid complete payload");
+    expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).not.toContain("const explicitCardRequest =");
+    expect(workerSource).toContain("SPEECH-FIRST INTERACTION");
+    expect(workerSource).toContain('name: "search_past_conversations"');
   });
 
-  it("prompts Live to continue speaking after a complete grounded ranked card is rendered", () => {
-    expect(workerSource).toContain("let completeRankedFallbackCardSent = false");
-    expect(workerSource).toContain("VISIBLE RESPONSE CARD HAS ALREADY BEEN RENDERED");
-    expect(workerSource).toContain("Continue speaking naturally now");
-    expect(workerSource).toContain("const modelFacingSearchResult = completeRankedFallbackCardSent");
-    expect(workerSource).toContain("verifiedRowCount === validation.card.details.length && (validation.card.sources || []).length > 0");
+  it("gives Live the grounded ranked rows for a spoken continuation", () => {
+    expect(workerSource).toContain("const answerInstruction = fullTableVerified");
+    expect(workerSource).toContain("const continuationText = answerInstruction +");
+    expect(workerSource).toContain("Grounded search result:");
+    expect(workerSource).toContain("Do not create or imply a visible card");
+    expect(workerSource).toContain("sendUpstreamMessage({");
   });
 
   it("queues mandatory ranked speech until the active progress turn completes", () => {
@@ -111,10 +113,11 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("partialRankedListChunks");
   });
 
-  it("passes the inferred top-ten count into fallback-card construction", () => {
-    expect(workerSource).toContain("const fallbackRequestedCount = getRequestedRankedListCount(effectiveQuery) ?? originalRequestCount ??");
-    expect(workerSource).toContain("(isLikelyRankedTableSearchQuery(effectiveQuery) || isLikelyRankedTableSearchQuery(latestUserRequestText) ? 10 : null)");
-    expect(workerSource).toContain("buildGroundedListCard(effectiveQuery, result, fallbackRequestedCount)");
+  it("passes inferred top-ten intent into grounded result extraction for spoken output", () => {
+    expect(workerSource).toContain("const requestedCount = getRequestedRankedListCount(query)");
+    expect(workerSource).toContain("const builtCard = buildGroundedListCard(query, result, requestedCount)");
+    expect(workerSource).toContain("const spokenRows = builtCard.details.map((row, index) =>");
+    expect(workerSource).not.toContain("const fallbackRequestedCount = getRequestedRankedListCount(effectiveQuery)");
   });
 
   it("preserves provider diagnostics on grounding API errors", () => {

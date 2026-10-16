@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Authenticated synthetic Live Co-Pilot text-turn test for the RC2 response-card tool.
+"""Authenticated synthetic Live Co-Pilot speech-first answer test.
 
-This isolates tool selection and the bounded tool protocol from speech-recognition
-and VAD variability. The separate voice-memory smoke test still exercises audio.
+Verifies a normal spoken turn completes with actual generated audio and no live response card.
 """
 import json
 import os
@@ -13,8 +12,7 @@ import websocket
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
-    "Please make a response card with three steps for organizing pens. "
-    "Then tell me step one out loud."
+    "Give me three simple spoken steps for organizing pens on a desk, then explain the first step."
 )
 SETUP_WAIT_SECONDS = 18
 GREETING_WAIT_SECONDS = 22
@@ -42,6 +40,32 @@ def get_text(message: dict) -> str:
     if isinstance(item, dict) and isinstance(item.get("text"), str):
         texts.append(item["text"])
     return " ".join(texts)
+
+
+def get_audio_payload_bytes(message: dict) -> int:
+    """Count generated audio payload bytes, not just transcript text."""
+    import base64
+    total = 0
+    for key in ("serverContent", "server_content"):
+        content = message.get(key)
+        if not isinstance(content, dict):
+            continue
+        turn = content.get("modelTurn") or content.get("model_turn")
+        parts = turn.get("parts", []) if isinstance(turn, dict) else []
+        for part in parts if isinstance(parts, list) else []:
+            if not isinstance(part, dict):
+                continue
+            inline = part.get("inlineData") or part.get("inline_data")
+            if not isinstance(inline, dict):
+                continue
+            data = inline.get("data")
+            mime = str(inline.get("mimeType") or inline.get("mime_type") or "").lower()
+            if isinstance(data, str) and data and mime.startswith("audio/"):
+                try:
+                    total += len(base64.b64decode(data, validate=True))
+                except (ValueError, base64.binascii.Error):
+                    continue
+    return total
 
 
 def get_calls(message: dict) -> list:
@@ -206,17 +230,13 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for the Co-Pilot greeting turn.")
 
-        PHASE = "send_explicit_card_text_turn"
+        PHASE = "send_speech_first_text_turn"
         ws.send(json.dumps({"text_input": PROMPT}))
-        PHASE = "wait_for_response_card_tool"
+        PHASE = "wait_for_spoken_answer"
         last_keepalive_at = time.monotonic()
-        tool_count = 0
+        transcript_parts = []
+        total_audio_bytes = 0
         final_complete = False
-        saw_final_text = False
-        saw_post_tool_spoken_text = False
-        input_transcription_received = False
-        card_keyword_observed = False
-        steps_keyword_observed = False
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
             try:
@@ -233,69 +253,29 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
-            input_text = get_input_text(message).lower()
-            if input_text.strip():
-                input_transcription_received = True
-            if any(term in input_text for term in ("card", "cart", "checklist")):
-                card_keyword_observed = True
-            if any(term in input_text for term in ("step", "steps", "checklist")):
-                steps_keyword_observed = True
             calls = get_calls(message)
-            responses = []
-            supported_tool_call = False
-            card_call_in_frame = False
-            for call in calls:
-                if not isinstance(call, dict):
-                    continue
-                name, call_id = call.get("name"), call.get("id")
-                if name not in ("display_response_card", "display_screen_overlay") or not isinstance(call_id, str) or not call_id:
-                    continue
-                supported_tool_call = True
-                if name == "display_response_card":
-                    card_call_in_frame = True
-                    if not bounded_card(call.get("args")):
-                        raise RuntimeError("Live response-card call failed the bounded schema assertion.")
-                    tool_count += 1
-                    result = (
-                        "The response-card payload passed schema validation and has been displayed to the user. "
-                        "Continue speaking the full natural answer without pausing because the card is visible. "
-                        "Explain every step, what to look for, why it matters, key details, and relevant safety limits. "
-                        "Do not stop at a short summary, only read the card title, or wait for another user request."
-                    )
-                else:
-                    result = "Synthetic overlay acknowledgement; no physical action was taken."
-                responses.append({"id": call_id, "name": name, "response": {"result": result}})
-            if responses:
-                ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
-                last_keepalive_at = time.monotonic()
+            if any(isinstance(call, dict) and call.get("name") == "display_response_card" for call in calls):
+                raise RuntimeError("A response-card tool call was emitted after the card UI was retired.")
             spoken_text = get_text(message).strip()
             if spoken_text:
-                saw_final_text = True
-                if tool_count > 0 and not calls:
-                    saw_post_tool_spoken_text = True
+                transcript_parts.append(spoken_text)
+            total_audio_bytes += get_audio_payload_bytes(message)
             turn_complete_now = is_turn_complete(message)
-            # The real browser keeps sending microphone frames. Match that behavior
-            # while waiting for Live instead of letting the relay idle watchdog expire.
+            if turn_complete_now and spoken_text and total_audio_bytes > 0 and not calls:
+                final_complete = True
+                break
             if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:
                 send_relay_keepalive(ws)
                 last_keepalive_at = time.monotonic()
-            if turn_complete_now and tool_count > 0 and not supported_tool_call:
-                final_complete = True
-                if saw_final_text:
-                    break
-        if tool_count == 0:
-            raise RuntimeError(
-                "The live model did not call display_response_card "
-                "(input_transcription_received=" + str(input_transcription_received).lower()
-                + ", card_keyword_observed=" + str(card_keyword_observed).lower()
-                + ", steps_keyword_observed=" + str(steps_keyword_observed).lower() + ")."
-            )
-        if not saw_post_tool_spoken_text:
-            raise RuntimeError("The model did not resume a spoken/text answer after the response-card tool was acknowledged.")
+        spoken_answer = " ".join(transcript_parts).strip()
         if not final_complete:
-            raise RuntimeError("Timed out waiting for the post-tool spoken answer to complete.")
+            raise RuntimeError("Timed out waiting for the spoken answer to complete.")
+        if len(spoken_answer) < 45:
+            raise RuntimeError("The spoken answer transcript was too short to be useful.")
+        if total_audio_bytes <= 0:
+            raise RuntimeError("The spoken answer completed without generated audio.")
         PHASE = "verified"
-        print("Synthetic live response-card test: PASS (tool called, payload bounded, protocol acknowledged, final turn completed).")
+        print("Synthetic speech-first answer test: PASS (spoken response completed with " + str(total_audio_bytes) + " generated audio bytes; no response card requested or rendered).")
         return 0
     finally:
         try:
@@ -308,5 +288,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print("Synthetic live response-card test: FAIL (stage=" + PHASE + ", " + type(exc).__name__ + ": " + str(exc)[:160] + ")")
+        print("Synthetic speech-first answer test: FAIL (stage=" + PHASE + ", " + type(exc).__name__ + ": " + str(exc)[:160] + ")")
         raise SystemExit(1)

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Authenticated synthetic Live Co-Pilot test for proactive ranked-list cards.
+"""Authenticated synthetic Live Co-Pilot test for a grounded, spoken ranked-list answer.
 
-Sends a top-10 IPL ranking request without explicitly asking for a card, then
-asserts that grounding runs and the Live model proactively creates ten rows.
-Optional source links are validated separately and cannot gate the list itself.
+Sends a top-10 IPL ranking request and verifies that live search returns before a useful
+spoken answer completes with real generated audio. Response cards are intentionally disabled.
 """
 import base64
 import json
@@ -235,27 +234,15 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for the Co-Pilot greeting turn.")
 
-        PHASE = "send_explicit_card_text_turn"
+        PHASE = "send_spoken_ranked_list_turn"
         ws.send(json.dumps({"text_input": PROMPT}))
-        PHASE = "wait_for_response_card_tool"
+        PHASE = "wait_for_grounded_spoken_answer"
         last_keepalive_at = time.monotonic()
-        tool_count = 0
         grounded_search_count = 0
-        top_ten_card_seen = False
+        lookup_completed = False
+        transcript_parts = []
+        post_lookup_audio_bytes = 0
         final_complete = False
-        saw_final_text = False
-        saw_post_tool_spoken_text = False
-        saw_post_card_spoken_text = False
-        continuation_dispatched = False
-        continuation_dispatch_count = 0
-        post_continuation_audio_bytes = 0
-        post_continuation_audio_chunks = 0
-        post_continuation_transcript_chars = 0
-        post_continuation_turn_complete = False
-        continuation_statuses = []
-        input_transcription_received = False
-        card_keyword_observed = False
-        steps_keyword_observed = False
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
             try:
@@ -272,140 +259,46 @@ def main() -> int:
                 continue
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
-            ranked_status = message.get("ranked_continuation_status")
-            if isinstance(ranked_status, dict):
-                state = ranked_status.get("state")
-                if isinstance(state, str):
-                    continuation_statuses.append(state)
-                    if state == "continuation_dispatched":
-                        continuation_dispatched = True
-                        continuation_dispatch_count += 1
-            card_was_visible_before_message = top_ten_card_seen
-            fallback_card = message.get("grounded_response_card")
-            if isinstance(fallback_card, dict):
-                if not bounded_card(fallback_card):
-                    raise RuntimeError("The grounded server fallback card failed its bounded schema assertion.")
-                if fallback_card.get("type") == "key_details":
-                    details = fallback_card.get("details")
-                    if not isinstance(details, list) or len(details) != 10:
-                        raise RuntimeError("The grounded fallback card did not contain ten visible rank slots.")
-                    if any(not isinstance(row, dict) or str(row.get("label", "")).endswith("Not verified") for row in details):
-                        raise RuntimeError("The grounded fallback card had missing or unverified entries.")
-                    if not str(fallback_card.get("summary", "")).startswith("Complete ranked list"):
-                        raise RuntimeError("The grounded fallback card did not confirm a complete list.")
-                    sources = fallback_card.get("sources")
-                    if not isinstance(sources, list) or not sources:
-                        raise RuntimeError("The grounded fallback card did not include grounded source links.")
-                    top_ten_card_seen = True
-                    # Ranked requests take the Worker-mandated grounding path before Live
-                    # receives the user turn. The resulting source-backed fallback card is
-                    # the observable proof of grounding; no Live search_current_web call is
-                    # expected for this deliberate path.
-                    grounded_search_count += 1
-            input_text = get_input_text(message).lower()
-            if input_text.strip():
-                input_transcription_received = True
-            if any(term in input_text for term in ("card", "cart", "checklist")):
-                card_keyword_observed = True
-            if any(term in input_text for term in ("step", "steps", "checklist")):
-                steps_keyword_observed = True
+            status = message.get("live_search_status")
+            if isinstance(status, dict) and status.get("state") == "lookup_complete":
+                lookup_completed = True
             calls = get_calls(message)
-            responses = []
-            supported_tool_call = False
-            card_call_in_frame = False
-            for call in calls:
-                if not isinstance(call, dict):
-                    continue
-                name, call_id = call.get("name"), call.get("id")
-                if name == "search_current_web":
-                    grounded_search_count += 1
-                    continue
-                if name not in ("display_response_card", "display_screen_overlay") or not isinstance(call_id, str) or not call_id:
-                    continue
-                supported_tool_call = True
-                if name == "display_response_card":
-                    card_call_in_frame = True
-                    args = call.get("args")
-                    if not bounded_card(args):
-                        raise RuntimeError("Live ranked-list response card failed the bounded schema assertion.")
-                    if isinstance(args, dict) and args.get("type") == "key_details":
-                        details = args.get("details")
-                        if not isinstance(details, list) or len(details) != 10:
-                            raise RuntimeError("The model did not proactively present exactly ten leaderboard rows.")
-                        if any(not isinstance(row, dict) or not str(row.get("label", "")).strip() or "not verified" in str(row.get("label", "")).lower() for row in details):
-                            raise RuntimeError("The model's ten-row card contained an empty or unverified entry.")
-                        sources = args.get("sources")
-                        if sources is not None and not isinstance(sources, list):
-                            raise RuntimeError("The optional source field was malformed.")
-                        top_ten_card_seen = True
-                    tool_count += 1
-                    result = (
-                        "The complete ten-row answer sheet is visible. Continue speaking the full natural answer: "
-                        "summarize what the leaderboard means, explain the important context, and mention the row-level "
-                        "details that help the user understand it. The card is a companion, not a replacement for speech. "
-                        "Do not stop at a short summary or wait for another user request."
-                    )
-                else:
-                    result = "Synthetic overlay acknowledgement; no physical action was taken."
-                responses.append({"id": call_id, "name": name, "response": {"result": result}})
-            if responses:
-                ws.send(json.dumps({"tool_response": {"function_responses": responses}}))
-                last_keepalive_at = time.monotonic()
+            if any(isinstance(call, dict) and call.get("name") == "search_current_web" for call in calls):
+                grounded_search_count += 1
+            if any(isinstance(call, dict) and call.get("name") == "display_response_card" for call in calls):
+                raise RuntimeError("A response-card tool call was emitted after the card UI was retired.")
             spoken_text = get_text(message).strip()
             audio_bytes = get_audio_payload_bytes(message)
-            if continuation_dispatched and audio_bytes > 0:
-                post_continuation_audio_bytes += audio_bytes
-                post_continuation_audio_chunks += 1
-            if continuation_dispatched and spoken_text:
-                post_continuation_transcript_chars += len(spoken_text)
-            if spoken_text:
-                saw_final_text = True
-                if card_was_visible_before_message:
-                    saw_post_card_spoken_text = True
-                if tool_count > 0 and not calls:
-                    saw_post_tool_spoken_text = True
+            if lookup_completed:
+                if spoken_text and not calls:
+                    transcript_parts.append(spoken_text)
+                if not calls:
+                    post_lookup_audio_bytes += audio_bytes
             turn_complete_now = is_turn_complete(message)
-            # The real browser keeps sending microphone frames. Match that behavior
-            # while waiting for Live instead of letting the relay idle watchdog expire.
+            if lookup_completed and turn_complete_now and not calls:
+                spoken_answer = " ".join(transcript_parts).strip()
+                digit_count = sum(1 for char in spoken_answer if char.isdigit())
+                if post_lookup_audio_bytes > 0 and len(spoken_answer) >= 160 and digit_count >= 4:
+                    final_complete = True
+                    break
             if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:
                 send_relay_keepalive(ws)
                 last_keepalive_at = time.monotonic()
-            # A progress-cue turn can complete after the card is shown. It is not
-            # the final answer. Only a turn completed after the Worker dispatches the
-            # final grounded continuation can satisfy this gate.
-            if continuation_dispatched and turn_complete_now and not supported_tool_call:
-                final_complete = True
-                post_continuation_turn_complete = True
-                if post_continuation_audio_bytes > 0:
-                    break
+        spoken_answer = " ".join(transcript_parts).strip()
         if grounded_search_count == 0:
-            raise RuntimeError("The Co-Pilot failed to ground the IPL ranking request with live web search.")
-        if not top_ten_card_seen:
-            raise RuntimeError("The Co-Pilot did not proactively display a ten-row ranked response card.")
-        if not continuation_dispatched:
+            raise RuntimeError("The Co-Pilot did not invoke live web grounding for the IPL ranking request.")
+        if not lookup_completed:
+            raise RuntimeError("The Co-Pilot did not report that the web lookup completed.")
+        if not final_complete:
             raise RuntimeError(
-                "The Worker did not dispatch the final ranked-list continuation; "
-                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
-            )
-        if not final_complete or not post_continuation_turn_complete:
-            raise RuntimeError(
-                "Timed out waiting for the final ranked-list continuation to complete; "
-                f"continuation_audio_chunks={post_continuation_audio_chunks}, "
-                f"continuation_transcript_chars={post_continuation_transcript_chars}, "
-                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
-            )
-        if post_continuation_audio_bytes <= 0:
-            raise RuntimeError(
-                "The final ranked-list continuation completed without audio payload; "
-                f"transcript_chars={post_continuation_transcript_chars}, "
-                f"audio_chunks={post_continuation_audio_chunks}, "
-                f"continuation_states={','.join(continuation_statuses[-8:]) or 'none'}."
+                "Timed out waiting for a useful spoken ranked-list answer; "
+                f"transcript_chars={len(spoken_answer)}, audio_bytes={post_lookup_audio_bytes}."
             )
         PHASE = "verified"
         print(
-            "Synthetic proactive ranked-list test: PASS "
-            "(grounding verified, ten source-backed rows rendered, final continuation completed "
-            f"with {post_continuation_audio_chunks} audio chunks and {post_continuation_audio_bytes} audio bytes)."
+            "Synthetic grounded ranked-list voice test: PASS "
+            f"(live grounding observed; spoken answer {len(spoken_answer)} transcript characters; "
+            f"{post_lookup_audio_bytes} generated audio bytes; response cards disabled)."
         )
         return 0
     finally:
@@ -419,5 +312,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print("Synthetic live response-card test: FAIL (stage=" + PHASE + ", " + type(exc).__name__ + ": " + str(exc)[:160] + ")")
+        print("Synthetic grounded ranked-list voice test: FAIL (stage=" + PHASE + ", " + type(exc).__name__ + ": " + str(exc)[:160] + ")")
         raise SystemExit(1)
