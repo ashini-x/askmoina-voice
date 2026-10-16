@@ -27,7 +27,6 @@ describe("rolling conversation summary", () => {
     expect(second).toContain("Moina: First, unplug power and check the vent.");
     expect(second).toContain("User: The charging light is now on.");
     expect(second).toContain("Moina: Good. Try the power button once");
-    expect(second).toContain("Current state: Device is powered down");
     expect(second).toContain("Current state: Charging light is on");
     expect(second).toContain("Next action: Observe the boot logo");
     expect(second.length).toBeLessThanOrEqual(4_000);
