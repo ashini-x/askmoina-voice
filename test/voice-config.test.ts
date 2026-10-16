@@ -51,25 +51,21 @@ describe("Vertex Live voice configuration", () => {
     });
   });
 
-  it("uses Candidate A's tested prompted voice ID directly in Live", () => {
+  it("never sends the legacy stored TTS voice ID to Gemini Live", () => {
     expect(CANDIDATE_A_LIVE_VOICE_ID).toBe("voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05");
     expect(buildVoiceGenerationConfig("Leda", CANDIDATE_A_LIVE_VOICE_ID)).toEqual({
       responseModalities: ["AUDIO"],
       speechConfig: {
-        voiceConfig: {
-          voice: "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05",
-        },
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Leda" } },
       },
     });
   });
 
-  it("gives a nonblank prompted voice ID precedence over a prebuilt voice name", () => {
+  it("keeps the selected prebuilt Live voice when a legacy custom TTS ID is present", () => {
     expect(buildVoiceGenerationConfig("Aoede", " voice_custom_test ")).toEqual({
       responseModalities: ["AUDIO"],
       speechConfig: {
-        voiceConfig: {
-          voice: "voice_custom_test",
-        },
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
       },
     });
   });
