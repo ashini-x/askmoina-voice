@@ -4229,7 +4229,7 @@
       showProblemButton.dataset.progress = "0";
       showProblemButton.style.setProperty("--slide-distance", "0px");
       showProblemButton.classList.remove("is-sliding", "is-complete");
-      if (slideLabel) slideLabel.textContent = "Slide to show your problem";
+      if (slideLabel) slideLabel.textContent = "Tap to open camera";
     };
     showProblemButton.addEventListener("pointerdown", (event) => {
       if (active || starting || (event.pointerType === "mouse" && event.button !== 0)) return;
@@ -4238,7 +4238,7 @@
       slideStartProgress = slideProgress();
       showProblemButton.classList.add("is-sliding");
       try { showProblemButton.setPointerCapture(event.pointerId); } catch (_) {}
-      event.preventDefault();
+      // Do not cancel the native click: a tap should start the camera too.
     });
     showProblemButton.addEventListener("pointermove", (event) => {
       if (slidePointerId !== event.pointerId || !slideHandle) return;
@@ -4246,7 +4246,7 @@
       const progress = Math.max(0, Math.min(1, slideStartProgress + (event.clientX - slideStartX) / maxDistance));
       showProblemButton.dataset.progress = String(progress);
       showProblemButton.style.setProperty("--slide-distance", (maxDistance * progress) + "px");
-      if (slideLabel) slideLabel.textContent = progress >= 0.82 ? "Release to begin" : "Slide to show your problem";
+      if (slideLabel) slideLabel.textContent = progress >= 0.82 ? "Release to begin" : "Tap to open camera";
     });
     showProblemButton.addEventListener("pointerup", (event) => {
       if (slidePointerId !== event.pointerId) return;
@@ -4268,9 +4268,8 @@
       try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
       resetSlide();
     });
-    showProblemButton.addEventListener("click", (event) => {
-      // Pointer users must complete the slide; keyboard activation remains an accessible alternative.
-      if (event.detail > 0) return;
+    showProblemButton.addEventListener("click", () => {
+      // The primary camera entry action works with a simple tap, a complete slide, or keyboard activation.
       if (!active && !starting) void startCopilot();
     });
   }

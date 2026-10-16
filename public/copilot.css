@@ -1282,3 +1282,19 @@ button{touch-action:manipulation}
   .control-pill:hover{filter:none}
   .zoom-dock button:hover{background:#ffffff0c}
 }
+
+
+/* Reliable primary entry: a camera-first app must always expose a clear, tappable start action. */
+.camera-stage.pre-start #showProblemButton{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  z-index:95!important;
+  transform:translate(-50%,0) scale(1)!important;
+}
+.camera-stage.pre-start #showProblemButton .vision-slide-label{
+  font-size:14px;
+  font-weight:680;
+  letter-spacing:-.015em;
+}
