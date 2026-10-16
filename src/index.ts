@@ -55,7 +55,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
   const version = encodeURIComponent(appVersion || "0.4.64");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '>' + nativeScript + '</head>');
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   return html;
 }
@@ -199,7 +199,7 @@ function withPwaStandaloneGate(html: string): string {
 
   // Match the system bars to the actual app surface: the camera is dark and edge-to-edge,
   // while the entry/account surfaces use the existing light AskMoina palette.
-  const lightEntrySurface = /<body\b[^>]*data-page=["'](?:login|entry)["']/i.test(html);
+    const cameraFirst = /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
   const cameraFirst = !lightEntrySurface && /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
   const themeColor = cameraFirst ? "#090b0f" : "#f5f5f7";
   const statusBarStyle = cameraFirst ? "black-translucent" : "default";
