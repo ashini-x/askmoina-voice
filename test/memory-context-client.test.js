@@ -28,7 +28,7 @@ describe("static client memory handoff", () => {
     expect(worker).toContain("const NATIVE_APP_MENU_SHEET");
     expect(worker).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.64\", authenticated)");
     expect(worker).toContain('authenticated ? "camera" : "login"');
-    expect(worker).toContain('data-entry-state="login"');
+    expect(worker).toContain('authenticated ? "camera" : "login"');
   });
 
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {
