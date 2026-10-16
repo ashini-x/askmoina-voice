@@ -4,13 +4,16 @@
 A custom, swept-wing bird mark represents a helpful presence and forward motion. The same mark is used everywhere; the interface never switches to a phone handset to invite interaction. Visual restraint comes first: monochrome by default, with a small, controlled light response only while AskMoina is connecting, listening, or speaking.
 
 ## Master assets
+`public/askmoina-mark.svg` is the single source of truth for the bird silhouette. Every variant must reuse its exact path geometry; changing theme, canvas, scale, or placement is allowed, but redrawing, tracing, stretching, or reshaping the mark is not. Raster exports must be rendered from that same approved path.
+
 - `public/askmoina-mark.svg`: white master symbol for dark surfaces.
-- `public/askmoina-mark-dark.svg`: dark symbol for light surfaces.
-- `public/askmoina-logo.svg` / `public/askmoina-logo-dark.svg`: horizontal wordmark with “SEE · UNDERSTAND · HELP”.
+- `public/askmoina-mark-dark.svg`: the exact same geometry in dark ink for light surfaces.
+- `public/askmoina-logo.svg` / `public/askmoina-logo-dark.svg`: horizontal wordmarks with the same symbol and “SEE · UNDERSTAND · HELP”.
 - `public/askmoina-app-icon.svg` and `public/askmoina-app-icon-light.svg`: dark and light app icons.
-- `public/pwa-icon-192.svg`, `public/pwa-icon-512.svg`, and `public/askmoina-app-icon-180.png`: install/Home Screen icon assets.
+- `public/pwa-icon-192.svg`, `public/pwa-icon-512.svg`, `public/askmoina-app-icon-180.png`, and `public/askmoina-bird-final.png`: install/Home Screen icon assets.
+- `public/askmoina-bird-mark.png` and `public/askmoina-bird-64.png`: small raster mark exports.
 - `public/askmoina-social-avatar.svg`: social profile avatar artwork.
-- `public/askmoina-visual-guide.svg`: related open-orbit visual-guidance mark.
+- `public/askmoina-visual-guide.svg`: the same approved bird inside the separate open-orbit visual-guidance treatment.
 
 ## Palette
 - Deep ink: `#08090c`
