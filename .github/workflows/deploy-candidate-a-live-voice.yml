@@ -239,8 +239,8 @@ jobs:
           test "$status" = "302"
           echo "Anonymous Co-Pilot access denied: OK"
           status="$(fetch_status /vault /tmp/moina-vault.html)"
-          test "$status" = "302"
-          echo "Anonymous Memory Vault access denied: OK"
+          test "$status" = "404"
+          echo "Legacy Vault route retired: OK"
 
           status="$(fetch_status /admin/login /tmp/moina-admin-login.html)"
           test "$status" = "200"
@@ -285,13 +285,13 @@ jobs:
               --header "Content-Type: application/json" --data '{}' || true
           }
           trap cleanup EXIT
-          # Run every synthetic independently. A failure in the product-card suite must not
+          # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
           python scripts/live-grounding-smoke.py
           GROUNDING_STATUS=$?
-          python scripts/live-response-card-smoke.py
-          RESPONSE_CARD_STATUS=$?
+          python scripts/live-spoken-turn-smoke.py
+          SPOKEN_TURN_STATUS=$?
           python scripts/live-ranked-list-smoke.py
           RANKED_LIST_STATUS=$?
           python scripts/live-memory-voice-smoke.py
@@ -309,7 +309,7 @@ jobs:
           echo "Synthetic session revoked: OK"
           for result in \
             "grounded web search:$GROUNDING_STATUS" \
-            "response-card flow:$RESPONSE_CARD_STATUS" \
+            "speech-first voice turn:$SPOKEN_TURN_STATUS" \
             "ranked-list flow:$RANKED_LIST_STATUS" \
             "voice memory:$MEMORY_VOICE_STATUS" \
             "browser network recovery:$NETWORK_RECOVERY_STATUS" \
@@ -324,7 +324,7 @@ jobs:
             fi
           done
           test "$GROUNDING_STATUS" -eq 0
-          test "$RESPONSE_CARD_STATUS" -eq 0
+          test "$SPOKEN_TURN_STATUS" -eq 0
           test "$RANKED_LIST_STATUS" -eq 0
           test "$MEMORY_VOICE_STATUS" -eq 0
           test "$NETWORK_RECOVERY_STATUS" -eq 0
