@@ -2910,29 +2910,32 @@ export default {
       headers.set("Cross-Origin-Resource-Policy", "same-origin");
 
       // A previously deployed static-asset manifest can briefly outlive a Worker
-      // release's manifest update. Keep one compatibility icon present at the
-      // Worker boundary so installability does not depend on asset-diff timing.
+      // release's manifest update. Read the small manifest once and serialize the
+      // response from text, rather than cloning and reusing its streamed body.
       let responseBody: BodyInit | null = assetResponse.body;
       if (url.pathname === "/manifest.webmanifest" && assetResponse.status === 200 &&
           request.method === "GET") {
+        const manifestText = await assetResponse.text();
+        responseBody = manifestText;
         try {
-          const manifest = await assetResponse.clone().json() as {
+          const manifest = JSON.parse(manifestText) as {
             icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
           };
-          if (Array.isArray(manifest.icons) &&
-              !manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png")) {
-            manifest.icons.push({
-              src: "/askmoina-bird-final.png",
-              sizes: "128x128",
-              type: "image/png",
-              purpose: "any",
-            });
+          if (Array.isArray(manifest.icons)) {
+            if (!manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png")) {
+              manifest.icons.push({
+                src: "/askmoina-bird-final.png",
+                sizes: "128x128",
+                type: "image/png",
+                purpose: "any",
+              });
+            }
             responseBody = JSON.stringify(manifest);
             headers.delete("Content-Length");
             headers.delete("ETag");
           }
         } catch {
-          // Preserve the original response body; the live deployment smoke will flag invalid JSON.
+          // Return the original text; the live deployment smoke will flag invalid JSON.
         }
       }
 

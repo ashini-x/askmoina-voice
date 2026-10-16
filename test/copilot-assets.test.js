@@ -46,6 +46,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
     expect(workerSource).toContain('icon.src === "/askmoina-bird-final.png"');
     expect(workerSource).toContain('manifest.icons.push({');
+    expect(workerSource).toContain('const manifestText = await assetResponse.text()');
+    expect(workerSource).not.toContain('assetResponse.clone().json()');
     expect(workerSource).toContain('"/askmoina-app-icon-180.png"');
     expect(workerSource).toContain('"/askmoina-mark.svg"');
     expect(workerSource).toContain('"/askmoina-logo.svg"');
