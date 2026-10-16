@@ -783,7 +783,8 @@ describe("Primary camera entry", () => {
     expect(css).toContain(".camera-stage.pre-start .camera-controls{\n  display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;");
     expect(css).toContain(".camera-stage.pre-start #toggleCopilot");
     expect(css).toContain("background:#171719;color:#fff");
-    expect(css).not.toContain("#34c759");
+    expect(css).not.toContain("background:#34c759;color:#fff");
+    expect(css).not.toContain("rgba(52,199,89");
     expect(html).toContain("M7.1 4.2");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
