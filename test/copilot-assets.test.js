@@ -355,7 +355,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain('class="intelligence-intro"');
     expect(html).toContain('id="visionSlideHandle"');
     expect(html).toContain('class="vision-slide-copy"');
-    expect(html).toContain("slide to start");
+    expect(html).toContain("Slide to start");
     expect(html).not.toContain("Tap to open camera");
     expect(script).toContain('showProblemButton.addEventListener("pointermove"');
     expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
@@ -771,7 +771,7 @@ describe("Native-first app experience v2", () => {
 describe("Primary camera entry", () => {
   it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
     expect(html).toContain('aria-label="Slide to start the camera and call"');
-    expect(html).toContain('id="visionSlideLabel">slide to start</span>');
+    expect(html).toContain('id="visionSlideLabel">Slide to start</span>');
     expect(html).toContain('class="vision-slide-arrows"');
     expect(script).toContain('showProblemButton.addEventListener("pointerup"');
     expect(script).toContain('showProblemButton.addEventListener("click", (event) => { event.preventDefault(); });');
@@ -780,7 +780,12 @@ describe("Primary camera entry", () => {
     expect(script).not.toContain("The primary camera entry action works with a simple tap");
     expect(css).toContain(".camera-stage.pre-start #showProblemButton");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
+    expect(css).toContain(".camera-stage.pre-start .camera-controls{\n  display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;");
     expect(css).toContain(".camera-stage.pre-start #toggleCopilot");
+    expect(css).toContain("background:#171719;color:#fff");
+    expect(css).not.toContain("background:#34c759;color:#fff");
+    expect(css).not.toContain("rgba(52,199,89");
+    expect(html).toContain("M7.1 4.2");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
   });
