@@ -722,8 +722,10 @@ try {
             const turns = Array.isArray(detail.turns) ? detail.turns : [];
             const hasUser = turns.some((turn) => turn.role === "user" && typeof turn.text === "string" && turn.text.trim());
             const hasAssistant = turns.some((turn) => turn.role === "assistant" && typeof turn.text === "string" && turn.text.trim());
-            if (hasUser && hasAssistant && detail.conversation?.summary) {
-              return { ok: true, turns: turns.length, hasSummary: true, hasTaskProgress: Boolean(detail.conversation.taskProgress) };
+            const taskProgress = detail.conversation && detail.conversation.taskProgress;
+            if (hasUser && hasAssistant && detail.conversation?.summary &&
+                taskProgress && typeof taskProgress.goal === "string" && taskProgress.goal.trim()) {
+              return { ok: true, turns: turns.length, hasSummary: true, hasTaskProgress: true };
             }
           }
         }
