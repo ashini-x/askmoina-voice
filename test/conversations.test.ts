@@ -1,6 +1,68 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { handleConversationRequest } from "../src/conversations";
+import { handleConversationRequest, mergeConversationSummary } from "../src/conversations";
 import type { Env } from "../src/config/env";
+
+describe("rolling conversation summary", () => {
+  it("keeps the original goal and prior exchanges when later turns are saved", () => {
+    const first = mergeConversationSummary("", [
+      "Goal: Repair the laptop without losing data",
+      "Latest user request: The fan is loud and Windows will not start.",
+      "Latest Moina response: First, unplug power and check the vent.",
+      "Current state: Device is powered down",
+      "Next action: Check the charger and ventilation",
+      "Constraints: Do not erase the drive",
+    ].join("\n"));
+    const second = mergeConversationSummary(first, [
+      "Goal: Repair the laptop without losing data",
+      "Latest user request: The charging light is now on.",
+      "Latest Moina response: Good. Try the power button once and tell me whether the logo appears.",
+      "Current state: Charging light is on",
+      "Next action: Observe the boot logo",
+      "Constraints: Do not erase the drive",
+    ].join("\n"));
+
+    expect(second).toContain("Original goal: Repair the laptop without losing data");
+    expect(second).toContain("Earlier context:");
+    expect(second).toContain("User: The fan is loud and Windows will not start.");
+    expect(second).toContain("Moina: First, unplug power and check the vent.");
+    expect(second).toContain("User: The charging light is now on.");
+    expect(second).toContain("Moina: Good. Try the power button once");
+    expect(second).toContain("Current state: Device is powered down");
+    expect(second).toContain("Current state: Charging light is on");
+    expect(second).toContain("Next action: Observe the boot logo");
+    expect(second.length).toBeLessThanOrEqual(4_000);
+  });
+
+  it("bounds the rolling summary while retaining earlier and latest notes", () => {
+    let summary = mergeConversationSummary("", [
+      "Goal: Keep the synthetic device safe",
+      "Latest user request: " + "early-detail ".repeat(250),
+      "Latest Moina response: First guidance",
+      "Current state: Initial state",
+    ].join("\n"));
+    for (let index = 0; index < 12; index += 1) {
+      summary = mergeConversationSummary(summary, [
+        "Goal: Keep the synthetic device safe",
+        "Latest user request: New request " + index + " " + "recent-detail ".repeat(100),
+        "Latest Moina response: New response " + index,
+        "Current state: State " + index,
+        "Next action: Action " + index,
+      ].join("\n"));
+    }
+    expect(summary.length).toBeLessThanOrEqual(4_000);
+    expect(summary).toContain("Original goal: Keep the synthetic device safe");
+    expect(summary).toContain("Latest exchange:");
+    expect(summary).toContain("User: New request 11");
+    expect(summary).toContain("Moina: New response 11");
+  });
+
+  it("adopts the incoming summary when there is no saved summary", () => {
+    const summary = mergeConversationSummary("", "Goal: Set up the router\nLatest user request: The light is blinking\nLatest Moina response: Check the cable");
+    expect(summary).toContain("Original goal: Set up the router");
+    expect(summary).toContain("User: The light is blinking");
+    expect(summary).toContain("Moina: Check the cable");
+  });
+});
 
 type AnyRow = Record<string, any>;
 type Session = { userId: string; expiresAt: string };
