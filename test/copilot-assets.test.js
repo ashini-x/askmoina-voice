@@ -64,6 +64,41 @@ describe("Live Co-Pilot browser assets", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
   });
 
+  it("uses the exact approved signature path across every vector logo variant", () => {
+    const signatureSvgFiles = [
+      "askmoina-mark.svg",
+      "askmoina-mark-dark.svg",
+      "askmoina-app-icon.svg",
+      "askmoina-app-icon-light.svg",
+      "askmoina-logo.svg",
+      "askmoina-logo-dark.svg",
+      "askmoina-social-avatar.svg",
+      "askmoina-visual-guide.svg",
+      "pwa-icon-192.svg",
+      "pwa-icon-512.svg",
+    ];
+    for (const filename of signatureSvgFiles) {
+      const svg = readFileSync(new URL("../public/" + filename, import.meta.url), "utf8");
+      expect(svg, filename).toContain(signatureGeometryPath);
+      expect(svg, filename).not.toContain('M27 91C48 87 66 75 79 56');
+    }
+  });
+
+  it("keeps every raster logo export valid and at its documented dimensions", () => {
+    const rasterFiles = [
+      ["askmoina-app-icon-180.png", 180],
+      ["askmoina-bird-final.png", 128],
+      ["askmoina-bird-mark.png", 64],
+      ["askmoina-bird-64.png", 64],
+    ];
+    for (const [filename, dimension] of rasterFiles) {
+      const png = readFileSync(new URL("../public/" + filename, import.meta.url));
+      expect(png.subarray(0, 8), filename).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      expect(png.readUInt32BE(16), filename + " width").toBe(dimension);
+      expect(png.readUInt32BE(20), filename + " height").toBe(dimension);
+    }
+  });
+
   it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
