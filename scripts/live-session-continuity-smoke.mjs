@@ -779,8 +779,18 @@ try {
     "no stale reconnect overlay should remain after a stable long-running session");
   console.log("Production audiovisual Live recovery + continuity: PASS (forced network loss, one socket recovery, two completed post-170-second spoken turns with fresh assistant audio, no stale UI/resume loop).");
 
-  await page.locator("#toggleCopilot").click();
-  await page.waitForTimeout(700);
+  // The acceptance gate above is authoritative. The full-screen response sheet or
+  // another transient layer can intercept pointer input after the assertions have
+  // passed; teardown must not turn a verified continuity pass into a false failure.
+  try {
+    await page.locator("#toggleCopilot").click({ timeout: 3_000, force: true });
+    await page.waitForTimeout(700);
+  } catch (_) {
+    await page.evaluate(() => {
+      const button = document.querySelector("#toggleCopilot");
+      if (button && button.getAttribute("aria-pressed") === "true") button.click();
+    }).catch(() => undefined);
+  }
 } catch (error) {
   console.error("Production audiovisual Live continuity: FAIL (" +
     (error instanceof Error ? error.message.slice(0, 240) : "unknown error") + ")");
