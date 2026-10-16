@@ -739,3 +739,25 @@ describe("Live microphone explicit activity detection", () => {
     expect(protocolSource).toContain('case "activity_end":');
   });
 });
+
+
+describe("Native-first app experience v2", () => {
+  it("renders a camera-first native welcome state without a website-style branded header", () => {
+    expect(workerSource).toContain("const NATIVE_CAMERA_WELCOME = ");
+    expect(workerSource).toContain("nativeCameraWelcomeTitle");
+    expect(workerSource).toContain("openAppMenu");
+    expect(workerSource).toContain("openLibrary");
+    expect(workerSource).toContain('const NATIVE_APP_HEADER_GUEST = "";');
+    expect(workerSource).toContain("html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker)");
+    expect(nativeAppCss).toContain(".native-camera-welcome");
+    expect(nativeAppCss).toContain(".native-app-chrome .native-app-menu-trigger");
+    expect(nativeAppCss).toContain("native-orb-breathe");
+    expect(nativeAppCss).toContain("prefers-reduced-motion:reduce");
+  });
+
+  it("keeps answer and sign-in surfaces readable on a phone and respects safe areas", () => {
+    expect(nativeAppCss).toContain("#responseCardContent{font-size:16px;line-height:1.62}");
+    expect(nativeAppCss).toContain("env(safe-area-inset-top,0px)");
+    expect(nativeAppCss).toContain('body[data-page="login"] .entry-page-heading.auth-page-heading:before');
+  });
+});

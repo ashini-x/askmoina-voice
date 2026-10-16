@@ -83,3 +83,52 @@ body.native-account-page input,body.native-account-page select{width:100%;min-he
 @media(max-height:660px){.entry-page-heading{margin-bottom:15px}.entry-page-heading h1,.entry-page-heading h2{font-size:25px}.entry-auth-panel{padding-top:20px}}
 @media(min-width:640px){.native-app-chrome-guest{position:fixed;top:18px;left:50%;right:auto;width:min(430px,calc(100vw - 36px));transform:translateX(-50%)}body:has(.camera-app){background:#111216!important}.camera-app{inset:18px auto;left:50%;width:min(430px,calc(100vw - 36px));height:auto!important;transform:translateX(-50%);border:1px solid rgba(255,255,255,.14);border-radius:35px;box-shadow:0 28px 100px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04);overflow:hidden;isolation:isolate}.camera-stage{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit}body[data-page=login] .entry-overlay{inset:18px auto;left:50%;width:min(430px,calc(100vw - 36px));border-radius:35px;overflow:hidden;transform:translateX(-50%)}.native-menu-panel,.library-panel{width:min(430px,calc(100vw - 36px));border-bottom:1px solid rgba(255,255,255,.88);border-radius:29px}.library-sheet{align-items:center}.library-panel{height:min(780px,calc(100dvh - 48px));padding-bottom:0}.native-info-main{padding-top:42px}}
 @media(max-width:360px){.entry-auth-panel{padding-left:17px;padding-right:17px}.native-menu-panel{padding-left:15px;padding-right:15px}.native-info-main{padding-left:19px;padding-right:19px}}
+
+
+/* Native-first experience v2: camera is the home screen, not a website landing page. */
+body[data-page="login"] .native-app-chrome-guest{display:none!important}
+.native-app-chrome{pointer-events:none}
+.native-app-chrome>.library-open-control,.native-app-chrome>.top-actions{pointer-events:auto}
+.native-app-chrome .top-actions{margin-left:auto}
+.native-app-chrome .native-app-menu-trigger{display:grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid rgba(255,255,255,.62);border-radius:50%;background:rgba(18,20,25,.50);color:#fff;box-shadow:0 5px 24px rgba(0,0,0,.16);-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%);transition:background .18s ease,transform .18s ease}
+.native-app-chrome .native-app-menu-trigger svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.native-app-chrome .native-app-menu-trigger:active{transform:scale(.96)}
+.native-app-chrome .library-open-control{width:44px;height:44px;min-width:44px;min-height:44px}
+.native-app-chrome .library-open-control,.native-app-chrome .native-app-menu-trigger{box-shadow:0 4px 20px rgba(0,0,0,.13),inset 0 1px rgba(255,255,255,.08)}
+
+.native-camera-welcome{position:absolute;z-index:4;top:41%;left:50%;display:flex;flex-direction:column;align-items:center;width:min(330px,calc(100% - 48px));transform:translate(-50%,-50%);color:#f7f7fa;text-align:center;pointer-events:none;transition:opacity .22s ease,transform .22s ease,visibility .22s ease}
+.native-camera-orb{position:relative;display:grid;place-items:center;width:112px;height:112px;margin:0 0 25px;border:1px solid rgba(255,255,255,.34);border-radius:50%;background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.22),rgba(255,255,255,.045) 54%,rgba(11,13,20,.88) 100%);box-shadow:0 0 0 8px rgba(255,255,255,.025),0 0 54px rgba(155,155,255,.19),inset 0 1px rgba(255,255,255,.3);isolation:isolate}
+.native-camera-orb:before{content:"";position:absolute;z-index:-1;inset:-7px;border:1px solid rgba(202,204,255,.35);border-radius:inherit;box-shadow:0 0 34px rgba(159,173,255,.2);animation:native-orb-breathe 3.8s ease-in-out infinite}
+.native-camera-orb:after{content:"";position:absolute;z-index:-2;inset:-16px;border-radius:inherit;background:conic-gradient(from 12deg,rgba(146,184,255,.0),rgba(167,174,255,.42),rgba(245,202,231,.24),rgba(164,234,222,.28),rgba(146,184,255,.0));filter:blur(19px);opacity:.78;animation:native-orb-turn 18s linear infinite}
+.native-camera-orb img{position:relative;z-index:1;display:block;width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 3px 12px rgba(255,255,255,.18))}
+.native-camera-kicker{margin:0 0 10px;color:rgba(233,235,247,.67);font-size:10px;line-height:1.3;font-weight:700;letter-spacing:.19em}
+.native-camera-welcome h1{max-width:13ch;margin:0;color:#fbfbfd;font-size:clamp(29px,8vw,36px);line-height:1.03;font-weight:680;letter-spacing:-.065em;text-wrap:balance}
+.native-camera-caption{max-width:28ch;margin:13px 0 0;color:rgba(228,230,239,.72);font-size:14px;line-height:1.5;font-weight:420;letter-spacing:-.015em;text-wrap:balance}
+.camera-stage:not(.pre-start) .native-camera-welcome{opacity:0;visibility:hidden;transform:translate(-50%,calc(-50% - 10px))}
+.camera-stage.pre-start .native-camera-welcome{opacity:1;visibility:visible}
+.show-problem-button{bottom:calc(19% + env(safe-area-inset-bottom,0px)*.2);width:min(344px,calc(100% - 36px));min-height:60px;padding:0 21px;border-radius:21px;background:rgba(249,249,247,.94);border:1px solid rgba(255,255,255,.88);box-shadow:0 12px 42px rgba(0,0,0,.26),inset 0 1px rgba(255,255,255,.95);letter-spacing:.005em}
+.vision-slide-track{width:100%;min-width:0}
+.vision-slide-label{letter-spacing:-.012em;font-size:14px;font-weight:650}
+body[data-page="login"] .entry-auth-panel{padding-top:25px}
+body[data-page="login"] .entry-page-heading.auth-page-heading{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:23px}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-bird-final.png") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
+body[data-page="login"] .entry-page-heading.auth-page-heading h2{max-width:12ch;font-size:30px;letter-spacing:-.06em}
+body[data-page="login"] .entry-page-heading.auth-page-heading p{max-width:27ch;font-size:14px;line-height:1.48}
+body[data-page="login"] .entry-passkey{justify-content:center;border-radius:17px}
+body[data-page="login"] .entry-divider{font-size:10px;letter-spacing:.14em}
+body[data-page="login"] .entry-phone-row{margin-top:4px}
+body[data-page="login"] .entry-phone-input{min-width:0;font-size:16px}
+body[data-page="login"] .entry-status:empty{display:none}
+#responseCardContent{font-size:16px;line-height:1.62}
+#responseCardContent p{margin:0 0 13px}
+#responseCardContent ul,#responseCardContent ol{padding-left:22px;margin:8px 0 16px}
+#responseCardContent li{padding-left:2px;margin:0 0 7px}
+.response-card-tray{padding:calc(env(safe-area-inset-top,0px) + 14px) clamp(18px,5vw,26px) calc(env(safe-area-inset-bottom,0px) + 14px);background:rgba(9,11,14,.96);-webkit-backdrop-filter:none;backdrop-filter:none}
+.response-card-header{padding:5px 0 15px}
+.response-card-heading h2{font-size:clamp(25px,7vw,32px);letter-spacing:-.055em}
+.response-card-details{width:min(100%,720px);margin:16px auto 12px}
+@keyframes native-orb-breathe{0%,100%{transform:scale(.97);opacity:.62}50%{transform:scale(1.035);opacity:1}}
+@keyframes native-orb-turn{to{transform:rotate(360deg)}}
+@media(max-height:720px){.native-camera-welcome{top:39%}.native-camera-orb{width:92px;height:92px;margin-bottom:19px}.native-camera-orb img{width:49px;height:49px}.native-camera-kicker{margin-bottom:8px}.native-camera-welcome h1{font-size:29px}.native-camera-caption{margin-top:9px;font-size:13px}.show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}}
+@media(max-width:360px){.native-camera-orb{width:88px;height:88px}.native-camera-welcome h1{font-size:27px}.native-camera-caption{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.native-camera-orb:before,.native-camera-orb:after{animation:none!important}.native-camera-welcome,.native-app-menu-trigger{transition:none!important}}
