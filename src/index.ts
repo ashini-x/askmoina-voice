@@ -1946,7 +1946,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
-          : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME, env.LIVE_VOICE_ID);
+          : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           // High model-side media resolution is limited to camera Co-Pilot sessions;
@@ -3025,7 +3025,7 @@ export default {
           : "vertex-live-proxy-awaiting-secrets",
         model: env.GEMINI_MODEL || "gemini-3.8-live",
         location: env.GEMINI_LOCATION || "us-central1",
-        liveVoice: env.LIVE_VOICE_ID?.trim() || env.LIVE_VOICE_NAME?.trim() || DEFAULT_LIVE_VOICE_NAME,
+        liveVoice: env.LIVE_VOICE_NAME?.trim() || DEFAULT_LIVE_VOICE_NAME,
       });
     }
 
