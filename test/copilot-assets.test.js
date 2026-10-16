@@ -63,6 +63,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain(".camera-stage.is-listening .askmoina-orb-control:after");
     expect(css).toContain(".camera-stage.is-speaking .askmoina-orb-control:after");
+    expect(css).toContain("#toggleCopilot.askmoina-orb-control");
+    expect(css).toContain("top:-76px!important");
+    expect(css).toContain('data-orb-state="processing"');
+    expect(css).toContain("@keyframes askmoina-orb-process-breathe");
+    expect(script).toContain("function setOrbProcessing(processing)");
+    expect(script).toContain('if (speechGateEnded) setOrbProcessing(true);');
+    expect(script).toContain('|| liveSearchActive || liveSearchFinishing ? "processing"');
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain("@keyframes edge-width-pulse");
     expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
