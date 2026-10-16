@@ -70,6 +70,14 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 - Production verification: deployed release `0.4.54` is reported healthy; run [38809174681](https://github.com/ashini-x/askmoina-voice/actions/runs/38809174681) explicitly recorded `Production audiovisual Live recovery + continuity: PASS`, with one live browser socket after recovery and two completed post-170-second spoken turns with fresh assistant audio. The full workflow conclusion is still failure only because independent web-grounding, response-card and voice-memory checks failed. Phase 1 and Phase 2 exit criteria for speech continuity and forced recovery are considered met.
 
 
+## Phase 3 verification follow-up — nested Live transcription parsing
+
+- Deployed `0.4.56` confirmed healthy and critical routes passed; production API smoke passed all owner-isolation, ordering, idempotency, summary/task restoration, archive and delete checks.
+- The additional real-microphone persistence assertion failed. Captured provider frames showed `outputTranscription` in nested `serverContent`, while the browser handler only consumed nested snake_case `output_transcription` / `input_transcription`. The input transcription count and rendered transcript remained zero, so the D1 hook had no finalized user text to save.
+- Follow-up branch: `phase-3/fix-transcript-frame-casing`; candidate release `0.4.57`. The client now accepts both nested camelCase and snake_case transcription fields. Regression coverage asserts this wire shape. The real-microphone synthetic also deletes its disposable history topic on success/failure cleanup.
+- The 0.4.56 run also saw the delayed real-microphone continuity assertion fail to receive fresh assistant audio in that test attempt, despite the earlier Phase 2 recovery gate passing. Treat this as a separate continuity reliability risk that must be re-evaluated; do not misattribute it to transcript parsing.
+- Current status: parser fix release validation and a rerun of production microphone persistence are pending. Phase 3 is not complete until the deployed real-microphone test saves both roles plus summary/task goal. Known web-grounding and voice-memory failures remain deferred by owner decision.
+
 ## Phase 3 — persistent conversation history (API merged; browser integration release candidate)
 
 - API/schema PR: [#175 — Phase 3: Add secure persistent conversation history](https://github.com/ashini-x/askmoina-voice/pull/175), merged as `6c81c739631c671b49cc2a6ed68f3eade0334ed6`.

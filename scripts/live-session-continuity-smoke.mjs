@@ -23,6 +23,7 @@ let browser;
 let context;
 let page;
 let mediaDirectory;
+let transcriptTestConversationId = "";
 const liveSockets = [];
 const closedSockets = [];
 let assistantAudioFrames = 0;
@@ -703,6 +704,7 @@ try {
   const persistedHistory = await page.evaluate(async (startedAt) => {
     const cutoff = new Date(startedAt).toISOString();
     const deadline = Date.now() + 25_000;
+    let lastCandidateId = "";
     while (Date.now() < deadline) {
       try {
         const listResponse = await fetch("/api/conversations?status=all&limit=20", {
@@ -714,6 +716,7 @@ try {
             .filter((item) => typeof item.conversationId === "string" &&
               typeof item.lastActivityAt === "string" && item.lastActivityAt >= cutoff);
           for (const item of candidates) {
+            lastCandidateId = item.conversationId;
             const detailResponse = await fetch("/api/conversations/" + encodeURIComponent(item.conversationId) + "?limit=100", {
               credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
             });
@@ -725,15 +728,16 @@ try {
             const taskProgress = detail.conversation && detail.conversation.taskProgress;
             if (hasUser && hasAssistant && detail.conversation?.summary &&
                 taskProgress && typeof taskProgress.goal === "string" && taskProgress.goal.trim()) {
-              return { ok: true, turns: turns.length, hasSummary: true, hasTaskProgress: true };
+              return { ok: true, conversationId: item.conversationId, turns: turns.length, hasSummary: true, hasTaskProgress: true };
             }
           }
         }
       } catch (_) {}
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return { ok: false };
+    return { ok: false, conversationId: lastCandidateId };
   }, sessionStartedAt);
+  transcriptTestConversationId = typeof persistedHistory.conversationId === "string" ? persistedHistory.conversationId : "";
   assert.equal(persistedHistory.ok, true,
     "real browser microphone speech and assistant reply must be finalized into owner-scoped D1 history");
   console.log("Production finalized transcript persistence: PASS (real microphone user turn, assistant turn, summary and task state saved; transcript text not logged).");
@@ -798,6 +802,16 @@ try {
   }
   process.exitCode = 1;
 } finally {
+  if (page && transcriptTestConversationId) {
+    await page.evaluate(async (conversationId) => {
+      try {
+        await fetch("/api/conversations/" + encodeURIComponent(conversationId), {
+          method: "DELETE", credentials: "same-origin", cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" }
+        });
+      } catch (_) {}
+    }, transcriptTestConversationId).catch(() => undefined);
+  }
   if (context) await context.close().catch(() => undefined);
   if (browser) await browser.close().catch(() => undefined);
   if (mediaDirectory) rmSync(mediaDirectory, { recursive: true, force: true });

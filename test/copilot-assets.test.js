@@ -115,6 +115,14 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain("latest speech as the priority");
   });
 
+  it("parses nested Gemini Live camelCase user and assistant transcription frames", () => {
+    expect(script).toContain("const serverContent = message.server_content || message.serverContent;");
+    expect(script).toContain("const inputTranscription = serverContent.input_transcription || serverContent.inputTranscription;");
+    expect(script).toContain("const outputTranscription = serverContent.output_transcription || serverContent.outputTranscription;");
+    expect(script).toContain('updateTranscript("user", inputTranscription.text)');
+    expect(script).toContain('updateTranscript("assistant", outputTranscription.text)');
+  });
+
   it("persists finalized live transcripts and task context to the authenticated history API", () => {
     expect(script).toContain("function queueFinalizedConversationTurn(userText, assistantText)");
     expect(script).toContain("function ensureConversationForScope(scope, firstUserText)");
