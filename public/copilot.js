@@ -3157,8 +3157,12 @@
       if (interimUserTranscription && typeof interimUserTranscription.text === "string") {
         handleTranscriptAcknowledgement("user", interimUserTranscription.text);
       }
-      if (serverContent.input_transcription && typeof serverContent.input_transcription.text === "string") updateTranscript("user", serverContent.input_transcription.text);
-      if (serverContent.output_transcription && typeof serverContent.output_transcription.text === "string") updateTranscript("assistant", serverContent.output_transcription.text);
+      // Gemini Live's serverContent uses camelCase in the JSON wire protocol.
+      // Accept the snake_case form as compatibility for normalized relay/test frames.
+      const inputTranscription = serverContent.input_transcription || serverContent.inputTranscription;
+      const outputTranscription = serverContent.output_transcription || serverContent.outputTranscription;
+      if (inputTranscription && typeof inputTranscription.text === "string") updateTranscript("user", inputTranscription.text);
+      if (outputTranscription && typeof outputTranscription.text === "string") updateTranscript("assistant", outputTranscription.text);
       const wasInterrupted = serverContent.interrupted === true;
       if (wasInterrupted) {
         if (liveSearchActive) cancelLiveSearchProgress();

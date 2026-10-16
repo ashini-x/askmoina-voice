@@ -23,6 +23,7 @@ let browser;
 let context;
 let page;
 let mediaDirectory;
+let transcriptTestConversationId = "";
 const liveSockets = [];
 const closedSockets = [];
 let assistantAudioFrames = 0;
@@ -725,7 +726,7 @@ try {
             const taskProgress = detail.conversation && detail.conversation.taskProgress;
             if (hasUser && hasAssistant && detail.conversation?.summary &&
                 taskProgress && typeof taskProgress.goal === "string" && taskProgress.goal.trim()) {
-              return { ok: true, turns: turns.length, hasSummary: true, hasTaskProgress: true };
+              return { ok: true, conversationId: item.conversationId, turns: turns.length, hasSummary: true, hasTaskProgress: true };
             }
           }
         }
@@ -734,6 +735,7 @@ try {
     }
     return { ok: false };
   }, sessionStartedAt);
+  transcriptTestConversationId = typeof persistedHistory.conversationId === "string" ? persistedHistory.conversationId : "";
   assert.equal(persistedHistory.ok, true,
     "real browser microphone speech and assistant reply must be finalized into owner-scoped D1 history");
   console.log("Production finalized transcript persistence: PASS (real microphone user turn, assistant turn, summary and task state saved; transcript text not logged).");
@@ -798,6 +800,16 @@ try {
   }
   process.exitCode = 1;
 } finally {
+  if (page && transcriptTestConversationId) {
+    await page.evaluate(async (conversationId) => {
+      try {
+        await fetch("/api/conversations/" + encodeURIComponent(conversationId), {
+          method: "DELETE", credentials: "same-origin", cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" }
+        });
+      } catch (_) {}
+    }, transcriptTestConversationId).catch(() => undefined);
+  }
   if (context) await context.close().catch(() => undefined);
   if (browser) await browser.close().catch(() => undefined);
   if (mediaDirectory) rmSync(mediaDirectory, { recursive: true, force: true });
