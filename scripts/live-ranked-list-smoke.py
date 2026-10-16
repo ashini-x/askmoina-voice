@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Authenticated synthetic Live Co-Pilot test for a grounded, spoken ranked-list answer.
 
-Sends a top-10 IPL ranking request and verifies that live search returns before a useful
-spoken answer completes with real generated audio. Response cards are intentionally disabled.
+Sends a top-10 IPL ranking request and verifies that live search returns a source-backed information card plus a useful spoken answer with real generated audio.
 """
 import base64
 import json
@@ -241,6 +240,7 @@ def main() -> int:
         grounded_search_count = 0
         lookup_completed = False
         transcript_parts = []
+        card_seen = False
         post_lookup_audio_bytes = 0
         final_complete = False
         deadline = time.time() + TURN_WAIT_SECONDS
@@ -262,11 +262,27 @@ def main() -> int:
             status = message.get("live_search_status")
             if isinstance(status, dict) and status.get("state") == "lookup_complete":
                 lookup_completed = True
+            card_payload = message.get("grounded_response_card")
+            if isinstance(card_payload, dict):
+                details = card_payload.get("details")
+                sources = card_payload.get("sources")
+                if card_payload.get("type") != "key_details" or not isinstance(card_payload.get("title"), str):
+                    raise RuntimeError("Grounded result card has an invalid type or title.")
+                if not isinstance(details, list) or len(details) < 2:
+                    raise RuntimeError("Grounded result card did not include structured ranked entries.")
+                if not isinstance(sources, list) or not any(isinstance(source, dict) and isinstance(source.get("url"), str) and source["url"].startswith("https://") for source in sources):
+                    raise RuntimeError("Grounded result card did not include a verified HTTPS source.")
+                card_seen = True
             calls = get_calls(message)
             if any(isinstance(call, dict) and call.get("name") == "search_current_web" for call in calls):
                 grounded_search_count += 1
-            if any(isinstance(call, dict) and call.get("name") == "display_response_card" for call in calls):
-                raise RuntimeError("A response-card tool call was emitted after the card UI was retired.")
+            for call in calls:
+                if isinstance(call, dict) and call.get("name") == "display_response_card":
+                    args = call.get("args") or call.get("arguments")
+                    if not isinstance(args, dict) or not isinstance(args.get("title"), str):
+                        raise RuntimeError("Response-card tool call did not include a structured card payload.")
+                    card_seen = True
+                    ws.send(json.dumps({"tool_response": {"function_responses": [{"id": call.get("id"), "name": "display_response_card", "response": {"result": "The information card was rendered successfully by the synthetic client."}}]}}))
             spoken_text = get_text(message).strip()
             audio_bytes = get_audio_payload_bytes(message)
             if lookup_completed:
@@ -275,7 +291,7 @@ def main() -> int:
                 if not calls:
                     post_lookup_audio_bytes += audio_bytes
             turn_complete_now = is_turn_complete(message)
-            if lookup_completed and turn_complete_now and not calls:
+            if lookup_completed and turn_complete_now and not calls and card_seen:
                 spoken_answer = " ".join(transcript_parts).strip()
                 digit_count = sum(1 for char in spoken_answer if char.isdigit())
                 if post_lookup_audio_bytes > 0 and len(spoken_answer) >= 160 and digit_count >= 4:
@@ -289,6 +305,8 @@ def main() -> int:
             raise RuntimeError("The Co-Pilot did not invoke live web grounding for the IPL ranking request.")
         if not lookup_completed:
             raise RuntimeError("The Co-Pilot did not report that the web lookup completed.")
+        if not card_seen:
+            raise RuntimeError("The live search did not produce a structured information card with verified source links.")
         if not final_complete:
             raise RuntimeError(
                 "Timed out waiting for a useful spoken ranked-list answer; "
@@ -298,7 +316,7 @@ def main() -> int:
         print(
             "Synthetic grounded ranked-list voice test: PASS "
             f"(live grounding observed; spoken answer {len(spoken_answer)} transcript characters; "
-            f"{post_lookup_audio_bytes} generated audio bytes; response cards disabled)."
+            f"{post_lookup_audio_bytes} generated audio bytes; structured information card verified)."
         )
         return 0
     finally:
