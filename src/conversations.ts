@@ -179,6 +179,11 @@ export function mergeConversationSummary(previousRaw: string, incomingRaw: strin
   const previous = previousRaw.trim();
   const incoming = incomingRaw.trim();
   if (!incoming) return fitSummarySection(previous, MAX_SUMMARY_CHARS);
+  const incomingHasStructuredFields = SUMMARY_LABELS.some((label) => Boolean(readSummaryField(incoming, label)));
+  // The API also accepts compact summaries from callers that do not use the
+  // browser's structured fields. Preserve these instead of replacing them with
+  // an empty structured shell.
+  if (!incomingHasStructuredFields) return fitSummarySection(incoming, MAX_SUMMARY_CHARS);
   if (!previous) {
     // Normalize older client summary formats into the durable rolling format.
     const goal = fitSummarySection(readSummaryField(incoming, "Original goal") || readSummaryField(incoming, "Goal"), 300);
@@ -191,7 +196,7 @@ export function mergeConversationSummary(previousRaw: string, incomingRaw: strin
     const uncertainty = fitSummarySection(readSummaryField(incoming, "Uncertainty"), 160);
     return [
       goal ? "Original goal: " + goal : "",
-      "Latest exchange:",
+      user || assistant ? "Latest exchange:" : "",
       user ? "User: " + user : "",
       assistant ? "Moina: " + assistant : "",
       state ? "Current state: " + state : "",
@@ -229,7 +234,7 @@ export function mergeConversationSummary(previousRaw: string, incomingRaw: strin
   return [
     goal ? "Original goal: " + goal : "",
     history ? "Earlier context: " + history : "",
-    "Latest exchange:",
+    user || assistant ? "Latest exchange:" : "",
     user ? "User: " + user : "",
     assistant ? "Moina: " + assistant : "",
     state ? "Current state: " + state : "",
