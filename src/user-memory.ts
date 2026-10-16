@@ -71,7 +71,7 @@ function inferKind(content: string): MemoryKind {
   return "preference";
 }
 
-function extractPreference(text: string): string | null {
+export function extractPreference(text: string): string | null {
   const value = text.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   if (!value || value.length > 20_000) return null;
   // Store only directly stated, reusable preferences—not inferred traits or general facts.
@@ -146,6 +146,11 @@ export async function handleUserMemoryRequest(request: Request, env: Env): Promi
   if (request.method !== "GET" && !sameOrigin(request)) return json({ error: "same_origin_required" }, 403);
 
   try {
+    if (pathname === ROOT && request.method === "DELETE") {
+      await env.DB.prepare("DELETE FROM user_memories WHERE owner_id = ?").bind(ownerId).run();
+      return json({ deleted: true });
+    }
+
     if (pathname === ROOT && request.method === "GET") {
       const [enabled, rows] = await Promise.all([
         readEnabled(env, ownerId),
