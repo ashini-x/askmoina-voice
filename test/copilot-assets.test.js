@@ -541,7 +541,7 @@ describe("Apple-style live-search progress", () => {
     expect(script).toContain("liveSearchLookupCompleted = false;");
     expect(script).toContain("pendingResponseCards = [];");
     expect(script).not.toContain("if (!responseCardRenderedForTurn) ensureTranscriptFallbackCard(true);");
-    expect(html).not.toContain('id="responseCardTray"');
+    expect(html).toContain('id="responseCardTray"');
     expect(html).toContain('<section class="caption-dock" hidden');
   });
 });
@@ -562,11 +562,11 @@ describe("Assistant-voiced search progress", () => {
   });
 });
 
-describe("Retired response-card controls", () => {
-  it("does not expose live answer-card or Vault controls", () => {
-    expect(html).not.toContain('id="responseCardTray"');
-    expect(html).not.toContain('id="responseCardMinimize"');
-    expect(html).not.toContain('id="responseCardRestore"');
+describe("Information-card controls", () => {
+  it("exposes answer-sheet minimize/restore controls without restoring the Vault", () => {
+    expect(html).toContain('id="responseCardTray"');
+    expect(html).toContain('id="responseCardMinimize"');
+    expect(html).toContain('id="responseCardRestore"');
     expect(html).not.toContain('id="vaultButton"');
     expect(html).not.toContain('href="/vault"');
   });
@@ -590,9 +590,9 @@ describe("Spoken ranked-list UX", () => {
     expect(workerSource).toContain("function startForcedRankedListLookup(userRequest: string)");
     expect(workerSource).toContain("Mandatory ranked-list grounding started");
     expect(workerSource).toContain("const answerInstruction = fullTableVerified");
-    expect(workerSource).toContain("Do not create or imply a visible card");
+    expect(workerSource).toContain("grounded_response_card: builtCard");
     expect(workerSource).toContain("let groundedAnswerText = result");
-    expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
   });
 });
 
@@ -659,7 +659,7 @@ describe("RC7 zero-gap search-status feedback", () => {
     expect(script).not.toContain("startQuietThinkingLoader");
     expect(script).not.toContain("Thinking through your request");
     expect(script).toContain("function completeLiveSearchProgress()");
-    expect(html).not.toContain('id="responseCardTray"');
+    expect(html).toContain('id="responseCardTray"');
   });
 });
 
