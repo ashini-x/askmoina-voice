@@ -5724,6 +5724,7 @@
     if (detailTranscript) {
       detailTranscript.replaceChildren();
       const turns = Array.isArray(data.turns) ? data.turns : [];
+      const fragment = document.createDocumentFragment();
       for (const turn of turns) {
         const isUser = turn.role === "user";
         const row = document.createElement("article");
@@ -5735,9 +5736,10 @@
         copy.className = "detail-turn-text";
         copy.textContent = String(turn.text || "");
         row.append(label, copy);
-        detailTranscript.appendChild(row);
+        fragment.appendChild(row);
       }
-      if (!turns.length) detailTranscript.appendChild(makeLibraryEmpty("No saved turns", "This conversation has no finalized transcript yet."));
+      if (!turns.length) fragment.appendChild(makeLibraryEmpty("No saved turns", "This conversation has no finalized transcript yet."));
+      detailTranscript.appendChild(fragment);
     }
     if (continueConversationButton) continueConversationButton.disabled = conversation.status === "archived";
     showLibraryView("detail");
