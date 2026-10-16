@@ -376,7 +376,7 @@ describe("Apple-style entry navigation and disconnect cue", () => {
     expect(workerSource).toContain("const ENTRY_SITE_MENU = ");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY = ");
     expect(workerSource).toContain("ENTRY_PRODUCTS_OVERLAY = ");
-    for (const label of ["Donations", "Illustrative demo total", "Your Memory", "Key Memories", "About askMoina", "Developer", "Feedback", "Privacy &amp; Security", "Investor Relations", "Sign out"]) {
+    for (const label of ["Donations", "Illustrative demo total", "About askMoina", "Developer", "Feedback", "Privacy &amp; Security", "Investor Relations", "Sign out"]) {
       expect(workerSource).toContain(label);
     }
     for (const route of ["/about", "/developer", "/help", "/privacy", "/pricing", "/donate"]) {
@@ -509,11 +509,9 @@ describe("Apple-style entry navigation and disconnect cue", () => {
   });
 
   it("builds the requested auth-aware menu groups and blank static page placeholders", () => {
-    expect(workerSource).toContain("entry-menu-memory");
     expect(workerSource).toContain("entry-menu-public");
     expect(workerSource).toContain("entry-menu-pricing");
     expect(workerSource).toContain("entry-menu-account");
-    expect(workerSource).toContain("Your Memory");
     expect(workerSource).toContain("aria-hidden");
     expect(workerSource).toContain('"/pricing"');
     expect(workerSource).toContain("const SITE_INFO_PATHS = new Set([");
