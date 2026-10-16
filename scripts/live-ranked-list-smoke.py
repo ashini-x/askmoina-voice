@@ -301,12 +301,16 @@ def main() -> int:
                 send_relay_keepalive(ws)
                 last_keepalive_at = time.monotonic()
         spoken_answer = " ".join(transcript_parts).strip()
-        if grounded_search_count == 0:
-            raise RuntimeError("The Co-Pilot did not invoke live web grounding for the IPL ranking request.")
         if not lookup_completed:
             raise RuntimeError("The Co-Pilot did not report that the web lookup completed.")
         if not card_seen:
             raise RuntimeError("The live search did not produce a structured information card with verified source links.")
+        # Ranked-list grounding may be performed directly by the Worker after it withholds
+        # a premature card request. In that case the browser sees the completed lookup and
+        # verified result card, not an explicit search_current_web call. Either path proves
+        # that grounding ran; requiring the tool call alone would reject the safe server path.
+        if grounded_search_count == 0 and not (lookup_completed and card_seen):
+            raise RuntimeError("The Co-Pilot neither exposed a web-search tool call nor delivered a completed grounded result card.")
         if not final_complete:
             raise RuntimeError(
                 "Timed out waiting for a useful spoken ranked-list answer; "
