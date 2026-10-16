@@ -49,21 +49,23 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("sourceCount: sources.length");
   });
 
-  it("speaks complete grounded ranked results without relying on an answer card", () => {
+  it("delivers grounded ranked results in an information card after search completes", () => {
     expect(workerSource).toContain("const builtCard = buildGroundedListCard(query, result, requestedCount)");
+    expect(workerSource).toContain("grounded_response_card: builtCard");
     expect(workerSource).toContain("let groundedAnswerText = result");
     expect(workerSource).toContain("fullTableVerified = Boolean(builtCard");
     expect(workerSource).toContain("The complete source-verified top-");
-    expect(workerSource).toContain("Do not create or imply a visible card");
+    expect(workerSource).toContain("verified HTTPS sources in the information card");
     expect(workerSource).not.toContain("completeRankedFallbackRecentlySent");
   });
 
-  it("does not expose a response-card tool or make cards mandatory", () => {
+  it("exposes structured information cards without displaying raw transcript text", () => {
     expect(workerSource).not.toContain("HIGHEST-PRIORITY CARD FULFILLMENT");
-    expect(workerSource).not.toContain("Call display_response_card now with a valid complete payload");
-    expect(workerSource).not.toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
-    expect(workerSource).not.toContain("const explicitCardRequest =");
-    expect(workerSource).toContain("SPEECH-FIRST INTERACTION");
+    expect(workerSource).toContain("display_response_card");
+    expect(workerSource).toContain("DISPLAY_RESPONSE_CARD_FUNCTION");
+    expect(workerSource).toContain("const COPILOT_TOOL =");
+    expect(workerSource).toContain("SPEECH-FIRST INTERACTION WITH INFORMATION CARDS");
+    expect(workerSource).not.toContain("Response cards are disabled in this Co-Pilot");
     expect(workerSource).toContain('name: "search_past_conversations"');
   });
 
@@ -71,7 +73,7 @@ describe("Milestone 13 conditional web grounding", () => {
     expect(workerSource).toContain("const answerInstruction = fullTableVerified");
     expect(workerSource).toContain("const continuationText = answerInstruction +");
     expect(workerSource).toContain("Grounded search result:");
-    expect(workerSource).toContain("Do not create or imply a visible card");
+    expect(workerSource).toContain("grounded_response_card: builtCard");
     expect(workerSource).toContain("sendUpstreamMessage({");
   });
 

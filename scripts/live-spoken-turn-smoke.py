@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Authenticated synthetic Live Co-Pilot speech-first answer test.
 
-Verifies a normal spoken turn completes with actual generated audio and no live response card.
+Verifies a normal spoken turn completes with generated audio and a structured information card, without displaying raw transcript text.
 """
 import json
 import os
@@ -236,6 +236,7 @@ def main() -> int:
         last_keepalive_at = time.monotonic()
         transcript_parts = []
         total_audio_bytes = 0
+        card_seen = False
         final_complete = False
         deadline = time.time() + TURN_WAIT_SECONDS
         while time.time() < deadline:
@@ -254,8 +255,17 @@ def main() -> int:
             if message.get("error"):
                 raise RuntimeError("The Live Co-Pilot returned a provider/protocol error.")
             calls = get_calls(message)
-            if any(isinstance(call, dict) and call.get("name") == "display_response_card" for call in calls):
-                raise RuntimeError("A response-card tool call was emitted after the card UI was retired.")
+            for call in calls:
+                if isinstance(call, dict) and call.get("name") == "display_response_card":
+                    args = call.get("args") or call.get("arguments")
+                    if not isinstance(args, dict) or not isinstance(args.get("title"), str):
+                        raise RuntimeError("Response-card tool call did not include a structured information payload.")
+                    card_type = args.get("type")
+                    has_content = (card_type == "key_details" and isinstance(args.get("details"), list) and len(args["details"]) > 0) or (card_type == "steps" and isinstance(args.get("steps"), list) and len(args["steps"]) >= 2) or (card_type == "comparison" and isinstance(args.get("options"), list) and len(args["options"]) == 2)
+                    if not has_content:
+                        raise RuntimeError("Response-card tool call had no useful structured content.")
+                    card_seen = True
+                    ws.send(json.dumps({"tool_response": {"function_responses": [{"id": call.get("id"), "name": "display_response_card", "response": {"result": "The information card was rendered successfully by the synthetic client."}}]}}))
             spoken_text = get_text(message).strip()
             if spoken_text:
                 transcript_parts.append(spoken_text)
@@ -270,12 +280,14 @@ def main() -> int:
         spoken_answer = " ".join(transcript_parts).strip()
         if not final_complete:
             raise RuntimeError("Timed out waiting for the spoken answer to complete.")
+        if not card_seen:
+            raise RuntimeError("The substantive answer did not produce a structured information card.")
         if len(spoken_answer) < 45:
             raise RuntimeError("The spoken answer transcript was too short to be useful.")
         if total_audio_bytes <= 0:
             raise RuntimeError("The spoken answer completed without generated audio.")
         PHASE = "verified"
-        print("Synthetic speech-first answer test: PASS (spoken response completed with " + str(total_audio_bytes) + " generated audio bytes; no response card requested or rendered).")
+        print("Synthetic spoken answer + information-card test: PASS (structured card rendered; spoken response completed with " + str(total_audio_bytes) + " generated audio bytes; raw transcript cards not used).")
         return 0
     finally:
         try:
