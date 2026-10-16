@@ -115,6 +115,21 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain("latest speech as the priority");
   });
 
+  it("persists finalized live transcripts and task context to the authenticated history API", () => {
+    expect(script).toContain("function queueFinalizedConversationTurn(userText, assistantText)");
+    expect(script).toContain("function ensureConversationForScope(scope, firstUserText)");
+    expect(script).toContain('fetch("/api/conversations"');
+    expect(script).toContain('"/turns"');
+    expect(script).toContain("conversationUserTurnPending");
+    expect(script).toContain("summary: summaryLines");
+    expect(script).toContain("taskProgress: progress");
+    expect(script).toContain("credentials: \"same-origin\"");
+    expect(script).toContain("if (!user && !assistant) return;");
+    expect(script).toContain("Do not let persistence faults turn into a Live session fault");
+    expect(script).not.toContain("audioBase64");
+    expect(script).not.toContain("videoBase64");
+  });
+
   it("offers a gated WebXR surface-anchor mode without replacing the V2 fallback", () => {
     expect(html).toContain('id="spatialArButton"');
     expect(html).toContain('id="spatialHud"');

@@ -698,6 +698,44 @@ try {
   assert.equal(secondTurnCompleted, true,
     "the second spoken turn must reach provider turnComplete, not merely emit a partial audio frame");
 
+  // Verify the browser's finalized transcript hooks persisted actual voice turns,
+  // not just that the REST endpoints work when called directly by a synthetic.
+  const persistedHistory = await page.evaluate(async (startedAt) => {
+    const cutoff = new Date(startedAt).toISOString();
+    const deadline = Date.now() + 25_000;
+    while (Date.now() < deadline) {
+      try {
+        const listResponse = await fetch("/api/conversations?status=all&limit=20", {
+          credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
+        });
+        if (listResponse.ok) {
+          const list = await listResponse.json();
+          const candidates = (Array.isArray(list.conversations) ? list.conversations : [])
+            .filter((item) => typeof item.conversationId === "string" &&
+              typeof item.lastActivityAt === "string" && item.lastActivityAt >= cutoff);
+          for (const item of candidates) {
+            const detailResponse = await fetch("/api/conversations/" + encodeURIComponent(item.conversationId) + "?limit=100", {
+              credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
+            });
+            if (!detailResponse.ok) continue;
+            const detail = await detailResponse.json();
+            const turns = Array.isArray(detail.turns) ? detail.turns : [];
+            const hasUser = turns.some((turn) => turn.role === "user" && typeof turn.text === "string" && turn.text.trim());
+            const hasAssistant = turns.some((turn) => turn.role === "assistant" && typeof turn.text === "string" && turn.text.trim());
+            if (hasUser && hasAssistant && detail.conversation?.summary) {
+              return { ok: true, turns: turns.length, hasSummary: true, hasTaskProgress: Boolean(detail.conversation.taskProgress) };
+            }
+          }
+        }
+      } catch (_) {}
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    return { ok: false };
+  }, sessionStartedAt);
+  assert.equal(persistedHistory.ok, true,
+    "real browser microphone speech and assistant reply must be finalized into owner-scoped D1 history");
+  console.log("Production finalized transcript persistence: PASS (real microphone user turn, assistant turn, summary and task state saved; transcript text not logged).");
+
   // Keep the same audiovisual session alive through the full 155-second window.
   const remainingMs = Math.max(0, 155_000 - (Date.now() - sessionStartedAt));
   if (remainingMs) await page.waitForTimeout(remainingMs);

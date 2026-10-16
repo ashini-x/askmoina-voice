@@ -72,11 +72,10 @@ jobs:
           grep -R -q 'ASSAMESE SPEECH EVALUATION CONTRACT' dist/
           echo "Benchmarks and M29–M37 release bundle contracts: OK"
 
-      - name: Apply additive D1 conversation-history migration
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx wrangler d1 migrations apply askmoina-prod --remote
+      # Production D1 migrations are managed through the authorized Cloudflare control plane.
+      # GitHub's Worker deployment token does not have D1 API permission (Cloudflare code 7403).
+      # Migration 0006 was applied and recorded in d1_migrations before this release; the
+      # authenticated history smoke below verifies that the deployed API can use the schema.
 
       - name: Upload validated AskMoina version without changing triggers
         id: upload
