@@ -424,7 +424,8 @@ describe("Native mobile-first AskMoina shell", () => {
 
   it("serves secondary information as mobile screens, not blank placeholders with a generic header", () => {
     expect(workerSource).toContain("const NATIVE_SITE_INFO");
-    expect(workerSource).toContain("renderSiteInfoPage(url.pathname, env.APP_VERSION || \"0.4.64\")");
+    expect(workerSource).toContain("renderSiteInfoPage(infoPath, env.APP_VERSION || \"0.4.64\")");
+    expect(workerSource).toContain("url.searchParams.has(\"view\")");
     expect(workerSource).not.toContain("const pageHtml = withSiteChrome(infoPage");
     for (const phrase of ["A camera-first co-pilot for the real world.", "Developer resources are being prepared.", "Your camera. Your control.", "Partnership and investor information is being prepared.", "Donation processing is not enabled on this page yet"]) {
       expect(workerSource).toContain(phrase);
@@ -434,8 +435,9 @@ describe("Native mobile-first AskMoina shell", () => {
   });
 
   it("keeps legacy menu routes reachable without a fake donation total on the home screen", () => {
-    for (const route of ["/account", "/about", "/developer", "/help", "/privacy", "/pricing", "/donate"]) {
-      expect(workerSource).toContain('href=\\"' + route + '\\"');
+    expect(workerSource).toContain("/account");
+    for (const view of ["about", "developer", "help", "privacy", "pricing", "donate"]) {
+      expect(workerSource).toContain("?view=" + view);
     }
     expect(workerSource).toContain("Hardware");
     expect(workerSource).toContain("Under development");
