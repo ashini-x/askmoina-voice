@@ -2891,14 +2891,30 @@ export default {
 
     if (url.pathname === "/vault" || url.pathname === "/vault/" || url.pathname === "/vault.js" || url.pathname === "/api/vault" || url.pathname.startsWith("/api/vault/")) return json({ error: "not_found" }, 404);
 
-    if ((url.pathname === "/account" || url.pathname === "/account.html") &&
+    if ((url.pathname === "/login" || url.pathname === "/login.html") &&
         (request.method === "GET" || request.method === "HEAD")) {
       return Response.redirect(new URL("/", request.url).toString(), 302);
+    }
+    if ((url.pathname === "/account" || url.pathname === "/account.html") &&
+        (request.method === "GET" || request.method === "HEAD")) {
+      const accountId = await getAuthenticatedUserId(request, env);
+      const adminAccess = accountId ? false : await isAdmin(request, env);
+      if (!accountId && !adminAccess) return Response.redirect(new URL("/", request.url).toString(), 302);
     }
     const authResponse = await handleAuthRequest(request, env);
     if (authResponse) {
       if (authResponse.status === 200 && authResponse.headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
         const authenticated = Boolean(await getAuthenticatedUserId(request, env) || await isAdmin(request, env));
+        if (url.pathname === "/account" || url.pathname === "/account.html") {
+          let html = await authResponse.text();
+          html = html.replace("<body>", '<body class="native-account-page" data-page="account">');
+          html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.64") + '"></head>');
+          const headers = new Headers(authResponse.headers);
+          headers.delete("Content-Length");
+          headers.delete("ETag");
+          headers.set("Cache-Control", "no-store");
+          return new Response(request.method === "HEAD" ? null : html, { status: authResponse.status, statusText: authResponse.statusText, headers });
+        }
         return await withSiteChromeResponse(authResponse, url.pathname, authenticated);
       }
       return authResponse;
@@ -2925,10 +2941,6 @@ export default {
     if (url.pathname.startsWith("/admin")) {
       const adminResponse = await handleContinuityRequest(request, env, ctx);
       if (adminResponse) return adminResponse;
-    }
-
-    if (url.pathname === "/login" || url.pathname === "/login.html") {
-      return Response.redirect(new URL("/", request.url).toString(), 302);
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
