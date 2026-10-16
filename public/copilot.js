@@ -123,7 +123,7 @@
     { title: "Thinking", message: "Putting the answer together" },
     { title: "Working through the details", message: "Organizing the clearest useful answer" },
     { title: "Preparing your answer", message: "Checking what matters and what can be left out" },
-    { title: "Finishing the details", message: "Getting the answer sheet ready" },
+    { title: "Finishing the details", message: "Preparing your spoken answer" },
   ];
 
   function syncLiveSearchStatusVisibility() {
@@ -3549,7 +3549,7 @@
         if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
         const setupPayload = { setup: {}, copilot_mode: true };
         try {
-          await Promise.all([refreshAccountMemories(), refreshCrossSessionRecallContext()]);
+          await Promise.all([refreshAccountMemories(), refreshCrossSessionRecallContext(true)]);
           const memory = readOptedInMemoryContext();
           if (memory) setupPayload.memory_context = memory;
         } catch (_) {}
