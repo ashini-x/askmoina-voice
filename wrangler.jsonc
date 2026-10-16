@@ -47,14 +47,23 @@
       "/vault/",
       "/vault.js",
       "/app.js",
-      "/session-ui.js"
+      "/session-ui.js",
+      "/askmoina-app-icon-180.png",
+      "/askmoina-mark.svg",
+      "/askmoina-mark-dark.svg",
+      "/askmoina-app-icon.svg",
+      "/askmoina-app-icon-light.svg",
+      "/askmoina-logo.svg",
+      "/askmoina-logo-dark.svg",
+      "/askmoina-social-avatar.svg",
+      "/askmoina-visual-guide.svg"
     ]
   },
   "observability": {
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.69",
+    "APP_VERSION": "0.4.70",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",

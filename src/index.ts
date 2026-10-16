@@ -159,6 +159,16 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/pwa-runtime.js",
   "/pwa-icon-192.svg",
   "/pwa-icon-512.svg",
+  "/askmoina-app-icon-180.png",
+  "/askmoina-bird-final.png",
+  "/askmoina-mark.svg",
+  "/askmoina-mark-dark.svg",
+  "/askmoina-app-icon.svg",
+  "/askmoina-app-icon-light.svg",
+  "/askmoina-logo.svg",
+  "/askmoina-logo-dark.svg",
+  "/askmoina-social-avatar.svg",
+  "/askmoina-visual-guide.svg",
 ]);
 
 const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
@@ -174,6 +184,16 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/service-worker.js": "text/javascript; charset=utf-8",
   "/pwa-icon-192.svg": "image/svg+xml; charset=utf-8",
   "/pwa-icon-512.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-app-icon-180.png": "image/png",
+  "/askmoina-bird-final.png": "image/png",
+  "/askmoina-mark.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-mark-dark.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-app-icon.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-app-icon-light.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-logo.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-logo-dark.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-social-avatar.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-visual-guide.svg": "image/svg+xml; charset=utf-8",
 };
 
 const PWA_STANDALONE_APP_PATHS = new Set([
@@ -2888,7 +2908,35 @@ export default {
       headers.set("Cache-Control", "no-store");
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("Cross-Origin-Resource-Policy", "same-origin");
-      return new Response(request.method === "HEAD" ? null : assetResponse.body, {
+
+      // A previously deployed static-asset manifest can briefly outlive a Worker
+      // release's manifest update. Keep one compatibility icon present at the
+      // Worker boundary so installability does not depend on asset-diff timing.
+      let responseBody: BodyInit | null = assetResponse.body;
+      if (url.pathname === "/manifest.webmanifest" && assetResponse.status === 200 &&
+          request.method === "GET") {
+        try {
+          const manifest = await assetResponse.clone().json() as {
+            icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
+          };
+          if (Array.isArray(manifest.icons) &&
+              !manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png")) {
+            manifest.icons.push({
+              src: "/askmoina-bird-final.png",
+              sizes: "128x128",
+              type: "image/png",
+              purpose: "any",
+            });
+            responseBody = JSON.stringify(manifest);
+            headers.delete("Content-Length");
+            headers.delete("ETag");
+          }
+        } catch {
+          // Preserve the original response body; the live deployment smoke will flag invalid JSON.
+        }
+      }
+
+      return new Response(request.method === "HEAD" ? null : responseBody, {
         status: assetResponse.status,
         statusText: assetResponse.statusText,
         headers,

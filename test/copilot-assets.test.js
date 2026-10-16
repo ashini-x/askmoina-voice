@@ -42,6 +42,17 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
+  it("keeps the manifest fallback stable and serves the complete AskMoina brand asset family", () => {
+    expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
+    expect(workerSource).toContain('icon.src === "/askmoina-bird-final.png"');
+    expect(workerSource).toContain('manifest.icons.push({');
+    expect(workerSource).toContain('"/askmoina-app-icon-180.png"');
+    expect(workerSource).toContain('"/askmoina-mark.svg"');
+    expect(workerSource).toContain('"/askmoina-logo.svg"');
+    expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
+    expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
+  });
+
   it("uses the AskMoina signature orb and state-reactive live edge pulses", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
