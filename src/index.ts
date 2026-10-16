@@ -21,7 +21,7 @@ import { parseLiveClientInput, toProviderRealtimeInput } from "./sessions/copilo
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
-import { DISPLAY_RESPONSE_CARD_FUNCTION, validateResponseCard } from "./sessions/response-card";
+import { validateResponseCard } from "./sessions/response-card";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
 import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
@@ -2329,7 +2329,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations");
             } else if (immediateToolFrame.tool_call && Array.isArray(immediateToolFrame.tool_call.function_calls)) {
               immediateToolFrame.tool_call.function_calls = immediateToolFrame.tool_call.function_calls
-                .filter((call) => call?.name !== "display_response_card");
+                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations");
             }
             const immediateCalls = immediateToolFrame.toolCall?.functionCalls || immediateToolFrame.tool_call?.function_calls || [];
             if (immediateCalls.length) {
