@@ -776,7 +776,7 @@ describe("Native-first app experience v2", () => {
 
 describe("Primary camera entry", () => {
   it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
-    expect(html).toContain('aria-label="Slide to start the camera and call"');
+    expect(html).toContain('aria-label="Slide to start AskMoina camera guidance"');
     expect(html).toContain('id="visionSlideLabel">Slide to start</span>');
     expect(html).toContain('class="vision-slide-arrows"');
     expect(script).toContain('showProblemButton.addEventListener("pointerup"');
@@ -791,7 +791,7 @@ describe("Primary camera entry", () => {
     expect(css).toContain("background:#171719;color:#fff");
     expect(css).not.toContain("background:#34c759;color:#fff");
     expect(css).not.toContain("rgba(52,199,89");
-    expect(html).toContain("M7.1 4.2");
+    expect(html).toContain("askmoina-orb-control");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
   });
