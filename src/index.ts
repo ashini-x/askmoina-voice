@@ -53,7 +53,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
     if (headerEnd >= 0) html = html.slice(0, headerStart) + nativeHeader + html.slice(headerEnd + "</header>".length);
   }
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
-  html = html.replace(/<title>[^<]*<\\/title>/, "<title>AskMoina</title>");
+  html = html.replace(/<title>[^<]*<\/title>/, "<title>AskMoina</title>");
   const version = encodeURIComponent(appVersion || "0.4.64");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + nativeScript + '</head>');
