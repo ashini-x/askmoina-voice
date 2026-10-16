@@ -2,13 +2,15 @@
 
 Last updated: 2026-10-16 UTC.
 
-## Current status: Phase 1 and Phase 2 production gates passed; Phase 3 merged and live-transcript integration in progress
+## Current status: Phase 1/2 speech gates passed; Phase 3 persistence passed live acceptance on 0.4.57; deferred synthetic failures remain
 
 - Production checkpoint before Phase 3: `3ab61049137097ccd20b5f751bd26ae6f959823c`; Phase 3 persistence API merge: `6c81c739631c671b49cc2a6ed68f3eade0334ed6`.
 - Production Worker before the follow-up: `0.4.54`. The first Phase 3 deployment workflow [run 38885100705](https://github.com/ashini-x/askmoina-voice/actions/runs/38885100705) stopped before Worker upload because the GitHub Actions token has Worker deployment permission but lacks D1 query permission (Cloudflare API error 7403).
 - Through the separate authorized Cloudflare control plane, migration `0006_conversation_history.sql` was applied and schema verified. The `d1_migrations` tracking table was initialized with the six pre-existing migration filenames plus `0006`, after confirming their corresponding schemas were already present.
-- The Phase 3 follow-up connects finalized browser voice transcripts to the new history API and extends the real-microphone continuity synthetic to require a saved user turn, assistant turn, summary and task state. Candidate release: `0.4.56`.
-- Phase 1 and Phase 2 acceptance remains as below. Unrelated live-grounding/card/voice-memory synthetic failures are known and remain outside this focused Phase 3 fix.
+- Phase 3 merge sequence: API/schema PR #175 (`6c81c739631c671b49cc2a6ed68f3eade0334ed6`), live transcript integration PR #176 (`6978b004cfda76f1ed70149165deac8392f0dc5c`), nested transcription parser fix PR #177 (`c8bc6a99cfc3b5e25494bbf5707fe5ee50f769ea`).
+- Production Worker `0.4.57` is healthy with the expected Gemini Live model and voice. Production health check [run 38900898335](https://github.com/ashini-x/askmoina-voice/actions/runs/38900898335) passed.
+- The production audiovisual synthetic [run 38900898300](https://github.com/ashini-x/askmoina-voice/actions/runs/38900898300) recorded both `Production finalized transcript persistence: PASS` and `Production audiovisual Live recovery + continuity: PASS`. It also recorded `Synthetic conversation history: PASS`. A timeout in a post-acceptance stop-button click falsely caused the combined workflow to end red; the click was teardown, after all continuity and history assertions had passed. PR for best-effort teardown is in preparation on branch `phase-3/fix-smoke-cleanup-click`.
+- Unrelated live-grounding, ranked-list/card fallback and voice-memory synthetic failures remain deferred by owner decision. They are tracked separately and are not evidence that the D1 owner-isolation or live transcript persistence gates failed.
 
 ## Evidence and diagnosis
 
@@ -72,20 +74,24 @@ Phase 1 speech continuity is verified on deployed `0.4.51`: the production synth
 
 ## Phase 3 verification follow-up — nested Live transcription parsing
 
-- Deployed `0.4.56` confirmed healthy and critical routes passed; production API smoke passed all owner-isolation, ordering, idempotency, summary/task restoration, archive and delete checks.
-- The additional real-microphone persistence assertion failed. Captured provider frames showed `outputTranscription` in nested `serverContent`, while the browser handler only consumed nested snake_case `output_transcription` / `input_transcription`. The input transcription count and rendered transcript remained zero, so the D1 hook had no finalized user text to save.
-- Follow-up branch: `phase-3/fix-transcript-frame-casing`; candidate release `0.4.57`. The client now accepts both nested camelCase and snake_case transcription fields. Regression coverage asserts this wire shape. The real-microphone synthetic also deletes its disposable history topic on success/failure cleanup.
-- The 0.4.56 run also saw the delayed real-microphone continuity assertion fail to receive fresh assistant audio in that test attempt, despite the earlier Phase 2 recovery gate passing. Treat this as a separate continuity reliability risk that must be re-evaluated; do not misattribute it to transcript parsing.
-- Current status: parser fix release validation and a rerun of production microphone persistence are pending. Phase 3 is not complete until the deployed real-microphone test saves both roles plus summary/task goal. Known web-grounding and voice-memory failures remain deferred by owner decision.
+- Deployed `0.4.56` had a healthy Worker and passing direct authenticated history API smoke, but the real-microphone transcript persistence check failed because nested Gemini Live `serverContent.inputTranscription` / `outputTranscription` camelCase fields were not read by the browser parser.
+- [PR #177](https://github.com/ashini-x/askmoina-voice/pull/177), merged as `c8bc6a99cfc3b5e25494bbf5707fe5ee50f769ea`, fixed the browser parser to accept nested camelCase and snake_case frames, synchronized embedded assets, and added parser regression coverage. Deployed candidate release is `0.4.57`.
+- In production [run 38900898300](https://github.com/ashini-x/askmoina-voice/actions/runs/38900898300), the browser synthetic emitted:
+  - `Production finalized transcript persistence: PASS`: a real browser microphone user turn, assistant reply, summary and non-empty task goal were saved in D1 without logging transcript text.
+  - `Production audiovisual Live recovery + continuity: PASS`: forced browser network loss, exactly one recovered socket, two completed post-170-second spoken turns with fresh assistant audio, stable live UI and no stale reconnect notice.
+  - `Synthetic conversation history: PASS`: authenticated API create/read/append, order, idempotent retry, summary/task restore, cross-user denial, archive and delete.
+- The overall deployment workflow still ended `failure` for separate grounding/ranked-list/voice-memory synthetic failures that the owner has explicitly deferred, plus a Playwright timeout during the final stop-button teardown **after** the continuity synthetic printed PASS. This teardown was not part of the acceptance criteria and is being made best-effort in branch `phase-3/fix-smoke-cleanup-click`.
+- The production migration `0006_conversation_history.sql` and Wrangler `d1_migrations` records are present. Because the GitHub deployment token lacks D1 API permission (Cloudflare error 7403), migrations must be applied and verified through the authorized Cloudflare control plane before any future Worker that requires new schema is promoted.
+- Status: Phase 3 persistence/owner-isolation and actual microphone transcript acceptance have passed against deployed `0.4.57`. The remaining full-workflow red checks are listed above and are intentionally deferred; the final smoke cleanup fix is test-only and does not change the Worker release.
 
-## Phase 3 — persistent conversation history (API merged; browser integration release candidate)
+## Phase 3 — persistent conversation history (deployed and live acceptance passed)
 
 - API/schema PR: [#175 — Phase 3: Add secure persistent conversation history](https://github.com/ashini-x/askmoina-voice/pull/175), merged as `6c81c739631c671b49cc2a6ed68f3eade0334ed6`.
-- Dedicated browser integration branch: `phase-3/connect-live-transcripts`; candidate release `0.4.56`.
+- Browser integration PR [#176](https://github.com/ashini-x/askmoina-voice/pull/176) and parser-fix PR [#177](https://github.com/ashini-x/askmoina-voice/pull/177) are merged; deployed release `0.4.57`.
 - D1 schema: `conversations` is owned by authenticated `account_users.user_id` and stores a title, compact summary, bounded JSON task progress, active/archived status and timestamps. `conversation_turns` stores only finalized user/assistant text with server IDs, sequence numbers and per-conversation idempotency keys. Composite foreign keys and owner/order indexes enforce ownership and deletion.
 - APIs: `GET/POST /api/conversations`, `GET/PATCH/DELETE /api/conversations/:id`, and `POST /api/conversations/:id/turns`. Reads and writes are owner-scoped; writes require same-origin requests; body/content limits are enforced; conflicting idempotency-key reuse returns 409.
 - Browser integration: real finalized transcripts now enqueue owner-scoped turns in order, attach compact summary/task progress to assistant turns, retry transient append errors with the same idempotency key, and fail open so D1 errors do not stop live voice. The first-call greeting alone is not stored. A new manual topic gets a new conversation scope; automatic reconnect keeps the same scope.
 - Retention/privacy: history remains until owner deletion or account deletion. Analytics cleanup does not delete conversation history. Conversation deletion cascades to turns. Raw audio/video, live sockets, resume handles and replay buffers are not stored in D1.
 - Migration rollout: migration 0006 and its Wrangler filename tracking are verified on production via the authorized Cloudflare control plane. The GitHub deployment token lacks D1 API permission (Cloudflare code 7403), so remote migration application was removed from the Worker deploy workflow; do not add a pending D1 migration without applying/verifying it through an authorized migration process first.
-- Production acceptance now includes both the disposable-account direct API smoke and an extension to the real-microphone continuity synthetic that verifies a saved user turn, assistant turn, summary and task state without printing transcript text.
-- Status at this revision: browser integration PR, release validation and production end-to-end verification are pending. Do not call Phase 3 complete until release `0.4.56` is deployed and both API and real-microphone transcript persistence checks pass.
+- Production acceptance includes the disposable-account direct API smoke and the real-microphone continuity synthetic that verifies saved user/assistant turns, summary and task goal without printing transcript text. Both passed on `0.4.57`.
+- Phase 3 acceptance is met for persistent history, account isolation, idempotent ordered turns, summary/task restoration, deletion and real-browser microphone transcription. The aggregate workflow remains red only for previously deferred live grounding/ranked-list/voice-memory tests and a post-pass teardown timeout; branch `phase-3/fix-smoke-cleanup-click` makes that final stop-button teardown best-effort without lowering acceptance assertions.
