@@ -75,7 +75,7 @@ export function extractPreference(text: string): string | null {
   const value = text.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   if (!value || value.length > 20_000) return null;
   // Store only directly stated, reusable preferences—not inferred traits or general facts.
-  const pattern = /(?:please remember that\s+)?(?:i prefer(?: to)?|i like|i love|i enjoy|i usually|i always|i never|i dislike|i hate|i do not like|i don't like|my favorite(?: thing)? is|my favourite(?: thing)? is|please always|please never|from now on|call me|refer to me as|answer me in|speak to me in|when you answer(?: me)?|i am more comfortable with|i'm more comfortable with|i want you to)\s+[^.!?\n]{2,220}/i;
+  const pattern = /(?:please remember that\s+)?(?:i prefer(?: to)?|i like|i love|i enjoy|i usually|i always|i never|i dislike|i hate|i do not like|i don't like|my favorite(?: thing)? is|my favourite(?: thing)? is|please always|please never|from now on|call me|refer to me as|answer me in|speak to me in|when you answer(?: me)?|i am more comfortable with|i'm more comfortable with|i want you to)\s*[,;:]?\s+[^.!?\n]{2,220}/i;
   const match = value.match(pattern);
   if (!match) return null;
   const candidate = cleanContent(match[0].replace(/[,;\s]+$/, ""));
