@@ -301,7 +301,7 @@ jobs:
             head -c 1000 /tmp/moina-install.html || true
             exit 1
           fi
-          echo "PWA installation landing: OK"
+          echo "PWA installation landing and lowercase askmoina CTA: OK"
 
           status="$(fetch_status /manifest.webmanifest /tmp/moina-manifest.json)"
           if [[ "$status" != "200" ]]; then
