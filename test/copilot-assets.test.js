@@ -129,8 +129,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.89');
-    expect(html).toContain('/copilot.js?v=0.4.89');
+    expect(html).toContain('/copilot.css?v=0.4.90');
+    expect(html).toContain('/copilot.js?v=0.4.90');
   });
 
   it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
@@ -154,6 +154,28 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("transition:transform 45ms linear,border-radius 45ms linear,filter 45ms linear;");
   });
 
+  it("runs a persistent state-aware RAF loop that morphs the live orb even at idle", () => {
+    expect(script).toContain("let orbAnimationFrame = 0;");
+    expect(script).toContain("function runLiquidOrbAnimationFrame(timestamp)");
+    expect(script).toContain("function startLiquidOrbAnimation()");
+    expect(script).toContain("window.requestAnimationFrame(runLiquidOrbAnimationFrame)");
+    expect(script).toContain("orbAnimationTime += orbAnimationDeltaSeconds");
+    expect(script).toContain('const stateDrive = state === "processing" ? 0.68');
+    expect(script).toContain('state === "responding" ? 0.34');
+    expect(script).toContain('state === "listening" ? 0.27');
+    expect(script).toContain('state === "connecting" ? 0.24');
+    expect(script).toContain('document.addEventListener("visibilitychange", () => {');
+    expect(script).toContain("handleOrbMotionPreferenceChange");
+    expect(script).toContain("stopLiquidOrbAnimation(true)");
+    expect(script).toContain('Math.max(level, assistantVoiceEnergy)');
+    expect(script).toContain('Math.max(level, microphoneVoiceEnergy)');
+    expect(script).toContain('layer.element.style.transform = "translate3d("');
+    expect(script).toContain('layer.element.style.borderRadius = shapeA.toFixed(1)');
+    expect(css).toContain("/* Living orb motion engine: RAF drives the actual surface geometry and reflections continuously. */");
+    expect(css).toContain("animation:none!important;transition:opacity .2s ease");
+    expect(css).toContain("@media(prefers-reduced-motion:reduce)");
+  });
+
   it("makes the processing orb visually distinct with moving liquid currents, a rotating rim, and specular glints", () => {
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after');
     expect(css).toContain("animation:askmoina-orb-thinking-orbit 2.25s linear infinite,askmoina-orb-thinking-glint 1.55s ease-in-out infinite;");
@@ -167,8 +189,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
     expect(html).not.toContain('class="askmoina-control-mark"');
-    expect(html).toContain('/copilot.css?v=0.4.89');
-    expect(html).toContain('/copilot.js?v=0.4.89');
+    expect(html).toContain('/copilot.css?v=0.4.90');
+    expect(html).toContain('/copilot.js?v=0.4.90');
     expect(css).not.toContain('mask-image:url("/askmoina-mark.svg');
     expect(css).not.toContain(".askmoina-control-mark");
   });
