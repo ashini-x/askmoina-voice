@@ -534,8 +534,8 @@ describe("Live Co-Pilot browser assets", () => {
 
 describe("Native mobile-first AskMoina shell", () => {
   it("lands signed-in users on the camera instead of a website product chooser", () => {
-    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.64\", authenticated)");
-    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.64\", true)");
+    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.80\", authenticated)");
+    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.80\", true)");
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(workerSource).toContain('url.pathname === "/login" || url.pathname === "/login.html"');
     expect(workerSource).toContain('authenticated ? "camera" : "login"');
@@ -581,7 +581,7 @@ describe("Native mobile-first AskMoina shell", () => {
 
   it("serves secondary information as mobile screens, not blank placeholders with a generic header", () => {
     expect(workerSource).toContain("const NATIVE_SITE_INFO");
-    expect(workerSource).toContain("renderSiteInfoPage(infoPath, env.APP_VERSION || \"0.4.64\")");
+    expect(workerSource).toContain("renderSiteInfoPage(infoPath, env.APP_VERSION || \"0.4.80\")");
     expect(workerSource).toContain("url.searchParams.has(\"view\")");
     expect(workerSource).not.toContain("const pageHtml = withSiteChrome(infoPage");
     for (const phrase of ["A camera-first co-pilot for the real world.", "Developer resources are being prepared.", "Your camera. Your control.", "Partnership and investor information is being prepared.", "Donation processing is not enabled on this page yet"]) {
