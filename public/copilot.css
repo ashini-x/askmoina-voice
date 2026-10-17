@@ -1861,3 +1861,127 @@ h2{letter-spacing:-.03em}
 h3,h4,h5,h6{letter-spacing:-.02em}
 
 .edge-glow{display:none!important}
+
+
+/* Reference orb: a glossy, iridescent liquid sphere with slow three-dimensional currents. */
+#toggleCopilot.askmoina-orb-control {
+  border-color:rgba(225,237,255,.42)!important;
+  background:radial-gradient(circle at 35% 24%,#1d263c 0%,#0d1425 56%,#030406 100%)!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.035),0 0 22px rgba(71,169,255,.17),0 0 38px rgba(167,91,255,.13),0 9px 28px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.25),inset 0 -10px 18px rgba(0,0,0,.34)!important;
+}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior {
+  inset:3px!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+  background:
+    radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.93) 0%,rgba(221,246,255,.50) 4%,rgba(123,210,255,.10) 14%,transparent 27%),
+    radial-gradient(ellipse at 26% 39%,rgba(60,227,255,.94) 0%,rgba(52,194,255,.58) 17%,transparent 42%),
+    radial-gradient(ellipse at 71% 33%,rgba(73,130,255,.88) 0%,rgba(80,117,255,.46) 25%,transparent 51%),
+    radial-gradient(ellipse at 64% 72%,rgba(210,87,255,.94) 0%,rgba(164,93,255,.54) 25%,transparent 49%),
+    radial-gradient(ellipse at 39% 82%,rgba(43,133,255,.78) 0%,rgba(60,92,226,.44) 26%,transparent 55%),
+    radial-gradient(ellipse at 89% 75%,rgba(255,122,213,.82) 0%,transparent 35%),
+    radial-gradient(circle at 50% 48%,#365de2 0%,#1832a2 43%,#0a103a 77%,#060917 100%)!important;
+  box-shadow:inset -7px -9px 15px rgba(4,8,39,.57),inset 4px 4px 12px rgba(211,244,255,.22),inset 0 -1px 1px rgba(255,255,255,.2)!important;
+  transform:none!important;
+  filter:saturate(1.2) brightness(1.08)!important;
+}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow {opacity:.45;filter:blur(4px) brightness(1.2);mix-blend-mode:screen}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow-cyan {opacity:.72;animation:askmoina-flow-cyan 7.2s cubic-bezier(.45,0,.3,1) infinite}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow-blue {opacity:.73;animation:askmoina-flow-blue 9.1s cubic-bezier(.45,0,.3,1) infinite reverse}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow-violet {opacity:.7;animation:askmoina-flow-violet 8.2s cubic-bezier(.45,0,.3,1) infinite}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow-pink {opacity:.58;animation:askmoina-flow-pink 10.4s cubic-bezier(.45,0,.3,1) infinite reverse}
+.askmoina-orb-surface-cyan,.askmoina-orb-surface-violet,.askmoina-orb-surface-pink,.askmoina-orb-surface-ribbon,.askmoina-orb-specular,.askmoina-orb-gloss {
+  position:absolute;display:block;pointer-events:none;border-radius:50%;mix-blend-mode:screen;
+}
+.askmoina-orb-surface-cyan {
+  z-index:4;left:-21%;top:8%;width:78%;height:76%;
+  background:radial-gradient(ellipse at 64% 42%,rgba(129,250,255,.76),rgba(35,209,255,.4) 21%,rgba(27,116,255,.16) 50%,transparent 73%);
+  filter:blur(2px);opacity:.9;animation:askmoina-surface-cyan 8.6s ease-in-out infinite;
+}
+.askmoina-orb-surface-violet {
+  z-index:4;left:35%;top:28%;width:85%;height:80%;
+  background:radial-gradient(ellipse at 56% 47%,rgba(243,163,255,.8),rgba(182,95,255,.48) 25%,rgba(87,75,255,.16) 55%,transparent 75%);
+  filter:blur(3px);opacity:.85;animation:askmoina-surface-violet 9.8s ease-in-out infinite;
+}
+.askmoina-orb-surface-pink {
+  z-index:4;left:15%;top:56%;width:74%;height:60%;
+  background:radial-gradient(ellipse at 56% 38%,rgba(255,185,231,.76),rgba(255,100,208,.36) 25%,transparent 69%);
+  filter:blur(2px);opacity:.8;animation:askmoina-surface-pink 7.6s ease-in-out infinite alternate;
+}
+.askmoina-orb-surface-ribbon {
+  z-index:5;left:-22%;top:30%;width:142%;height:33%;
+  border-top:2px solid rgba(219,253,255,.54);border-bottom:1px solid rgba(192,208,255,.16);
+  border-radius:54% 46% 45% 55%/58% 39% 61% 42%;
+  background:linear-gradient(180deg,rgba(120,240,255,.13),rgba(140,180,255,.04) 46%,transparent 78%);
+  filter:blur(.5px);opacity:.7;transform:rotate(-29deg);animation:askmoina-surface-ribbon 8.3s ease-in-out infinite alternate;
+}
+.askmoina-orb-specular {
+  z-index:7;left:14%;top:8%;width:34%;height:21%;
+  border-radius:53% 47% 60% 40%/62% 47% 53% 38%;
+  background:radial-gradient(ellipse at 40% 39%,rgba(255,255,255,.96),rgba(229,250,255,.68) 25%,rgba(167,225,255,.20) 58%,transparent 78%);
+  filter:blur(1px);opacity:.94;transform:rotate(-26deg);animation:askmoina-orb-glint 4.7s ease-in-out infinite;
+}
+.askmoina-orb-gloss {
+  z-index:6;inset:-1px;border-radius:50%;
+  background:radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.18),transparent 23%),radial-gradient(ellipse at 50% 110%,rgba(2,5,38,.72),transparent 58%),linear-gradient(130deg,rgba(255,255,255,.11),transparent 28%,transparent 67%,rgba(255,255,255,.14));
+  box-shadow:inset 1px 1px 2px rgba(255,255,255,.38),inset -7px -8px 13px rgba(3,5,37,.5);
+}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-flow,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-surface-cyan,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-surface-violet,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-surface-pink,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-surface-ribbon,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-specular,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior > .askmoina-orb-gloss {animation-play-state:running}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-flow,
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-flow {opacity:.34}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-surface-cyan,
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-surface-cyan {opacity:.72}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-surface-violet,
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-surface-violet {opacity:.62}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-surface-pink,
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-surface-pink {opacity:.48}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior {
+  filter:saturate(1.35) brightness(1.16)!important;
+  box-shadow:inset -6px -8px 14px rgba(4,8,39,.46),inset 5px 5px 15px rgba(225,246,255,.26),0 0 18px rgba(76,185,255,.10)!important;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-surface-ribbon {opacity:.96;animation-duration:3.6s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-surface-cyan {opacity:1;animation-duration:4.1s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-surface-violet {opacity:.98;animation-duration:4.8s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-surface-pink {opacity:.78;animation-duration:3.9s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-surface-ribbon,
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-surface-ribbon {animation-duration:6.2s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-specular {opacity:1;animation-duration:2.8s}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {opacity:1}
+@keyframes askmoina-surface-cyan {
+  0%,100%{transform:translate(-2%,0) rotate(-16deg) scale(.95,.93);border-radius:55% 45% 64% 36%/48% 34% 66% 52%}
+  38%{transform:translate(9%,3%) rotate(-4deg) scale(1.04,1.02);border-radius:41% 59% 45% 55%/62% 40% 60% 38%}
+  71%{transform:translate(3%,-4%) rotate(9deg) scale(.99,1.06);border-radius:62% 38% 53% 47%/39% 59% 41% 61%}
+}
+@keyframes askmoina-surface-violet {
+  0%,100%{transform:translate(2%,4%) rotate(13deg) scale(.92,.96);border-radius:43% 57% 62% 38%/38% 52% 48% 62%}
+  34%{transform:translate(-5%,-4%) rotate(-8deg) scale(1.06,1.03);border-radius:59% 41% 42% 58%/57% 38% 62% 43%}
+  73%{transform:translate(-2%,1%) rotate(5deg) scale(.98,.9);border-radius:47% 53% 58% 42%/43% 62% 38% 57%}
+}
+@keyframes askmoina-surface-pink {
+  0%,100%{transform:translate(-4%,2%) rotate(-15deg) scale(.94,.9);border-radius:58% 42% 48% 52%/62% 39% 61% 38%}
+  50%{transform:translate(8%,-5%) rotate(8deg) scale(1.07,1.02);border-radius:42% 58% 62% 38%/42% 62% 38% 58%}
+}
+@keyframes askmoina-surface-ribbon {
+  0%,100%{transform:translate(-2%,0) rotate(-30deg) scaleY(.88);opacity:.46}
+  50%{transform:translate(8%,2%) rotate(-22deg) scaleY(1.08);opacity:.84}
+}
+@keyframes askmoina-orb-glint {
+  0%,100%{opacity:.73;transform:translate(-1%,0) rotate(-26deg) scale(.96)}
+  50%{opacity:1;transform:translate(5%,3%) rotate(-21deg) scale(1.09)}
+}
+@media(prefers-reduced-motion:reduce) {
+  #toggleCopilot.askmoina-orb-control:before,
+  #toggleCopilot.askmoina-orb-control:after,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-flow,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-cyan,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-violet,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-pink,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-ribbon,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-specular {animation:none!important}
+}
