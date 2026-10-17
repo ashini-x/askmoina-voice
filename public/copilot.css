@@ -1578,3 +1578,119 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 @media(prefers-reduced-motion:reduce) {
   .camera-stage .edge-glow>span::before,.camera-stage .edge-glow>span::after { animation-duration:9s!important; }
 }
+
+/* Shared boundaryless ambient edge light for entry, assistant selection and camera.
+   Every highlight starts at the INSIDE of the screen edge. No rounded path, border,
+   outline or centre bloom is drawn. The camera keeps its separate sound-reactive wave. */
+.ambient-edge-light {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  contain: paint;
+  border-radius: 0 !important;
+}
+.ambient-edge-light::before,
+.ambient-edge-light::after {
+  content: "" !important;
+  display: block;
+  position: absolute;
+  inset: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  transform-origin: center;
+}
+/* Broad, very soft color fields are restricted to the outer edges and corners. */
+.ambient-edge-light::before {
+  background:
+    radial-gradient(ellipse 28% 17% at 0% 0%, rgba(133, 94, 255, .25) 0%, rgba(133, 94, 255, .10) 43%, transparent 82%),
+    radial-gradient(ellipse 25% 16% at 100% 0%, rgba(70, 165, 255, .20) 0%, rgba(70, 165, 255, .08) 46%, transparent 82%),
+    radial-gradient(ellipse 28% 21% at 0% 100%, rgba(124, 79, 238, .22) 0%, rgba(124, 79, 238, .08) 48%, transparent 82%),
+    radial-gradient(ellipse 27% 20% at 100% 100%, rgba(54, 157, 236, .21) 0%, rgba(54, 157, 236, .08) 47%, transparent 82%),
+    linear-gradient(90deg,
+      rgba(116, 83, 221, .14) 0%,
+      rgba(116, 83, 221, .075) 2.2%,
+      rgba(116, 83, 221, .025) 5.5%,
+      transparent 11%,
+      transparent 89%,
+      rgba(45, 137, 220, .025) 94.5%,
+      rgba(45, 137, 220, .075) 97.8%,
+      rgba(53, 155, 227, .14) 100%);
+  opacity: .64;
+  animation: askmoina-ambient-edge-breathe 11.5s ease-in-out infinite alternate;
+}
+/* A dimmer, shorter travelling bloom gives the light gentle movement without a border. */
+.ambient-edge-light::after {
+  background:
+    radial-gradient(ellipse 17% 10% at 1.5% 2%, rgba(194, 161, 255, .28) 0%, rgba(150, 113, 255, .12) 42%, transparent 82%),
+    radial-gradient(ellipse 16% 10% at 98.5% 3%, rgba(143, 213, 255, .24) 0%, rgba(76, 175, 255, .11) 45%, transparent 82%),
+    radial-gradient(ellipse 17% 12% at 1% 98%, rgba(171, 137, 255, .25) 0%, rgba(131, 92, 247, .10) 46%, transparent 82%),
+    radial-gradient(ellipse 17% 12% at 99% 98%, rgba(136, 222, 255, .23) 0%, rgba(60, 164, 244, .09) 45%, transparent 82%);
+  opacity: .35;
+  animation: askmoina-ambient-edge-drift 13.8s ease-in-out infinite;
+}
+@keyframes askmoina-ambient-edge-breathe {
+  0%, 100% { opacity: .48; }
+  50% { opacity: .67; }
+}
+@keyframes askmoina-ambient-edge-drift {
+  0%, 100% { opacity: .24; transform: translate3d(0, 0, 0) scale(1); }
+  50% { opacity: .42; transform: translate3d(0, 1px, 0) scale(1.006); }
+}
+/* The entry overlay previously used a rounded, rotating conic outline. Remove it entirely. */
+.entry-overlay::before,
+.entry-overlay::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  animation: none !important;
+}
+.entry-overlay > .ambient-edge-light {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  opacity: .82;
+}
+.entry-overlay > .entry-auth-panel,
+.entry-overlay > .biometric-auth-stage {
+  position: relative;
+  z-index: 2;
+}
+.entry-overlay.is-biometric > .biometric-auth-stage {
+  background: transparent !important;
+}
+.assistant-selection-stage > .ambient-edge-light {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: .8;
+}
+.assistant-selection-stage > .assistant-selection-content {
+  z-index: 2 !important;
+}
+.camera-stage > .ambient-edge-light {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: .7;
+}
+.camera-stage.pre-start > .ambient-edge-light {
+  opacity: .64;
+}
+.camera-stage.is-listening > .ambient-edge-light,
+.camera-stage.is-processing > .ambient-edge-light,
+.camera-stage.is-speaking > .ambient-edge-light {
+  opacity: .52;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-edge-light::before,
+  .ambient-edge-light::after {
+    animation: none !important;
+  }
+}
