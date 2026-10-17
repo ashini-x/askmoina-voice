@@ -109,19 +109,62 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
   </section>
 </div>
 <div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
-const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding" id="postAuthOnboarding" aria-label="askmoina welcome" hidden>
-  <section class="post-auth-onboarding-stage post-auth-account-created" id="postAuthAccountCreated" aria-labelledby="postAuthSuccessTitle">
-    <div class="post-auth-success-content">
-      <div class="post-auth-success-artwork" aria-hidden="true"><img class="post-auth-success-orb-image" src="/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.96" alt="" width="512" height="512" decoding="async" fetchpriority="high"></div>
-      <h1 id="postAuthSuccessTitle">You're all set!</h1>
-      <p>Welcome to askmoina.<br>Let's solve real-world problems together.</p>
-      <button type="button" class="post-auth-get-started" id="onboardingGetStarted">Get Started</button>
+const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding assistant-journey" id="postAuthOnboarding" aria-label="Choose an askmoina assistant" hidden>
+  <section class="post-auth-onboarding-stage assistant-selection-stage" id="assistantSelectionStage" aria-labelledby="assistantSelectionTitle" hidden>
+    <div class="assistant-selection-content">
+      <header class="assistant-selection-heading">
+        <h1 id="assistantSelectionTitle">Welcome, <span id="assistantSelectionFirstName">Newton</span></h1>
+        <p>Choose your assistant experience.</p>
+      </header>
+      <button type="button" class="assistant-option assistant-option-primary" id="selectMoinaOS1" aria-label="Open moinaOS 1 details">
+        <span class="assistant-card-art" aria-hidden="true"></span>
+        <span class="assistant-card-copy">
+          <span class="assistant-card-title">moinaOS 1</span>
+          <span class="assistant-card-description">Real-time visual intelligence for everyday life.</span>
+        </span>
+        <span class="assistant-card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M12 5l7 7-7 7"/></svg></span>
+      </button>
+      <button type="button" class="assistant-option assistant-option-locked" id="selectMoinaOS2" aria-describedby="moinaOS2Description" aria-label="moinaOS 2, Next Release. Not available yet.">
+        <span class="assistant-card-art assistant-card-art-frosted" aria-hidden="true"></span>
+        <span class="assistant-card-copy assistant-card-copy-locked">
+          <span class="assistant-card-title">moinaOS 2</span>
+          <span class="assistant-card-release"><span class="assistant-lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="10.5" width="11" height="9" rx="2"/><path d="M9 10.5V8a3 3 0 0 1 6 0v2.5M12 14v2"/></svg></span><span>Next Release</span></span>
+          <span class="assistant-card-description" id="moinaOS2Description">A more advanced assistant experience is coming soon.</span>
+        </span>
+      </button>
+      <p class="assistant-release-notice" id="moinaOS2Notice" role="status" aria-live="polite" hidden>moinaOS 2 is planned for a future release.</p>
+    </div>
+  </section>
+  <section class="post-auth-onboarding-stage moinaos1-details-stage" id="moinaOS1DetailsStage" aria-labelledby="moinaOS1DetailsTitle" hidden>
+    <button type="button" class="moinaos1-details-back" id="assistantDetailsBack" aria-label="Back to assistant selection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button>
+    <div class="moinaos1-details-content">
+      <header class="moinaos1-details-heading">
+        <h1 id="moinaOS1DetailsTitle">moinaOS 1</h1>
+        <p>Your real-world AI assistant.</p>
+      </header>
+      <section class="moinaos1-feature-panel" aria-label="moinaOS 1 features">
+        <div class="moinaos1-feature-row">
+          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5h3l1.5-2h7l1.5 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+          <span class="moinaos1-feature-copy"><strong>Live camera assistance</strong><span>See, ask and get step-by-step help</span></span>
+        </div>
+        <div class="moinaos1-feature-row">
+          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5M8 10.5h5M10.5 8v5"/></svg></span>
+          <span class="moinaos1-feature-copy"><strong>Real-time search &amp; verification</strong><span>Get accurate, up-to-date answers</span></span>
+        </div>
+        <div class="moinaos1-feature-row">
+          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="3.5"/></svg></span>
+          <span class="moinaos1-feature-copy"><strong>Visual guidance</strong><span>Understand and solve real problems</span></span>
+        </div>
+        <div class="moinaos1-feature-row">
+          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 14.5v2.5"/></svg></span>
+          <span class="moinaos1-feature-copy"><strong>Private and secure</strong><span>Your data stays in your control</span></span>
+        </div>
+      </section>
+      <button type="button" class="moinaos1-start-button" id="startMoinaOS1">Start with moinaOS 1 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
     </div>
   </section>
   <section class="post-auth-onboarding-stage post-auth-slide-stage" id="postAuthSlideStage" aria-labelledby="postAuthSlideTitle" hidden>
-    <div class="post-auth-slide-copy">
-      <h1 id="postAuthSlideTitle">Slide to show<br>your problem</h1>
-    </div>
+    <div class="post-auth-slide-copy"><h1 id="postAuthSlideTitle">Slide to show<br>your problem</h1></div>
     <div class="post-auth-onboarding-slider-slot" id="onboardingSliderSlot" aria-label="Start camera guidance"></div>
   </section>
 </section>`;

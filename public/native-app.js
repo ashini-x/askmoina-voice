@@ -43,24 +43,47 @@
 
 
 
-/* Post-auth onboarding: Interface 6 -> Interface 15 -> live camera, then Interface 15 on manual disconnect. */
+/* Post-auth onboarding: assistant selection -> moinaOS 1 details -> camera slider. */
 (() => {
   "use strict";
-  const overlay = document.querySelector("#postAuthOnboarding");
-  const successStage = document.querySelector("#postAuthAccountCreated");
-  const slideStage = document.querySelector("#postAuthSlideStage");
-  const getStarted = document.querySelector("#onboardingGetStarted");
-  const sliderSlot = document.querySelector("#onboardingSliderSlot");
-  const slider = document.querySelector("#showProblemButton");
-  if (!overlay || !successStage || !slideStage || !getStarted || !sliderSlot || !slider) return;
+  const $ = (selector) => document.querySelector(selector);
+  const overlay = $("#postAuthOnboarding");
+  const selectionStage = $("#assistantSelectionStage");
+  const detailsStage = $("#moinaOS1DetailsStage");
+  const slideStage = $("#postAuthSlideStage");
+  const chooseMoinaOS1 = $("#selectMoinaOS1");
+  const chooseMoinaOS2 = $("#selectMoinaOS2");
+  const moinaOS2Notice = $("#moinaOS2Notice");
+  const detailsBack = $("#assistantDetailsBack");
+  const startMoinaOS1 = $("#startMoinaOS1");
+  const sliderSlot = $("#onboardingSliderSlot");
+  const slider = $("#showProblemButton");
+  const nameNode = $("#assistantSelectionFirstName");
+  if (!overlay || !selectionStage || !detailsStage || !slideStage || !chooseMoinaOS1 ||
+      !chooseMoinaOS2 || !detailsBack || !startMoinaOS1 || !sliderSlot || !slider) return;
 
-  const isNewAuthJourney = new URLSearchParams(window.location.search).get("onboarding") === "1";
+  const isAssistantSelectionJourney = new URLSearchParams(window.location.search).get("onboarding") === "1";
   const originalParent = slider.parentNode;
   const originalNextSibling = slider.nextSibling;
   const label = slider.querySelector("#visionSlideLabel");
   const screenReaderLabel = slider.querySelector(".sr-only");
   let completionObserver = null;
   let closeTimer = null;
+  let releaseNoticeTimer = null;
+
+  const loadSignedInName = async () => {
+    if (!nameNode) return;
+    try {
+      const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const data = await response.json();
+      const possibleName = [data.firstName, data.displayName, data.name]
+        .find((value) => typeof value === "string" && value.trim().length > 0);
+      if (possibleName) nameNode.textContent = possibleName.trim().split(/\s+/)[0];
+    } catch (_) {
+      // Keep the reference-friendly Newton fallback when a profile name is not available.
+    }
+  };
 
   const setSliderCopy = () => {
     if (!label || slideStage.hidden) return;
@@ -101,6 +124,32 @@
     document.body.classList.remove("post-auth-onboarding-active");
   };
 
+  const showSelectionStage = (focusCard = true) => {
+    if (closeTimer) window.clearTimeout(closeTimer);
+    closeTimer = null;
+    completionObserver?.disconnect();
+    completionObserver = null;
+    selectionStage.hidden = false;
+    detailsStage.hidden = true;
+    slideStage.hidden = true;
+    overlay.hidden = false;
+    overlay.classList.remove("is-slide-mode");
+    document.body.classList.add("post-auth-onboarding-active");
+    if (focusCard) chooseMoinaOS1.focus({ preventScroll: true });
+  };
+
+  const showDetailsStage = () => {
+    if (releaseNoticeTimer) window.clearTimeout(releaseNoticeTimer);
+    if (moinaOS2Notice) moinaOS2Notice.hidden = true;
+    selectionStage.hidden = true;
+    detailsStage.hidden = false;
+    slideStage.hidden = true;
+    overlay.hidden = false;
+    overlay.classList.remove("is-slide-mode");
+    document.body.classList.add("post-auth-onboarding-active");
+    startMoinaOS1.focus({ preventScroll: true });
+  };
+
   const observeSliderCompletion = () => {
     completionObserver?.disconnect();
     completionObserver = new MutationObserver(() => {
@@ -109,7 +158,7 @@
         return;
       }
       if (closeTimer) return;
-      // Keep the slide visible while the Live session opens, then reveal the camera.
+      // Keep the slide visible while the real Live session opens, then reveal the camera.
       closeTimer = window.setTimeout(restoreSliderAndClose, 220);
     });
     completionObserver.observe(slider, { attributes: true, attributeFilter: ["class"] });
@@ -120,7 +169,8 @@
     closeTimer = null;
     completionObserver?.disconnect();
     completionObserver = null;
-    successStage.hidden = true;
+    selectionStage.hidden = true;
+    detailsStage.hidden = true;
     slideStage.hidden = false;
     overlay.hidden = false;
     overlay.classList.add("is-slide-mode");
@@ -133,27 +183,44 @@
     if (focusSlider) slider.focus({ preventScroll: true });
   };
 
-  getStarted.addEventListener("click", () => showSlideStage(true));
+  chooseMoinaOS1.addEventListener("click", showDetailsStage);
+  chooseMoinaOS2.addEventListener("click", () => {
+    if (!moinaOS2Notice) return;
+    moinaOS2Notice.hidden = false;
+    if (releaseNoticeTimer) window.clearTimeout(releaseNoticeTimer);
+    releaseNoticeTimer = window.setTimeout(() => { moinaOS2Notice.hidden = true; }, 3600);
+  });
+  detailsBack.addEventListener("click", () => showSelectionStage(true));
+  startMoinaOS1.addEventListener("click", () => showSlideStage(true));
   document.addEventListener("askmoina:user-disconnected", () => showSlideStage(true));
 
   const labelObserver = new MutationObserver(() => {
     if (slideStage.hidden || slider.classList.contains("is-complete")) return;
-    // The shared camera slider resets its label after an incomplete gesture.
     if (label && label.textContent === "Slide to start") setSliderCopy();
   });
   if (label) labelObserver.observe(label, { childList: true, characterData: true, subtree: true });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !slideStage.hidden && !overlay.hidden && !slider.classList.contains("is-complete")) {
-      event.preventDefault();
+    if (event.key === "Escape" && !overlay.hidden) {
+      if (!detailsStage.hidden) {
+        event.preventDefault();
+        showSelectionStage(true);
+      } else if (!selectionStage.hidden) {
+        event.preventDefault();
+      } else if (!slideStage.hidden && !slider.classList.contains("is-complete")) {
+        event.preventDefault();
+      }
     }
   });
 
-  if (isNewAuthJourney) {
-    successStage.hidden = false;
+  if (isAssistantSelectionJourney) {
+    selectionStage.hidden = false;
+    detailsStage.hidden = true;
     slideStage.hidden = true;
     overlay.classList.remove("is-slide-mode");
     overlay.hidden = false;
+    document.body.classList.add("post-auth-onboarding-active");
+    void loadSignedInName();
   } else {
     showSlideStage(false);
   }
