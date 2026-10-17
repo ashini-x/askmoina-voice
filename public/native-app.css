@@ -460,3 +460,61 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 @keyframes post-auth-orb-morph{0%{border-radius:45% 55% 51% 49%/48% 42% 58% 52%}100%{border-radius:55% 45% 43% 57%/42% 56% 44% 58%}}
 @media(max-height:620px){.post-auth-success-orb{width:80px;height:80px;margin-bottom:22px}.post-auth-success-content h1{font-size:1.55rem}.post-auth-get-started{margin-top:clamp(28px,8vh,58px)}.post-auth-slide-copy{transform:translateY(-5vh)}.post-auth-onboarding-slider-slot{bottom:max(82px,calc(env(safe-area-inset-bottom) + 14%))}}
 @media(prefers-reduced-motion:reduce){.post-auth-onboarding-stage,.post-auth-success-orb,.post-auth-success-orb:before,.post-auth-success-orb:after{animation:none!important;transition:none!important}}
+
+
+/* Interface 6: the same glossy, flowing 3D liquid sphere as the live Co-Pilot orb. */
+.post-auth-success-orb.presence-orb .presence-core {
+  overflow:hidden;border-radius:50%!important;
+  background:
+    radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.96) 0%,rgba(221,246,255,.54) 4%,rgba(123,210,255,.11) 14%,transparent 27%),
+    radial-gradient(ellipse at 26% 39%,rgba(60,227,255,.96) 0%,rgba(52,194,255,.62) 17%,transparent 42%),
+    radial-gradient(ellipse at 71% 33%,rgba(73,130,255,.9) 0%,rgba(80,117,255,.46) 25%,transparent 51%),
+    radial-gradient(ellipse at 64% 72%,rgba(210,87,255,.94) 0%,rgba(164,93,255,.56) 25%,transparent 49%),
+    radial-gradient(ellipse at 39% 82%,rgba(43,133,255,.8) 0%,rgba(60,92,226,.46) 26%,transparent 55%),
+    radial-gradient(ellipse at 89% 75%,rgba(255,122,213,.82) 0%,transparent 35%),
+    radial-gradient(circle at 50% 48%,#365de2 0%,#1832a2 43%,#0a103a 77%,#060917 100%);
+  box-shadow:inset -10px -12px 22px rgba(4,8,39,.52),inset 5px 5px 14px rgba(225,246,255,.26),0 0 28px rgba(91,161,255,.12)!important;
+  animation:core-breathe 4.8s ease-in-out infinite,liquid-morph 7s ease-in-out infinite alternate;
+}
+.post-auth-success-orb .liquid-current,.post-auth-success-orb .liquid-ribbon,.post-auth-success-orb .liquid-specular,.post-auth-success-orb .liquid-sheen {
+  position:absolute;display:block;pointer-events:none;border-radius:50%;mix-blend-mode:screen;
+}
+.post-auth-success-orb .liquid-current-cyan {
+  z-index:2;left:-21%;top:8%;width:78%;height:76%;
+  background:radial-gradient(ellipse at 64% 42%,rgba(129,250,255,.76),rgba(35,209,255,.4) 21%,rgba(27,116,255,.16) 50%,transparent 73%);
+  filter:blur(2px);opacity:.9;animation:askmoina-surface-cyan 8.6s ease-in-out infinite;
+}
+.post-auth-success-orb .liquid-current-violet {
+  z-index:2;left:35%;top:28%;width:85%;height:80%;
+  background:radial-gradient(ellipse at 56% 47%,rgba(243,163,255,.8),rgba(182,95,255,.48) 25%,rgba(87,75,255,.16) 55%,transparent 75%);
+  filter:blur(3px);opacity:.85;animation:askmoina-surface-violet 9.8s ease-in-out infinite;
+}
+.post-auth-success-orb .liquid-current-pink {
+  z-index:2;left:15%;top:56%;width:74%;height:60%;
+  background:radial-gradient(ellipse at 56% 38%,rgba(255,185,231,.76),rgba(255,100,208,.36) 25%,transparent 69%);
+  filter:blur(2px);opacity:.8;animation:askmoina-surface-pink 7.6s ease-in-out infinite alternate;
+}
+.post-auth-success-orb .liquid-ribbon {
+  z-index:3;left:-22%;top:30%;width:142%;height:33%;
+  border-top:2px solid rgba(219,253,255,.54);border-bottom:1px solid rgba(192,208,255,.16);
+  border-radius:54% 46% 45% 55%/58% 39% 61% 42%;
+  background:linear-gradient(180deg,rgba(120,240,255,.13),rgba(140,180,255,.04) 46%,transparent 78%);
+  filter:blur(.5px);opacity:.7;transform:rotate(-29deg);animation:askmoina-surface-ribbon 8.3s ease-in-out infinite alternate;
+}
+.post-auth-success-orb .liquid-specular {
+  z-index:4;left:14%;top:8%;width:34%;height:21%;
+  border-radius:53% 47% 60% 40%/62% 47% 53% 38%;
+  background:radial-gradient(ellipse at 40% 39%,rgba(255,255,255,.96),rgba(229,250,255,.68) 25%,rgba(167,225,255,.2) 58%,transparent 78%);
+  filter:blur(1px);opacity:.94;transform:rotate(-26deg);animation:askmoina-orb-glint 4.7s ease-in-out infinite;
+}
+.post-auth-success-orb .liquid-sheen {
+  z-index:5;inset:-1px;border-radius:50%;
+  background:radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.18),transparent 23%),radial-gradient(ellipse at 50% 110%,rgba(2,5,38,.72),transparent 58%),linear-gradient(130deg,rgba(255,255,255,.11),transparent 28%,transparent 67%,rgba(255,255,255,.14));
+  box-shadow:inset 1px 1px 2px rgba(255,255,255,.38),inset -7px -8px 13px rgba(3,5,37,.5);
+}
+@media(prefers-reduced-motion:reduce) {
+  .post-auth-success-orb.presence-orb,.post-auth-success-orb.presence-orb:before,.post-auth-success-orb.presence-orb:after,
+  .post-auth-success-orb .liquid-current,.post-auth-success-orb .liquid-ribbon,.post-auth-success-orb .liquid-specular {
+    animation:none!important;
+  }
+}

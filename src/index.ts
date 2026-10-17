@@ -107,7 +107,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
 const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding" id="postAuthOnboarding" aria-label="askmoina welcome" hidden>
   <section class="post-auth-onboarding-stage post-auth-account-created" id="postAuthAccountCreated" aria-labelledby="postAuthSuccessTitle">
     <div class="post-auth-success-content">
-      <div class="post-auth-success-orb presence-orb" aria-hidden="true"><span class="presence-core"></span><span class="presence-ribbon"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div>
+      <div class="post-auth-success-orb presence-orb" aria-hidden="true"><span class="presence-core"><span class="liquid-current liquid-current-cyan"></span><span class="liquid-current liquid-current-violet"></span><span class="liquid-current liquid-current-pink"></span><span class="liquid-ribbon"></span><span class="liquid-specular"></span><span class="liquid-sheen"></span></span><span class="presence-ribbon"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div>
       <h1 id="postAuthSuccessTitle">You're all set!</h1>
       <p>Welcome to askmoina.<br>Let's solve real-world problems together.</p>
       <button type="button" class="post-auth-get-started" id="onboardingGetStarted">Get Started</button>

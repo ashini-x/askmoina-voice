@@ -108,16 +108,15 @@ describe("Live Co-Pilot browser assets", () => {
     }
   });
 
-  it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
+  it("keeps the official bird asset geometry independent from the glossy liquid orb", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
     expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).toContain('class="askmoina-control-mark"');
-    expect(css).toContain(".askmoina-control-mark");
-    expect(css).toContain("width:44px!important;");
-    expect(css).toContain("height:auto!important;");
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.79")');
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).not.toContain('src="/askmoina-mark.svg?v=0.4.89"');
+    expect(css).toContain("/* Reference orb: a glossy, iridescent liquid sphere");
+    expect(css).toContain("radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.93)");
+    expect(css).toContain("border-radius:50%!important");
   });
 
   it("uses roomier Apple-like camera controls and a recognizable camera-switch icon", () => {
@@ -130,12 +129,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.79');
-    expect(html).toContain('/copilot.js?v=0.4.79');
+    expect(html).toContain('/copilot.css?v=0.4.89');
+    expect(html).toContain('/copilot.js?v=0.4.89');
   });
 
   it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
-    expect(css.trimEnd().endsWith(".edge-glow{display:none!important}")).toBe(true);
+    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css.indexOf(".edge-glow{display:none!important}")).toBeLessThan(css.indexOf("/* Reference orb: a glossy"));
     expect(script).toContain("syncLiquidOrbEnergy(energy);");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
@@ -154,31 +154,45 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("transition:transform 45ms linear,border-radius 45ms linear,filter 45ms linear;");
   });
 
-  it("makes the processing orb visually distinct with moving light currents, a rotating rim, and a breathing mark glow", () => {
+  it("makes the processing orb visually distinct with moving liquid currents, a rotating rim, and specular glints", () => {
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after');
     expect(css).toContain("animation:askmoina-orb-thinking-orbit 2.25s linear infinite,askmoina-orb-thinking-glint 1.55s ease-in-out infinite;");
     expect(css).toContain("askmoina-orb-thought-current 2.2s linear infinite");
     expect(css).toContain("askmoina-orb-thought-depth 1.7s ease-in-out infinite alternate");
     expect(css).toContain("animation:askmoina-flow-cyan 3.15s cubic-bezier(.45,0,.3,1) infinite;");
     expect(css).toContain("@keyframes askmoina-orb-thinking-halo");
-    expect(css).toContain("@keyframes askmoina-orb-thinking-mark");
+    expect(css).toContain("@keyframes askmoina-orb-glint");
+    expect(css).toContain("@keyframes askmoina-surface-ribbon");
+    expect(css).not.toContain(".askmoina-control-mark");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).toContain('/copilot.css?v=0.4.79');
-    expect(html).toContain('/copilot.js?v=0.4.79');
-    expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.79\")");
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).toContain('/copilot.css?v=0.4.89');
+    expect(html).toContain('/copilot.js?v=0.4.89');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg');
+    expect(css).not.toContain(".askmoina-control-mark");
   });
 
-  it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
+  it("renders the glossy 3D liquid orb with state-reactive cyan, blue, violet and pink currents", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).not.toContain("M7.1 4.2");
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).toContain('class="askmoina-orb-surface-cyan"');
+    expect(html).toContain('class="askmoina-orb-surface-violet"');
+    expect(html).toContain('class="askmoina-orb-surface-pink"');
+    expect(html).toContain('class="askmoina-orb-surface-ribbon"');
+    expect(html).toContain('class="askmoina-orb-specular"');
+    expect(html).toContain('class="askmoina-orb-gloss"');
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
     expect(css).toContain("#toggleCopilot.askmoina-orb-control");
+    expect(css).toContain("/* Reference orb: a glossy, iridescent liquid sphere");
+    expect(css).toContain("@keyframes askmoina-surface-cyan");
+    expect(css).toContain("@keyframes askmoina-surface-violet");
+    expect(css).toContain("@keyframes askmoina-surface-pink");
+    expect(css).toContain("@keyframes askmoina-surface-ribbon");
+    expect(css).toContain("@keyframes askmoina-orb-glint");
     expect(html).toContain('class="askmoina-orb-interior"');
     for (const layer of ["cyan", "blue", "violet", "pink"]) {
       expect(html).toContain(`class="askmoina-orb-flow askmoina-orb-flow-${layer}"`);
@@ -198,7 +212,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('if (speechGateEnded) setOrbProcessing(true);');
     expect(script).toContain('active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing)');
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(css.trimEnd()).toMatch(/\.edge-glow\{display:none!important\}$/);
+    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css.indexOf(".edge-glow{display:none!important}")).toBeLessThan(css.indexOf("/* Reference orb: a glossy"));
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
     expect(css).toContain(".entry-passkey-trailing");
@@ -996,5 +1011,7 @@ describe("Dark-first app shell and launch branding", () => {
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
     expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
+    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-current-cyan");
+    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-specular");
   });
 });
