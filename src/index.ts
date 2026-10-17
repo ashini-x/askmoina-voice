@@ -42,14 +42,6 @@ function renderSiteMenu(authenticated: boolean): string {
 }
 
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
-  <div class="entry-edge-glow" aria-hidden="true">
-    <span class="entry-glow-rim"></span>
-    <span class="entry-glow-field entry-glow-blue"></span>
-    <span class="entry-glow-field entry-glow-violet"></span>
-    <span class="entry-glow-field entry-glow-rose"></span>
-    <span class="entry-glow-field entry-glow-amber"></span>
-    <span class="entry-glow-field entry-glow-cyan"></span>
-  </div>
   <div class="entry-auth-panel">
     <div class="entry-brand-lockup" aria-label="askmoina">
       <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.98" alt="" width="44" height="31"></div>
