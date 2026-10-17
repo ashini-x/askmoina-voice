@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+// @ts-expect-error Node runtime import used only by the Vitest source-contract assertion.
 import { readFileSync } from "node:fs";
 import worker from "../src/index";
 import { handleAuthRequest, getAuthenticatedUserId } from "../src/auth/accounts";
@@ -64,7 +65,7 @@ describe("unique account ID and no-guest access", () => {
     expect(html).toContain('id="biometricSymbol"');
     expect(html).not.toContain('id="biometricFaceSymbol"');
     expect(html).not.toContain('id="biometricFingerprintSymbol"');
-    const authSource = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
+    const authSource = readFileSync("public/auth.js", "utf8");
     expect(authSource).toContain('symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP');
     expect(authSource).toContain('symbol.classList.toggle("biometric-face-symbol", isFace)');
     expect(authSource).toContain('symbol.classList.toggle("biometric-fingerprint-symbol", !isFace)');
