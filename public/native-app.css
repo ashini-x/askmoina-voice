@@ -1,5 +1,5 @@
 /* AskMoina native-first mobile app shell — shared by iOS, Android and narrow desktop windows. */
-:root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 button,a,input{font:inherit;-webkit-tap-highlight-color:transparent}button,a,[role=button]{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(113,139,255,.62);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.library-panel,.native-menu-panel,.show-problem-button,.library-tab,.native-info-main{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
@@ -237,3 +237,27 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
 @keyframes askmoina-orb-breathe{0%,100%{transform:scale(1);filter:brightness(.98)}50%{transform:scale(1.035);filter:brightness(1.12)}}
 @keyframes askmoina-orb-response{from{transform:scale(1)}to{transform:scale(1.055)}}
 @media(prefers-reduced-motion:reduce){.native-camera-orb:before,.native-camera-orb:after{animation:none!important;transform:none!important;transition:none!important}}
+
+
+/* Dark-first app shell and unobtrusive launch transition. */
+:root{color-scheme:dark}
+html:has(.native-info-page),body.native-info-page{background:#090b0f!important;color:#f5f5f7!important}
+.native-info-page{background:#090b0f!important;color:#f5f5f7!important}
+.native-info-nav{background:rgba(14,16,22,.9)!important;border-bottom-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}
+.native-info-back,.native-info-main h1,.native-info-main h2{color:#f5f5f7!important}
+.native-info-kicker,.native-info-lead,.native-info-main>p:not(.native-info-lead){color:#a1a1aa!important}
+.native-info-return{color:#f5f5f7!important;background:#181b23!important;border-color:rgba(255,255,255,.12)!important}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:url("/favicon.svg?v=0.4.79") center/54px 54px no-repeat!important;border:0!important;border-radius:50%!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 8px 28px rgba(0,0,0,.28)!important}
+.show-problem-button{background:rgba(24,27,35,.94)!important;border-color:rgba(255,255,255,.16)!important;color:#f5f5f7!important;box-shadow:0 12px 42px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08)!important}
+.vision-slide-label,.vision-slide-copy{color:#f5f5f7!important}
+.native-menu-panel,.native-menu-sheet{background:#151820!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.1)!important}
+.native-menu-heading{border-bottom-color:rgba(255,255,255,.12)!important}
+.native-menu-heading h2,.native-menu-links a,.native-menu-footer,.native-menu-footer p{color:#f5f5f7!important}
+.native-menu-heading p{color:#a1a1aa!important}
+.native-menu-links a{border-bottom-color:rgba(255,255,255,.07)!important}
+.native-menu-close,.native-menu-links button{background:#252a35!important;color:#f5f5f7!important}
+.app-launch-transition{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#090b0f;pointer-events:none;opacity:1;animation:app-launch-fade-out .42s cubic-bezier(.25,.75,.25,1) .36s forwards}
+.app-launch-transition img{display:block;width:64px;height:64px;object-fit:contain;opacity:0;transform:scale(.88);filter:drop-shadow(0 7px 22px rgba(255,255,255,.08));animation:app-launch-mark-in .42s cubic-bezier(.16,1,.3,1) .04s forwards}
+@keyframes app-launch-mark-in{0%{opacity:0;transform:scale(.88)}70%{opacity:1;transform:scale(1.035)}100%{opacity:1;transform:scale(1)}}
+@keyframes app-launch-fade-out{0%{opacity:1;visibility:visible}99%{opacity:0;visibility:visible}100%{opacity:0;visibility:hidden}}
+@media(prefers-reduced-motion:reduce){.app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}.app-launch-transition img{animation:none;opacity:1;transform:none}}

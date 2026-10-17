@@ -14,6 +14,7 @@ const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.met
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
+const favicon = readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8");
 const signatureGeometryPath = signatureMark.match(/<path[^>]* d="([^"]+)"/)?.[1] ?? "";
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 const serviceWorkerScript = readFileSync(new URL("../public/service-worker.js", import.meta.url), "utf8");
@@ -72,6 +73,7 @@ describe("Live Co-Pilot browser assets", () => {
   it("uses the exact approved signature path in every vector brand variant", () => {
     const vectorFiles = [
       "askmoina-mark.svg",
+      "favicon.svg",
       "askmoina-mark-dark.svg",
       "askmoina-app-icon.svg",
       "askmoina-app-icon-light.svg",
@@ -91,6 +93,7 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps all raster logo variants as valid PNGs at the expected sizes", () => {
     const rasterFiles = [
+      ["favicon-32.png", 32],
       ["askmoina-app-icon-180.png", 180],
       ["askmoina-bird-final.png", 128],
       ["askmoina-bird-mark.png", 64],
@@ -937,5 +940,31 @@ describe("Primary camera entry", () => {
     expect(html).toContain("askmoina-orb-control");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
+  });
+});
+
+
+describe("Dark-first app shell and launch branding", () => {
+  it("uses a circular favicon while retaining the platform-masked Home Screen icon", () => {
+    expect(html).toContain('href="/favicon.svg?v=0.4.79"');
+    expect(html).toContain('href="/favicon-32.png?v=0.4.79"');
+    expect(favicon).toContain('<circle cx="32" cy="32" r="29.5" fill="#ffffff"');
+    expect(favicon).toContain(signatureGeometryPath);
+    expect(workerSource).toContain('href="/favicon.svg?v=0.4.79"');
+    expect(workerSource).toContain('href="/askmoina-app-icon-180.png?v=0.4.79"');
+  });
+  it("keeps camera, sign-in, install, and app shell surfaces dark by default", () => {
+    expect(html).toContain('<meta name="color-scheme" content="dark">');
+    expect(css).toContain(".entry-overlay{background:#090b0f!important");
+    expect(nativeAppCss).toContain(":root{color-scheme:dark");
+    expect(readFileSync(new URL("../public/install.css", import.meta.url), "utf8")).toContain("color-scheme: dark");
+    expect(workerSource).toContain('const themeColor = "#090b0f"');
+    expect(workerSource).toContain('<meta name="color-scheme" content="dark">');
+  });
+  it("shows a short reduced-motion-aware transition before the camera slider", () => {
+    expect(workerSource).toContain('class="app-launch-transition"');
+    expect(nativeAppCss).toContain("@keyframes app-launch-mark-in");
+    expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
+    expect(nativeAppCss).toContain(".app-launch-transition");
   });
 });

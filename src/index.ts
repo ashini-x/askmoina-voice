@@ -31,7 +31,7 @@ import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 export { UserState } from "./sessions/user-state";
 
 
-const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"AskMoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"AskMoina home\"><img src=\"/askmoina-mark-dark.svg?v=0.4.77\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
+const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"AskMoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"AskMoina home\"><img src=\"/favicon.svg?v=0.4.79\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
 
 function renderSiteMenu(authenticated: boolean): string {
   const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About askMoina\"><a href=\"/?view=about\">About askMoina <span aria-hidden=\"true\">›</span></a><a href=\"/?view=developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/?view=help\">Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/?view=privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
@@ -42,10 +42,10 @@ function renderSiteMenu(authenticated: boolean): string {
 }
 
 const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\"><h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1><div class=\"entry-page-heading auth-page-heading\"><h2>Welcome to AskMoina</h2><p>Your world, understood in real time.</p></div>\n    \n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
-const NATIVE_CAMERA_WELCOME = "<section class=\"native-camera-welcome\" aria-labelledby=\"nativeCameraWelcomeTitle\">\n  <div class=\"native-camera-orb\" aria-hidden=\"true\"><img src=\"/askmoina-mark.svg?v=0.4.77\" alt=\"\" width=\"58\" height=\"58\"></div>\n  <p class=\"native-camera-kicker\">YOUR REAL-WORLD CO-PILOT</p>\n  <h1 id=\"nativeCameraWelcomeTitle\">Show Moina your world.</h1>\n  <p class=\"native-camera-caption\">Point your camera at anything. We’ll figure it out together.</p>\n</section>";
+const NATIVE_CAMERA_WELCOME = "<section class=\"native-camera-welcome\" aria-labelledby=\"nativeCameraWelcomeTitle\">\n  <div class=\"native-camera-orb\" aria-hidden=\"true\"><img src=\"/askmoina-mark.svg?v=0.4.79\" alt=\"\" width=\"58\" height=\"58\"></div>\n  <p class=\"native-camera-kicker\">YOUR REAL-WORLD CO-PILOT</p>\n  <h1 id=\"nativeCameraWelcomeTitle\">Show Moina your world.</h1>\n  <p class=\"native-camera-caption\">Point your camera at anything. We’ll figure it out together.</p>\n</section>";
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"AskMoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open AskMoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
 const NATIVE_APP_HEADER_GUEST = "";
-const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close AskMoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/askmoina-mark-dark.svg?v=0.4.77\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\">AskMoina</h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"AskMoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About AskMoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
+const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close AskMoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/favicon.svg?v=0.4.79\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\">AskMoina</h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"AskMoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About AskMoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
 function withNativeAppShell(html: string, appVersion: string, authenticated: boolean): string {
   const nativeHeader = authenticated ? NATIVE_APP_HEADER_AUTH : "";
   const headerStart = html.indexOf('<header class="floating-top">');
@@ -59,7 +59,11 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   }
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
   html = html.replace(/<title>[^<]*<\/title>/, "<title>AskMoina</title>");
-  const version = encodeURIComponent(appVersion || "0.4.64");
+  const version = encodeURIComponent(appVersion || "0.4.79");
+  if (/<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html)) {
+    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><img src="/favicon.svg?v=' + version + '" alt="" width="64" height="64"></div>';
+    html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
+  }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
@@ -87,15 +91,17 @@ const NATIVE_SITE_INFO: Record<string, { kicker: string; title: string; lead: st
 function renderSiteInfoPage(pathname: string, appVersion: string): string | null {
   const page = NATIVE_SITE_INFO[pathname];
   if (!page || !SITE_INFO_PATHS.has(pathname)) return null;
-  const version = encodeURIComponent(appVersion || "0.4.64");
+  const version = encodeURIComponent(appVersion || "0.4.79");
   const paragraphs = page.paragraphs.map((paragraph) => "<p>" + paragraph + "</p>").join("");
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
-    "<meta name=\"theme-color\" content=\"#f5f5f7\"><meta name=\"color-scheme\" content=\"light\">" +
+    "<meta name=\"theme-color\" content=\"#090b0f\"><meta name=\"color-scheme\" content=\"dark\">" +
+    "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\">" +
+    "<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
     "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><title>" + page.title + " · AskMoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
     "<a class=\"native-info-back\" href=\"/\" aria-label=\"Back to AskMoina\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m14.5 5.5-6.5 6.5 6.5 6.5\"/></svg><span>AskMoina</span></a>" +
-    "<img src=\"/askmoina-mark-dark.svg?v=0.4.77\" width=\"25\" height=\"25\" alt=\"AskMoina\"></header>" +
+    "<img src=\"/favicon.svg?v=0.4.79\" width=\"25\" height=\"25\" alt=\"AskMoina\"></header>" +
     "<main class=\"native-info-main\"><p class=\"native-info-kicker\">" + page.kicker + "</p><h1>" + page.title + "</h1><p class=\"native-info-lead\">" + page.lead + "</p>" +
     paragraphs + "<a class=\"native-info-return\" href=\"/\">Return to AskMoina <span aria-hidden=\"true\">↗</span></a></main></body></html>";
 }
@@ -224,11 +230,9 @@ function withPwaStandaloneGate(html: string): string {
       ? match
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
-  // Match the system bars to the actual app surface: the camera is dark and edge-to-edge,
-  // while the entry/account surfaces use the existing light AskMoina palette.
-    const cameraFirst = /<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html);
-  const themeColor = cameraFirst ? "#090b0f" : "#f5f5f7";
-  const statusBarStyle = cameraFirst ? "black-translucent" : "default";
+  // AskMoina is a deliberately dark-only, camera-first app.
+  const themeColor = "#090b0f";
+  const statusBarStyle = "black-translucent";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
   html = html.replace(/<meta\s+name=["']theme-color["'][^>]*>/ig, "");
   const tags = '<meta name="askmoina-pwa-shell" content="1">' +
@@ -237,10 +241,11 @@ function withPwaStandaloneGate(html: string): string {
     '<meta name="apple-mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-title" content="AskMoina">' +
     '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
-    '<meta name="color-scheme" content="' + (cameraFirst ? "dark" : "light") + '">' +
+    '<meta name="color-scheme" content="dark">' +
     '<link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.77">' +
-    '<link rel="icon" type="image/svg+xml" href="/askmoina-app-icon.svg?v=0.4.77">' +
+    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.79">' +
+    '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.79">' +
+    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.79">' +
     '<link rel="stylesheet" href="/pwa-gate.css">' +
     '<noscript><meta http-equiv="refresh" content="0;url=/install"></noscript>' +
     '<script src="/pwa-gate.js"></script>' +
@@ -2924,7 +2929,7 @@ export default {
           if (Array.isArray(manifest.icons)) {
             if (!manifest.icons.some((icon) => (icon.src || "").split("?")[0] === "/askmoina-bird-final.png")) {
               manifest.icons.push({
-                src: "/askmoina-bird-final.png?v=0.4.77",
+                src: "/askmoina-bird-final.png?v=0.4.79",
                 sizes: "128x128",
                 type: "image/png",
                 purpose: "any",
@@ -2965,7 +2970,7 @@ export default {
         if (url.pathname === "/account" || url.pathname === "/account.html") {
           let html = await authResponse.text();
           html = html.replace("<body>", '<body class="native-account-page" data-page="account">');
-          html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.64") + '"></head>');
+          html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.79") + '"></head>');
           const headers = new Headers(authResponse.headers);
           headers.delete("Content-Length");
           headers.delete("ETag");
@@ -2978,7 +2983,7 @@ export default {
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const infoPath = url.pathname === "/" && url.searchParams.has("view") ? "/" + (url.searchParams.get("view") || "") : url.pathname;
-      const infoPage = renderSiteInfoPage(infoPath, env.APP_VERSION || "0.4.64");
+      const infoPage = renderSiteInfoPage(infoPath, env.APP_VERSION || "0.4.79");
       if (infoPage) {
         const pageHtml = infoPage;
         return new Response(request.method === "HEAD" ? null : pageHtml, {
@@ -3012,7 +3017,7 @@ export default {
           .replace('<script src="/transcript-merge.js" defer></script>', "")
           .replace('<script src="/session-ui.js" defer></script>', "");
       }
-      html = withNativeAppShell(html, env.APP_VERSION || "0.4.64", authenticated);
+      html = withNativeAppShell(html, env.APP_VERSION || "0.4.79", authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js" defer></script></body>');
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
@@ -3048,7 +3053,7 @@ export default {
       const isStyle = url.pathname === "/copilot.css";
       let body = isScript ? COPILOT_JS : isStyle ? COPILOT_CSS : versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION);
       if (!isScript && !isStyle) {
-        body = withNativeAppShell(body, env.APP_VERSION || "0.4.64", true);
+        body = withNativeAppShell(body, env.APP_VERSION || "0.4.79", true);
         if (isPwaStandaloneAppPath(url.pathname)) body = withPwaStandaloneGate(body);
       }
       const contentType = isScript ? "text/javascript; charset=utf-8" :
@@ -3164,7 +3169,7 @@ export default {
         headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
       let assetHtml = await assetResponse.text();
       assetHtml = assetHtml.replace("<body>", '<body class="native-account-page" data-page="account">');
-      assetHtml = assetHtml.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.64") + '"></head>');
+      assetHtml = assetHtml.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.79") + '"></head>');
       responseBody = assetHtml;
       headers.delete("Content-Length");
       headers.delete("ETag");

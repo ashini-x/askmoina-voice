@@ -12,6 +12,8 @@ const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
 assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
+assert.equal(manifest.theme_color, "#090b0f", "PWA theme color must use the dark app palette");
+assert.equal(manifest.background_color, "#090b0f", "PWA launch background must be dark");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/askmoina-app-icon-180.png" && icon.sizes === "180x180" && icon.type === "image/png"), "manifest needs the monochrome 180x180 Home Screen icon");
@@ -19,6 +21,8 @@ assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/askmoina-bi
 assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "legacy AskMoina icon fallback is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-app-icon-180.png")), "AskMoina monochrome app icon is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-mark.svg")), "AskMoina primary mark is missing");
+assert.ok(existsSync(resolve(root, "public/favicon.svg")), "circular AskMoina favicon is missing");
+assert.ok(existsSync(resolve(root, "public/favicon-32.png")), "32px AskMoina favicon fallback is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-logo.svg")), "AskMoina wordmark is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-social-avatar.svg")), "AskMoina social avatar is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-visual-guide.svg")), "AskMoina visual guide mark is missing");
@@ -32,8 +36,11 @@ assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "
 const worker = read("src/index.ts");
 assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="AskMoina'), "iOS Home Screen app title metadata missing");
-assert.ok(worker.includes('cameraFirst ? "#090b0f" : "#f5f5f7"'), "PWA theme color must match camera and light app surfaces");
-assert.ok(worker.includes("const cameraFirst = /<main") && !worker.includes("lightEntrySurface"), "camera-first app and sign-in must keep dark system bars");
+assert.ok(worker.includes('const themeColor = "#090b0f"'), "PWA theme must always be dark");
+assert.ok(worker.includes('const statusBarStyle = "black-translucent"'), "dark app must use the dark translucent iOS status bar");
+assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
+assert.ok(worker.includes('class="app-launch-transition"'), "native app launch transition is missing");
+assert.ok(read("public/native-app.css").includes("@keyframes app-launch-mark-in"), "launch mark animation is missing");
 assert.ok(worker.includes('withNativeAppShell(html, env.APP_VERSION || "0.4.64", authenticated)'), "root must use the native app shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
 assert.ok(worker.includes("const NATIVE_APP_MENU_SHEET") && worker.includes("native-menu-signout"), "native app menu must include app settings and sign-out");
@@ -53,6 +60,9 @@ assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-serve
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
+assert.ok(serviceWorker.includes('askmoina-pwa-shell-v4'), "service worker cache must be refreshed for branding assets");
+assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.79"'), "service worker must precache the circular favicon");
+assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.79"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
 assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");

@@ -1831,3 +1831,21 @@ button{touch-action:manipulation}
 
 /* Keep voice and response energy inside the orb; no full-screen edge pulse. */
 .edge-glow{display:none!important}
+
+
+/* Dark-first sign-in and entry surfaces; camera UI is dark already. */
+:root{color-scheme:dark;background:#090b0f;color:#f5f5f7}
+html,body{background:#090b0f;color:#f5f5f7}
+.entry-overlay{background:#090b0f!important;color:#f5f7fb!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.entry-auth-panel,.entry-auth-panel *{color:#f5f7fb}
+.entry-auth-panel{background:transparent!important;border-color:rgba(255,255,255,.1)!important;box-shadow:none!important}
+.entry-auth-panel .entry-status,.entry-auth-panel .entry-auth-copy,.entry-auth-panel .entry-divider,.entry-auth-panel .entry-phone-label,.entry-auth-panel .entry-hint{color:#a1a1aa!important}
+.entry-auth-panel input,.entry-auth-panel select,.entry-auth-panel textarea,.entry-phone-input,.entry-otp-input{background:#151922!important;color:#f5f7fb!important;border-color:rgba(255,255,255,.16)!important}
+.entry-auth-panel input::placeholder,.entry-phone-input::placeholder,.entry-otp-input::placeholder{color:#858b98!important}
+.entry-passkey{color:#f5f7fb!important;background:transparent!important;border-color:rgba(255,255,255,.16)!important}
+.entry-passkey>svg{stroke:currentColor!important}
+.entry-passkey:hover:not(:disabled),.entry-passkey:active{color:#fff!important;background:rgba(255,255,255,.06)!important}
+.entry-overlay .entry-auth-panel .entry-divider:before,.entry-overlay .entry-auth-panel .entry-divider:after{background:rgba(255,255,255,.16)!important}
+.entry-overlay .entry-auth-panel .entry-page-heading,.entry-overlay .entry-auth-panel h1,.entry-overlay .entry-auth-panel h2,.entry-overlay .entry-auth-panel h3{color:#f5f7fb!important}
+.entry-auth-panel .entry-phone-row,.entry-auth-panel .entry-otp-row{background:transparent!important}
+.entry-auth-panel .entry-alternative,.entry-auth-panel .entry-link{color:#64a6ff!important}
