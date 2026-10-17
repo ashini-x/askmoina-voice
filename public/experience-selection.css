@@ -1,0 +1,106 @@
+/* Interface 06 — Choose your experience. Native-first, low-cost and safe-area aware. */
+.experience-selection-overlay[hidden]{display:none!important}
+.experience-selection-overlay{
+  position:fixed!important;inset:0!important;z-index:99998!important;
+  display:block!important;width:100%;height:100%;height:100dvh;min-height:100svh;
+  margin:0!important;padding:0!important;overflow:hidden;
+  color:#f5f6ff;background:linear-gradient(145deg,#03050d 0%,#050a18 49%,#02040a 100%);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;
+  isolation:isolate;opacity:1;transition:opacity .16s ease;
+}
+.experience-selection-overlay.is-leaving{opacity:0;pointer-events:none}
+.experience-selection-overlay>.ambient-edge-light{position:absolute;inset:0;z-index:0;opacity:.86;pointer-events:none}
+.experience-selection-scroll{position:relative;z-index:1;width:100%;height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.experience-selection-scroll::-webkit-scrollbar{display:none}
+.experience-selection-content{
+  box-sizing:border-box;display:flex;flex-direction:column;width:min(100%,430px);min-height:100%;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + clamp(24px,4.5svh,38px))
+    max(22px,env(safe-area-inset-right,0px))
+    calc(env(safe-area-inset-bottom,0px) + 19px)
+    max(22px,env(safe-area-inset-left,0px));
+}
+.experience-selection-eyebrow{
+  flex:none;margin:0 0 17px 6px;color:rgba(196,202,222,.72);
+  font-size:10px;font-weight:450;line-height:1.3;letter-spacing:.115em;text-transform:uppercase;
+}
+.experience-selection-cards{display:flex;flex-direction:column;gap:13px;width:100%;min-width:0}
+.experience-card{
+  position:relative;isolation:isolate;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;
+  width:100%;min-width:0;min-height:278px;margin:0;padding:17px 16px 18px;overflow:hidden;
+  border:1px solid rgba(119,143,255,.48);border-radius:22px;
+  color:#f4f5ff;text-align:left;text-decoration:none;cursor:pointer;
+  background:
+    radial-gradient(ellipse at 86% 2%,rgba(52,109,206,.13),transparent 48%),
+    linear-gradient(145deg,rgba(19,28,50,.91),rgba(7,12,27,.92) 66%,rgba(5,9,20,.95));
+  box-shadow:0 10px 32px rgba(0,0,0,.20),0 0 20px rgba(93,115,255,.045),inset 0 1px rgba(226,233,255,.10);
+  -webkit-backdrop-filter:blur(24px) saturate(120%);backdrop-filter:blur(24px) saturate(120%);
+  font:inherit;appearance:none;-webkit-appearance:none;
+  transition:transform .14s ease,border-color .14s ease,background-color .14s ease;
+}
+.experience-card:focus-visible{outline:2px solid rgba(202,216,255,.88);outline-offset:4px}
+.experience-card:active{transform:scale(.992)}
+.experience-card-header{display:flex;align-items:center;gap:7px;width:100%;min-width:0;min-height:25px}
+.experience-card-title{flex:none;color:#f0f2ff;font-size:19px;font-weight:510;line-height:1.2;letter-spacing:-.045em;white-space:nowrap}
+.experience-status-pill{
+  display:inline-flex;align-items:center;justify-content:center;flex:none;max-width:112px;box-sizing:border-box;
+  padding:4px 7px;border:1px solid rgba(170,190,245,.10);border-radius:999px;
+  background:rgba(92,112,169,.19);color:rgba(225,231,249,.88);
+  font-size:10px;font-weight:450;line-height:1.1;white-space:nowrap;letter-spacing:-.01em;
+}
+.experience-card-chevron{display:block;flex:none;width:15px;height:15px;margin-left:auto;color:rgba(180,196,231,.72)}
+.experience-card-chevron path{fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
+.experience-product-art{display:grid;place-items:center;width:100%;height:108px;min-height:0;margin:5px 0 6px;overflow:visible}
+.experience-glass-art{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 5px 9px rgba(69,107,208,.08))}
+.experience-feature-list{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;width:100%;padding:0;margin:0;list-style:none}
+.experience-feature-row{display:flex;align-items:center;gap:9px;min-width:0;color:rgba(224,229,246,.88);font-size:12px;font-weight:410;line-height:16px;letter-spacing:-.012em}
+.experience-feature-row>span:last-child{min-width:0;overflow-wrap:anywhere}
+.experience-feature-check{display:grid;place-items:center;flex:0 0 12px;width:12px;height:14px;color:rgba(176,207,255,.88)}
+.experience-feature-check svg{display:block;width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+.experience-card--preview{
+  min-height:248px;border-color:rgba(129,145,190,.19);color:rgba(184,190,211,.76);
+  background:
+    radial-gradient(ellipse at 83% 0%,rgba(35,67,115,.07),transparent 48%),
+    linear-gradient(145deg,rgba(13,17,29,.78),rgba(5,8,17,.88) 72%,rgba(4,6,13,.92));
+  box-shadow:0 7px 24px rgba(0,0,0,.13),inset 0 1px rgba(210,220,255,.035);
+  -webkit-backdrop-filter:blur(21px) saturate(86%);backdrop-filter:blur(21px) saturate(86%);
+}
+.experience-card--preview .experience-card-title{color:rgba(181,187,208,.82)}
+.experience-card--preview .experience-status-pill{border-color:rgba(137,148,182,.08);background:rgba(107,118,148,.105);color:rgba(167,174,195,.79)}
+.experience-card--preview .experience-card-chevron{color:rgba(116,127,154,.58)}
+.experience-card--preview .experience-product-art{height:83px;margin-top:3px;margin-bottom:5px}
+.experience-card--preview .experience-glass-art{filter:saturate(.62) brightness(.67);opacity:.76}
+.experience-card--preview .experience-feature-row{color:rgba(157,165,188,.75)}
+.experience-card--preview .experience-feature-check{color:rgba(128,147,184,.66)}
+.experience-card--preview:focus-visible{outline-color:rgba(155,172,218,.68)}
+.experience-preview-notice{
+  position:fixed;z-index:2;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translateX(-50%);
+  width:max-content;max-width:calc(100% - 40px);box-sizing:border-box;padding:11px 15px;
+  border:1px solid rgba(159,174,222,.18);border-radius:14px;background:rgba(13,18,32,.94);
+  box-shadow:0 10px 30px rgba(0,0,0,.30);color:rgba(224,230,248,.9);
+  font-size:12px;line-height:1.4;text-align:center;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+}
+.experience-preview-notice[hidden]{display:none!important}
+@media(hover:hover) and (pointer:fine){
+  .experience-card--available:hover{border-color:rgba(150,174,255,.64)}
+  .experience-card--preview:hover{border-color:rgba(140,156,201,.28)}
+}
+@media(max-width:360px){
+  .experience-selection-content{padding-right:max(17px,env(safe-area-inset-right,0px));padding-left:max(17px,env(safe-area-inset-left,0px))}
+  .experience-card{padding-right:14px;padding-left:14px;border-radius:20px}
+  .experience-card-title{font-size:18px}
+  .experience-status-pill{padding:4px 6px;font-size:9px}
+  .experience-feature-row{font-size:11.5px;gap:8px}
+}
+@media(max-height:700px){
+  .experience-selection-content{padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 13px)}
+  .experience-selection-eyebrow{margin-bottom:12px}
+  .experience-card{min-height:258px;padding-top:15px;padding-bottom:15px}
+  .experience-card--preview{min-height:230px}
+  .experience-product-art{height:94px;margin-top:3px;margin-bottom:4px}
+  .experience-card--preview .experience-product-art{height:70px}
+  .experience-feature-list{gap:5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .experience-selection-overlay,.experience-card{transition:none!important}
+  .experience-card:active{transform:none}
+}
