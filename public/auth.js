@@ -64,7 +64,6 @@
     const stage = $("#biometricAuthStage");
     const title = $("#biometricTitle");
     const instruction = $("#biometricInstruction");
-    const detail = $("#biometricDetail");
     const symbol = $("#biometricSymbol");
     if (!overlay || !panel || !stage) return;
     if (!kind) {
@@ -74,11 +73,10 @@
       return;
     }
     const isFace = kind === "face";
-    if (title) title.textContent = isFace ? "Face Authentication" : "Fingerprint Authentication";
+    if (title) title.textContent = isFace ? "Face ID" : "Fingerprint";
     if (instruction) instruction.textContent = isFace
-      ? "Follow your device’s face authentication prompt"
-      : "Follow your device’s fingerprint prompt";
-    if (detail) detail.textContent = "Your device completes the secure check. It may ask for a PIN or screen lock instead.";
+      ? "Look at the camera"
+      : "Place your finger on the sensor";
     if (symbol) {
       // Replace paths inside one SVG. The two marks never coexist in the DOM.
       symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP;
@@ -344,9 +342,9 @@
       if (section) section.hidden = false;
       const title = $("#authTitle");
       const intro = $("#authSubtitle");
-      if (title) title.textContent = "Verify your number";
-      if (intro) intro.textContent = "Enter the verification code sent to " + phone + ".";
-      say("Enter the SMS code sent to " + phone + ".");
+      if (title) title.textContent = "Enter code";
+      if (intro) intro.textContent = "Sent to " + phone + ".";
+      say("Code sent.");
       $("#otpCode")?.focus();
     } catch (error) {
       say(explainPasskeyError(error, currentMode), "error");
@@ -411,8 +409,8 @@
     if (divider) divider.hidden = true;
     const title = $("#authTitle");
     const intro = $("#authSubtitle");
-    if (title) title.textContent = "Continue with phone";
-    if (intro) intro.textContent = "We'll send you a secure verification code.";
+    if (title) title.textContent = "Phone number";
+    if (intro) intro.textContent = "We'll text you a code.";
     say("");
     $("#phone")?.focus();
   });
