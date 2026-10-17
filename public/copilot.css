@@ -1718,3 +1718,113 @@ button{touch-action:manipulation}
     width:27px!important;height:27px!important;
   }
 }
+
+
+/* Thinking mode: a visible, multi-layer light current that distinguishes processing from listening/responding. */
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] {
+  filter:saturate(1.08);
+  animation:askmoina-orb-thinking-halo 1.85s ease-in-out infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before {
+  opacity:1;
+  border-color:rgba(248,251,255,.94);
+  box-shadow:0 0 18px rgba(95,224,255,.38),0 0 30px rgba(173,136,255,.24),inset 0 0 10px rgba(255,255,255,.12);
+  animation:askmoina-orb-thinking-pulse 1.45s cubic-bezier(.4,0,.2,1) infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {
+  opacity:1;
+  transform-origin:50% 50%;
+  animation:askmoina-orb-thinking-orbit 2.25s linear infinite,askmoina-orb-thinking-glint 1.55s ease-in-out infinite;
+  filter:drop-shadow(0 0 8px rgba(93,222,255,.52)) drop-shadow(0 0 18px rgba(182,126,255,.30));
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before,
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::after {
+  content:"";
+  position:absolute;
+  display:block;
+  pointer-events:none;
+  border-radius:50%;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before {
+  z-index:5;
+  inset:-5%;
+  opacity:.94;
+  background:conic-gradient(from 0deg,transparent 0deg,transparent 207deg,rgba(67,218,255,.08) 227deg,rgba(80,225,255,.82) 246deg,rgba(151,125,255,.68) 263deg,rgba(245,157,228,.05) 286deg,transparent 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 4px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 4px));
+  filter:blur(1px);
+  mix-blend-mode:screen;
+  animation:askmoina-orb-thought-current 2.2s linear infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::after {
+  z-index:6;
+  inset:15%;
+  border:1px solid rgba(224,241,255,.44);
+  border-radius:62% 38% 52% 48% / 43% 59% 41% 57%;
+  box-shadow:inset 0 0 15px rgba(104,198,255,.14),0 0 9px rgba(153,130,255,.12);
+  background:radial-gradient(ellipse at 34% 27%,rgba(255,255,255,.10),transparent 54%);
+  opacity:.3;
+  animation:askmoina-orb-thought-depth 1.7s ease-in-out infinite alternate;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan {
+  opacity:1;
+  filter:blur(3px) brightness(1.25);
+  animation:askmoina-flow-cyan 3.15s cubic-bezier(.45,0,.3,1) infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-blue {
+  opacity:.94;
+  filter:blur(4px) brightness(1.24);
+  animation:askmoina-flow-blue 3.85s cubic-bezier(.45,0,.3,1) infinite reverse;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-violet {
+  opacity:.94;
+  filter:blur(3px) brightness(1.24);
+  animation:askmoina-flow-violet 3.4s cubic-bezier(.45,0,.3,1) infinite;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-pink {
+  opacity:.72;
+  filter:blur(4px) brightness(1.18);
+  animation:askmoina-flow-pink 4.55s cubic-bezier(.45,0,.3,1) infinite reverse;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
+  animation:askmoina-orb-thinking-mark 1.55s ease-in-out infinite;
+}
+@keyframes askmoina-orb-thinking-halo {
+  0%,100% {filter:brightness(1) saturate(1.05)}
+  50% {filter:brightness(1.12) saturate(1.28)}
+}
+@keyframes askmoina-orb-thinking-pulse {
+  0%,100% {opacity:.64;transform:scale(.985)}
+  50% {opacity:1;transform:scale(1.035)}
+}
+@keyframes askmoina-orb-thinking-orbit {
+  from {transform:rotate(0deg)}
+  to {transform:rotate(360deg)}
+}
+@keyframes askmoina-orb-thinking-glint {
+  0%,100% {opacity:.72;filter:brightness(.96) drop-shadow(0 0 6px rgba(93,222,255,.35))}
+  50% {opacity:1;filter:brightness(1.35) drop-shadow(0 0 11px rgba(93,222,255,.6))}
+}
+@keyframes askmoina-orb-thought-current {
+  from {transform:rotate(0deg) scale(1)}
+  to {transform:rotate(360deg) scale(1)}
+}
+@keyframes askmoina-orb-thought-depth {
+  0% {opacity:.16;transform:scale(.82) rotate(-14deg);border-radius:62% 38% 52% 48% / 43% 59% 41% 57%}
+  100% {opacity:.53;transform:scale(1.08) rotate(18deg);border-radius:42% 58% 44% 56% / 57% 38% 62% 43%}
+}
+@keyframes askmoina-orb-thinking-mark {
+  0%,100% {filter:drop-shadow(0 0 4px rgba(249,250,255,.28)) drop-shadow(0 0 8px rgba(107,191,255,.16))}
+  50% {filter:drop-shadow(0 0 6px rgba(255,255,255,.48)) drop-shadow(0 0 13px rgba(107,191,255,.35)) drop-shadow(0 0 17px rgba(185,130,255,.22))}
+}
+@media(prefers-reduced-motion:reduce) {
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"],
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::after,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow,
+  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
+    animation:none!important;
+  }
+}
