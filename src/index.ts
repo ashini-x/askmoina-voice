@@ -41,6 +41,12 @@ function renderSiteMenu(authenticated: boolean): string {
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
+const ENTRY_LAUNCH_OVERLAY = `<div class="app-launch-transition" id="appLaunchTransition" aria-label="askmoina launching">
+  <div class="launch-signature-orb" aria-hidden="true"><img src="/askmoina-mark.svg" alt="" width="86" height="86"></div>
+  <span class="launch-signature-title">askmoina</span>
+  <span class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span>
+</div>`;
+
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
   <div class="entry-auth-panel">
     <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.85" alt="" width="34" height="24"></div>
@@ -3106,10 +3112,15 @@ export default {
           .replace('<script src="/session-ui.js" defer></script>', "");
       }
       const appVersion = env.APP_VERSION || "0.4.80";
+      const skipLaunchForPostAuthOnboarding = authenticated && url.searchParams.get("onboarding") === "1";
+      const entryLaunchOverlay = skipLaunchForPostAuthOnboarding ? "" : ENTRY_LAUNCH_OVERLAY.replace(
+        'src="/askmoina-mark.svg"',
+        'src="/askmoina-mark.svg?v=' + encodeURIComponent(appVersion) + '"',
+      );
       html = withNativeAppShell(html, appVersion, authenticated);
-      if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
+      if (!authenticated) html = html.replace("</body>", entryLaunchOverlay + ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");
+        html = html.replace("</body>", entryLaunchOverlay + POST_AUTH_ONBOARDING + "</body>");
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
