@@ -1,6 +1,6 @@
 /* Apple-inspired mobile-width navigation used on every standard AskMoina page. */
 .site-chrome-page{--site-chrome-width:430px}
-.entry-site-header{position:fixed;z-index:5000;top:0;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(100%,var(--site-chrome-width,430px));height:44px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(245,245,247,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08);color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.entry-site-header{position:fixed;z-index:5000;top:0;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(100%,var(--site-chrome-width,430px));height:44px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(245,245,247,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08);color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif}
 .entry-logo-slot{display:flex;align-items:center;justify-content:flex-start;flex:0 0 24px;width:24px;height:30px;text-decoration:none;pointer-events:auto}
 .entry-logo-slot img{display:block;width:24px;height:24px;object-fit:contain;object-position:center}
 .entry-site-menu{position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;z-index:1;display:block;margin:0 0 0 auto;padding:0;color:#1d1d1f;pointer-events:auto}
@@ -60,7 +60,7 @@ body.site-chrome-page{min-height:100vh;min-height:100dvh}
 
 /* Use the platform system sans-serif on both Android and iOS while keeping the same chrome geometry. */
 .entry-site-header,.entry-site-menu-panel a,.entry-site-menu-panel .entry-menu-logout{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,"Segoe UI",system-ui,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;
 }
 
 
@@ -73,3 +73,13 @@ body.site-chrome-page{min-height:100vh;min-height:100dvh}
 .entry-site-menu-panel a,.entry-site-menu-panel .entry-menu-logout,.entry-site-menu-panel h2{color:#f5f5f7!important}
 .entry-site-menu-panel a:hover,.entry-site-menu-panel .entry-menu-logout:hover{background:rgba(255,255,255,.08)!important}
 .entry-site-menu-panel .entry-menu-section h2{color:#a1a1aa!important}
+
+
+/* askmoina typography — native, quiet, and consistent across screens. */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;font-synthesis:none;font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html,body,button,input,textarea,select{font-family:inherit}
+h1,h2,h3,h4,h5,h6{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;text-wrap:balance;font-kerning:normal}
+h1{letter-spacing:-.045em}
+h2{letter-spacing:-.03em}
+h3,h4,h5,h6{letter-spacing:-.02em}
+button,a,input,textarea,select{font-synthesis:none}
