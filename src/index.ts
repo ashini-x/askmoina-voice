@@ -113,7 +113,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
 const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding" id="postAuthOnboarding" aria-label="askmoina welcome" hidden>
   <section class="post-auth-onboarding-stage post-auth-account-created" id="postAuthAccountCreated" aria-labelledby="postAuthSuccessTitle">
     <div class="post-auth-success-content">
-      <div class="post-auth-success-artwork" aria-hidden="true"><img class="post-auth-success-orb-image" src="/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.95" alt="" width="512" height="512" decoding="async" fetchpriority="high"></div>
+      <div class="post-auth-success-artwork" aria-hidden="true"><img class="post-auth-success-orb-image" src="/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.96" alt="" width="512" height="512" decoding="async" fetchpriority="high"></div>
       <h1 id="postAuthSuccessTitle">You're all set!</h1>
       <p>Welcome to askmoina.<br>Let's solve real-world problems together.</p>
       <button type="button" class="post-auth-get-started" id="onboardingGetStarted">Get Started</button>
