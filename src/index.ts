@@ -41,7 +41,58 @@ function renderSiteMenu(authenticated: boolean): string {
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
-const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\"><h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1><div class=\"entry-page-heading auth-page-heading\"><h2>Welcome to askmoina</h2><p>Your world, understood in real time.</p></div>\n    \n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening askmoina</span></div>";
+const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
+  <div class="entry-auth-panel">
+    <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.84" alt="" width="34" height="24"></div>
+    <div class="entry-page-heading auth-page-heading">
+      <h2 id="authTitle">Welcome to askmoina</h2>
+      <p id="authSubtitle">Your live camera &amp; video co-pilot for real-world problems.</p>
+    </div>
+    <div class="entry-auth-options" id="authOptions">
+      <button class="entry-auth-option entry-passkey" id="passkeyAction" type="button" data-passkey="register" data-method="Face ID" aria-describedby="deviceHint">
+        <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 9.5a1 1 0 0 1 1 1m4-1a1 1 0 0 1 1 1M9 15c1.7 1.6 4.3 1.6 6 0M12 11.5v1"/></svg></span>
+        <span class="entry-option-label">Continue with Face ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+      </button>
+      <button class="entry-auth-option entry-passkey" id="touchIdAction" type="button" data-passkey="register" data-method="Touch ID" aria-describedby="deviceHint">
+        <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.1a8.9 8.9 0 0 0-8.9 8.9M12 6.2a5.8 5.8 0 0 0-5.8 5.8"/><path d="M12 9.4a2.6 2.6 0 0 0-2.6 2.6c0 3.4-.5 5.5-1.7 7.4M12 12c0 4-.3 6.3-1.1 8.4M15.1 12c0 3.7-.1 5.9-1 8.4M15.1 7.1A5.8 5.8 0 0 1 17.8 12c0 2.1-.1 4.8-.8 7.2M18 4.8a8.9 8.9 0 0 1 2.9 7.2"/></svg></span>
+        <span class="entry-option-label">Continue with Touch ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+      </button>
+      <button class="entry-auth-option" id="phoneOptionButton" type="button">
+        <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 3.5h9.6a1.7 1.7 0 0 1 1.7 1.7v13.6a1.7 1.7 0 0 1-1.7 1.7H7.2a1.7 1.7 0 0 1-1.7-1.7V5.2a1.7 1.7 0 0 1 1.7-1.7Z"/><path d="M10 17.4h4"/></svg></span>
+        <span class="entry-option-label">Continue with phone</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+      </button>
+      <button type="button" class="entry-passkey-alternative" id="createPasskeyAlternative" data-passkey="register" data-method="device passkey" hidden>Create a passkey on this device</button>
+    </div>
+    <section class="entry-phone-flow" id="phoneEntrySection" hidden aria-label="Phone verification">
+      <button class="entry-back-link" id="phoneBackButton" type="button">‹ <span>Back to options</span></button>
+      <label class="entry-phone-label" for="phone">Phone number</label>
+      <div class="entry-phone-row">
+        <span class="entry-country" id="phoneCountry" aria-label="Country calling code">+91</span>
+        <input class="entry-phone-input" id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Phone number" aria-label="Phone number">
+        <button class="entry-next" id="sendOtp" type="button" aria-label="Send verification code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
+      </div>
+      <div id="otpSection" class="entry-otp-section" hidden>
+        <label class="entry-phone-label" for="otpCode">Verification code</label>
+        <div class="entry-otp-row">
+          <input class="entry-otp-input" id="otpCode" name="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code" aria-label="Verification code">
+          <button class="entry-next" id="verifyOtp" type="button" aria-label="Verify code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+    </section>
+    <p class="entry-hidden-copy device-hint" id="deviceHint">Continue with Face ID or Touch ID using your device's secure passkey.</p>
+    <p id="status" class="entry-status" role="status" aria-live="polite"></p>
+    <div class="entry-divider" id="entryAuthDivider"><span aria-label="OR USE YOUR PHONE">OR</span></div>
+    <p class="entry-auth-switch"><span id="modeSwitchCopy">Already have an account?</span> <button type="button" id="modeToggleButton">Sign in</button></p>
+  </div>
+</section>
+<div class="auth-sheet entry-auth-sheet" id="authSheet" hidden>
+  <section class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-describedby="sheetCopy">
+    <div class="sheet-symbol" aria-hidden="true"><div class="spinner"></div></div>
+    <h2 id="sheetTitle">Confirm on your device</h2><p id="sheetCopy">Use your device's secure passkey prompt.</p>
+    <button class="cancel-button" id="cancelAuth" type="button" aria-label="Cancel">Cancel</button>
+  </section>
+</div>
+<div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
 const NATIVE_CAMERA_WELCOME = "<section class=\"native-camera-welcome\" aria-labelledby=\"nativeCameraWelcomeTitle\">\n  <div class=\"native-camera-orb\" aria-hidden=\"true\"><img src=\"/askmoina-mark.svg?v=0.4.80\" alt=\"\" width=\"58\" height=\"58\"></div>\n  <p class=\"native-camera-kicker\">YOUR REAL-WORLD CO-PILOT</p>\n  <h1 id=\"nativeCameraWelcomeTitle\">Show Moina your world.</h1>\n  <p class=\"native-camera-caption\">Point your camera at anything. We’ll figure it out together.</p>\n</section>";
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
 const NATIVE_APP_HEADER_GUEST = "";
@@ -65,7 +116,8 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
     html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
   }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + nativeScript + '</head>');
+  const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST);
   return html;
@@ -162,6 +214,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/pwa-gate.css",
   "/pwa-gate.js",
   "/pwa-runtime.js",
+  "/entry-auth.css",
   "/pwa-icon-192.svg",
   "/pwa-icon-512.svg",
   "/pwa-icon-512.png",
@@ -187,6 +240,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/pwa-gate.css": "text/css; charset=utf-8",
   "/pwa-gate.js": "text/javascript; charset=utf-8",
   "/pwa-runtime.js": "text/javascript; charset=utf-8",
+  "/entry-auth.css": "text/css; charset=utf-8",
   "/service-worker.js": "text/javascript; charset=utf-8",
   "/pwa-icon-192.svg": "image/svg+xml; charset=utf-8",
   "/pwa-icon-512.svg": "image/svg+xml; charset=utf-8",

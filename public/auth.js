@@ -36,9 +36,7 @@
     busy = value;
     document.querySelectorAll("button").forEach((button) => {
       if (button.id === "cancelAuth") return;
-      if (button.id === "modeCreate" || button.id === "modeSignin" ||
-          button.id === "passkeyAction" || button.id === "addPasskey" ||
-          button.id === "sendOtp" || button.id === "verifyOtp") {
+      if (button.matches("[data-passkey], #modeCreate, #modeSignin, #modeToggleButton, #phoneOptionButton, #phoneBackButton, #addPasskey, #sendOtp, #verifyOtp")) {
         button.disabled = value;
       }
     });
@@ -252,27 +250,37 @@
   }
 
   function setMode(mode) {
-    currentMode = mode;
-    const create = mode === "create";
+    currentMode = mode === "signin" ? "signin" : "create";
+    const create = currentMode === "create";
     const createButton = $("#modeCreate");
     const signInButton = $("#modeSignin");
-    const actionButton = $("#passkeyAction");
-    const headline = $("#headline");
-    const intro = $("#intro");
-    const title = $("#passkeyTitle");
+    const headline = $("#authTitle") || $("#headline");
+    const intro = $("#authSubtitle") || $("#intro");
+    const legacyTitle = $("#passkeyTitle");
     const subtitle = $("#passkeySubtitle");
+    const toggleCopy = $("#modeSwitchCopy");
+    const toggleButton = $("#modeToggleButton");
+
     if (createButton) createButton.setAttribute("aria-pressed", String(create));
     if (signInButton) signInButton.setAttribute("aria-pressed", String(!create));
-    if (actionButton) actionButton.dataset.passkey = create ? "register" : "login";
-    if (headline) headline.textContent = create ? "Create your private account." : "Welcome back.";
+    document.querySelectorAll("[data-passkey]").forEach((button) => {
+      if (button.id === "createPasskeyAlternative") {
+        button.dataset.passkey = "register";
+        button.hidden = true;
+        return;
+      }
+      button.dataset.passkey = create ? "register" : "login";
+    });
+    if (headline) headline.textContent = create ? "Welcome to askmoina" : "Welcome back";
     if (intro) intro.textContent = create
-      ? "One secure account for your conversations, preferences and memories. No guest access."
-      : "Sign in securely to return to your conversations, preferences and saved memories.";
-    if (title) title.textContent = "Continue with Face ID or Touch ID";
-    if (subtitle) subtitle.textContent = create ? "Create a passkey on this device or another one" : "Use a passkey already saved for AskMoina";
+      ? "Your live camera & video co-pilot for real-world problems."
+      : "Sign in to continue to your camera, conversations and Key Memories.";
+    if (legacyTitle && !$("#authTitle")) legacyTitle.textContent = "Continue with Face ID or Touch ID";
+    if (subtitle) subtitle.textContent = create ? "Create a passkey on this device or another one" : "Use a passkey already saved for askmoina";
+    if (toggleCopy) toggleCopy.textContent = create ? "Already have an account?" : "New to askmoina?";
+    if (toggleButton) toggleButton.textContent = create ? "Sign in" : "Create account";
     say("");
   }
-
   async function sendOtp() {
     if (busy) return;
     const rawPhone = $("#phone")?.value.trim() || "";
@@ -291,6 +299,10 @@
       pendingChallengeId = result.challengeId;
       const section = $("#otpSection");
       if (section) section.hidden = false;
+      const title = $("#authTitle");
+      const intro = $("#authSubtitle");
+      if (title) title.textContent = "Verify your number";
+      if (intro) intro.textContent = "Enter the verification code sent to " + phone + ".";
       say("Enter the SMS code sent to " + phone + ".");
       $("#otpCode")?.focus();
     } catch (error) {
@@ -334,6 +346,48 @@
   });
   $("#modeCreate")?.addEventListener("click", () => setMode("create"));
   $("#modeSignin")?.addEventListener("click", () => setMode("signin"));
+  $("#phoneOptionButton")?.addEventListener("click", () => {
+    const options = $("#authOptions");
+    const phoneSection = $("#phoneEntrySection");
+    const divider = $("#entryAuthDivider");
+    if (options) options.hidden = true;
+    if (phoneSection) phoneSection.hidden = false;
+    if (divider) divider.hidden = true;
+    const title = $("#authTitle");
+    const intro = $("#authSubtitle");
+    if (title) title.textContent = "Continue with phone";
+    if (intro) intro.textContent = "We'll send you a secure verification code.";
+    say("");
+    $("#phone")?.focus();
+  });
+  $("#phoneBackButton")?.addEventListener("click", () => {
+    const options = $("#authOptions");
+    const phoneSection = $("#phoneEntrySection");
+    const divider = $("#entryAuthDivider");
+    const otp = $("#otpSection");
+    if (options) options.hidden = false;
+    if (phoneSection) phoneSection.hidden = true;
+    if (divider) divider.hidden = false;
+    if (otp) otp.hidden = true;
+    pendingChallengeId = null;
+    pendingPhone = null;
+    if ($("#otpCode")) $("#otpCode").value = "";
+    setMode(currentMode);
+  });
+  $("#modeToggleButton")?.addEventListener("click", () => {
+    const options = $("#authOptions");
+    const phoneSection = $("#phoneEntrySection");
+    const divider = $("#entryAuthDivider");
+    const otp = $("#otpSection");
+    if (options) options.hidden = false;
+    if (phoneSection) phoneSection.hidden = true;
+    if (divider) divider.hidden = false;
+    if (otp) otp.hidden = true;
+    pendingChallengeId = null;
+    pendingPhone = null;
+    if ($("#otpCode")) $("#otpCode").value = "";
+    setMode(currentMode === "create" ? "signin" : "create");
+  });
   $("#sendOtp")?.addEventListener("click", sendOtp);
   $("#verifyOtp")?.addEventListener("click", verifyOtp);
   $("#cancelAuth")?.addEventListener("click", () => {
@@ -362,7 +416,11 @@
       })
       .catch(() => say("Could not load your account. Please refresh the page.", "error"));
   } else {
-    setMode("signin");
-    if (new URLSearchParams(window.location.search).get("reason") === "signed-out") say("You have signed out securely.", "success");
+    const params = new URLSearchParams(window.location.search);
+    const signedOut = params.get("reason") === "signed-out";
+    const isWelcomeOverlay = Boolean(document.querySelector(".entry-overlay"));
+    const requestedMode = params.get("mode");
+    setMode(isWelcomeOverlay && !signedOut && requestedMode !== "signin" ? "create" : "signin");
+    if (signedOut) say("You have signed out securely.", "success");
   }
 })();

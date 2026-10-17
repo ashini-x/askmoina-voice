@@ -36,6 +36,7 @@
       "/account",
       "/account.html",
       "/auth.js",
+      "/entry-auth.css",
       "/site-chrome.css",
       "/askmoina-bird-64.png",
       "/askmoina-bird-mark.png",
@@ -64,7 +65,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.83",
+    "APP_VERSION": "0.4.84",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
