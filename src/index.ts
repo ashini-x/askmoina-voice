@@ -72,7 +72,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
       <label class="entry-phone-label entry-hidden-copy" for="phone">Phone number</label>
       <div class="entry-phone-row">
         <span class="entry-country" id="phoneCountry" aria-label="Country calling code">+91</span>
-        <input class="entry-phone-input" id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" maxlength="10" placeholder="Phone number" aria-label="Phone number">
+        <input class="entry-phone-input" id="phone" name="askmoina-contact-entry" type="tel" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" maxlength="10" placeholder="Phone number" aria-label="Phone number">
         <button class="entry-next" id="sendOtp" type="button" aria-label="Send verification code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
       </div>
       <div id="otpSection" class="entry-otp-section" hidden>
