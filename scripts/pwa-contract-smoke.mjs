@@ -65,8 +65,12 @@ assert.ok(worker.includes('"/pwa-icon-512.png": "image/png"'), "512 PNG launch i
 assert.ok(worker.includes('legacyIcons.has((icon.src || "").split("?")[0])'), "Worker must filter stale legacy splash icons");
 assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-served sign-in HTML must also pass through the standalone gate");
 
+const authScript = read("public/auth.js");
+const nativeAppScript = read("public/native-app.js");
 const experienceCss = read("public/experience-selection.css");
 const experienceJs = read("public/experience-selection.js");
+assert.ok(authScript.includes("const next = destination;") && !authScript.includes("/?onboarding=1"), "successful authentication must navigate straight to the default authenticated home");
+assert.ok(!nativeAppScript.includes('get("onboarding") === "1"'), "obsolete post-auth onboarding flow must not remain active");
 assert.ok(worker.includes("CHOOSE YOUR EXPERIENCE"), "Interface 06 heading is missing");
 for (const label of [
   "Available now",
