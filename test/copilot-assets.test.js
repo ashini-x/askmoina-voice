@@ -907,7 +907,7 @@ describe("Primary camera entry", () => {
 
 
 
-describe("Dark-first app shell and launch branding", () => {
+describe("Dark-first app shell and brand assets", () => {
   it("uses a circular favicon while retaining the platform-masked Home Screen icon", () => {
     expect(html).toContain('href="/favicon.svg?v=0.4.80"');
     expect(html).toContain('href="/favicon-32.png?v=0.4.80"');
@@ -930,7 +930,7 @@ describe("Dark-first app shell and launch branding", () => {
   it("routes successful signup/sign-in through account-created confirmation and then the camera slider", () => {
     expect(authScript).toContain('"/?onboarding=1"');
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
-    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", entryLaunchOverlay + POST_AUTH_ONBOARDING + "</body>");\n      }');
+    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");\n      }');
     expect(nativeAppScript).toContain('get("onboarding") === "1"');
     expect(nativeAppScript).toContain('document.addEventListener("askmoina:user-disconnected"');
     expect(nativeAppScript).toContain('overlay.classList.add("is-slide-mode")');
@@ -949,20 +949,19 @@ describe("Dark-first app shell and launch branding", () => {
     expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
   });
 
-  it("renders Interface 1 before Interface 2 or the authenticated camera flow", () => {
-    expect(workerSource).toContain("const ENTRY_LAUNCH_OVERLAY = ");
-    expect(workerSource).toContain('class="app-launch-transition"');
-    expect(workerSource).toContain('class="launch-signature-orb"');
-    expect(workerSource).toContain('src="/askmoina-mark.svg"');
-    expect(workerSource).toContain('class="launch-signature-title">askmoina</span>');
-    expect(workerSource).toContain('class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span>');
-    expect(workerSource).toContain("entryLaunchOverlay + ENTRY_AUTH_OVERLAY");
-    expect(workerSource).toContain("entryLaunchOverlay + POST_AUTH_ONBOARDING");
-    expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(nativeAppCss).toContain(".launch-signature-orb:after");
-    expect(nativeAppCss).toContain("@keyframes launch-smoke-turn");
-    expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
-    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-current-cyan");
-    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-specular");
+  it("permanently removes the branded launch interstitial while preserving both entry flows", () => {
+    expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
+    expect(workerSource).not.toContain('class="app-launch-transition"');
+    expect(workerSource).not.toContain('class="launch-signature-orb"');
+    expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY + '<script src=\"/auth.js?v='");
+    expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
+    expect(workerSource).toContain('id="postAuthSuccessTitle"');
+    expect(workerSource).toContain('id="onboardingGetStarted">Get Started');
+    expect(nativeAppCss).not.toContain(".app-launch-transition");
+    expect(nativeAppCss).not.toContain(".launch-signature-orb");
+    expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
+    expect(nativeAppCss).toContain(".post-auth-success-artwork");
+    expect(nativeAppCss).toContain(".post-auth-slide-stage");
   });
 });

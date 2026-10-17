@@ -13,7 +13,7 @@ assert.equal(manifest.display, "standalone", "manifest must request standalone d
 assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
 assert.equal(manifest.theme_color, "#030406", "PWA theme color must match the black launch interface");
-assert.equal(manifest.background_color, "#030406", "PWA launch background must match Interface 1");
+assert.equal(manifest.background_color, "#030406", "PWA launch background must match the dark app shell");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.png" && icon.sizes === "512x512" && icon.type === "image/png"), "Android splash requires a real 512x512 PNG icon");
@@ -39,11 +39,12 @@ assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "
 const worker = read("src/index.ts");
 assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
-assert.ok(worker.includes('const themeColor = "#030406"'), "PWA theme must match Interface 1");
+assert.ok(worker.includes('const themeColor = "#030406"'), "PWA theme must match the dark app shell");
 assert.ok(worker.includes('const statusBarStyle = "black-translucent"') && !worker.includes("lightEntrySurface"), "PWA system bars must use the dark appearance");
 assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
-assert.ok(worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "Interface 1 launch signature must be present");
-assert.ok(worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "post-auth onboarding must skip the launch overlay");
+assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-screen launch interstitial must remain removed");
+assert.ok(!worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "obsolete launch-overlay bypass logic must remain removed");
+assert.ok(!read("public/native-app.css").includes(".app-launch-transition"), "launch-interstitial styles must remain removed");
 assert.ok(worker.includes("const POST_AUTH_ONBOARDING = "), "post-auth screens must be present");
 assert.ok(worker.includes("withNativeAppShell(html, appVersion, authenticated)"), "root must use the native app shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
