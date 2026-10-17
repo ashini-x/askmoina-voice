@@ -86,13 +86,9 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
   </div>
   <section class="biometric-auth-stage" id="biometricAuthStage" hidden aria-labelledby="biometricTitle">
     <div class="biometric-stage-content">
-      <svg class="biometric-symbol biometric-face-symbol" id="biometricFaceSymbol" viewBox="0 0 96 96" aria-hidden="true">
+      <svg class="biometric-symbol biometric-face-symbol" id="biometricSymbol" viewBox="0 0 96 96" aria-hidden="true">
         <path d="M29 12H21a9 9 0 0 0-9 9v8M67 12h8a9 9 0 0 1 9 9v8M84 67v8a9 9 0 0 1-9 9h-8M29 84h-8a9 9 0 0 1-9-9v-8"/>
         <path d="M34 36v8M62 36v8M39 59c5.3 4.2 12.7 4.2 18 0M48 43v7"/>
-      </svg>
-      <svg class="biometric-symbol biometric-fingerprint-symbol" id="biometricFingerprintSymbol" viewBox="0 0 96 96" aria-hidden="true">
-        <path d="M48 12c-20 0-36 15.9-36 35.5M48 21c-15 0-27 12-27 26.5"/>
-        <path d="M48 30c-10 0-18 8-18 17.5 0 14-2.5 23-8 31M48 39c-5 0-9 4-9 8.5 0 17-1.4 28-5.5 38M48 48c0 20-1 30-4 38M57 49c0 16.2-.7 27.8-4.2 37M57 31c10.5 3.8 18 14 18 26.5 0 10.8-1.4 19.6-4.1 28M66 21c11 7.4 18 19.6 18 33.5 0 9-1.5 18.7-4.5 27"/>
       </svg>
       <h2 id="biometricTitle">Face Authentication</h2>
       <p id="biometricInstruction">Look at the camera</p>
@@ -3102,8 +3098,9 @@ export default {
           .replace('<script src="/transcript-merge.js" defer></script>', "")
           .replace('<script src="/session-ui.js" defer></script>', "");
       }
-      html = withNativeAppShell(html, env.APP_VERSION || "0.4.80", authenticated);
-      if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js" defer></script></body>');
+      const appVersion = env.APP_VERSION || "0.4.80";
+      html = withNativeAppShell(html, appVersion, authenticated);
+      if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
         "Content-Type": "text/html; charset=utf-8",
