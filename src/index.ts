@@ -3112,7 +3112,8 @@ export default {
           .replace('<script src="/session-ui.js" defer></script>', "");
       }
       const appVersion = env.APP_VERSION || "0.4.80";
-      const entryLaunchOverlay = ENTRY_LAUNCH_OVERLAY.replace(
+      const skipLaunchForPostAuthOnboarding = authenticated && url.searchParams.get("onboarding") === "1";
+      const entryLaunchOverlay = skipLaunchForPostAuthOnboarding ? "" : ENTRY_LAUNCH_OVERLAY.replace(
         'src="/askmoina-mark.svg"',
         'src="/askmoina-mark.svg?v=' + encodeURIComponent(appVersion) + '"',
       );
