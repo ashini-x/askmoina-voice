@@ -412,7 +412,7 @@
     if (title) title.textContent = "Phone number";
     if (intro) intro.textContent = "We'll text you a code.";
     say("");
-    $("#phone")?.focus();
+    // Let the user tap the field intentionally; avoids popping mobile autofill UI over the page.
   });
   $("#phoneBackButton")?.addEventListener("click", () => {
     const panel = $(".entry-auth-panel");
