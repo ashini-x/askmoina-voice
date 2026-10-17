@@ -307,27 +307,9 @@
   background: transparent !important;
 }
 @keyframes askmoina-edge-spectrum {
-  /* Linear within each segment: speed changes between sections, never stalls. */
-  0% {
-    --askmoina-edge-angle: 0deg;
-    animation-timing-function: linear;
-  }
-  20% {
-    --askmoina-edge-angle: 112deg;
-    animation-timing-function: linear;
-  }
-  55% {
-    --askmoina-edge-angle: 230deg;
-    animation-timing-function: linear;
-  }
-  78% {
-    --askmoina-edge-angle: 315deg;
-    animation-timing-function: linear;
-  }
-  100% {
-    --askmoina-edge-angle: 360deg;
-    animation-timing-function: linear;
-  }
+  /* One uninterrupted sweep: no segment handoffs and no sudden speed changes. */
+  from { --askmoina-edge-angle: 0deg; }
+  to   { --askmoina-edge-angle: 360deg; }
 }
 @keyframes askmoina-panel-arrive {
   from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.992); }
