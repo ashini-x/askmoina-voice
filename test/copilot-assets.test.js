@@ -151,7 +151,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@keyframes askmoina-orb-thinking-halo");
     expect(css).toContain("@keyframes askmoina-orb-thinking-mark");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(css).toContain("#toggleCopilot.askmoina-orb-control[data-orb-state=\\"processing\\"] .askmoina-orb-interior::before");
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
     expect(html).toContain('src="/askmoina-mark.svg?v=0.4.78"');
     expect(html).toContain('/copilot.css?v=0.4.78');
     expect(html).toContain('/copilot.js?v=0.4.78');
