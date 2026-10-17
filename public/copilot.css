@@ -1556,7 +1556,7 @@ h3,h4,h5,h6{letter-spacing:-.02em}
   width: 130%;
   height: 28%;
   background: radial-gradient(ellipse at 4% 50%, rgba(182, 142, 255, .74) 0%, rgba(146, 96, 255, .34) 38%, transparent 78%);
-  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  opacity: var(--edge-wave-tail-opacity, .26);
   animation: askmoina-edge-wave-down 3.8s linear infinite;
   animation-delay: -1.8s;
 }
@@ -1582,7 +1582,7 @@ h3,h4,h5,h6{letter-spacing:-.02em}
   width: 130%;
   height: 28%;
   background: radial-gradient(ellipse at 96% 50%, rgba(126, 222, 255, .72) 0%, rgba(49, 165, 255, .32) 38%, transparent 78%);
-  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  opacity: var(--edge-wave-tail-opacity, .26);
   animation: askmoina-edge-wave-up 3.8s linear infinite;
   animation-delay: -1.8s;
 }
@@ -1612,7 +1612,7 @@ h3,h4,h5,h6{letter-spacing:-.02em}
   width: 28%;
   height: 145%;
   background: radial-gradient(ellipse at 50% 2%, rgba(156, 129, 255, .64) 0%, rgba(122, 108, 255, .30) 44%, transparent 80%);
-  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  opacity: var(--edge-wave-tail-opacity, .26);
   animation: askmoina-edge-wave-right 3.8s linear infinite;
   animation-delay: -1.8s;
 }
@@ -1640,7 +1640,7 @@ h3,h4,h5,h6{letter-spacing:-.02em}
   width: 28%;
   height: 145%;
   background: radial-gradient(ellipse at 50% 98%, rgba(142, 203, 255, .64) 0%, rgba(73, 155, 255, .29) 44%, transparent 80%);
-  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  opacity: var(--edge-wave-tail-opacity, .26);
   animation: askmoina-edge-wave-left 3.8s linear infinite;
   animation-delay: -1.8s;
 }
