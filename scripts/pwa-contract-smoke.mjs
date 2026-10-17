@@ -41,7 +41,7 @@ assert.ok(worker.includes('const statusBarStyle = "black-translucent"'), "dark a
 assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
 assert.ok(worker.includes('class="app-launch-transition"'), "native app launch transition is missing");
 assert.ok(read("public/native-app.css").includes("@keyframes app-launch-mark-in"), "launch mark animation is missing");
-assert.ok(worker.includes('withNativeAppShell(html, env.APP_VERSION || "0.4.64", authenticated)'), "root must use the native app shell");
+assert.ok(worker.includes('withNativeAppShell(html, env.APP_VERSION || "0.4.80", authenticated)'), "root must use the native app shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
 assert.ok(worker.includes("const NATIVE_APP_MENU_SHEET") && worker.includes("native-menu-signout"), "native app menu must include app settings and sign-out");
 assert.ok(read("public/native-app.css").includes(".native-menu-sheet"), "native app menu styling is missing");
