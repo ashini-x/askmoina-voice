@@ -87,9 +87,9 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
         <p class="entry-phone-hint entry-otp-hint">The code may take a few moments to arrive. Check your messages before trying again.</p>
       </div>
     </section>
-    <p class="entry-legal-note">By continuing, you agree to our Privacy Policy and Terms.</p>
     <p class="entry-hidden-copy device-hint" id="deviceHint">Continue with Face ID or Touch ID using your device's secure passkey.</p>
     <p id="status" class="entry-status" role="status" aria-live="polite"></p>
+    <p class="entry-legal-note">By continuing, you agree to our Privacy Policy and Terms.</p>
     <div class="entry-divider" id="entryAuthDivider"><span aria-label="OR USE YOUR PHONE">OR</span></div>
     <p class="entry-auth-switch"><span id="modeSwitchCopy">Already have an account?</span> <button type="button" id="modeToggleButton">Sign in</button></p>
   </div>
