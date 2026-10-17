@@ -42,7 +42,8 @@ assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS
 assert.ok(worker.includes('const themeColor = "#030406"'), "PWA theme must match Interface 1");
 assert.ok(worker.includes('const statusBarStyle = "black-translucent"') && !worker.includes("lightEntrySurface"), "PWA system bars must use the dark appearance");
 assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
-assert.ok(!worker.includes('class="app-launch-transition"'), "legacy splash must not cover onboarding");
+assert.ok(worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "Interface 1 launch signature must be present");
+assert.ok(worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "post-auth onboarding must skip the launch overlay");
 assert.ok(worker.includes("const POST_AUTH_ONBOARDING = "), "post-auth screens must be present");
 assert.ok(worker.includes("withNativeAppShell(html, appVersion, authenticated)"), "root must use the native app shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
