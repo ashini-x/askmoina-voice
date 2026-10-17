@@ -95,7 +95,7 @@
   --askmoina-screen-corner-radius: clamp(28px, 7.5vw, 52px);
   /* One shared clock keeps both light layers phase-locked on mobile GPUs. */
   --askmoina-edge-angle: 0deg;
-  animation: entry-welcome-fade .36s ease both, askmoina-edge-spectrum 6.6s linear infinite;
+  animation: entry-welcome-fade .36s ease both, askmoina-edge-spectrum 6.2s linear infinite;
 }
 .entry-overlay::before,
 .entry-overlay::after {
@@ -309,24 +309,23 @@
   background: transparent !important;
 }
 @keyframes askmoina-edge-spectrum {
+  /* A matched, moderate curve across proportional angle intervals keeps
+     the beam moving through transitions instead of easing to a halt. */
   0% {
     --askmoina-edge-angle: 0deg;
-    /* Quick acceleration into the visible sweep. */
-    animation-timing-function: cubic-bezier(.08, .78, .16, 1);
+    animation-timing-function: cubic-bezier(.25, .20, .75, .80);
   }
   18% {
-    --askmoina-edge-angle: 126deg;
-    /* Travel more gently along this side of the phone. */
-    animation-timing-function: cubic-bezier(.42, .02, .7, .22);
+    --askmoina-edge-angle: 64.8deg;
+    animation-timing-function: cubic-bezier(.25, .20, .75, .80);
   }
-  58% {
-    --askmoina-edge-angle: 228deg;
-    /* Accelerate again before moving around the lower corner. */
-    animation-timing-function: cubic-bezier(.12, .7, .22, 1);
+  52% {
+    --askmoina-edge-angle: 187.2deg;
+    animation-timing-function: cubic-bezier(.25, .20, .75, .80);
   }
-  79% {
-    --askmoina-edge-angle: 316deg;
-    animation-timing-function: cubic-bezier(.4, .02, .72, .26);
+  78% {
+    --askmoina-edge-angle: 280.8deg;
+    animation-timing-function: cubic-bezier(.25, .20, .75, .80);
   }
   100% {
     --askmoina-edge-angle: 360deg;
