@@ -65,6 +65,29 @@ assert.ok(worker.includes('"/pwa-icon-512.png": "image/png"'), "512 PNG launch i
 assert.ok(worker.includes('legacyIcons.has((icon.src || "").split("?")[0])'), "Worker must filter stale legacy splash icons");
 assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-served sign-in HTML must also pass through the standalone gate");
 
+const experienceCss = read("public/experience-selection.css");
+const experienceJs = read("public/experience-selection.js");
+assert.ok(worker.includes("CHOOSE YOUR EXPERIENCE"), "Interface 06 heading is missing");
+for (const label of [
+  "Available now",
+  "Coming later",
+  "Real-time visual intelligence",
+  "Live camera guidance",
+  "Search with verified sources",
+  "Private and secure",
+  "More powerful models",
+  "Expanded real-world tools",
+  "Next-generation experience",
+]) {
+  assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
+}
+assert.ok(worker.includes('href="/experience-selection.css?v=20261017"'), "Interface 06 CSS must be attached to the authenticated home route");
+assert.ok(worker.includes('src="/experience-selection.js?v=20261017"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
+assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes("#experienceMoinaOS2"), "Interface 06 product interactions are missing");
+assert.ok(experienceJs.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'), "Interface 06 navigation must honor reduced-motion preferences");
+assert.ok(experienceJs.includes('cameraApp.inert = false'), "moinaOS 1 selection must return interaction to the existing camera interface");
+
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
 assert.ok(serviceWorker.includes("askmoina-pwa-shell-v6"), "service worker cache must be refreshed for the dark splash icon");
@@ -78,7 +101,7 @@ assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation net
 assert.ok(!serviceWorker.includes('"/app.js"'), "app JavaScript must not be precached");
 assert.ok(!serviceWorker.includes('"/copilot.js"'), "Co-Pilot JavaScript must not be precached");
 
-for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js"]) {
+for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js", "public/experience-selection.js"]) {
   execFileSync(process.execPath, ["--check", resolve(root, path)], { stdio: "pipe" });
 }
 
