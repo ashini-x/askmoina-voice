@@ -930,3 +930,34 @@
   .entry-auth-panel.is-phone-flow .entry-back-link { margin-bottom: 10px !important; }
   .entry-auth-panel.is-phone-flow .entry-legal-note { margin-top: 13px !important; }
 }
+
+
+/* Phone entry: one brand lockup, no second title block. The form itself
+   carries the only necessary instruction via its field placeholder and label. */
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy {
+  display: none !important;
+  width: 0 !important;
+  max-width: 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.entry-auth-panel.is-phone-flow .entry-brand-lockup {
+  margin-bottom: 30px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-flow {
+  margin-top: 0 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-back-link {
+  margin-bottom: 15px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-legal-note {
+  margin-top: 17px !important;
+}
+@media (max-height: 700px) {
+  .entry-auth-panel.is-phone-flow .entry-brand-lockup { margin-bottom: 20px !important; }
+  .entry-auth-panel.is-phone-flow .entry-back-link { margin-bottom: 11px !important; }
+  .entry-auth-panel.is-phone-flow .entry-legal-note { margin-top: 13px !important; }
+}
