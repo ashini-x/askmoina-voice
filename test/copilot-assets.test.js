@@ -131,7 +131,7 @@ describe("Live Co-Pilot browser assets", () => {
   });
 
   it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
-    expect(css.trimEnd()).toMatch(/\\.edge-glow\\{display:none!important\\}$/);
+    expect(css.trimEnd().endsWith(".edge-glow{display:none!important}")).toBe(true);
     expect(script).toContain("syncLiquidOrbEnergy(energy);");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
