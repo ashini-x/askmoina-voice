@@ -470,7 +470,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('showConnectionNotice("Network is slow"');
     expect(script).toContain('"slow");');
     expect(script).toContain("void prepareCameraPreview();");
-    expect(script).toContain('window.location.replace("/")');
+    expect(script).not.toContain('window.location.replace("/")');
+    expect(script).toContain('window.setTimeout(() => stage.classList.remove("is-returning"), 570)');
     expect(script).toContain("function playConnectionChime()");
     expect(script).toContain("function playDisconnectSound()");
     expect(script).toContain("airy, glass-like");
