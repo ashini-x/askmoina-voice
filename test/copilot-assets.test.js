@@ -35,13 +35,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("processed by Google Cloud Vertex AI");
   });
 
-  it("keeps Vision orb-free, adds Back, and uses a pulse-style edge without a visible Spatial AR page", () => {
+  it("keeps Vision orb-free, adds Back, and disables full-screen edge pulses", () => {
     expect(html).not.toContain('class="camera-placeholder-icon presence-orb"');
     expect(html).toContain('id="backButton"');
     expect(script).toContain("if (history.length > 1) history.back();");
     expect(authScript).toContain('error.name === "NotAllowedError"');
     expect(authScript).toContain("createAlternative.hidden = false");
-    expect(css).toContain("@keyframes intelligence-pulse");
+    expect(css).toContain(".edge-glow{display:none!important}");
     expect(css).toContain("#spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}");
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
@@ -59,7 +59,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
     expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v3"');
     for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg"]) {
-      expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.78");
+      expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.79");
     }
   });
 
@@ -108,12 +108,12 @@ describe("Live Co-Pilot browser assets", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
     expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.78"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
     expect(html).toContain('class="askmoina-control-mark"');
     expect(css).toContain(".askmoina-control-mark");
     expect(css).toContain("width:44px!important;");
     expect(css).toContain("height:auto!important;");
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.78")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.79")');
   });
 
   it("uses roomier Apple-like camera controls and a recognizable camera-switch icon", () => {
@@ -126,8 +126,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.78');
-    expect(html).toContain('/copilot.js?v=0.4.78');
+    expect(html).toContain('/copilot.css?v=0.4.79');
+    expect(html).toContain('/copilot.js?v=0.4.79');
+  });
+
+  it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
+    expect(css.trimEnd()).toMatch(/\\.edge-glow\\{display:none!important\\}$/);
+    expect(script).toContain("syncLiquidOrbEnergy(energy);");
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
   });
 
   it("morphs the liquid orb from live microphone and assistant playback energy", () => {
@@ -152,16 +160,16 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@keyframes askmoina-orb-thinking-mark");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.78"');
-    expect(html).toContain('/copilot.css?v=0.4.78');
-    expect(html).toContain('/copilot.js?v=0.4.78');
-    expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.78\")");
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
+    expect(html).toContain('/copilot.css?v=0.4.79');
+    expect(html).toContain('/copilot.js?v=0.4.79');
+    expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.79\")");
   });
 
   it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.78"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
     expect(html).not.toContain("M7.1 4.2");
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
@@ -175,7 +183,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain("askmoina-control-wave");
     expect(html.indexOf('id="muteMic"')).toBeLessThan(html.indexOf('id="toggleCopilot"'));
     expect(html.indexOf('id="toggleCopilot"')).toBeLessThan(html.indexOf('id="flipCamera"'));
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.78")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.79")');
     expect(css).toContain("border-radius:50%!important");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).not.toContain("askmoina-orb-sweep");
@@ -186,9 +194,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('if (speechGateEnded) setOrbProcessing(true);');
     expect(script).toContain('active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing)');
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(css).toContain("@keyframes edge-width-pulse");
-    expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
-    expect(css).toContain(".camera-stage.is-speaking .edge-glow:after");
+    expect(css.trimEnd()).toMatch(/\.edge-glow\{display:none!important\}$/);
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
+    expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
     expect(css).toContain(".entry-passkey-trailing");
   });
 
@@ -515,7 +523,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".vision-slide-copy{");
     expect(css).toContain("brightness(1.32)");
     expect(css).toContain(".camera-stage.has-notice #videoPreview");
-    expect(css).toContain(".camera-stage.is-listening .edge-glow:after");
+    expect(css).toContain(".edge-glow{display:none!important}");
   });
 
 });
