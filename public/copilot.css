@@ -1849,3 +1849,5 @@ html,body{background:#090b0f;color:#f5f5f7}
 .entry-overlay .entry-auth-panel .entry-page-heading,.entry-overlay .entry-auth-panel h1,.entry-overlay .entry-auth-panel h2,.entry-overlay .entry-auth-panel h3{color:#f5f7fb!important}
 .entry-auth-panel .entry-phone-row,.entry-auth-panel .entry-otp-row{background:transparent!important}
 .entry-auth-panel .entry-alternative,.entry-auth-panel .entry-link{color:#64a6ff!important}
+/* Preserve the production safety override: no full-screen edge pulse. */
+.edge-glow{display:none!important}
