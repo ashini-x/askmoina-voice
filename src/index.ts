@@ -104,11 +104,10 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
   </section>
 </div>
 <div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
-const NATIVE_CAMERA_WELCOME = "<section class=\"native-camera-welcome\" aria-labelledby=\"nativeCameraWelcomeTitle\">\n  <div class=\"native-camera-orb\" aria-hidden=\"true\"><img src=\"/askmoina-mark.svg?v=0.4.80\" alt=\"\" width=\"58\" height=\"58\"></div>\n  <p class=\"native-camera-kicker\">YOUR REAL-WORLD CO-PILOT</p>\n  <h1 id=\"nativeCameraWelcomeTitle\">Show Moina your world.</h1>\n  <p class=\"native-camera-caption\">Point your camera at anything. We’ll figure it out together.</p>\n</section>";
 const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding" id="postAuthOnboarding" aria-label="askmoina welcome" hidden>
   <section class="post-auth-onboarding-stage post-auth-account-created" id="postAuthAccountCreated" aria-labelledby="postAuthSuccessTitle">
     <div class="post-auth-success-content">
-      <div class="post-auth-success-orb" aria-hidden="true"><span></span></div>
+      <div class="post-auth-success-orb presence-orb" aria-hidden="true"><span class="presence-core"></span><span class="presence-ribbon"></span><span class="presence-ribbon ribbon-two"></span><span class="presence-wave"></span></div>
       <h1 id="postAuthSuccessTitle">You're all set!</h1>
       <p>Welcome to askmoina.<br>Let's solve real-world problems together.</p>
       <button type="button" class="post-auth-get-started" id="onboardingGetStarted">Get Started</button>
@@ -116,7 +115,6 @@ const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding" id="postAuth
   </section>
   <section class="post-auth-onboarding-stage post-auth-slide-stage" id="postAuthSlideStage" aria-labelledby="postAuthSlideTitle" hidden>
     <div class="post-auth-slide-copy">
-      <p class="post-auth-slide-kicker">askmoina · LIVE CAMERA CO-PILOT</p>
       <h1 id="postAuthSlideTitle">Slide to show<br>your problem</h1>
     </div>
     <div class="post-auth-onboarding-slider-slot" id="onboardingSliderSlot" aria-label="Start camera guidance"></div>
@@ -132,17 +130,9 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
     const headerEnd = html.indexOf("</header>", headerStart);
     if (headerEnd >= 0) html = html.slice(0, headerStart) + nativeHeader + html.slice(headerEnd + "</header>".length);
   }
-  const welcomeMarker = '<button type="button" id="showProblemButton"';
-  if (html.includes(welcomeMarker) && !html.includes('class="native-camera-welcome"')) {
-    html = html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker);
-  }
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
   html = html.replace(/<title>[^<]*<\/title>/, "<title>askmoina</title>");
   const version = encodeURIComponent(appVersion || "0.4.80");
-  if (/<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html)) {
-    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><div class="launch-signature-orb"><img src="/askmoina-mark.svg?v=' + version + '" alt="" width="86" height="61"></div><span class="launch-signature-title">askmoina</span><span class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span></div>';
-    html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
-  }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
   html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + nativeScript + '</head>');
@@ -3118,7 +3108,7 @@ export default {
       const appVersion = env.APP_VERSION || "0.4.80";
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
-      if (authenticated && url.searchParams.get("onboarding") === "1") {
+      if (authenticated) {
         html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);

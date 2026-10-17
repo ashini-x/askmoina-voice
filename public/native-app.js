@@ -42,20 +42,19 @@
 })();
 
 
-/* Post-auth onboarding: account-created confirmation -> camera slider. */
+
+/* Post-auth onboarding: Interface 6 -> Interface 15 -> live camera, then Interface 15 on manual disconnect. */
 (() => {
   "use strict";
   const overlay = document.querySelector("#postAuthOnboarding");
-  if (!overlay) return;
-
   const successStage = document.querySelector("#postAuthAccountCreated");
   const slideStage = document.querySelector("#postAuthSlideStage");
   const getStarted = document.querySelector("#onboardingGetStarted");
   const sliderSlot = document.querySelector("#onboardingSliderSlot");
   const slider = document.querySelector("#showProblemButton");
-  if (!successStage || !slideStage || !getStarted || !sliderSlot || !slider) return;
+  if (!overlay || !successStage || !slideStage || !getStarted || !sliderSlot || !slider) return;
 
-  overlay.hidden = false;
+  const isNewAuthJourney = new URLSearchParams(window.location.search).get("onboarding") === "1";
   const originalParent = slider.parentNode;
   const originalNextSibling = slider.nextSibling;
   const label = slider.querySelector("#visionSlideLabel");
@@ -65,13 +64,9 @@
 
   const setSliderCopy = () => {
     if (!label || slideStage.hidden) return;
-    if (slider.classList.contains("is-complete")) {
-      label.textContent = "Connecting…";
-    } else if (slider.classList.contains("is-sliding") && Number(slider.dataset.progress || 0) >= 0.82) {
-      label.textContent = "Release to start";
-    } else {
-      label.textContent = "Slide to show your problem";
-    }
+    if (slider.classList.contains("is-complete")) label.textContent = "Connecting…";
+    else if (slider.classList.contains("is-sliding") && Number(slider.dataset.progress || 0) >= 0.82) label.textContent = "Release to start";
+    else label.textContent = "Slide to show your problem";
     slider.setAttribute("aria-label", "Slide to show your problem");
     slider.title = "Slide to show your problem";
     if (screenReaderLabel) screenReaderLabel.textContent = "Slide to show your problem. Slide the control to the right to begin camera guidance.";
@@ -86,8 +81,15 @@
     } catch (_) {}
   };
 
+  const resetSlider = () => {
+    slider.dataset.progress = "0";
+    slider.style.setProperty("--slide-distance", "0px");
+    slider.classList.remove("is-sliding", "is-complete");
+  };
+
   const restoreSliderAndClose = () => {
     if (closeTimer) window.clearTimeout(closeTimer);
+    closeTimer = null;
     completionObserver?.disconnect();
     completionObserver = null;
     if (originalParent && slider.parentNode !== originalParent) {
@@ -95,6 +97,7 @@
       else originalParent.appendChild(slider);
     }
     overlay.hidden = true;
+    overlay.classList.remove("is-slide-mode");
     document.body.classList.remove("post-auth-onboarding-active");
   };
 
@@ -106,37 +109,52 @@
         return;
       }
       if (closeTimer) return;
-      // Let the camera session begin under the frosted screen, then reveal the live camera.
+      // Keep the slide visible while the Live session opens, then reveal the camera.
       closeTimer = window.setTimeout(restoreSliderAndClose, 220);
     });
     completionObserver.observe(slider, { attributes: true, attributeFilter: ["class"] });
   };
 
-  getStarted.addEventListener("click", () => {
+  const showSlideStage = (focusSlider = true) => {
+    if (closeTimer) window.clearTimeout(closeTimer);
+    closeTimer = null;
+    completionObserver?.disconnect();
+    completionObserver = null;
     successStage.hidden = true;
     slideStage.hidden = false;
+    overlay.hidden = false;
+    overlay.classList.add("is-slide-mode");
     document.body.classList.add("post-auth-onboarding-active");
     removeOnboardingFromAddress();
-    sliderSlot.appendChild(slider);
-    slider.dataset.progress = "0";
-    slider.style.setProperty("--slide-distance", "0px");
-    slider.classList.remove("is-sliding", "is-complete");
+    if (slider.parentNode !== sliderSlot) sliderSlot.appendChild(slider);
+    resetSlider();
     setSliderCopy();
     observeSliderCompletion();
-    slider.focus({ preventScroll: true });
-  });
+    if (focusSlider) slider.focus({ preventScroll: true });
+  };
+
+  getStarted.addEventListener("click", () => showSlideStage(true));
+  document.addEventListener("askmoina:user-disconnected", () => showSlideStage(true));
 
   const labelObserver = new MutationObserver(() => {
     if (slideStage.hidden || slider.classList.contains("is-complete")) return;
-    // The shared camera slider resets its default label after a partial gesture.
+    // The shared camera slider resets its label after an incomplete gesture.
     if (label && label.textContent === "Slide to start") setSliderCopy();
   });
   if (label) labelObserver.observe(label, { childList: true, characterData: true, subtree: true });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !slideStage.hidden && !overlay.hidden && !slider.classList.contains("is-complete")) {
-      // Escape must not bypass the required "show your problem" slide.
       event.preventDefault();
     }
   });
+
+  if (isNewAuthJourney) {
+    successStage.hidden = false;
+    slideStage.hidden = true;
+    overlay.classList.remove("is-slide-mode");
+    overlay.hidden = false;
+  } else {
+    showSlideStage(false);
+  }
 })();
