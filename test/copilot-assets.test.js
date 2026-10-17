@@ -965,6 +965,25 @@ describe("Dark-first app shell and launch branding", () => {
     expect(workerSource).toContain('<meta name="color-scheme" content="dark">');
   });
 
+
+  it("routes successful signup/sign-in through account-created confirmation and then the camera slider", () => {
+    expect(authScript).toContain('"/?onboarding=1"');
+    expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
+    expect(workerSource).toContain('authenticated && url.searchParams.get("onboarding") === "1"');
+    expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
+    expect(workerSource).toContain('id="postAuthSuccessTitle"');
+    expect(workerSource).toContain("You're all set!");
+    expect(workerSource).toContain('id="onboardingGetStarted">Get Started');
+    expect(workerSource).toContain('id="postAuthSlideTitle">Slide to show<br>your problem');
+    expect(nativeAppScript).toContain('document.querySelector("#postAuthOnboarding")');
+    expect(nativeAppScript).toContain('sliderSlot.appendChild(slider)');
+    expect(nativeAppScript).toContain('completionObserver.observe(slider, { attributes: true, attributeFilter: ["class"] })');
+    expect(nativeAppCss).toContain(".post-auth-account-created");
+    expect(nativeAppCss).toContain(".post-auth-slide-stage");
+    expect(nativeAppCss).toContain(".post-auth-onboarding-slider-slot .show-problem-button");
+    expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
+  });
+
   it("shows a short reduced-motion-aware transition before the camera slider", () => {
     expect(workerSource).toContain('class="app-launch-transition"');
     expect(nativeAppCss).toContain("@keyframes app-launch-mark-in");
