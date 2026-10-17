@@ -81,7 +81,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
     </section>
     <p class="entry-hidden-copy device-hint" id="deviceHint">Continue with Face ID or Touch ID using your device's secure passkey.</p>
     <p id="status" class="entry-status" role="status" aria-live="polite"></p>
-    <div class="entry-divider" id="entryAuthDivider"><span>OR</span></div>
+    <div class="entry-divider" id="entryAuthDivider"><span aria-label="OR USE YOUR PHONE">OR</span></div>
     <p class="entry-auth-switch"><span id="modeSwitchCopy">Already have an account?</span> <button type="button" id="modeToggleButton">Sign in</button></p>
   </div>
 </section>
