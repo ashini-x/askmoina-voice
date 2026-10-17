@@ -2722,7 +2722,11 @@
     if (statusMessage) setStatus(statusMessage, statusKind);
     else if (userInitiated) setStatus("Co-Pilot paused. Start again whenever you're ready.");
     void refreshAvailabilityAfterRelease();
-    void prepareCameraPreview();
+    const previewRestart = prepareCameraPreview();
+    if (userInitiated) {
+      const showProblemAgain = () => window.dispatchEvent(new Event("askmoina:user-disconnected"));
+      void previewRestart.then(showProblemAgain, showProblemAgain);
+    }
   }
 
   function getToolCalls(message) {
