@@ -76,3 +76,235 @@
 @keyframes biometric-fingerprint-breathe{0%,100%{opacity:.82;transform:scale(.99)}50%{opacity:1;transform:scale(1.035)}}
 @media(max-height:560px){.biometric-auth-stage{padding-top:max(60px,calc(env(safe-area-inset-top) + 24px));padding-bottom:max(70px,calc(env(safe-area-inset-bottom) + 46px))}.biometric-symbol{width:64px;height:64px;margin-bottom:18px}.biometric-auth-stage h2{font-size:1.08rem}.biometric-auth-stage p{font-size:.83rem}.biometric-cancel{bottom:max(22px,calc(env(safe-area-inset-bottom) + 8px))}}
 @media(prefers-reduced-motion:reduce){.biometric-auth-stage,.biometric-face-symbol,.biometric-fingerprint-symbol{animation:none!important}}
+
+
+/* Interface 1 — cinematic edge intelligence and centered sign-in / sign-up. */
+@property --askmoina-edge-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.entry-overlay {
+  isolation: isolate !important;
+  box-sizing: border-box !important;
+  min-height: 100dvh;
+  background: #030406 !important;
+  padding-top: max(24px, env(safe-area-inset-top)) !important;
+  padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+}
+.entry-overlay::before,
+.entry-overlay::after {
+  content: "";
+  position: fixed;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+.entry-overlay::before {
+  z-index: 0;
+  inset: -16px;
+  background:
+    radial-gradient(ellipse 38% 25% at 0% 0%, rgba(62, 119, 255, .64), transparent 74%),
+    radial-gradient(ellipse 32% 26% at 100% 3%, rgba(225, 124, 255, .51), transparent 75%),
+    radial-gradient(ellipse 35% 26% at 100% 100%, rgba(71, 102, 255, .54), transparent 73%),
+    radial-gradient(ellipse 30% 25% at 0% 100%, rgba(255, 176, 150, .43), transparent 75%),
+    radial-gradient(ellipse 44% 16% at 52% 0%, rgba(94, 211, 255, .3), transparent 100%),
+    radial-gradient(ellipse 44% 17% at 52% 100%, rgba(181, 114, 255, .24), transparent 100%);
+  filter: blur(15px) saturate(125%);
+  opacity: .9;
+  transform: translate3d(-.6%, 0, 0) scale(1.01);
+  animation: askmoina-edge-field-drift 10s ease-in-out infinite alternate;
+}
+.entry-overlay::after {
+  z-index: 1;
+  inset: 2px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: clamp(20px, 4.8vw, 34px);
+  padding: 2.2px;
+  background: conic-gradient(
+    from var(--askmoina-edge-angle, 0deg),
+    rgba(82, 199, 255, .98) 0deg,
+    rgba(95, 126, 255, .95) 43deg,
+    rgba(156, 114, 255, .98) 82deg,
+    rgba(238, 147, 255, .9) 128deg,
+    rgba(255, 190, 216, .88) 169deg,
+    rgba(255, 220, 177, .92) 211deg,
+    rgba(223, 157, 255, .8) 253deg,
+    rgba(96, 113, 255, .96) 302deg,
+    rgba(91, 221, 255, .98) 345deg,
+    rgba(82, 199, 255, .98) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter:
+    drop-shadow(0 0 3px rgba(157, 162, 255, .92))
+    drop-shadow(0 0 10px rgba(89, 132, 255, .48))
+    drop-shadow(0 0 24px rgba(214, 115, 255, .18));
+  animation: askmoina-edge-spectrum 8.5s linear infinite;
+}
+.entry-auth-panel {
+  z-index: 2 !important;
+  width: min(100%, 344px) !important;
+  max-width: 344px !important;
+  padding: 24px 0 21px !important;
+  animation: askmoina-panel-arrive .78s cubic-bezier(.2, .74, .18, 1) both !important;
+}
+.entry-brand-lockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0 auto 29px;
+  text-align: center;
+}
+.entry-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45px;
+  margin: 0 auto 8px !important;
+}
+.entry-brand-mark img {
+  width: 44px !important;
+  height: 31px !important;
+  object-fit: contain;
+  opacity: .98;
+  filter: drop-shadow(0 0 9px rgba(237, 240, 255, .13));
+}
+.entry-brand-wordmark {
+  margin: 0;
+  color: #f7f7fa;
+  font-size: clamp(2rem, 8vw, 2.25rem);
+  font-weight: 520;
+  line-height: 1.04;
+  letter-spacing: -.057em;
+  text-rendering: geometricPrecision;
+}
+.entry-brand-tagline {
+  margin: 8px 0 0 !important;
+  color: rgba(225, 228, 240, .75);
+  font-size: .81rem;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -.012em;
+}
+.entry-auth-state-copy {
+  display: none !important;
+}
+.entry-auth-options {
+  gap: 10px !important;
+}
+.entry-auth-option {
+  min-height: 54px !important;
+  padding: 0 15px !important;
+  gap: 13px !important;
+  border: 1px solid rgba(255, 255, 255, .2) !important;
+  border-radius: 16px !important;
+  background: rgba(247, 248, 255, .075) !important;
+  color: #f5f5f7 !important;
+  font-size: .87rem !important;
+  font-weight: 540 !important;
+  letter-spacing: -.012em !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .09),
+    0 7px 24px rgba(0, 0, 0, .09) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(145%) !important;
+  backdrop-filter: blur(22px) saturate(145%) !important;
+  transition:
+    background .22s ease,
+    border-color .22s ease,
+    transform .22s cubic-bezier(.2, .7, .2, 1),
+    box-shadow .22s ease !important;
+}
+.entry-auth-option:hover:not(:disabled) {
+  background: rgba(250, 250, 255, .13) !important;
+  border-color: rgba(255, 255, 255, .31) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 8px 28px rgba(0, 0, 0, .12) !important;
+}
+.entry-auth-option:active:not(:disabled) {
+  transform: scale(.985) !important;
+}
+.entry-auth-option .entry-auth-option-icon {
+  flex-basis: 25px !important;
+  width: 25px !important;
+  height: 25px !important;
+}
+.entry-auth-option .entry-auth-option-icon svg {
+  width: 23px !important;
+  height: 23px !important;
+  stroke-width: 1.5 !important;
+}
+.entry-auth-option .entry-option-chevron {
+  display: none !important;
+}
+.entry-legal-note {
+  margin: 15px 8px 0 !important;
+  color: rgba(222, 225, 237, .54);
+  font-size: .64rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -.006em;
+  text-align: center;
+  text-wrap: balance;
+}
+.entry-auth-panel .entry-divider {
+  display: none !important;
+}
+.entry-auth-switch {
+  margin: 18px 0 0 !important;
+  color: rgba(219, 222, 234, .68) !important;
+  font-size: .76rem !important;
+  gap: 5px !important;
+}
+#modeToggleButton {
+  color: #f4f4f8 !important;
+  font-size: .77rem !important;
+  font-weight: 620 !important;
+  letter-spacing: -.01em !important;
+}
+.entry-auth-panel .entry-status:not(:empty) {
+  margin-top: 12px !important;
+}
+.biometric-auth-stage {
+  z-index: 2 !important;
+  background: transparent !important;
+}
+@keyframes askmoina-edge-spectrum {
+  from { --askmoina-edge-angle: 0deg; }
+  to { --askmoina-edge-angle: 360deg; }
+}
+@keyframes askmoina-edge-field-drift {
+  0% { opacity: .78; transform: translate3d(-1.2%, -.3%, 0) scale(1.01); }
+  48% { opacity: 1; transform: translate3d(1.1%, .5%, 0) scale(1.035); }
+  100% { opacity: .84; transform: translate3d(-.5%, .7%, 0) scale(1.015); }
+}
+@keyframes askmoina-panel-arrive {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.992); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@media (max-width: 520px) {
+  .entry-overlay { padding-left: 18px !important; padding-right: 18px !important; }
+  .entry-auth-panel { width: min(100%, 344px) !important; max-width: 344px !important; padding: 20px 0 20px !important; }
+  .entry-brand-lockup { margin-bottom: 25px; }
+  .entry-auth-option { min-height: 53px !important; }
+}
+@media (max-height: 610px) {
+  .entry-overlay { align-items: flex-start !important; }
+  .entry-auth-panel { padding-top: 14px !important; padding-bottom: 14px !important; }
+  .entry-brand-lockup { margin-bottom: 15px; }
+  .entry-brand-mark { min-height: 34px; }
+  .entry-brand-mark img { width: 37px !important; height: 26px !important; }
+  .entry-auth-option { min-height: 47px !important; }
+  .entry-legal-note { margin-top: 10px !important; }
+  .entry-auth-switch { margin-top: 10px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entry-overlay::before,
+  .entry-overlay::after,
+  .entry-auth-panel { animation: none !important; }
+  .entry-auth-option { transition: none !important; }
+}
