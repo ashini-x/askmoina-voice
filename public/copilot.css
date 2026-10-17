@@ -1962,3 +1962,47 @@ h3,h4,h5,h6{letter-spacing:-.02em}
   #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-ribbon,
   #toggleCopilot.askmoina-orb-control .askmoina-orb-specular {animation:none!important}
 }
+
+
+/* Living orb motion engine: RAF drives the actual surface geometry and reflections continuously. */
+#toggleCopilot.askmoina-orb-control {
+  border-radius:var(--orb-radius-a,50%) var(--orb-radius-b,50%) var(--orb-radius-c,50%) var(--orb-radius-d,50%)/var(--orb-radius-e,50%) var(--orb-radius-f,50%) var(--orb-radius-g,50%) var(--orb-radius-h,50%)!important;
+  will-change:border-radius,filter,box-shadow;
+}
+#toggleCopilot.askmoina-orb-control:before {
+  border-radius:var(--orb-radius-a,50%) var(--orb-radius-b,50%) var(--orb-radius-c,50%) var(--orb-radius-d,50%)/var(--orb-radius-e,50%) var(--orb-radius-f,50%) var(--orb-radius-g,50%) var(--orb-radius-h,50%)!important;
+}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-interior {transition:none!important;will-change:transform,border-radius,filter}
+#toggleCopilot.askmoina-orb-control .askmoina-orb-flow,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-surface-cyan,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-surface-violet,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-surface-pink,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-surface-ribbon,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-specular,
+#toggleCopilot.askmoina-orb-control .askmoina-orb-gloss {
+  animation:none!important;transition:opacity .2s ease;will-change:transform,border-radius,opacity;
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-flow,
+#toggleCopilot.askmoina-orb-control[data-orb-state="error"] .askmoina-orb-flow {opacity:.24!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"] .askmoina-orb-flow {opacity:.34!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="connecting"] .askmoina-orb-flow {opacity:.5!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-orb-flow {opacity:.54!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow {opacity:.86!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-flow {opacity:.7!important}
+#toggleCopilot.askmoina-orb-control[data-orb-state="error"] {filter:saturate(.72) brightness(.9)}
+#toggleCopilot.askmoina-orb-control[data-orb-state="error"] .askmoina-orb-surface-cyan,
+#toggleCopilot.askmoina-orb-control[data-orb-state="error"] .askmoina-orb-surface-violet,
+#toggleCopilot.askmoina-orb-control[data-orb-state="error"] .askmoina-orb-surface-pink {opacity:.22}
+@media(prefers-reduced-motion:reduce) {
+  #toggleCopilot.askmoina-orb-control,
+  #toggleCopilot.askmoina-orb-control:before,
+  #toggleCopilot.askmoina-orb-control:after,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-interior,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-flow,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-cyan,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-violet,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-pink,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-surface-ribbon,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-specular,
+  #toggleCopilot.askmoina-orb-control .askmoina-orb-gloss {animation:none!important;transition:none!important;will-change:auto}
+}
