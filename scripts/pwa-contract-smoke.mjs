@@ -8,13 +8,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
+const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
 assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
-assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
-assert.ok(manifest.icons.some((icon) => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
-assert.ok(manifest.icons.some((icon) => icon.src === "/askmoina-app-icon-180.png" && icon.sizes === "180x180" && icon.type === "image/png"), "manifest needs the monochrome 180x180 Home Screen icon");
-assert.ok(manifest.icons.some((icon) => icon.src === "/askmoina-bird-final.png"), "manifest must retain the legacy AskMoina icon fallback for older installation flows");
+assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
+assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
+assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/askmoina-app-icon-180.png" && icon.sizes === "180x180" && icon.type === "image/png"), "manifest needs the monochrome 180x180 Home Screen icon");
+assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/askmoina-bird-final.png"), "manifest must retain the legacy AskMoina icon fallback for older installation flows");
 assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "legacy AskMoina icon fallback is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-app-icon-180.png")), "AskMoina monochrome app icon is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-mark.svg")), "AskMoina primary mark is missing");

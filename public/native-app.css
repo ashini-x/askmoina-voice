@@ -111,7 +111,7 @@ body[data-page="login"] .native-app-chrome-guest{display:none!important}
 .vision-slide-label{letter-spacing:-.012em;font-size:14px;font-weight:650}
 body[data-page="login"] .entry-auth-panel{padding-top:25px}
 body[data-page="login"] .entry-page-heading.auth-page-heading{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:23px}
-body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg?v=0.4.77") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
 body[data-page="login"] .entry-page-heading.auth-page-heading h2{max-width:12ch;font-size:30px;letter-spacing:-.06em}
 body[data-page="login"] .entry-page-heading.auth-page-heading p{max-width:27ch;font-size:14px;line-height:1.48}
 body[data-page="login"] .entry-passkey{justify-content:center;border-radius:17px}
