@@ -47,7 +47,7 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps the manifest fallback stable and serves the complete AskMoina brand asset family", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
-    expect(workerSource).toContain('icon.src === "/askmoina-bird-final.png"');
+    expect(workerSource).toContain('(icon.src || "").split("?")[0] === "/askmoina-bird-final.png"');
     expect(workerSource).toContain('manifest.icons.push({');
     expect(workerSource).toContain('const manifestText = await assetResponse.text()');
     expect(workerSource).not.toContain('assetResponse.clone().json()');
@@ -64,16 +64,51 @@ describe("Live Co-Pilot browser assets", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
   });
 
+  it("uses the exact approved signature path in every vector brand variant", () => {
+    const vectorFiles = [
+      "askmoina-mark.svg",
+      "askmoina-mark-dark.svg",
+      "askmoina-app-icon.svg",
+      "askmoina-app-icon-light.svg",
+      "askmoina-logo.svg",
+      "askmoina-logo-dark.svg",
+      "askmoina-social-avatar.svg",
+      "askmoina-visual-guide.svg",
+      "pwa-icon-192.svg",
+      "pwa-icon-512.svg",
+    ];
+    for (const filename of vectorFiles) {
+      const svg = readFileSync(new URL("../public/" + filename, import.meta.url), "utf8");
+      expect(svg, filename).toContain(signatureGeometryPath);
+      expect(svg, filename).not.toContain('M27 91C48 87 66 75 79 56');
+    }
+  });
+
+  it("keeps all raster logo variants as valid PNGs at the expected sizes", () => {
+    const rasterFiles = [
+      ["askmoina-app-icon-180.png", 180],
+      ["askmoina-bird-final.png", 128],
+      ["askmoina-bird-mark.png", 64],
+      ["askmoina-bird-64.png", 64],
+    ];
+    for (const [filename, dimension] of rasterFiles) {
+      const png = readFileSync(new URL("../public/" + filename, import.meta.url));
+      expect(png.subarray(0, 8), filename).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      expect(png.readUInt32BE(16), filename + " width").toBe(dimension);
+      expect(png.readUInt32BE(20), filename + " height").toBe(dimension);
+    }
+  });
+
   it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
     expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.74"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.77"');
     expect(html).toContain('class="askmoina-control-mark"');
     expect(css).toContain(".askmoina-control-mark");
     expect(css).toContain("width:44px!important;");
     expect(css).toContain("height:auto!important;");
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.77")');
   });
 
   it("uses roomier Apple-like camera controls and a recognizable camera-switch icon", () => {
@@ -105,7 +140,7 @@ describe("Live Co-Pilot browser assets", () => {
   it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.74"');
+    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.77"');
     expect(html).not.toContain("M7.1 4.2");
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
@@ -119,7 +154,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).not.toContain("askmoina-control-wave");
     expect(html.indexOf('id="muteMic"')).toBeLessThan(html.indexOf('id="toggleCopilot"'));
     expect(html.indexOf('id="toggleCopilot"')).toBeLessThan(html.indexOf('id="flipCamera"'));
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.74")');
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.77")');
     expect(css).toContain("border-radius:50%!important");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).not.toContain("askmoina-orb-sweep");
