@@ -91,6 +91,8 @@
   background: #030406 !important;
   padding-top: max(24px, env(safe-area-inset-top)) !important;
   padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+  /* Keep the inner edge curvature consistent on narrow and wide phones. */
+  --askmoina-screen-corner-radius: clamp(28px, 7.5vw, 52px);
   /* One shared clock keeps both light layers phase-locked on mobile GPUs. */
   --askmoina-edge-angle: 0deg;
   animation: entry-welcome-fade .36s ease both, askmoina-edge-spectrum 6.6s linear infinite;
@@ -111,7 +113,7 @@
   inset: -58px;
   box-sizing: border-box;
   border: 0;
-  border-radius: clamp(58px, 11vw, 88px);
+  border-radius: calc(66px + var(--askmoina-screen-corner-radius, 32px));
   padding: 66px;
   background: conic-gradient(
     from var(--askmoina-edge-angle, 0deg),
@@ -147,7 +149,7 @@
   inset: -27px;
   box-sizing: border-box;
   border: 0;
-  border-radius: clamp(47px, 9vw, 70px);
+  border-radius: calc(38px + var(--askmoina-screen-corner-radius, 32px));
   padding: 38px;
   background: conic-gradient(
     from var(--askmoina-edge-angle, 0deg),
