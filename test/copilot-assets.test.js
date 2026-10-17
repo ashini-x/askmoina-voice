@@ -922,7 +922,7 @@ describe("Native-first app experience v2", () => {
 
 describe("Primary camera entry", () => {
   it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
-    expect(html).toContain('aria-label="Slide to start AskMoina camera guidance"');
+    expect(html).toContain('aria-label="Slide to start askmoina camera guidance"');
     expect(html).toContain('id="visionSlideLabel">Slide to start</span>');
     expect(html).toContain('class="vision-slide-arrows"');
     expect(script).toContain('showProblemButton.addEventListener("pointerup"');
