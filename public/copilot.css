@@ -1456,3 +1456,29 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 .camera-controls .primary-control-row #toggleCopilot.call-action-button:focus-visible{outline:2px solid rgba(255,255,255,.94);outline-offset:5px}
 .camera-controls .primary-control-row #toggleCopilot.call-action-button:disabled{opacity:.5;cursor:default}
 @media(prefers-reduced-motion:reduce){.corner-light{transition:none!important}.corner-light span{animation:none!important;will-change:auto}.corner-light span:before,.corner-light span:after{filter:none}.camera-controls .primary-control-row #toggleCopilot.call-action-button{transition:none!important}}
+
+
+/* AppleIntelligenceGlowEffect reference: six-colour spectrum and four layered rounded-rectangle passes. */
+@property --askmoina-glow-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
+.edge-glow{display:block!important;position:absolute;z-index:80;inset:0;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .55s cubic-bezier(.2,.7,.2,1);contain:paint;isolation:isolate}
+.edge-glow::before,.edge-glow::after{content:none!important;display:none!important}
+.edge-glow>span{position:absolute;inset:0;box-sizing:border-box;border-radius:55px;padding:var(--glow-width,6px);pointer-events:none;background:conic-gradient(from var(--askmoina-glow-angle,0deg),#BC82F3 0deg,#F5B9EA 60deg,#8D9FFF 120deg,#FF6778 180deg,#FFBA71 240deg,#C686FF 300deg,#BC82F3 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;animation:askmoina-glow-flow 8s linear infinite;transform:translateZ(0)}
+.edge-glow .glow-crisp{--glow-width:6px;opacity:.96;filter:brightness(var(--voice-brightness,1))}
+.edge-glow .glow-halo-4{--glow-width:9px;filter:blur(4px);opacity:.78;animation:askmoina-glow-flow 8s linear infinite,askmoina-glow-breathe 1s ease-in-out infinite alternate}
+.edge-glow .glow-halo-12{--glow-width:11px;filter:blur(12px);opacity:.56;animation:askmoina-glow-flow 8s linear infinite,askmoina-glow-breathe 1.15s ease-in-out infinite alternate}
+.edge-glow .glow-halo-15{--glow-width:15px;filter:blur(15px);opacity:.42;animation:askmoina-glow-flow 8s linear infinite,askmoina-glow-breathe 1.3s ease-in-out infinite alternate}
+@keyframes askmoina-glow-flow{to{--askmoina-glow-angle:360deg}}
+@keyframes askmoina-glow-breathe{from{opacity:.24}to{opacity:.72}}
+.camera-stage.pre-start:not(.is-connecting) .edge-glow{opacity:0!important}
+.camera-stage.pre-start:not(.is-connecting) .edge-glow>span{animation-play-state:paused!important}
+.camera-stage.is-connecting .edge-glow{opacity:.76}
+.camera-stage.voice-active .edge-glow{opacity:.36}
+.camera-stage.is-processing .edge-glow{opacity:.76}
+.camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.92}
+.camera-stage.is-listening .glow-halo-4{animation-duration:8s,.7s}
+.camera-stage.is-speaking .glow-halo-4{animation-duration:8s,.56s}
+.camera-stage.is-speaking .glow-crisp{filter:brightness(calc(1 + var(--voice-energy,0)*.34))}
+.camera-stage.has-notice:not(.is-connecting):not(.voice-active) .edge-glow{opacity:0!important}
+.camera-stage.has-notice:not(.is-connecting):not(.voice-active) .edge-glow>span{animation-play-state:paused!important}
+@supports not ((-webkit-mask-composite:xor) or (mask-composite:exclude)){.edge-glow>span{background:transparent;border:var(--glow-width,6px) solid rgba(177,171,255,.78);padding:0;filter:blur(0)}.edge-glow .glow-halo-4{filter:blur(4px)}.edge-glow .glow-halo-12{filter:blur(12px)}.edge-glow .glow-halo-15{filter:blur(15px)}}
+@media(prefers-reduced-motion:reduce){.edge-glow{transition:none!important}.edge-glow>span{animation:none!important;transform:none!important}}

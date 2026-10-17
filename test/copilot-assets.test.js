@@ -36,13 +36,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(html).toContain("processed by Google Cloud Vertex AI");
   });
 
-  it("keeps Vision orb-free, adds Back, and disables full-screen edge pulses", () => {
+  it("keeps Vision orb-free, adds Back, and ships the layered Apple Intelligence glow", () => {
     expect(html).not.toContain('class="camera-placeholder-icon presence-orb"');
     expect(html).toContain('id="backButton"');
     expect(script).toContain("if (history.length > 1) history.back();");
     expect(authScript).toContain('error.name === "NotAllowedError"');
     expect(authScript).toContain("createAlternative.hidden = false");
-    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;");
     expect(css).toContain("#spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}");
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
@@ -127,21 +127,25 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.92');
-    expect(html).toContain('/copilot.js?v=0.4.92');
+    expect(html).toContain('/copilot.css?v=0.4.93');
+    expect(html).toContain('/copilot.js?v=0.4.93');
   });
 
-  it("uses state-aware premium corner lighting instead of a live orb", () => {
-    expect(html).toContain('<div class="corner-light" aria-hidden="true"><span></span><span></span><span></span><span></span></div>');
+  it("uses the source glow palette and four layered blur passes instead of a live orb", () => {
+    expect(html).toContain('<div class="edge-glow" aria-hidden="true"><span class="glow-crisp"></span><span class="glow-halo-4"></span><span class="glow-halo-12"></span><span class="glow-halo-15"></span></div>');
     expect(html).not.toContain("askmoina-orb-control");
     expect(html).not.toContain("askmoina-orb-interior");
-    expect(css).toContain(".corner-light span");
-    expect(css).toContain("@keyframes corner-light-drift");
-    expect(css).toContain(".camera-stage.is-processing .corner-light");
+    expect(css).toContain(".edge-glow .glow-crisp{--glow-width:6px;");
+    expect(css).toContain(".edge-glow .glow-halo-4{--glow-width:9px;filter:blur(4px);");
+    expect(css).toContain(".edge-glow .glow-halo-12{--glow-width:11px;filter:blur(12px);");
+    expect(css).toContain(".edge-glow .glow-halo-15{--glow-width:15px;filter:blur(15px);");
+    expect(css).toContain("@keyframes askmoina-glow-flow");
+    expect(css).toContain(".camera-stage.is-processing .edge-glow{opacity:.76;}");
+    expect(css).toContain(".camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.92;}");
     expect(css).toContain(".camera-stage.voice-active .voice-glow{display:none!important}");
-    expect(css).toContain(".edge-glow{display:none!important}");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(script).toContain('setProperty("--corner-intensity"');
+    expect(nativeAppCss).not.toContain(".edge-glow{display:none!important;opacity:0!important;animation:none!important}");
+    expect(script).toContain('setProperty("--voice-energy"');
     expect(script).not.toContain("function syncLiquidOrbEnergy(energy)");
     expect(script).not.toContain("function startLiquidOrbAnimation()");
   });
@@ -480,7 +484,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".vision-slide-copy{");
     expect(css).toContain("brightness(1.32)");
     expect(css).toContain(".camera-stage.has-notice #videoPreview");
-    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;");
   });
 
 });

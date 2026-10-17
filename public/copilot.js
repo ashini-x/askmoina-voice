@@ -2254,7 +2254,6 @@
     stage.style.setProperty("--voice-halo-width", (3.2 + energy * 8.2).toFixed(2) + "px");
     stage.style.setProperty("--voice-halo-opacity", (0.22 + energy * 0.62).toFixed(3));
     stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
-    stage.style.setProperty("--corner-intensity", (0.34 + energy * 0.54).toFixed(3));
     stage.style.setProperty("--corner-energy", energy.toFixed(3));
   }
 

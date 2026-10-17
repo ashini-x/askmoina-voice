@@ -385,8 +385,8 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
 @keyframes askmoina-signature-breathe{0%,100%{transform:scale(1);filter:brightness(.98)}50%{transform:scale(1.035);filter:brightness(1.13)}}
 @keyframes askmoina-signature-response{from{transform:scale(1)}to{transform:scale(1.055)}}
 
-/* Keep processing energy local to the orb; never animate a frame around the entire display. */
-.edge-glow{display:none!important;opacity:0!important;animation:none!important}
+/* Share the Apple Intelligence glow with the live Co-Pilot; keep pseudo-element fallbacks disabled. */
+.edge-glow{display:block!important;animation:none!important}
 .edge-glow:before,.edge-glow:after{display:none!important;animation:none!important}
 @media(max-height:720px){
   .native-camera-welcome{top:39%}
