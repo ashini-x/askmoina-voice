@@ -1,7 +1,7 @@
 {
   "id": "/?app=askmoina",
-  "name": "AskMoina",
-  "short_name": "AskMoina",
+  "name": "askmoina",
+  "short_name": "askmoina",
   "description": "A camera-first, voice-led AI co-pilot for the real world.",
   "start_url": "/?source=pwa",
   "scope": "/",
