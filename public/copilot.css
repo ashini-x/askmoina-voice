@@ -1953,6 +1953,17 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 #toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-surface-ribbon {animation-duration:6.2s}
 #toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-orb-specular {opacity:1;animation-duration:2.8s}
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {opacity:1}
+
+#toggleCopilot.askmoina-orb-control[data-orb-state="idle"]:after,
+#toggleCopilot.askmoina-orb-control:not([data-orb-state]):after,
+#toggleCopilot.askmoina-orb-control[data-orb-state="ready"]:after {
+  opacity:.46;
+  background:conic-gradient(from 10deg,rgba(99,232,246,.05),rgba(84,205,255,.55),rgba(96,160,255,.43),rgba(152,132,255,.6),rgba(244,157,220,.55),rgba(99,232,246,.05));
+  animation:askmoina-orb-rim-breathe 4.8s ease-in-out infinite;
+  filter:drop-shadow(0 0 5px rgba(93,205,255,.25)) drop-shadow(0 0 10px rgba(191,135,255,.2));
+}
+#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after {opacity:1}
+
 @keyframes askmoina-surface-cyan {
   0%,100%{transform:translate(-2%,0) rotate(-16deg) scale(.95,.93);border-radius:55% 45% 64% 36%/48% 34% 66% 52%}
   38%{transform:translate(9%,3%) rotate(-4deg) scale(1.04,1.02);border-radius:41% 59% 45% 55%/62% 40% 60% 38%}
