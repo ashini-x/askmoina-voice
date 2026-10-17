@@ -376,7 +376,7 @@
   inset: 0;
   display: block;
   box-sizing: border-box;
-  border-radius: clamp(28px, 7.2vw, 55px);
+  border-radius: 55px;
   background: conic-gradient(
     from 0deg,
     var(--moina-glow-color-1) 0%,
@@ -396,24 +396,24 @@
 }
 .entry-edge-sharp {
   padding: 6px;
-  opacity: .3;
+  opacity: 1;
   filter: none;
 }
 .entry-edge-blur-4 {
   padding: 9px;
-  opacity: .6;
+  opacity: 1;
   filter: blur(4px);
   mix-blend-mode: screen;
 }
 .entry-edge-blur-12 {
   padding: 11px;
-  opacity: .72;
+  opacity: 1;
   filter: blur(12px);
   mix-blend-mode: screen;
 }
 .entry-edge-blur-15 {
   padding: 15px;
-  opacity: .82;
+  opacity: 1;
   filter: blur(15px);
   mix-blend-mode: screen;
 }
