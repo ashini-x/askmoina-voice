@@ -110,66 +110,88 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
   </section>
 </div>
 <div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
-const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding assistant-journey" id="postAuthOnboarding" aria-label="Choose an askmoina assistant" hidden>
-  <section class="post-auth-onboarding-stage assistant-selection-stage" id="assistantSelectionStage" aria-labelledby="assistantSelectionTitle" hidden>
-    <div class="ambient-edge-light" aria-hidden="true"></div>
-    <div class="assistant-selection-content">
-      <header class="assistant-selection-heading">
-        <h1 id="assistantSelectionTitle">Welcome, <span id="assistantSelectionFirstName">Newton</span></h1>
-        <p>Choose your assistant experience.</p>
-      </header>
-      <button type="button" class="assistant-option assistant-option-primary" id="selectMoinaOS1" aria-label="Open moinaOS 1 details">
-        <span class="assistant-card-art" aria-hidden="true"></span>
-        <span class="assistant-card-copy">
-          <span class="assistant-card-title">moinaOS 1</span>
-          <span class="assistant-card-description">Real-time visual intelligence for everyday life.</span>
-        </span>
-        <span class="assistant-card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M12 5l7 7-7 7"/></svg></span>
-      </button>
-      <button type="button" class="assistant-option assistant-option-locked" id="selectMoinaOS2" aria-describedby="moinaOS2Description" aria-label="moinaOS 2, Next Release. Not available yet.">
-        <span class="assistant-card-art assistant-card-art-frosted" aria-hidden="true"></span>
-        <span class="assistant-card-copy assistant-card-copy-locked">
-          <span class="assistant-card-title">moinaOS 2</span>
-          <span class="assistant-card-release"><span class="assistant-lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="10.5" width="11" height="9" rx="2"/><path d="M9 10.5V8a3 3 0 0 1 6 0v2.5M12 14v2"/></svg></span><span>Next Release</span></span>
-          <span class="assistant-card-description" id="moinaOS2Description">A more advanced assistant experience is coming soon.</span>
-        </span>
-      </button>
-      <p class="assistant-release-notice" id="moinaOS2Notice" role="status" aria-live="polite" hidden>moinaOS 2 is planned for a future release.</p>
+const POST_AUTH_ONBOARDING = `
+<section class='post-auth-onboarding experience-selection-overlay' id='postAuthOnboarding' aria-label='Choose your experience'>
+  <div class='ambient-edge-light' aria-hidden='true'></div>
+  <div class='experience-selection-scroll'>
+    <div class='experience-selection-content'>
+      <p class='experience-selection-eyebrow' id='experienceSelectionHeading'>CHOOSE YOUR EXPERIENCE</p>
+      <div class='experience-selection-cards'>
+        <button type='button' class='experience-card experience-card--available' id='experienceMoinaOS1' aria-label='Open moinaOS 1, available now'>
+          <span class='experience-card-header'>
+            <span class='experience-card-title'>moinaOS 1</span>
+            <span class='experience-status-pill'>Available now</span>
+            <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
+          </span>
+          <span class='experience-product-art' aria-hidden='true'>
+            <svg class='experience-glass-art' viewBox='0 0 320 118' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+              <defs>
+                <linearGradient id='exp1-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#a18bff' stop-opacity='.19'/><stop offset='.35' stop-color='#385985' stop-opacity='.47'/><stop offset='.72' stop-color='#132b4b' stop-opacity='.56'/><stop offset='1' stop-color='#8c83ff' stop-opacity='.18'/></linearGradient>
+                <linearGradient id='exp1-upper-fill' x1='0' y1='0' x2='.88' y2='1'><stop offset='0' stop-color='#9dcfff' stop-opacity='.17'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.44'/><stop offset='.70' stop-color='#0e2440' stop-opacity='.64'/><stop offset='1' stop-color='#8f8dfb' stop-opacity='.20'/></linearGradient>
+                <linearGradient id='exp1-rim' x1='0' y1='0' x2='1' y2='.15'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.23' stop-color='#a5c5ff' stop-opacity='.76'/><stop offset='.55' stop-color='#deecff' stop-opacity='.68'/><stop offset='.78' stop-color='#738ee9' stop-opacity='.66'/><stop offset='1' stop-color='#77c7ff' stop-opacity='.96'/></linearGradient>
+                <linearGradient id='exp1-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#d3a1ff' stop-opacity='.64'/><stop offset='.30' stop-color='#e7f2ff' stop-opacity='.50'/><stop offset='.72' stop-color='#9fcaff' stop-opacity='.20'/><stop offset='1' stop-color='#7ec9ff' stop-opacity='.70'/></linearGradient>
+              </defs>
+              <g transform='rotate(-3 160 77)'>
+                <path d='M20 74 C39 55 94 46 157 48 C218 49 274 60 299 74 C310 82 263 97 191 101 C118 105 47 94 20 74Z' fill='url(#exp1-lower-fill)' stroke='url(#exp1-rim)' stroke-width='1.1'/>
+                <path d='M22 74 C46 87 104 95 169 92 C229 89 278 79 299 74' fill='none' stroke='url(#exp1-glint)' stroke-width='1.05' opacity='.82'/>
+                <path d='M41 66 C78 53 129 52 184 57 C223 60 259 66 279 73' fill='none' stroke='#b7d4ff' stroke-opacity='.23' stroke-width='.8'/>
+                <path d='M64 91 C110 101 185 99 238 87' fill='none' stroke='#8d91ff' stroke-opacity='.32' stroke-width='.8'/>
+              </g>
+              <g transform='rotate(-4 158 42)'>
+                <path d='M16 42 C36 23 94 11 158 13 C222 14 279 28 301 43 C313 53 265 68 191 72 C115 76 43 63 16 42Z' fill='url(#exp1-upper-fill)' stroke='url(#exp1-rim)' stroke-width='1.15'/>
+                <path d='M19 41 C44 23 99 15 157 16 C215 17 272 30 298 43' fill='none' stroke='url(#exp1-glint)' stroke-width='1.2' opacity='.86'/>
+                <path d='M24 46 C54 60 109 68 171 66 C222 64 268 54 300 43' fill='none' stroke='#b4ceff' stroke-opacity='.32' stroke-width='.9'/>
+                <path d='M48 29 C94 16 153 15 200 21' fill='none' stroke='#edf5ff' stroke-opacity='.22' stroke-width='.8'/>
+              </g>
+            </svg>
+          </span>
+          <span class='experience-feature-list' aria-label='moinaOS 1 features'>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Real-time visual intelligence</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Live camera guidance</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Search with verified sources</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Private and secure</span></span>
+          </span>
+        </button>
+        <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, coming later' aria-describedby='experiencePreviewNotice'>
+          <span class='experience-card-header'>
+            <span class='experience-card-title'>moinaOS 2</span>
+            <span class='experience-status-pill'>Coming later</span>
+            <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
+          </span>
+          <span class='experience-product-art' aria-hidden='true'>
+            <svg class='experience-glass-art' viewBox='0 0 320 118' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+              <defs>
+                <linearGradient id='exp2-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#a18bff' stop-opacity='.19'/><stop offset='.35' stop-color='#385985' stop-opacity='.47'/><stop offset='.72' stop-color='#132b4b' stop-opacity='.56'/><stop offset='1' stop-color='#8c83ff' stop-opacity='.18'/></linearGradient>
+                <linearGradient id='exp2-upper-fill' x1='0' y1='0' x2='.88' y2='1'><stop offset='0' stop-color='#9dcfff' stop-opacity='.17'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.44'/><stop offset='.70' stop-color='#0e2440' stop-opacity='.64'/><stop offset='1' stop-color='#8f8dfb' stop-opacity='.20'/></linearGradient>
+                <linearGradient id='exp2-rim' x1='0' y1='0' x2='1' y2='.15'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.23' stop-color='#a5c5ff' stop-opacity='.76'/><stop offset='.55' stop-color='#deecff' stop-opacity='.68'/><stop offset='.78' stop-color='#738ee9' stop-opacity='.66'/><stop offset='1' stop-color='#77c7ff' stop-opacity='.96'/></linearGradient>
+                <linearGradient id='exp2-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#d3a1ff' stop-opacity='.64'/><stop offset='.30' stop-color='#e7f2ff' stop-opacity='.50'/><stop offset='.72' stop-color='#9fcaff' stop-opacity='.20'/><stop offset='1' stop-color='#7ec9ff' stop-opacity='.70'/></linearGradient>
+              </defs>
+              <g transform='rotate(-3 160 77)'>
+                <path d='M20 74 C39 55 94 46 157 48 C218 49 274 60 299 74 C310 82 263 97 191 101 C118 105 47 94 20 74Z' fill='url(#exp2-lower-fill)' stroke='url(#exp2-rim)' stroke-width='1.1'/>
+                <path d='M22 74 C46 87 104 95 169 92 C229 89 278 79 299 74' fill='none' stroke='url(#exp2-glint)' stroke-width='1.05' opacity='.82'/>
+                <path d='M41 66 C78 53 129 52 184 57 C223 60 259 66 279 73' fill='none' stroke='#b7d4ff' stroke-opacity='.23' stroke-width='.8'/>
+                <path d='M64 91 C110 101 185 99 238 87' fill='none' stroke='#8d91ff' stroke-opacity='.32' stroke-width='.8'/>
+              </g>
+              <g transform='rotate(-4 158 42)'>
+                <path d='M16 42 C36 23 94 11 158 13 C222 14 279 28 301 43 C313 53 265 68 191 72 C115 76 43 63 16 42Z' fill='url(#exp2-upper-fill)' stroke='url(#exp2-rim)' stroke-width='1.15'/>
+                <path d='M19 41 C44 23 99 15 157 16 C215 17 272 30 298 43' fill='none' stroke='url(#exp2-glint)' stroke-width='1.2' opacity='.86'/>
+                <path d='M24 46 C54 60 109 68 171 66 C222 64 268 54 300 43' fill='none' stroke='#b4ceff' stroke-opacity='.32' stroke-width='.9'/>
+                <path d='M48 29 C94 16 153 15 200 21' fill='none' stroke='#edf5ff' stroke-opacity='.22' stroke-width='.8'/>
+              </g>
+            </svg>
+          </span>
+          <span class='experience-feature-list' aria-label='moinaOS 2 preview features'>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>More powerful models</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Expanded real-world tools</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Next-generation experience</span></span>
+          </span>
+        </button>
+      </div>
     </div>
-  </section>
-  <section class="post-auth-onboarding-stage moinaos1-details-stage" id="moinaOS1DetailsStage" aria-labelledby="moinaOS1DetailsTitle" hidden>
-    <button type="button" class="moinaos1-details-back" id="assistantDetailsBack" aria-label="Back to assistant selection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button>
-    <div class="moinaos1-details-content">
-      <header class="moinaos1-details-heading">
-        <h1 id="moinaOS1DetailsTitle">moinaOS 1</h1>
-        <p>Your real-world AI assistant.</p>
-      </header>
-      <section class="moinaos1-feature-panel" aria-label="moinaOS 1 features">
-        <div class="moinaos1-feature-row">
-          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5h3l1.5-2h7l1.5 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
-          <span class="moinaos1-feature-copy"><strong>Live camera assistance</strong><span>See, ask and get step-by-step help</span></span>
-        </div>
-        <div class="moinaos1-feature-row">
-          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5M8 10.5h5M10.5 8v5"/></svg></span>
-          <span class="moinaos1-feature-copy"><strong>Real-time search &amp; verification</strong><span>Get accurate, up-to-date answers</span></span>
-        </div>
-        <div class="moinaos1-feature-row">
-          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="3.5"/></svg></span>
-          <span class="moinaos1-feature-copy"><strong>Visual guidance</strong><span>Understand and solve real problems</span></span>
-        </div>
-        <div class="moinaos1-feature-row">
-          <span class="moinaos1-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 14.5v2.5"/></svg></span>
-          <span class="moinaos1-feature-copy"><strong>Private and secure</strong><span>Your data stays in your control</span></span>
-        </div>
-      </section>
-      <button type="button" class="moinaos1-start-button" id="startMoinaOS1">Start with moinaOS 1 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
-    </div>
-  </section>
-  <section class="post-auth-onboarding-stage post-auth-slide-stage" id="postAuthSlideStage" aria-labelledby="postAuthSlideTitle" hidden>
-    <div class="post-auth-slide-copy"><h1 id="postAuthSlideTitle">Slide to show<br>your problem</h1></div>
-    <div class="post-auth-onboarding-slider-slot" id="onboardingSliderSlot" aria-label="Start camera guidance"></div>
-  </section>
-</section>`;
+  </div>
+  <div class='experience-preview-notice' id='experiencePreviewNotice' hidden role='status' aria-live='polite'>moinaOS 2 is coming later.</div>
+</section>
+`;
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
 const NATIVE_APP_HEADER_GUEST = "";
 const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close askmoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\">askmoina</h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"askmoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About askmoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
@@ -3159,7 +3181,8 @@ export default {
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");
+        html = html.replace("</head>", '<link rel="stylesheet" href="/experience-selection.css?v=20261017"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/experience-selection.js?v=20261017" defer></script></body>');
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
