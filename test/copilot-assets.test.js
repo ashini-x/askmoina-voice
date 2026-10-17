@@ -1026,12 +1026,18 @@ describe("Dark-first app shell and launch branding", () => {
     expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
   });
 
-  it("removes the extra camera welcome page and splash from the onboarding path", () => {
-    expect(workerSource).not.toContain('class="app-launch-transition"');
-    expect(workerSource).not.toContain("NATIVE_CAMERA_WELCOME");
-    expect(workerSource).not.toContain("Show Moina your world.");
-    expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
+  it("renders Interface 1 before Interface 2 or the authenticated camera flow", () => {
+    expect(workerSource).toContain("const ENTRY_LAUNCH_OVERLAY = ");
+    expect(workerSource).toContain('class="app-launch-transition"');
+    expect(workerSource).toContain('class="launch-signature-orb"');
+    expect(workerSource).toContain('src="/askmoina-mark.svg"');
+    expect(workerSource).toContain('class="launch-signature-title">askmoina</span>');
+    expect(workerSource).toContain('class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span>');
+    expect(workerSource).toContain("entryLaunchOverlay + ENTRY_AUTH_OVERLAY");
+    expect(workerSource).toContain("entryLaunchOverlay + POST_AUTH_ONBOARDING");
     expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
+    expect(nativeAppCss).toContain(".launch-signature-orb:after");
+    expect(nativeAppCss).toContain("@keyframes launch-smoke-turn");
     expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
     expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-current-cyan");
     expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-specular");
