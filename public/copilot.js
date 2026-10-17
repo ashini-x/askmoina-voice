@@ -29,8 +29,8 @@
   // Google recommends 500–800 ms local end-of-speech tolerance for hybrid VAD.
   const LOCAL_VAD_END_SILENCE_MS = 700;
   let disconnectToneUntil = 0;
-  let orbProcessingTimer = null;
-  const ORB_PROCESSING_MAX_MS = 18_000;
+  let processingStateTimer = null;
+  const PROCESSING_STATE_MAX_MS = 18_000;
   let visualGuideSvg = null;
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
@@ -164,7 +164,7 @@
     liveSearchActive = true;
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
-    syncAskMoinaOrbState();
+
     liveSearchStartedAt = Date.now();
     liveSearchProgressStageIndex = 0;
     if (liveSearchWatchdogTimer) window.clearTimeout(liveSearchWatchdogTimer);
@@ -247,7 +247,7 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     pendingResponseCards = [];
-    syncAskMoinaOrbState();
+
     if (liveSearchStatus) {
       liveSearchStatus.hidden = true;
       liveSearchStatus.classList.remove("is-complete", "is-acknowledging");
@@ -266,7 +266,7 @@
     liveSearchFinishing = false;
     liveSearchLookupCompleted = false;
     pendingResponseCards = [];
-    syncAskMoinaOrbState();
+
     if (liveSearchStatus) {
       liveSearchStatus.hidden = true;
       liveSearchStatus.classList.remove("is-complete");
@@ -540,19 +540,6 @@
   let playbackPulseFrame = 0;
   let microphoneVoiceEnergy = 0;
   let assistantVoiceEnergy = 0;
-  // Persistent renderer clock; silence must not freeze the orb's geometry.
-  let orbAnimationFrame = 0;
-  let orbAnimationLastTimestamp = 0;
-  let orbAnimationTime = 0;
-  let orbAnimationDeltaSeconds = 1 / 60;
-  let orbMotionEnergy = 0.13;
-  let orbMotionQuery = null;
-  let orbMotionReduced = false;
-  let orbMotionLayers = null;
-  try {
-    orbMotionQuery = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
-    orbMotionReduced = Boolean(orbMotionQuery && orbMotionQuery.matches);
-  } catch (_) { orbMotionQuery = null; orbMotionReduced = false; }
   let currentTranscriptNodes = { user: null, assistant: null };
   let transcriptStarted = false;
   // Finalized transcript persistence uses D1 as canonical storage. Keep IDs scoped
@@ -839,7 +826,7 @@
   function setStatus(message, kind) {
     statusNode.textContent = message;
     statusNode.dataset.kind = kind || "normal";
-    if (typeof syncAskMoinaOrbState === "function") syncAskMoinaOrbState();
+
     if (kind === "error" && message) showConnectionNotice("Something went wrong", message, "error");
   }
 
@@ -957,39 +944,22 @@
       : '<span class="live-dot"></span> WAITING FOR CAMERA';
   }
 
-  function syncAskMoinaOrbState() {
-    if (!toggleButton || !stage) return;
-    const state = stage.classList.contains("is-connecting") && !active ? "connecting"
-      : stage.classList.contains("is-speaking") ? "responding"
-      : stage.classList.contains("is-listening") ? "listening"
-      : active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing) ? "processing"
-      : active ? "ready"
-      : statusNode && statusNode.dataset.kind === "error" ? "error" : "idle";
-    toggleButton.dataset.orbState = state;
-  }
-
-  function setOrbProcessing(processing) {
+  function setProcessingState(processing) {
     if (!stage) return;
-    if (orbProcessingTimer) window.clearTimeout(orbProcessingTimer);
-    orbProcessingTimer = null;
+    if (processingStateTimer) window.clearTimeout(processingStateTimer);
+    processingStateTimer = null;
     if (processing && active) {
       stage.classList.add("is-processing");
-      orbProcessingTimer = window.setTimeout(() => {
-        orbProcessingTimer = null;
+      processingStateTimer = window.setTimeout(() => {
+        processingStateTimer = null;
         stage.classList.remove("is-processing");
-        syncAskMoinaOrbState();
-      }, ORB_PROCESSING_MAX_MS);
+        
+      }, PROCESSING_STATE_MAX_MS);
     } else {
       stage.classList.remove("is-processing");
     }
-    syncAskMoinaOrbState();
+    
   }
-  if (stage && toggleButton && typeof MutationObserver !== "undefined") {
-    const askMoinaOrbStateObserver = new MutationObserver(syncAskMoinaOrbState);
-    askMoinaOrbStateObserver.observe(stage, { attributes: true, attributeFilter: ["class"] });
-    syncAskMoinaOrbState();
-  }
-
   function setControls(label, disabled) {
     buttonLabel.textContent = label;
     toggleButton.disabled = Boolean(disabled);
@@ -997,8 +967,8 @@
     stage.classList.toggle("voice-active", active);
     stage.classList.toggle("is-connecting", starting && !active);
     syncDisconnectedPreviewAppearance();
-    toggleButton.setAttribute("aria-label", active ? "Stop AskMoina" : "Start AskMoina");
-    toggleButton.title = active ? "Stop AskMoina" : "Start AskMoina";
+    toggleButton.setAttribute("aria-label", active ? "End call with askmoina" : "Start askmoina call");
+    toggleButton.title = active ? "End call with askmoina" : "Start askmoina call";
     toggleButton.setAttribute("aria-pressed", active ? "true" : "false");
     const cameraStream = active ? microphoneStream : previewStream;
     const cameraAvailable = Boolean(cameraStream && !cameraSuspendedForSpatialAr &&
@@ -2211,9 +2181,9 @@
         micSpeechCandidateAt = 0;
       }
       const speechGateEnded = speechGateBeforeFrame && !micSpeechGateActive;
-      if (speechGateEnded) setOrbProcessing(true);
+      if (speechGateEnded) setProcessingState(true);
       if (micSpeechGateActive && !speechGateBeforeFrame) {
-        setOrbProcessing(false);
+        setProcessingState(false);
         syncLiveSearchStatusVisibility();
       } else if (!micSpeechGateActive && speechGateBeforeFrame) {
         syncLiveSearchStatusVisibility();
@@ -2274,128 +2244,6 @@
     stage.classList.remove("is-speaking");
   }
 
-  function syncLiquidOrbEnergy(energy) {
-    if (!toggleButton || orbMotionReduced || document.hidden) return;
-    const level = Math.min(1, Math.max(0, Number.isFinite(energy) ? energy : 0));
-    const state = toggleButton.dataset.orbState || "idle";
-    const sensedLevel = state === "responding" ? Math.max(level, assistantVoiceEnergy)
-      : state === "listening" ? Math.max(level, microphoneVoiceEnergy)
-      : Math.max(level, microphoneVoiceEnergy, assistantVoiceEnergy);
-    const stateDrive = state === "processing" ? 0.68
-      : state === "responding" ? 0.34
-      : state === "listening" ? 0.27
-      : state === "connecting" ? 0.24
-      : state === "ready" ? 0.19
-      : state === "error" ? 0.075 : 0.13;
-    const targetEnergy = Math.min(0.98, stateDrive + sensedLevel * (state === "processing" ? 0.24 : 0.68));
-    const smoothing = 1 - Math.exp(-Math.max(0.001, orbAnimationDeltaSeconds) * (state === "connecting" ? 2.2 : 3.4));
-    orbMotionEnergy += (targetEnergy - orbMotionEnergy) * smoothing;
-
-    const t = orbAnimationTime;
-    const breath = Math.sin(t * 0.41 + Math.sin(t * 0.137 + 0.4) * 0.31) * 0.54
-      + Math.sin(t * 0.233 + 1.71) * 0.29 + Math.sin(t * 0.697 + 4.13) * 0.17;
-    const connectWave = state === "connecting" ? 0.5 + 0.5 * Math.sin(t * 0.81 + Math.sin(t * 0.203 + 0.7) * 0.46) : 0;
-    const tension = 2.35 + orbMotionEnergy * 5.2 + sensedLevel * 2.6;
-    const waveA = (Math.sin(t * 0.537 + Math.sin(t * 0.163) * 0.39) * 0.69 + Math.sin(t * 0.247 + 2.16) * 0.22 + Math.sin(t * 0.811 + 0.5) * 0.09) * tension;
-    const waveB = (Math.sin(t * 0.433 + 1.84 + Math.sin(t * 0.117) * 0.31) * 0.65 + Math.sin(t * 0.293 + 4.3) * 0.25 + Math.sin(t * 0.719 + 2.8) * 0.1) * tension;
-    const waveC = (Math.sin(t * 0.367 + 2.62 + Math.sin(t * 0.149) * 0.43) * 0.67 + Math.sin(t * 0.211 + 0.8) * 0.23 + Math.sin(t * 0.773 + 3.2) * 0.1) * tension;
-    const waveD = (Math.sin(t * 0.491 + 0.31 + Math.sin(t * 0.097) * 0.37) * 0.64 + Math.sin(t * 0.269 + 3.7) * 0.26 + Math.sin(t * 0.631 + 1.4) * 0.1) * tension;
-    const clampRadius = (value) => Math.max(39, Math.min(61, value));
-    const radii = [clampRadius(50+waveA),clampRadius(50-waveA),clampRadius(50+waveB),clampRadius(50-waveB),clampRadius(50+waveC),clampRadius(50-waveC),clampRadius(50+waveD),clampRadius(50-waveD)];
-    const contraction = connectWave * 0.042;
-    const volume = 1 + breath * (0.025 + orbMotionEnergy * 0.012) + sensedLevel * 0.026;
-    toggleButton.style.setProperty("--orb-energy", orbMotionEnergy.toFixed(3));
-    toggleButton.style.setProperty("--orb-scale-x", (volume + Math.sin(t * 0.287 + 1.4) * 0.009 - contraction * 0.72).toFixed(4));
-    toggleButton.style.setProperty("--orb-scale-y", (1 - breath * (0.022 + orbMotionEnergy * 0.009) + sensedLevel * 0.021 - contraction).toFixed(4));
-    toggleButton.style.setProperty("--orb-rotation", (Math.sin(t * 0.191 + Math.sin(t * 0.083) * 0.5) * (1.6 + orbMotionEnergy * 2.4) + sensedLevel * 1.8).toFixed(2) + "deg");
-    toggleButton.style.setProperty("--orb-brightness", (0.98 + orbMotionEnergy * 0.2 + sensedLevel * 0.22 + Math.max(0,breath) * 0.035).toFixed(3));
-    toggleButton.style.setProperty("--orb-saturation", (1.08 + orbMotionEnergy * 0.24 + sensedLevel * 0.38).toFixed(3));
-    toggleButton.style.setProperty("--orb-flow-brightness", (1 + orbMotionEnergy * 0.48 + sensedLevel * 0.55).toFixed(3));
-    toggleButton.style.setProperty("--orb-blur-base", Math.max(2.4,5.3-orbMotionEnergy*1.7-sensedLevel*1.7).toFixed(2)+"px");
-    toggleButton.style.setProperty("--orb-blur-blue", Math.max(2.8,6.6-orbMotionEnergy*1.9-sensedLevel*2).toFixed(2)+"px");
-    toggleButton.style.setProperty("--orb-blur-violet", Math.max(2.6,5.8-orbMotionEnergy*1.7-sensedLevel*1.8).toFixed(2)+"px");
-    toggleButton.style.setProperty("--orb-blur-pink", Math.max(2.8,6.6-orbMotionEnergy*1.8-sensedLevel*1.8).toFixed(2)+"px");
-    ["a","b","c","d","e","f","g","h"].forEach((key,index) => toggleButton.style.setProperty("--orb-radius-" + key, radii[index].toFixed(2) + "%"));
-
-    // Move and reshape the actual fluid layers independently: surface silhouette, folds and highlights all change.
-    if (!orbMotionLayers) {
-      const definitions = [
-        [".askmoina-orb-flow-cyan",.39,.35,9,5.8,-14,12,.08],
-        [".askmoina-orb-flow-blue",.31,1.7,6.2,7.3,8,10,.07],
-        [".askmoina-orb-flow-violet",.27,2.9,7.3,5.6,5,14,.09],
-        [".askmoina-orb-flow-pink",.34,4.2,8.5,6.8,-9,16,.11],
-        [".askmoina-orb-surface-cyan",.23,.8,10.5,7.4,-12,16,.13],
-        [".askmoina-orb-surface-violet",.19,2.2,8.2,9.1,12,18,.15],
-        [".askmoina-orb-surface-pink",.29,3.7,9.7,6.1,-13,15,.14],
-        [".askmoina-orb-surface-ribbon",.17,1.4,5.6,4.6,-26,9,.06],
-        [".askmoina-orb-specular",.21,3.1,4.1,3.3,-23,8,.08],
-        [".askmoina-orb-gloss",.13,.2,1.8,1.4,0,3,.025]
-      ];
-      orbMotionLayers = definitions.map(([selector,speed,offset,travelX,travelY,baseRotation,rotationRange,scaleRange]) => ({
-        element: toggleButton.querySelector(selector), speed, offset, travelX, travelY, baseRotation, rotationRange, scaleRange, selector
-      })).filter(layer => layer.element);
-    }
-    for (const layer of orbMotionLayers) {
-      const phase = t * layer.speed + layer.offset + Math.sin(t * (layer.speed * .31 + .047) + layer.offset) * .42;
-      const x = Math.sin(phase) * layer.travelX + Math.sin(t * (layer.speed * .47 + .061) + layer.offset * 1.7) * layer.travelX * .27;
-      const y = Math.cos(phase * .79 + 1.1) * layer.travelY + Math.sin(t * (layer.speed * .37 + .053) + layer.offset) * layer.travelY * .22;
-      const rotation = layer.baseRotation + Math.sin(phase * .73 + .9) * layer.rotationRange + sensedLevel * layer.rotationRange * .16;
-      const scaleX = 1 + Math.sin(phase + 1.4) * layer.scaleRange + orbMotionEnergy * layer.scaleRange * .48;
-      const scaleY = 1 + Math.cos(phase * .83 + .2) * layer.scaleRange * .92 + orbMotionEnergy * layer.scaleRange * .35;
-      const shapeA = 50 + Math.sin(phase) * (7 + orbMotionEnergy * 7), shapeB = 50 - Math.sin(phase) * (7 + orbMotionEnergy * 7);
-      const shapeC = 50 + Math.cos(phase * .81 + 1.2) * (6 + orbMotionEnergy * 6), shapeD = 50 - Math.cos(phase * .81 + 1.2) * (6 + orbMotionEnergy * 6);
-      layer.element.style.transform = "translate3d(" + x.toFixed(2) + "%," + y.toFixed(2) + "%,0) rotate(" + rotation.toFixed(2) + "deg) scale(" + scaleX.toFixed(3) + "," + scaleY.toFixed(3) + ")";
-      layer.element.style.borderRadius = shapeA.toFixed(1) + "% " + shapeB.toFixed(1) + "% " + shapeC.toFixed(1) + "% " + shapeD.toFixed(1) + "% / " +
-        (100-shapeC).toFixed(1) + "% " + (100-shapeD).toFixed(1) + "% " + (100-shapeA).toFixed(1) + "% " + (100-shapeB).toFixed(1) + "%";
-      if (layer.selector === ".askmoina-orb-surface-ribbon") layer.element.style.opacity = String(Math.min(.98,.52+orbMotionEnergy*.3+Math.max(0,breath)*.12));
-      else if (layer.selector === ".askmoina-orb-specular") layer.element.style.opacity = String(Math.min(1,.68+orbMotionEnergy*.22+Math.max(0,breath)*.13));
-      else if (layer.selector === ".askmoina-orb-gloss") layer.element.style.opacity = String(Math.min(.96,.74+orbMotionEnergy*.12+Math.max(0,breath)*.06));
-    }
-  }
-
-  function resetLiquidOrbMotionStyles() {
-    if (!toggleButton) return;
-    toggleButton.style.setProperty("--orb-energy", "0.10");
-    toggleButton.style.setProperty("--orb-scale-x", "1");
-    toggleButton.style.setProperty("--orb-scale-y", "1");
-    toggleButton.style.setProperty("--orb-rotation", "0deg");
-    toggleButton.style.setProperty("--orb-brightness", "1");
-    toggleButton.style.setProperty("--orb-saturation", "1.12");
-    toggleButton.style.setProperty("--orb-flow-brightness", "1");
-    ["a","b","c","d","e","f","g","h"].forEach(key => toggleButton.style.setProperty("--orb-radius-" + key, "50%"));
-    if (orbMotionLayers) orbMotionLayers.forEach(layer => ["transform","border-radius","opacity"].forEach(prop => layer.element.style.removeProperty(prop)));
-  }
-
-  function stopLiquidOrbAnimation(resetStyles) {
-    if (orbAnimationFrame) window.cancelAnimationFrame(orbAnimationFrame);
-    orbAnimationFrame = 0; orbAnimationLastTimestamp = 0;
-    if (resetStyles) resetLiquidOrbMotionStyles();
-  }
-
-  function runLiquidOrbAnimationFrame(timestamp) {
-    orbAnimationFrame = 0;
-    if (!toggleButton || !toggleButton.isConnected || document.hidden || orbMotionReduced) return;
-    if (orbAnimationLastTimestamp) {
-      orbAnimationDeltaSeconds = Math.max(.001,Math.min(.04,(timestamp-orbAnimationLastTimestamp)/1000));
-      orbAnimationTime += orbAnimationDeltaSeconds;
-    } else orbAnimationDeltaSeconds = 1/60;
-    orbAnimationLastTimestamp = timestamp;
-    syncLiquidOrbEnergy(Math.max(microphoneVoiceEnergy,assistantVoiceEnergy));
-    orbAnimationFrame = window.requestAnimationFrame(runLiquidOrbAnimationFrame);
-  }
-
-  function startLiquidOrbAnimation() {
-    if (!toggleButton || orbAnimationFrame || document.hidden || orbMotionReduced || typeof window.requestAnimationFrame !== "function") return;
-    orbAnimationLastTimestamp = 0;
-    orbAnimationFrame = window.requestAnimationFrame(runLiquidOrbAnimationFrame);
-  }
-
-  function handleOrbMotionPreferenceChange(event) {
-    orbMotionReduced = Boolean(event && event.matches);
-    if (orbMotionReduced) stopLiquidOrbAnimation(true);
-    else startLiquidOrbAnimation();
-  }
-
   function applyVoiceEdgeEnergy(level, source) {
     const normalized = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0));
     if (source === "microphone") microphoneVoiceEnergy = normalized;
@@ -2406,7 +2254,8 @@
     stage.style.setProperty("--voice-halo-width", (3.2 + energy * 8.2).toFixed(2) + "px");
     stage.style.setProperty("--voice-halo-opacity", (0.22 + energy * 0.62).toFixed(3));
     stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
-    syncLiquidOrbEnergy(energy);
+    stage.style.setProperty("--corner-intensity", (0.34 + energy * 0.54).toFixed(3));
+    stage.style.setProperty("--corner-energy", energy.toFixed(3));
   }
 
   function getPlaybackAnalyser() {
@@ -2466,7 +2315,7 @@
     nextPlaybackTime = startAt + buffer.duration;
     playbackNodes.add(source);
     stage.classList.add("is-speaking");
-    setOrbProcessing(false);
+    setProcessingState(false);
     startPlaybackPulse();
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
@@ -2790,7 +2639,7 @@
 
   function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false) {
     copilotStartGeneration += 1;
-    setOrbProcessing(false);
+    setProcessingState(false);
     if (userInitiated) forceFreshSessionOnReconnect = false;
     lastSessionEndedAt = Date.now();
     const wasConnected = active && setupReady;
@@ -3457,7 +3306,7 @@
       if (outputTranscription && typeof outputTranscription.text === "string") updateTranscript("assistant", outputTranscription.text);
       const wasInterrupted = serverContent.interrupted === true;
       if (wasInterrupted) {
-        setOrbProcessing(false);
+        setProcessingState(false);
         if (liveSearchActive) cancelLiveSearchProgress();
         stopPlayback();
         setStatus("Listening — go ahead.");
@@ -3473,7 +3322,7 @@
         }
       }
       if (serverContent.turn_complete || serverContent.turnComplete) {
-        setOrbProcessing(false);
+        setProcessingState(false);
 
         if (liveSearchActive && liveSearchLookupCompleted && !hasSearchCallOnThisMessage) completeLiveSearchProgress();
 
@@ -6393,18 +6242,5 @@
   void prepareCameraPreview();
   void checkSpatialArSupport();
   void checkBackend();
-
-  if (orbMotionQuery) {
-    if (typeof orbMotionQuery.addEventListener === "function") orbMotionQuery.addEventListener("change", handleOrbMotionPreferenceChange);
-    else if (typeof orbMotionQuery.addListener === "function") orbMotionQuery.addListener(handleOrbMotionPreferenceChange);
-  }
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopLiquidOrbAnimation(false);
-    else startLiquidOrbAnimation();
-  });
-  window.addEventListener("pagehide", () => stopLiquidOrbAnimation(false));
-  window.addEventListener("pageshow", () => startLiquidOrbAnimation());
-  startLiquidOrbAnimation();
-
 
 })();
