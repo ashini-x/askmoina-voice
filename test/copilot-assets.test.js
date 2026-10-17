@@ -891,7 +891,7 @@ describe("Primary camera entry", () => {
     expect(css).toContain("background:#171719;color:#fff");
     expect(css).not.toContain("background:#34c759;color:#fff");
     expect(css).not.toContain("rgba(52,199,89");
-    expect(html).toContain("askmoina-orb-control");
+    expect(html).toContain("call-action-button");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
   });
