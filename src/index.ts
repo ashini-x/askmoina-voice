@@ -42,6 +42,7 @@ function renderSiteMenu(authenticated: boolean): string {
 }
 
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
+  <div class="ambient-edge-light" aria-hidden="true"></div>
   <div class="entry-auth-panel">
     <div class="entry-brand-lockup" aria-label="askmoina">
       <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.98" alt="" width="44" height="31"></div>
@@ -111,6 +112,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
 <div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
 const POST_AUTH_ONBOARDING = `<section class="post-auth-onboarding assistant-journey" id="postAuthOnboarding" aria-label="Choose an askmoina assistant" hidden>
   <section class="post-auth-onboarding-stage assistant-selection-stage" id="assistantSelectionStage" aria-labelledby="assistantSelectionTitle" hidden>
+    <div class="ambient-edge-light" aria-hidden="true"></div>
     <div class="assistant-selection-content">
       <header class="assistant-selection-heading">
         <h1 id="assistantSelectionTitle">Welcome, <span id="assistantSelectionFirstName">Newton</span></h1>
