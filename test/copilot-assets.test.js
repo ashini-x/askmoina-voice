@@ -1007,7 +1007,7 @@ describe("Dark-first app shell and launch branding", () => {
   it("routes successful signup/sign-in through account-created confirmation and then the camera slider", () => {
     expect(authScript).toContain('"/?onboarding=1"');
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
-    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");\n      }');
+    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", entryLaunchOverlay + POST_AUTH_ONBOARDING + "</body>");\n      }');
     expect(nativeAppScript).toContain('get("onboarding") === "1"');
     expect(nativeAppScript).toContain('document.addEventListener("askmoina:user-disconnected"');
     expect(nativeAppScript).toContain('overlay.classList.add("is-slide-mode")');
