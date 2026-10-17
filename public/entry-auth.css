@@ -394,3 +394,10 @@
   from { stroke-dashoffset: 0; }
   to { stroke-dashoffset: -1000; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-edge-stroke {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
