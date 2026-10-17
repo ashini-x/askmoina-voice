@@ -43,26 +43,31 @@ function renderSiteMenu(authenticated: boolean): string {
 
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
   <div class="entry-auth-panel">
-    <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.85" alt="" width="34" height="24"></div>
-    <div class="entry-page-heading auth-page-heading">
+    <div class="entry-brand-lockup" aria-label="askmoina">
+      <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.98" alt="" width="44" height="31"></div>
+      <div class="entry-brand-wordmark">askmoina</div>
+      <p class="entry-brand-tagline">See. Ask. Solve.</p>
+    </div>
+    <div class="entry-page-heading auth-page-heading entry-auth-state-copy" aria-hidden="true">
       <h2 id="authTitle">Welcome to askmoina</h2>
       <p id="authSubtitle">Your live camera &amp; video co-pilot for real-world problems.</p>
     </div>
     <div class="entry-auth-options" id="authOptions">
       <button class="entry-auth-option entry-passkey" id="passkeyAction" type="button" data-passkey="register" data-method="Face authentication" aria-describedby="deviceHint">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 9.5a1 1 0 0 1 1 1m4-1a1 1 0 0 1 1 1M9 15c1.7 1.6 4.3 1.6 6 0M12 11.5v1"/></svg></span>
-        <span class="entry-option-label">Continue with Face Authentication</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+        <span class="entry-option-label">Continue with Face ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
       </button>
       <button class="entry-auth-option entry-passkey" id="touchIdAction" type="button" data-passkey="register" data-method="Fingerprint authentication" aria-describedby="deviceHint">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.1a8.9 8.9 0 0 0-8.9 8.9M12 6.2a5.8 5.8 0 0 0-5.8 5.8"/><path d="M12 9.4a2.6 2.6 0 0 0-2.6 2.6c0 3.4-.5 5.5-1.7 7.4M12 12c0 4-.3 6.3-1.1 8.4M15.1 12c0 3.7-.1 5.9-1 8.4M15.1 7.1A5.8 5.8 0 0 1 17.8 12c0 2.1-.1 4.8-.8 7.2M18 4.8a8.9 8.9 0 0 1 2.9 7.2"/></svg></span>
-        <span class="entry-option-label">Continue with Fingerprint</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+        <span class="entry-option-label">Continue with Touch ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
       </button>
       <button class="entry-auth-option" id="phoneOptionButton" type="button">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 3.5h9.6a1.7 1.7 0 0 1 1.7 1.7v13.6a1.7 1.7 0 0 1-1.7 1.7H7.2a1.7 1.7 0 0 1-1.7-1.7V5.2a1.7 1.7 0 0 1 1.7-1.7Z"/><path d="M10 17.4h4"/></svg></span>
-        <span class="entry-option-label">Continue with phone</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+        <span class="entry-option-label">Use your phone number</span><span class="entry-option-chevron" aria-hidden="true">›</span>
       </button>
       <button type="button" class="entry-passkey-alternative" id="createPasskeyAlternative" data-passkey="register" data-method="device passkey" hidden>Create a passkey on this device</button>
     </div>
+    <p class="entry-legal-note">By continuing, you agree to our Privacy Policy and Terms.</p>
     <section class="entry-phone-flow" id="phoneEntrySection" hidden aria-label="Phone verification">
       <button class="entry-back-link" id="phoneBackButton" type="button">‹ <span>Back to options</span></button>
       <label class="entry-phone-label" for="phone">Phone number</label>
