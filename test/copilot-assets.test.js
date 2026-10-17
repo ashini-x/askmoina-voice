@@ -961,7 +961,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
     expect(workerSource).toContain("ENTRY_AUTH_OVERLAY + '<script src=\"/auth.js?v='");
     expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
-    expect(workerSource).toContain('id="postAuthSuccessTitle"');
+    expect(workerSource).toContain('id="assistantSelectionTitle"');
     expect(workerSource).toContain('id="startMoinaOS1">Start with moinaOS 1');
     expect(nativeAppCss).not.toContain(".app-launch-transition");
     expect(nativeAppCss).not.toContain(".launch-signature-orb");
