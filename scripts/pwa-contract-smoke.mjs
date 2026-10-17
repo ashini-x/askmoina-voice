@@ -21,7 +21,8 @@ assert.ok(!manifest.icons.some((icon) => ["/askmoina-bird-final.png", "/askmoina
 assert.ok(existsSync(resolve(root, "public/askmoina-bird-final.png")), "legacy AskMoina icon fallback is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-app-icon-180.png")), "AskMoina iOS Home Screen icon is missing");
 assert.ok(existsSync(resolve(root, "public/pwa-icon-512.png")), "512x512 PNG launch icon is missing");
-assert.ok(read("public/install.html").includes('rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.82"'), "iOS touch icon metadata should stay available independently of the Android splash manifest");
+assert.ok(read("public/pwa-icon-512.svg").includes('fill="#f5f5f7"') && read("public/pwa-icon-512.svg").includes('fill="#171719"'), "Installed app icon must use a white background and the approved dark bird mark");
+assert.ok(read("public/install.html").includes('rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.83"'), "iOS touch icon metadata should stay available independently of the Android splash manifest");
 assert.ok(existsSync(resolve(root, "public/askmoina-mark.svg")), "AskMoina primary mark is missing");
 assert.ok(existsSync(resolve(root, "public/favicon.svg")), "circular AskMoina favicon is missing");
 assert.ok(existsSync(resolve(root, "public/favicon-32.png")), "32px AskMoina favicon fallback is missing");
@@ -64,10 +65,10 @@ assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-serve
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v5"), "service worker cache must be refreshed for the dark splash icon");
-assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.82"'), "service worker must precache the circular favicon");
-assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.82"'), "service worker must precache the 32px favicon");
-assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.82"'), "service worker must precache the new 512px launch icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v6"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
+assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
+assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
 assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
 assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");

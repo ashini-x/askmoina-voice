@@ -244,9 +244,9 @@ function withPwaStandaloneGate(html: string): string {
     '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
     '<meta name="color-scheme" content="dark">' +
     '<link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.82">' +
-    '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.82">' +
-    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.82">' +
+    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.83">' +
+    '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.83">' +
+    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.83">' +
     '<link rel="stylesheet" href="/pwa-gate.css">' +
     '<noscript><meta http-equiv="refresh" content="0;url=/install"></noscript>' +
     '<script src="/pwa-gate.js"></script>' +
@@ -2931,7 +2931,7 @@ export default {
             icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
           };
           if (Array.isArray(manifest.icons)) {
-            const currentVersion = encodeURIComponent(env.APP_VERSION || "0.4.82");
+            const currentVersion = encodeURIComponent(env.APP_VERSION || "0.4.83");
             const legacyIcons = new Set(["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"]);
             manifest.icons = manifest.icons
               .filter((icon) => !legacyIcons.has((icon.src || "").split("?")[0]))
