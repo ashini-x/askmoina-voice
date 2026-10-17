@@ -535,7 +535,7 @@ describe("Live Co-Pilot browser assets", () => {
 
 describe("Native mobile-first AskMoina shell", () => {
   it("lands signed-in users on the camera instead of a website product chooser", () => {
-    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.80\", authenticated)");
+    expect(workerSource).toContain("withNativeAppShell(html, appVersion, authenticated)");
     expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.80\", true)");
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(workerSource).toContain('url.pathname === "/login" || url.pathname === "/login.html"');
@@ -563,7 +563,7 @@ describe("Native mobile-first AskMoina shell", () => {
   it("keeps camera and microphone startup behind account authentication", () => {
     expect(workerSource).toContain("removeCopilotClientScript(html)");
     expect(workerSource).toContain('.replace(\'<script src="/session-ui.js" defer></script>\', "")');
-    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="/auth.js" defer></script></body>\'');
+    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="/auth.js?v=\' + appVersion + \'" defer></script></body>\'');
     expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(self)');
     expect(workerSource).toContain("There is no guest access.");
     expect(workerSource).toContain("native-account-page");
