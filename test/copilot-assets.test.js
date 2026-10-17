@@ -108,15 +108,13 @@ describe("Live Co-Pilot browser assets", () => {
     }
   });
 
-  it("traces the signature silhouette to the approved reference geometry and versions its cache URL", () => {
+  it("keeps the official bird asset geometry independent from the glossy liquid orb", () => {
     expect(signatureMark).toContain('viewBox="0 0 163 115"');
     expect(signatureMark).toContain('M162 5 L152 5');
     expect(signatureMark).not.toContain('M27 91C48 87 66 75 79 56');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).toContain('class="askmoina-control-mark"');
-    expect(css).toContain(".askmoina-control-mark");
-    expect(css).toContain("width:44px!important;");
-    expect(css).toContain("height:auto!important;");
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).not.toContain('src="/askmoina-mark.svg?v=0.4.89"');
+    expect(css).toContain("/* Reference orb: a glossy, iridescent liquid sphere");
     expect(css).toContain("radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.93)");
     expect(css).toContain("border-radius:50%!important");
   });
@@ -131,12 +129,13 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.79');
-    expect(html).toContain('/copilot.js?v=0.4.79');
+    expect(html).toContain('/copilot.css?v=0.4.89');
+    expect(html).toContain('/copilot.js?v=0.4.89');
   });
 
   it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
-    expect(css.trimEnd().endsWith(".edge-glow{display:none!important}")).toBe(true);
+    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css.indexOf(".edge-glow{display:none!important}")).toBeLessThan(css.indexOf("/* Reference orb: a glossy"));
     expect(script).toContain("syncLiquidOrbEnergy(energy);");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-cyan');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
@@ -165,9 +164,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@keyframes askmoina-orb-thinking-mark");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).toContain('/copilot.css?v=0.4.79');
-    expect(html).toContain('/copilot.js?v=0.4.79');
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).toContain('/copilot.css?v=0.4.89');
+    expect(html).toContain('/copilot.js?v=0.4.89');
     expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.79\")");
   });
 
@@ -210,7 +209,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('if (speechGateEnded) setOrbProcessing(true);');
     expect(script).toContain('active && (stage.classList.contains("is-processing") || liveSearchActive || liveSearchFinishing)');
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(css.trimEnd()).toMatch(/\.edge-glow\{display:none!important\}$/);
+    expect(css).toContain(".edge-glow{display:none!important}");
+    expect(css.indexOf(".edge-glow{display:none!important}")).toBeLessThan(css.indexOf("/* Reference orb: a glossy"));
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
     expect(css).toContain(".entry-passkey-trailing");
