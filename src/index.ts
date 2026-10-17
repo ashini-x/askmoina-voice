@@ -164,6 +164,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/pwa-runtime.js",
   "/pwa-icon-192.svg",
   "/pwa-icon-512.svg",
+  "/pwa-icon-512.png",
   "/askmoina-app-icon-180.png",
   "/askmoina-bird-final.png",
   "/askmoina-mark.svg",
@@ -189,6 +190,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/service-worker.js": "text/javascript; charset=utf-8",
   "/pwa-icon-192.svg": "image/svg+xml; charset=utf-8",
   "/pwa-icon-512.svg": "image/svg+xml; charset=utf-8",
+  "/pwa-icon-512.png": "image/png",
   "/askmoina-app-icon-180.png": "image/png",
   "/askmoina-bird-final.png": "image/png",
   "/askmoina-mark.svg": "image/svg+xml; charset=utf-8",
@@ -230,7 +232,7 @@ function withPwaStandaloneGate(html: string): string {
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
   // AskMoina is a deliberately dark-only, camera-first app.
-  const themeColor = "#090b0f";
+  const themeColor = "#030406";
   const statusBarStyle = "black-translucent";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
   html = html.replace(/<meta\s+name=["']theme-color["'][^>]*>/ig, "");
@@ -242,9 +244,9 @@ function withPwaStandaloneGate(html: string): string {
     '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
     '<meta name="color-scheme" content="dark">' +
     '<link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.80">' +
-    '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.80">' +
-    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.80">' +
+    '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.82">' +
+    '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.82">' +
+    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.82">' +
     '<link rel="stylesheet" href="/pwa-gate.css">' +
     '<noscript><meta http-equiv="refresh" content="0;url=/install"></noscript>' +
     '<script src="/pwa-gate.js"></script>' +
@@ -2913,9 +2915,10 @@ export default {
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("Cross-Origin-Resource-Policy", "same-origin");
 
-      // A previously deployed static-asset manifest can briefly outlive a Worker
-      // release's manifest update. Read the small manifest once and serialize the
-      // response from text, rather than cloning and reusing its streamed body.
+      // Android's generated PWA splash needs a real 512px PNG. Strip the legacy
+      // light-background bird fallback and the old 180px raster icon from the
+      // manifest so Android chooses the dark launch icon. Keep the 180px asset
+      // available for Apple's touch-icon metadata independently.
       let responseBody: BodyInit | null = assetResponse.body;
       if (url.pathname === "/manifest.webmanifest" && assetResponse.status === 200 &&
           request.method === "GET") {
@@ -2923,17 +2926,31 @@ export default {
         responseBody = manifestText;
         try {
           const manifest = JSON.parse(manifestText) as {
+            background_color?: string;
+            theme_color?: string;
             icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
           };
           if (Array.isArray(manifest.icons)) {
-            if (!manifest.icons.some((icon) => (icon.src || "").split("?")[0] === "/askmoina-bird-final.png")) {
+            const currentVersion = encodeURIComponent(env.APP_VERSION || "0.4.82");
+            const legacyIcons = new Set(["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"]);
+            manifest.icons = manifest.icons
+              .filter((icon) => !legacyIcons.has((icon.src || "").split("?")[0]))
+              .map((icon) => {
+                const iconPath = (icon.src || "").split("?")[0];
+                return iconPath ? { ...icon, src: iconPath + "?v=" + currentVersion } : icon;
+              });
+            if (!manifest.icons.some((icon) =>
+              (icon.src || "").split("?")[0] === "/pwa-icon-512.png" &&
+              icon.sizes === "512x512" && icon.type === "image/png")) {
               manifest.icons.push({
-                src: "/askmoina-bird-final.png?v=0.4.80",
-                sizes: "128x128",
+                src: "/pwa-icon-512.png?v=" + currentVersion,
+                sizes: "512x512",
                 type: "image/png",
-                purpose: "any",
+                purpose: "any maskable",
               });
             }
+            manifest.background_color = "#030406";
+            manifest.theme_color = "#030406";
             responseBody = JSON.stringify(manifest);
             headers.delete("Content-Length");
             headers.delete("ETag");
