@@ -963,4 +963,5 @@ describe("Dark-first app shell and launch branding", () => {
     expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
     expect(nativeAppCss).toContain(".post-auth-success-artwork");
     expect(nativeAppCss).toContain(".post-auth-slide-stage");
-  });});
+  });
+});
