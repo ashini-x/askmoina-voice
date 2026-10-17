@@ -41,7 +41,7 @@ function renderSiteMenu(authenticated: boolean): string {
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
-const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Welcome to askmoina">
+const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
   <div class="entry-auth-panel">
     <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.84" alt="" width="34" height="24"></div>
     <div class="entry-page-heading auth-page-heading">
