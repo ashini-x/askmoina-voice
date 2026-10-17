@@ -42,7 +42,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("if (history.length > 1) history.back();");
     expect(authScript).toContain('error.name === "NotAllowedError"');
     expect(authScript).toContain("createAlternative.hidden = false");
-    expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;");
+    expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;border-radius:clamp(12px,min(7vw,4.5dvh),38px);");
+    expect(css).toContain(".edge-glow>span{position:absolute;inset:0;box-sizing:border-box;border-radius:inherit;");
+    expect(css).not.toContain("border-radius:55px;padding:var(--glow-width,6px)");
     expect(css).toContain("#spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}");
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
@@ -127,7 +129,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.93');
+    expect(html).toContain('/copilot.css?v=0.4.94');
     expect(html).toContain('/copilot.js?v=0.4.93');
   });
 

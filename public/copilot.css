@@ -1458,11 +1458,11 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 @media(prefers-reduced-motion:reduce){.corner-light{transition:none!important}.corner-light span{animation:none!important;will-change:auto}.corner-light span:before,.corner-light span:after{filter:none}.camera-controls .primary-control-row #toggleCopilot.call-action-button{transition:none!important}}
 
 
-/* AppleIntelligenceGlowEffect reference: six-colour spectrum and four layered rounded-rectangle passes. */
+/* AppleIntelligenceGlowEffect reference: six-colour spectrum with viewport-adaptive screen-edge corners. */
 @property --askmoina-glow-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
-.edge-glow{display:block!important;position:absolute;z-index:80;inset:0;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .55s cubic-bezier(.2,.7,.2,1);contain:paint;isolation:isolate}
+.edge-glow{display:block!important;position:absolute;z-index:80;inset:0;border-radius:clamp(12px,min(7vw,4.5dvh),38px);pointer-events:none;overflow:hidden;opacity:0;transition:opacity .55s cubic-bezier(.2,.7,.2,1);contain:paint;isolation:isolate}
 .edge-glow::before,.edge-glow::after{content:none!important;display:none!important}
-.edge-glow>span{position:absolute;inset:0;box-sizing:border-box;border-radius:55px;padding:var(--glow-width,6px);pointer-events:none;background:conic-gradient(from var(--askmoina-glow-angle,0deg),#BC82F3 0deg,#F5B9EA 60deg,#8D9FFF 120deg,#FF6778 180deg,#FFBA71 240deg,#C686FF 300deg,#BC82F3 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;animation:askmoina-glow-flow 8s linear infinite;transform:translateZ(0)}
+.edge-glow>span{position:absolute;inset:0;box-sizing:border-box;border-radius:inherit;padding:var(--glow-width,6px);pointer-events:none;background:conic-gradient(from var(--askmoina-glow-angle,0deg),#BC82F3 0deg,#F5B9EA 60deg,#8D9FFF 120deg,#FF6778 180deg,#FFBA71 240deg,#C686FF 300deg,#BC82F3 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;animation:askmoina-glow-flow 8s linear infinite;transform:translateZ(0)}
 .edge-glow .glow-crisp{--glow-width:6px;opacity:.96;filter:brightness(var(--voice-brightness,1))}
 .edge-glow .glow-halo-4{--glow-width:9px;filter:blur(4px);opacity:.78;animation:askmoina-glow-flow 8s linear infinite,askmoina-glow-breathe 1s ease-in-out infinite alternate}
 .edge-glow .glow-halo-12{--glow-width:11px;filter:blur(12px);opacity:.56;animation:askmoina-glow-flow 8s linear infinite,askmoina-glow-breathe 1.15s ease-in-out infinite alternate}
