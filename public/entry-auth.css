@@ -502,3 +502,10 @@
   .entry-glow-field { animation: none !important; }
   .entry-glow-rim { animation: none !important; }
 }
+
+/* Disable the old, unused gradient-angle animation; only the atmospheric fields animate. */
+.entry-overlay {
+  animation: entry-welcome-fade .36s ease both !important;
+}
+.entry-glow-field { z-index: 1; }
+.entry-glow-rim { z-index: 2; }
