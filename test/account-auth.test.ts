@@ -58,6 +58,8 @@ describe("unique account ID and no-guest access", () => {
     expect(root.headers.get("Set-Cookie")).toBeNull();
     const html = await root.text();
     expect(html).toContain('data-entry-state="login"');
+    expect(html).not.toContain('class="app-launch-transition"');
+    expect(html).not.toContain("SEE · UNDERSTAND · HELP");
     expect(html).toContain('aria-label="Secure sign in"');
     expect(html).toContain("Continue with Face ID or Touch ID");
     expect(html).toContain("OR USE YOUR PHONE");
