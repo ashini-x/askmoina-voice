@@ -61,8 +61,8 @@ assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-serve
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
 assert.ok(serviceWorker.includes('askmoina-pwa-shell-v4'), "service worker cache must be refreshed for branding assets");
-assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.79"'), "service worker must precache the circular favicon");
-assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.79"'), "service worker must precache the 32px favicon");
+assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.80"'), "service worker must precache the circular favicon");
+assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.80"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
 assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");
