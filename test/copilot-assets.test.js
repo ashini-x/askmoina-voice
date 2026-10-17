@@ -140,8 +140,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".edge-glow .glow-halo-12{--glow-width:11px;filter:blur(12px);");
     expect(css).toContain(".edge-glow .glow-halo-15{--glow-width:15px;filter:blur(15px);");
     expect(css).toContain("@keyframes askmoina-glow-flow");
-    expect(css).toContain(".camera-stage.is-processing .edge-glow{opacity:.76;}");
-    expect(css).toContain(".camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.92;}");
+    expect(css).toContain(".camera-stage.is-processing .edge-glow{opacity:.76}");
+    expect(css).toContain(".camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.92}");
     expect(css).toContain(".camera-stage.voice-active .voice-glow{display:none!important}");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(nativeAppCss).not.toContain(".edge-glow{display:none!important;opacity:0!important;animation:none!important}");
