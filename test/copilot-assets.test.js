@@ -154,20 +154,23 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("transition:transform 45ms linear,border-radius 45ms linear,filter 45ms linear;");
   });
 
-  it("makes the processing orb visually distinct with moving light currents, a rotating rim, and a breathing mark glow", () => {
+  it("makes the processing orb visually distinct with moving liquid currents, a rotating rim, and specular glints", () => {
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:after');
     expect(css).toContain("animation:askmoina-orb-thinking-orbit 2.25s linear infinite,askmoina-orb-thinking-glint 1.55s ease-in-out infinite;");
     expect(css).toContain("askmoina-orb-thought-current 2.2s linear infinite");
     expect(css).toContain("askmoina-orb-thought-depth 1.7s ease-in-out infinite alternate");
     expect(css).toContain("animation:askmoina-flow-cyan 3.15s cubic-bezier(.45,0,.3,1) infinite;");
     expect(css).toContain("@keyframes askmoina-orb-thinking-halo");
-    expect(css).toContain("@keyframes askmoina-orb-thinking-mark");
+    expect(css).toContain("@keyframes askmoina-orb-glint");
+    expect(css).toContain("@keyframes askmoina-surface-ribbon");
+    expect(css).not.toContain(".askmoina-control-mark");
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
     expect(html).not.toContain('class="askmoina-control-mark"');
     expect(html).toContain('/copilot.css?v=0.4.89');
     expect(html).toContain('/copilot.js?v=0.4.89');
-    expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.79\")");
+    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg');
+    expect(css).not.toContain(".askmoina-control-mark");
   });
 
   it("renders the glossy 3D liquid orb with state-reactive cyan, blue, violet and pink currents", () => {
