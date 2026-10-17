@@ -949,20 +949,18 @@ describe("Dark-first app shell and launch branding", () => {
     expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
   });
 
-  it("renders Interface 1 before Interface 2 or the authenticated camera flow", () => {
-    expect(workerSource).toContain("const ENTRY_LAUNCH_OVERLAY = ");
-    expect(workerSource).toContain('class="app-launch-transition"');
-    expect(workerSource).toContain('class="launch-signature-orb"');
-    expect(workerSource).toContain('src="/askmoina-mark.svg"');
-    expect(workerSource).toContain('class="launch-signature-title">askmoina</span>');
-    expect(workerSource).toContain('class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span>');
-    expect(workerSource).toContain("entryLaunchOverlay + ENTRY_AUTH_OVERLAY");
-    expect(workerSource).toContain("entryLaunchOverlay + POST_AUTH_ONBOARDING");
-    expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(nativeAppCss).toContain(".launch-signature-orb:after");
-    expect(nativeAppCss).toContain("@keyframes launch-smoke-turn");
-    expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
-    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-current-cyan");
-    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-specular");
-  });
-});
+  it("permanently removes the branded launch interstitial while preserving both entry flows", () => {
+    expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
+    expect(workerSource).not.toContain('class="app-launch-transition"');
+    expect(workerSource).not.toContain('class="launch-signature-orb"');
+    expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY + '<script src=\"/auth.js?v='");
+    expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
+    expect(workerSource).toContain('id="postAuthSuccessTitle"');
+    expect(workerSource).toContain('id="onboardingGetStarted">Get Started');
+    expect(nativeAppCss).not.toContain(".app-launch-transition");
+    expect(nativeAppCss).not.toContain(".launch-signature-orb");
+    expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
+    expect(nativeAppCss).toContain(".post-auth-success-artwork");
+    expect(nativeAppCss).toContain(".post-auth-slide-stage");
+  });});
