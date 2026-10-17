@@ -1529,22 +1529,6 @@ button{touch-action:manipulation}
   background:radial-gradient(ellipse at 45% 52%,rgba(245,133,222,.68),rgba(234,125,222,.19) 42%,transparent 69%);
   filter:blur(var(--orb-blur-pink,7px)) brightness(var(--orb-flow-brightness,1));
 }
-.askmoina-control-mark {
-  position:absolute!important;
-  z-index:8!important;
-  left:50%!important;
-  top:50%!important;
-  display:block!important;
-  width:44px!important;
-  height:auto!important;
-  max-width:none!important;
-  object-fit:contain!important;
-  opacity:1!important;
-  transform:translate(-50%,-50%)!important;
-  filter:drop-shadow(0 0 4px rgba(244,248,255,.18));
-  pointer-events:none!important;
-  transition:filter .3s ease!important;
-}
 /* Idle: almost-black glass and a restrained silver outline. */
 #toggleCopilot.askmoina-orb-control[data-orb-state="idle"] .askmoina-orb-flow,
 #toggleCopilot.askmoina-orb-control:not([data-orb-state]) .askmoina-orb-flow {opacity:.012}
@@ -1634,12 +1618,6 @@ button{touch-action:manipulation}
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-blue {opacity:.82;animation:askmoina-flow-blue 9.3s ease-in-out infinite}
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-violet {opacity:.86;animation:askmoina-flow-violet 8.4s ease-in-out infinite}
 #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow-pink {opacity:.48;animation:askmoina-flow-pink 10.2s ease-in-out infinite}
-#toggleCopilot.askmoina-orb-control[data-orb-state="listening"] .askmoina-control-mark,
-#toggleCopilot.askmoina-orb-control[data-orb-state="responding"] .askmoina-control-mark,
-#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
-  opacity:1!important;
-  filter:drop-shadow(0 0 4px rgba(249,250,255,.24)) drop-shadow(0 0 10px rgba(134,194,255,.15));
-}
 @keyframes askmoina-orb-ready-pulse {
   0%,100% {opacity:.48;filter:brightness(1)}
   50% {opacity:.86;filter:brightness(1.16)}
@@ -1677,7 +1655,6 @@ button{touch-action:manipulation}
   .camera-controls .primary-control-row #toggleCopilot.askmoina-orb-control {
     flex-basis:72px!important;width:72px!important;height:72px!important;min-width:72px!important;max-width:72px!important;min-height:72px!important;max-height:72px!important
   }
-  .askmoina-control-mark {width:41px!important}
 }
 @media(prefers-reduced-motion:reduce) {
   #toggleCopilot.askmoina-orb-control:before,
@@ -1685,7 +1662,6 @@ button{touch-action:manipulation}
   #toggleCopilot.askmoina-orb-control .askmoina-orb-flow {
     animation:none!important;
   }
-  .askmoina-control-mark {transition:none!important}
 }
 
 
@@ -1786,9 +1762,6 @@ button{touch-action:manipulation}
   filter:blur(4px) brightness(1.18);
   animation:askmoina-flow-pink 4.55s cubic-bezier(.45,0,.3,1) infinite reverse;
 }
-#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
-  animation:askmoina-orb-thinking-mark 1.55s ease-in-out infinite;
-}
 @keyframes askmoina-orb-thinking-halo {
   0%,100% {filter:brightness(1) saturate(1.05)}
   50% {filter:brightness(1.12) saturate(1.28)}
@@ -1813,10 +1786,6 @@ button{touch-action:manipulation}
   0% {opacity:.16;transform:scale(.82) rotate(-14deg);border-radius:62% 38% 52% 48% / 43% 59% 41% 57%}
   100% {opacity:.53;transform:scale(1.08) rotate(18deg);border-radius:42% 58% 44% 56% / 57% 38% 62% 43%}
 }
-@keyframes askmoina-orb-thinking-mark {
-  0%,100% {filter:drop-shadow(0 0 4px rgba(249,250,255,.28)) drop-shadow(0 0 8px rgba(107,191,255,.16))}
-  50% {filter:drop-shadow(0 0 6px rgba(255,255,255,.48)) drop-shadow(0 0 13px rgba(107,191,255,.35)) drop-shadow(0 0 17px rgba(185,130,255,.22))}
-}
 @media(prefers-reduced-motion:reduce) {
   #toggleCopilot.askmoina-orb-control[data-orb-state="processing"],
   #toggleCopilot.askmoina-orb-control[data-orb-state="processing"]:before,
@@ -1824,9 +1793,6 @@ button{touch-action:manipulation}
   #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before,
   #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::after,
   #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-flow,
-  #toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-control-mark {
-    animation:none!important;
-  }
 }
 
 /* Keep voice and response energy inside the orb; no full-screen edge pulse. */
