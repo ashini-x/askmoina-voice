@@ -338,3 +338,66 @@
   .entry-auth-panel { animation: none !important; }
   .entry-auth-option { transition: none !important; }
 }
+
+/* Interface 1 performance pass — animate a small SVG dash along the frame.
+   This avoids recalculating full-viewport conic gradients and large masks per frame. */
+.entry-overlay {
+  --askmoina-edge-angle: 0deg;
+  animation: entry-welcome-fade .36s ease both !important;
+}
+.entry-overlay::before,
+.entry-overlay::after {
+  content: none !important;
+  display: none !important;
+}
+.entry-edge-beam {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+.entry-edge-stroke {
+  fill: none;
+  stroke: url(#entryEdgeBeamSpectrum);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dashoffset: 0;
+  animation: askmoina-svg-beam-travel 5.8s linear infinite;
+  will-change: stroke-dashoffset;
+}
+.entry-edge-ambient {
+  stroke-width: 46px;
+  stroke-dasharray: 250 750;
+  stroke-opacity: .22;
+  filter: url(#entryEdgeBeamAmbientBlur);
+  animation-delay: 0s;
+}
+.entry-edge-soft {
+  stroke-width: 21px;
+  stroke-dasharray: 190 810;
+  stroke-opacity: .38;
+  filter: url(#entryEdgeBeamSoftBlur);
+  animation-delay: -.3484s;
+}
+.entry-edge-core {
+  stroke-width: 4px;
+  stroke-dasharray: 100 900;
+  stroke-opacity: .82;
+  animation-delay: -.87s;
+}
+@keyframes askmoina-svg-beam-travel {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -1000; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-edge-stroke {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
