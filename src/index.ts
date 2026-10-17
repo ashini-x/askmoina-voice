@@ -43,19 +43,19 @@ function renderSiteMenu(authenticated: boolean): string {
 
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
   <div class="entry-auth-panel">
-    <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.84" alt="" width="34" height="24"></div>
+    <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.85" alt="" width="34" height="24"></div>
     <div class="entry-page-heading auth-page-heading">
       <h2 id="authTitle">Welcome to askmoina</h2>
       <p id="authSubtitle">Your live camera &amp; video co-pilot for real-world problems.</p>
     </div>
     <div class="entry-auth-options" id="authOptions">
-      <button class="entry-auth-option entry-passkey" id="passkeyAction" type="button" data-passkey="register" data-method="Face ID" aria-describedby="deviceHint">
+      <button class="entry-auth-option entry-passkey" id="passkeyAction" type="button" data-passkey="register" data-method="Face authentication" aria-describedby="deviceHint">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 9.5a1 1 0 0 1 1 1m4-1a1 1 0 0 1 1 1M9 15c1.7 1.6 4.3 1.6 6 0M12 11.5v1"/></svg></span>
-        <span class="entry-option-label">Continue with Face ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+        <span class="entry-option-label">Continue with Face Authentication</span><span class="entry-option-chevron" aria-hidden="true">›</span>
       </button>
-      <button class="entry-auth-option entry-passkey" id="touchIdAction" type="button" data-passkey="register" data-method="Touch ID" aria-describedby="deviceHint">
+      <button class="entry-auth-option entry-passkey" id="touchIdAction" type="button" data-passkey="register" data-method="Fingerprint authentication" aria-describedby="deviceHint">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.1a8.9 8.9 0 0 0-8.9 8.9M12 6.2a5.8 5.8 0 0 0-5.8 5.8"/><path d="M12 9.4a2.6 2.6 0 0 0-2.6 2.6c0 3.4-.5 5.5-1.7 7.4M12 12c0 4-.3 6.3-1.1 8.4M15.1 12c0 3.7-.1 5.9-1 8.4M15.1 7.1A5.8 5.8 0 0 1 17.8 12c0 2.1-.1 4.8-.8 7.2M18 4.8a8.9 8.9 0 0 1 2.9 7.2"/></svg></span>
-        <span class="entry-option-label">Continue with Touch ID</span><span class="entry-option-chevron" aria-hidden="true">›</span>
+        <span class="entry-option-label">Continue with Fingerprint</span><span class="entry-option-chevron" aria-hidden="true">›</span>
       </button>
       <button class="entry-auth-option" id="phoneOptionButton" type="button">
         <span class="entry-auth-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.2 3.5h9.6a1.7 1.7 0 0 1 1.7 1.7v13.6a1.7 1.7 0 0 1-1.7 1.7H7.2a1.7 1.7 0 0 1-1.7-1.7V5.2a1.7 1.7 0 0 1 1.7-1.7Z"/><path d="M10 17.4h4"/></svg></span>
@@ -84,6 +84,21 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
     <div class="entry-divider" id="entryAuthDivider"><span aria-label="OR USE YOUR PHONE">OR</span></div>
     <p class="entry-auth-switch"><span id="modeSwitchCopy">Already have an account?</span> <button type="button" id="modeToggleButton">Sign in</button></p>
   </div>
+  <section class="biometric-auth-stage" id="biometricAuthStage" hidden aria-labelledby="biometricTitle">
+    <div class="biometric-stage-content">
+      <svg class="biometric-symbol biometric-face-symbol" id="biometricFaceSymbol" viewBox="0 0 96 96" aria-hidden="true">
+        <path d="M29 12H21a9 9 0 0 0-9 9v8M67 12h8a9 9 0 0 1 9 9v8M84 67v8a9 9 0 0 1-9 9h-8M29 84h-8a9 9 0 0 1-9-9v-8"/>
+        <path d="M34 36v8M62 36v8M39 59c5.3 4.2 12.7 4.2 18 0M48 43v7"/>
+      </svg>
+      <svg class="biometric-symbol biometric-fingerprint-symbol" id="biometricFingerprintSymbol" viewBox="0 0 96 96" aria-hidden="true">
+        <path d="M48 12c-20 0-36 15.9-36 35.5M48 21c-15 0-27 12-27 26.5"/>
+        <path d="M48 30c-10 0-18 8-18 17.5 0 14-2.5 23-8 31M48 39c-5 0-9 4-9 8.5 0 17-1.4 28-5.5 38M48 48c0 20-1 30-4 38M57 49c0 16.2-.7 27.8-4.2 37M57 31c10.5 3.8 18 14 18 26.5 0 10.8-1.4 19.6-4.1 28M66 21c11 7.4 18 19.6 18 33.5 0 9-1.5 18.7-4.5 27"/>
+      </svg>
+      <h2 id="biometricTitle">Face Authentication</h2>
+      <p id="biometricInstruction">Look at the camera</p>
+    </div>
+    <button class="biometric-cancel" id="biometricCancel" type="button">Cancel</button>
+  </section>
 </section>
 <div class="auth-sheet entry-auth-sheet" id="authSheet" hidden>
   <section class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-describedby="sheetCopy">
