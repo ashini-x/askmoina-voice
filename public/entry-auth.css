@@ -93,7 +93,7 @@
   padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
   /* One shared clock keeps both light layers phase-locked on mobile GPUs. */
   --askmoina-edge-angle: 0deg;
-  animation: entry-welcome-fade .36s ease both, askmoina-edge-spectrum 5.8s linear infinite;
+  animation: entry-welcome-fade .36s ease both, askmoina-edge-spectrum 6.6s linear infinite;
 }
 .entry-overlay::before,
 .entry-overlay::after {
@@ -307,9 +307,28 @@
   background: transparent !important;
 }
 @keyframes askmoina-edge-spectrum {
-  /* One uninterrupted sweep: no segment handoffs and no sudden speed changes. */
-  from { --askmoina-edge-angle: 0deg; }
-  to   { --askmoina-edge-angle: 360deg; }
+  0% {
+    --askmoina-edge-angle: 0deg;
+    /* Quick acceleration into the visible sweep. */
+    animation-timing-function: cubic-bezier(.08, .78, .16, 1);
+  }
+  18% {
+    --askmoina-edge-angle: 126deg;
+    /* Travel more gently along this side of the phone. */
+    animation-timing-function: cubic-bezier(.42, .02, .7, .22);
+  }
+  58% {
+    --askmoina-edge-angle: 228deg;
+    /* Accelerate again before moving around the lower corner. */
+    animation-timing-function: cubic-bezier(.12, .7, .22, 1);
+  }
+  79% {
+    --askmoina-edge-angle: 316deg;
+    animation-timing-function: cubic-bezier(.4, .02, .72, .26);
+  }
+  100% {
+    --askmoina-edge-angle: 360deg;
+  }
 }
 @keyframes askmoina-panel-arrive {
   from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.992); }
@@ -338,174 +357,3 @@
   .entry-auth-panel { animation: none !important; }
   .entry-auth-option { transition: none !important; }
 }
-
-
-
-/* Interface 1 — atmospheric Intelligence glow.
-   Each colour field is blurred once, then moved using compositor-friendly transforms.
-   A low-contrast, interrupted rim ties the corner blooms together without forming a tube. */
-.entry-overlay::before,
-.entry-overlay::after {
-  content: none !important;
-  display: none !important;
-}
-.entry-edge-beam,
-.entry-edge-layer {
-  display: none !important;
-}
-.entry-edge-glow {
-  position: fixed !important;
-  inset: -8px !important;
-  z-index: 0 !important;
-  display: block !important;
-  overflow: hidden !important;
-  border-radius: clamp(28px, 7vw, 48px);
-  pointer-events: none !important;
-  user-select: none !important;
-  isolation: isolate;
-  background: #030406;
-}
-.entry-glow-field {
-  position: absolute;
-  left: -19%;
-  top: -13%;
-  width: 138%;
-  height: 126%;
-  display: block;
-  border-radius: 48%;
-  pointer-events: none;
-  will-change: transform, opacity;
-  transform-origin: 50% 50%;
-  background-repeat: no-repeat;
-}
-.entry-glow-blue {
-  background-image:
-    radial-gradient(ellipse 23% 20% at 8% 5%, rgba(68, 132, 255, .92) 0%, rgba(74, 116, 255, .42) 38%, transparent 78%),
-    radial-gradient(ellipse 12% 32% at 2% 25%, rgba(81, 142, 255, .7) 0%, rgba(77, 119, 255, .26) 42%, transparent 82%),
-    radial-gradient(ellipse 18% 22% at 22% 0%, rgba(88, 194, 255, .52) 0%, transparent 75%);
-  filter: blur(29px) saturate(142%);
-  opacity: .8;
-  animation: askmoina-glow-blue-drift 17s ease-in-out infinite alternate;
-}
-.entry-glow-violet {
-  background-image:
-    radial-gradient(ellipse 22% 20% at 98% 7%, rgba(167, 106, 255, .76) 0%, rgba(166, 104, 255, .32) 39%, transparent 78%),
-    radial-gradient(ellipse 13% 34% at 100% 34%, rgba(143, 113, 255, .65) 0%, rgba(135, 108, 255, .2) 46%, transparent 81%),
-    radial-gradient(ellipse 28% 17% at 77% 0%, rgba(212, 141, 255, .52) 0%, transparent 78%);
-  filter: blur(36px) saturate(145%);
-  opacity: .76;
-  animation: askmoina-glow-violet-drift 23s ease-in-out infinite alternate-reverse;
-}
-.entry-glow-rose {
-  background-image:
-    radial-gradient(ellipse 23% 17% at 92% 5%, rgba(246, 154, 255, .58) 0%, rgba(235, 130, 255, .26) 40%, transparent 79%),
-    radial-gradient(ellipse 15% 25% at 100% 84%, rgba(255, 153, 190, .62) 0%, rgba(223, 125, 255, .24) 43%, transparent 82%),
-    radial-gradient(ellipse 26% 15% at 55% 100%, rgba(190, 120, 255, .38) 0%, transparent 78%);
-  filter: blur(39px) saturate(138%);
-  opacity: .68;
-  animation: askmoina-glow-rose-drift 27s ease-in-out infinite alternate;
-}
-.entry-glow-amber {
-  background-image:
-    radial-gradient(ellipse 22% 17% at 5% 96%, rgba(255, 186, 113, .7) 0%, rgba(255, 145, 169, .26) 42%, transparent 79%),
-    radial-gradient(ellipse 12% 29% at 0% 77%, rgba(255, 156, 146, .58) 0%, rgba(255, 155, 178, .2) 46%, transparent 82%),
-    radial-gradient(ellipse 25% 15% at 37% 100%, rgba(255, 190, 137, .42) 0%, transparent 78%);
-  filter: blur(34px) saturate(132%);
-  opacity: .65;
-  animation: askmoina-glow-amber-drift 21s ease-in-out infinite alternate-reverse;
-}
-.entry-glow-cyan {
-  background-image:
-    radial-gradient(ellipse 19% 13% at 52% 0%, rgba(79, 194, 255, .38) 0%, transparent 80%),
-    radial-gradient(ellipse 22% 16% at 94% 97%, rgba(95, 122, 255, .6) 0%, rgba(132, 111, 255, .22) 45%, transparent 82%),
-    radial-gradient(ellipse 13% 27% at 100% 57%, rgba(87, 153, 255, .46) 0%, transparent 82%);
-  filter: blur(34px) saturate(142%);
-  opacity: .62;
-  animation: askmoina-glow-cyan-drift 31s ease-in-out infinite alternate;
-}
-
-/* The rim's light is deliberately interrupted and low-opacity, never a solid neon outline. */
-.entry-glow-rim {
-  position: absolute;
-  inset: 0;
-  display: block;
-  box-sizing: border-box;
-  padding: 13px;
-  border-radius: clamp(34px, 7.2vw, 54px);
-  background: conic-gradient(
-    from 0deg,
-    rgba(93, 149, 255, .04) 0deg,
-    rgba(94, 159, 255, .34) 20deg,
-    rgba(123, 132, 255, .16) 44deg,
-    transparent 74deg,
-    transparent 101deg,
-    rgba(184, 123, 255, .22) 123deg,
-    rgba(230, 151, 255, .48) 151deg,
-    rgba(241, 171, 246, .2) 174deg,
-    transparent 203deg,
-    transparent 227deg,
-    rgba(255, 188, 136, .26) 252deg,
-    rgba(244, 148, 220, .14) 276deg,
-    transparent 304deg,
-    rgba(99, 144, 255, .16) 326deg,
-    rgba(93, 149, 255, .04) 360deg
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  filter: blur(11px);
-  opacity: .75;
-  transform-origin: center;
-  will-change: transform;
-  animation: askmoina-glow-rim-rotate 39s linear infinite;
-}
-@keyframes askmoina-glow-blue-drift {
-  0% { transform: translate3d(-1.2%, -1%, 0) rotate(-3deg) scale(1.01); opacity: .72; }
-  50% { transform: translate3d(1.4%, .8%, 0) rotate(2deg) scale(1.065); opacity: .84; }
-  100% { transform: translate3d(.2%, -.4%, 0) rotate(5deg) scale(1.025); opacity: .76; }
-}
-@keyframes askmoina-glow-violet-drift {
-  0% { transform: translate3d(1%, -.8%, 0) rotate(4deg) scale(1.03); opacity: .68; }
-  50% { transform: translate3d(-1.2%, 1%, 0) rotate(-2deg) scale(1.075); opacity: .8; }
-  100% { transform: translate3d(.4%, .3%, 0) rotate(-5deg) scale(1.035); opacity: .72; }
-}
-@keyframes askmoina-glow-rose-drift {
-  0% { transform: translate3d(.8%, .2%, 0) rotate(3deg) scale(1.015); opacity: .6; }
-  50% { transform: translate3d(-.8%, -1.2%, 0) rotate(-4deg) scale(1.07); opacity: .72; }
-  100% { transform: translate3d(-.2%, .6%, 0) rotate(2deg) scale(1.025); opacity: .64; }
-}
-@keyframes askmoina-glow-amber-drift {
-  0% { transform: translate3d(-.6%, .7%, 0) rotate(-4deg) scale(1.02); opacity: .58; }
-  50% { transform: translate3d(1%, -.6%, 0) rotate(3deg) scale(1.06); opacity: .7; }
-  100% { transform: translate3d(-.8%, -.1%, 0) rotate(1deg) scale(1.03); opacity: .62; }
-}
-@keyframes askmoina-glow-cyan-drift {
-  0% { transform: translate3d(.5%, -1%, 0) rotate(2deg) scale(1.03); opacity: .56; }
-  50% { transform: translate3d(-1%, .7%, 0) rotate(-3deg) scale(1.08); opacity: .66; }
-  100% { transform: translate3d(.7%, .4%, 0) rotate(4deg) scale(1.035); opacity: .6; }
-}
-@keyframes askmoina-glow-rim-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-@media (max-width: 520px) {
-  .entry-edge-glow { inset: -5px !important; }
-  .entry-glow-field { filter: blur(26px) saturate(138%); }
-  .entry-glow-rim { filter: blur(9px); opacity: .68; }
-}
-@media (max-height: 610px) {
-  .entry-glow-field { filter: blur(24px) saturate(135%); }
-  .entry-glow-rim { filter: blur(8px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .entry-glow-field { animation: none !important; }
-  .entry-glow-rim { animation: none !important; }
-}
-
-/* Disable the old, unused gradient-angle animation; only the atmospheric fields animate. */
-.entry-overlay {
-  animation: entry-welcome-fade .36s ease both !important;
-}
-.entry-glow-field { z-index: 1; }
-.entry-glow-rim { z-index: 2; }
