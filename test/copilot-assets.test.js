@@ -16,6 +16,7 @@ const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.me
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
 const signatureGeometryPath = signatureMark.match(/<path[^>]* d="([^"]+)"/)?.[1] ?? "";
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
+const serviceWorkerScript = readFileSync(new URL("../public/service-worker.js", import.meta.url), "utf8");
 
 describe("Worker-embedded Co-Pilot assets", () => {
   it("serves the same browser assets as the checked-in public files", () => {
@@ -56,6 +57,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-logo.svg"');
     expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
+    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v3"');
+    for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg"]) {
+      expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.77");
+    }
   });
 
   it("locks the approved AskMoina signature geometry at v1.0", () => {
