@@ -804,7 +804,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
         const failure = new Error(`Grounded search request failed (${response.status}) on ${model}: ${providerMessage}`);
         lastFailure = failure;
         if (attempt < searchMaxAttempts && GROUNDED_SEARCH_RETRYABLE_HTTP_STATUSES.has(response.status)) {
-          console.warn("[askmoina] Grounded search provider returned a retryable response", JSON.stringify({
+          console.warn("[AskMoina] Grounded search provider returned a retryable response", JSON.stringify({
             model, location, attempt, status: response.status, retrying: true
           }));
           if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
@@ -906,7 +906,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
         return typeof uri === "string" && (uri.startsWith("https://") || uri.startsWith("http://"));
       });
       if (!hasGroundingUrls && attempt < searchMaxAttempts) {
-        console.warn("[askmoina] Grounded search returned no source URLs; retrying with a more specific query", JSON.stringify({
+        console.warn("[AskMoina] Grounded search returned no source URLs; retrying with a more specific query", JSON.stringify({
           model, location, attempt, retrying: true, reason: "no_grounding_sources"
         }));
         if (!(await waitForGroundedRetry(650 * attempt, groundingBudgetStartedAt, searchBudgetMs))) break;
@@ -919,7 +919,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
       const timedOut = controller.signal.aborted || (error instanceof Error && error.name === "AbortError");
       const networkFailure = error instanceof TypeError;
       if (attempt < searchMaxAttempts && (timedOut || networkFailure)) {
-        console.warn("[askmoina] Grounded search attempt failed; retrying", JSON.stringify({
+        console.warn("[AskMoina] Grounded search attempt failed; retrying", JSON.stringify({
           model,
           location,
           attempt,
@@ -971,7 +971,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
     const assessment = assessGroundedSource(String(web.title || web.uri), web.uri, deviceContext);
     return assessment.modelTextMatch === "visible_in_title_or_url" && assessment.officialManufacturerHostMatch;
   });
-  console.info("[askmoina] Grounded search finished", JSON.stringify({
+  console.info("[AskMoina] Grounded search finished", JSON.stringify({
     model,
     location,
     verified: sources.length > 0,
@@ -2543,7 +2543,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             const effectiveQuery = carryOriginalRankedIntent ? latestUserRequestText + "\nRefined search terms from Live: " + query : query;
             if (carryOriginalRankedIntent) latestUserRequestNeedsGrounding = false;
             const deviceContext = normalizeGroundedDeviceContext(args.device_context);
-            console.info("[askmoina] Grounded search requested", JSON.stringify({
+            console.info("[AskMoina] Grounded search requested", JSON.stringify({
               mode: copilotMode ? "copilot" : "voice",
               queryLength: query.length,
               hasModelContext: Boolean(deviceContext.model_id || deviceContext.variant || deviceContext.part_number),
