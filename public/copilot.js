@@ -2260,11 +2260,12 @@
     stage.style.setProperty("--voice-brightness", (0.96 + energy * 0.5).toFixed(3));
     stage.style.setProperty("--corner-energy", energy.toFixed(3));
     stage.style.setProperty("--edge-wave-energy", edgeEnergy.toFixed(3));
-    stage.style.setProperty("--edge-wave-opacity", (0.34 + edgeEnergy * 0.56).toFixed(3));
-    stage.style.setProperty("--edge-wave-tail-opacity", (0.22 + edgeEnergy * 0.34).toFixed(3));
-    stage.style.setProperty("--edge-wave-brightness", (0.92 + edgeEnergy * 0.82).toFixed(3));
-    stage.style.setProperty("--edge-wave-duration", (2.9 - edgeEnergy * 1.05).toFixed(2) + "s");
-    stage.style.setProperty("--edge-wave-scale", (0.82 + edgeEnergy * 0.42).toFixed(3));
+    stage.style.setProperty("--edge-wave-opacity", (0.14 + edgeEnergy * 0.28).toFixed(3));
+    stage.style.setProperty("--edge-wave-tail-opacity", (0.12 + edgeEnergy * 0.22).toFixed(3));
+    stage.style.setProperty("--edge-wave-secondary-opacity", (0.06 + edgeEnergy * 0.12).toFixed(3));
+    stage.style.setProperty("--edge-wave-brightness", (0.94 + edgeEnergy * 0.48).toFixed(3));
+    stage.style.setProperty("--edge-wave-duration", (5.2 - edgeEnergy * 1.1).toFixed(2) + "s");
+    stage.style.setProperty("--edge-wave-scale", (0.88 + edgeEnergy * 0.2).toFixed(3));
   }
 
   function getPlaybackAnalyser() {
