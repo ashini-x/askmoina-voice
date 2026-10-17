@@ -42,27 +42,12 @@ function renderSiteMenu(authenticated: boolean): string {
 }
 
 const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure sign in">
-  <svg class="entry-edge-beam" aria-hidden="true" focusable="false" width="100%" height="100%">
-    <defs>
-      <linearGradient id="entryEdgeBeamSpectrum" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#70c9ff" stop-opacity=".72"/>
-        <stop offset="28%" stop-color="#7f9cff" stop-opacity=".86"/>
-        <stop offset="52%" stop-color="#bd8cff" stop-opacity=".98"/>
-        <stop offset="70%" stop-color="#efb1ff" stop-opacity="1"/>
-        <stop offset="84%" stop-color="#ffd0d0" stop-opacity=".9"/>
-        <stop offset="100%" stop-color="#8199ff" stop-opacity=".75"/>
-      </linearGradient>
-      <filter id="entryEdgeBeamAmbientBlur" x="-0.16" y="-0.08" width="1.32" height="1.16" color-interpolation-filters="sRGB">
-        <feGaussianBlur stdDeviation="18"/>
-      </filter>
-      <filter id="entryEdgeBeamSoftBlur" x="-0.09" y="-0.06" width="1.18" height="1.12" color-interpolation-filters="sRGB">
-        <feGaussianBlur stdDeviation="7"/>
-      </filter>
-    </defs>
-    <rect class="entry-edge-stroke entry-edge-ambient" x="3" y="3" width="calc(100% - 6px)" height="calc(100% - 6px)" rx="34" ry="34" pathLength="1000"/>
-    <rect class="entry-edge-stroke entry-edge-soft" x="3" y="3" width="calc(100% - 6px)" height="calc(100% - 6px)" rx="34" ry="34" pathLength="1000"/>
-    <rect class="entry-edge-stroke entry-edge-core" x="3" y="3" width="calc(100% - 6px)" height="calc(100% - 6px)" rx="34" ry="34" pathLength="1000"/>
-  </svg>
+  <div class="entry-edge-glow" aria-hidden="true">
+    <span class="entry-edge-layer entry-edge-sharp"></span>
+    <span class="entry-edge-layer entry-edge-blur-4"></span>
+    <span class="entry-edge-layer entry-edge-blur-12"></span>
+    <span class="entry-edge-layer entry-edge-blur-15"></span>
+  </div>
   <div class="entry-auth-panel">
     <div class="entry-brand-lockup" aria-label="askmoina">
       <div class="entry-brand-mark"><img src="/askmoina-mark.svg?v=0.4.98" alt="" width="44" height="31"></div>
