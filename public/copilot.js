@@ -4396,8 +4396,8 @@
     if (active || starting) {
       stopCopilot(true);
       stage.classList.add("is-returning");
-      // Let the distinct end tone finish before returning to the Vision card chooser.
-      window.setTimeout(() => window.location.replace("/"), 570);
+      // Let the distinct end tone finish, then reveal the camera slider again.
+      window.setTimeout(() => stage.classList.remove("is-returning"), 570);
     } else {
       void startCopilot();
     }
