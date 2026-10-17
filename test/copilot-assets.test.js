@@ -945,7 +945,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).toContain('Welcome, <span id="assistantSelectionFirstName">Newton</span>');
     expect(workerSource).toContain('id="selectMoinaOS1" aria-label="Open moinaOS 1 details"');
     expect(workerSource).toContain('id="postAuthSlideTitle">Slide to show<br>your problem');
-    expect(nativeAppScript).toContain('document.querySelector("#postAuthOnboarding")');
+    expect(nativeAppScript).toContain('const overlay = $("#postAuthOnboarding")');
     expect(nativeAppScript).toContain('sliderSlot.appendChild(slider)');
     expect(nativeAppScript).toContain('completionObserver.observe(slider, { attributes: true, attributeFilter: ["class"] })');
     expect(nativeAppCss).toContain(".post-auth-account-created");
