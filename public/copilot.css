@@ -1828,3 +1828,6 @@ button{touch-action:manipulation}
     animation:none!important;
   }
 }
+
+/* Keep voice and response energy inside the orb; no full-screen edge pulse. */
+.edge-glow{display:none!important}
