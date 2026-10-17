@@ -111,7 +111,7 @@ body[data-page="login"] .native-app-chrome-guest{display:none!important}
 .vision-slide-label{letter-spacing:-.012em;font-size:14px;font-weight:650}
 body[data-page="login"] .entry-auth-panel{padding-top:25px}
 body[data-page="login"] .entry-page-heading.auth-page-heading{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:23px}
-body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg?v=0.4.77") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg?v=0.4.80") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
 body[data-page="login"] .entry-page-heading.auth-page-heading h2{max-width:12ch;font-size:30px;letter-spacing:-.06em}
 body[data-page="login"] .entry-page-heading.auth-page-heading p{max-width:27ch;font-size:14px;line-height:1.48}
 body[data-page="login"] .entry-passkey{justify-content:center;border-radius:17px}
@@ -247,7 +247,7 @@ html:has(.native-info-page),body.native-info-page{background:#090b0f!important;c
 .native-info-back,.native-info-main h1,.native-info-main h2{color:#f5f5f7!important}
 .native-info-kicker,.native-info-lead,.native-info-main>p:not(.native-info-lead){color:#a1a1aa!important}
 .native-info-return{color:#f5f5f7!important;background:#181b23!important;border-color:rgba(255,255,255,.12)!important}
-body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:url("/favicon.svg?v=0.4.79") center/54px 54px no-repeat!important;border:0!important;border-radius:50%!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 8px 28px rgba(0,0,0,.28)!important}
+body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:url("/favicon.svg?v=0.4.80") center/54px 54px no-repeat!important;border:0!important;border-radius:50%!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 8px 28px rgba(0,0,0,.28)!important}
 .show-problem-button{background:rgba(24,27,35,.94)!important;border-color:rgba(255,255,255,.16)!important;color:#f5f5f7!important;box-shadow:0 12px 42px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08)!important}
 .vision-slide-label,.vision-slide-copy{color:#f5f5f7!important}
 .native-menu-panel,.native-menu-sheet{background:#151820!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.1)!important}
