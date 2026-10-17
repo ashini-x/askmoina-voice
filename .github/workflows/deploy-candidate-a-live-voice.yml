@@ -291,7 +291,7 @@ jobs:
             head -c 1000 /tmp/moina-install.html || true
             exit 1
           fi
-          if ! grep -q 'Install AskMoina' /tmp/moina-install.html; then
+          if ! grep -q 'Install askmoina' /tmp/moina-install.html; then
             echo "::error::PWA install page is missing the install CTA"
             head -c 1000 /tmp/moina-install.html || true
             exit 1
