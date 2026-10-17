@@ -58,63 +58,6 @@
   // Fixed vector paths; a single SVG element prevents two biometric marks showing together.
   const BIOMETRIC_FACE_ICON_MARKUP = '<path d="M29 12H21a9 9 0 0 0-9 9v8M67 12h8a9 9 0 0 1 9 9v8M84 67v8a9 9 0 0 1-9 9h-8M29 84h-8a9 9 0 0 1-9-9v-8"/><path d="M34 36v8M62 36v8M39 59c5.3 4.2 12.7 4.2 18 0M48 43v7"/>';
   const BIOMETRIC_FINGERPRINT_ICON_MARKUP = '<path d="M48 12c-20 0-36 15.9-36 35.5M48 21c-15 0-27 12-27 26.5"/><path d="M48 30c-10 0-18 8-18 17.5 0 14-2.5 23-8 31M48 39c-5 0-9 4-9 8.5 0 17-1.4 28-5.5 38M48 48c0 20-1 30-4 38M57 49c0 16.2-.7 27.8-4.2 37M57 31c10.5 3.8 18 14 18 26.5 0 10.8-1.4 19.6-4.1 28M66 21c11 7.4 18 19.6 18 33.5 0 9-1.5 18.7-4.5 27"/>';
-  const INTELLIGENCE_GLOW_COLORS = ["#BC82F3", "#F5B9EA", "#8D9FFF", "#FF6778", "#FFBA71", "#C686FF"];
-
-  function setupIntelligenceGlow() {
-    const overlay = $(".entry-overlay");
-    if (!overlay || !overlay.querySelector(".entry-edge-glow")) return;
-
-    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    let timer = null;
-
-    function morphGradientStops() {
-      // Port the SwiftUI reference: randomize the six angular-gradient stops,
-      // sort each new set, and transition colour and position together.
-      const stops = INTELLIGENCE_GLOW_COLORS
-        .map((color) => ({ color, location: Math.random() }))
-        .sort((a, b) => a.location - b.location);
-
-      stops.forEach((stop, index) => {
-        const slot = index + 1;
-        overlay.style.setProperty("--moina-glow-color-" + slot, stop.color);
-        overlay.style.setProperty("--moina-glow-stop-" + slot, (stop.location * 100).toFixed(2) + "%");
-      });
-    }
-
-    // Seed the gradient before transitions are enabled, avoiding a first-frame flash.
-    morphGradientStops();
-    void overlay.offsetWidth;
-    overlay.classList.add("edge-glow-animate");
-
-    function stop() {
-      if (timer !== null) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    }
-    function start() {
-      if (timer !== null || document.hidden || reducedMotion?.matches) return;
-      timer = window.setInterval(morphGradientStops, 500);
-    }
-    function updateVisibility() {
-      if (document.hidden || reducedMotion?.matches) {
-        stop();
-      } else {
-        morphGradientStops();
-        start();
-      }
-    }
-
-    start();
-    document.addEventListener("visibilitychange", updateVisibility);
-    window.addEventListener("pagehide", stop, { once: true });
-    if (reducedMotion?.addEventListener) {
-      reducedMotion.addEventListener("change", updateVisibility);
-    } else if (reducedMotion?.addListener) {
-      reducedMotion.addListener(updateVisibility);
-    }
-  }
-
   function showBiometricStage(kind) {
     const overlay = $(".entry-overlay");
     const panel = $(".entry-auth-panel");
@@ -505,8 +448,6 @@
       hideSheet();
     }
   });
-
-  setupIntelligenceGlow();
 
   if (document.body.dataset.page === "launch") {
     window.setTimeout(() => window.location.replace("/"), 720);
