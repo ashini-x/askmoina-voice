@@ -312,13 +312,14 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync } from "node:fs";
           const manifest = JSON.parse(readFileSync("/tmp/moina-manifest.json", "utf8"));
+          const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
           if (manifest.display !== "standalone") throw new Error("PWA manifest must use standalone display mode.");
           if (manifest.start_url !== "/?source=pwa") throw new Error("PWA manifest start_url mismatch.");
           if (manifest.scope !== "/") throw new Error("PWA manifest scope mismatch.");
           if (!Array.isArray(manifest.icons) ||
-              !manifest.icons.some(icon => icon.src === "/pwa-icon-192.svg" && icon.sizes === "192x192") ||
-              !manifest.icons.some(icon => icon.src === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
-              !manifest.icons.some(icon => icon.src === "/askmoina-bird-final.png")) {
+              !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-192.svg" && icon.sizes === "192x192") ||
+              !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
+              !manifest.icons.some(icon => manifestIconPath(icon) === "/askmoina-bird-final.png")) {
             console.error("Manifest icon entries received:", JSON.stringify(manifest.icons));
             throw new Error("Manifest must include 192x192 and 512x512 icons and preserve the AskMoina brand icon fallback.");
           }
@@ -335,7 +336,7 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v2' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v3' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"
 
