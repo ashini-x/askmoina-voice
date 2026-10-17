@@ -69,22 +69,18 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
     </div>
     <section class="entry-phone-flow" id="phoneEntrySection" hidden aria-label="Phone verification">
       <button class="entry-back-link" id="phoneBackButton" type="button"><span aria-hidden="true">‹</span> <span>Back to options</span></button>
-      <p class="entry-step-label" id="phoneStepLabel">STEP 1 <span aria-hidden="true">/</span> PHONE NUMBER</p>
-      <p class="entry-phone-hint">Use a mobile number that can receive SMS verification codes.</p>
-      <label class="entry-phone-label" for="phone">Phone number</label>
+      <label class="entry-phone-label entry-hidden-copy" for="phone">Phone number</label>
       <div class="entry-phone-row">
         <span class="entry-country" id="phoneCountry" aria-label="Country calling code">+91</span>
         <input class="entry-phone-input" id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Phone number" aria-label="Phone number">
         <button class="entry-next" id="sendOtp" type="button" aria-label="Send verification code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
       </div>
       <div id="otpSection" class="entry-otp-section" hidden>
-        <p class="entry-step-label">STEP 2 <span aria-hidden="true">/</span> VERIFY CODE</p>
-        <label class="entry-phone-label" for="otpCode">Verification code</label>
+        <label class="entry-phone-label entry-hidden-copy" for="otpCode">Verification code</label>
         <div class="entry-otp-row">
-          <input class="entry-otp-input" id="otpCode" name="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code" aria-label="Verification code">
+          <input class="entry-otp-input" id="otpCode" name="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" aria-label="Verification code">
           <button class="entry-next" id="verifyOtp" type="button" aria-label="Verify code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg></button>
         </div>
-        <p class="entry-phone-hint entry-otp-hint">The code may take a few moments to arrive. Check your messages before trying again.</p>
       </div>
     </section>
     <p class="entry-hidden-copy device-hint" id="deviceHint">Continue with Face ID or Touch ID using your device's secure passkey.</p>
@@ -95,14 +91,12 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
   </div>
   <section class="biometric-auth-stage" id="biometricAuthStage" hidden aria-labelledby="biometricTitle">
     <div class="biometric-stage-content">
-      <p class="biometric-stage-eyebrow">SECURE AUTHENTICATION</p>
       <svg class="biometric-symbol biometric-face-symbol" id="biometricSymbol" viewBox="0 0 96 96" aria-hidden="true">
         <path d="M29 12H21a9 9 0 0 0-9 9v8M67 12h8a9 9 0 0 1 9 9v8M84 67v8a9 9 0 0 1-9 9h-8M29 84h-8a9 9 0 0 1-9-9v-8"/>
         <path d="M34 36v8M62 36v8M39 59c5.3 4.2 12.7 4.2 18 0M48 43v7"/>
       </svg>
       <h2 id="biometricTitle">Face Authentication</h2>
       <p id="biometricInstruction">Look at the camera</p>
-      <p class="biometric-stage-detail" id="biometricDetail">Follow your device's secure prompt. You may be asked for a PIN or screen lock instead.</p>
     </div>
     <button class="biometric-cancel" id="biometricCancel" type="button">Cancel</button>
   </section>
