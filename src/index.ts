@@ -60,9 +60,9 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
   html = html.replace(/<title>[^<]*<\/title>/, "<title>AskMoina</title>");
   const version = encodeURIComponent(appVersion || "0.4.80");
-  if (/<main\\b[^>]*class=["\'][^"\']*\\bcamera-app\\b/i.test(html)) {
+  if (/<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html)) {
     const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><img src="/favicon.svg?v=' + version + '" alt="" width="64" height="64"></div>';
-    html = html.replace(/<body\\b[^>]*>/i, (opening) => opening + launchOverlay);
+    html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
   }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + nativeScript + '</head>');
