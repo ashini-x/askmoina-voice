@@ -12,6 +12,8 @@ const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.m
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
 const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.meta.url), "utf8");
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
+const experienceSelectionCss = readFileSync(new URL("../public/experience-selection.css", import.meta.url), "utf8");
+const experienceSelectionScript = readFileSync(new URL("../public/experience-selection.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
 const favicon = readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8");
@@ -927,46 +929,43 @@ describe("Dark-first app shell and brand assets", () => {
   });
 
 
-  it("routes successful signup/sign-in through account-created confirmation and then the camera slider", () => {
-    expect(authScript).toContain('"/?onboarding=1"');
+
+  it("routes successful signup/sign-in directly to Interface 06", () => {
+    expect(authScript).not.toContain('"/?onboarding=1"');
+    expect(authScript).toContain("const next = destination;");
+    expect(authScript).toContain("window.location.replace(next)");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
-    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");\n      }');
-    expect(nativeAppScript).toContain('get("onboarding") === "1"');
-    expect(nativeAppScript).toContain('document.addEventListener("askmoina:user-disconnected"');
-    expect(nativeAppScript).toContain('overlay.classList.add("is-slide-mode")');
-    expect(script).toContain('new Event("askmoina:user-disconnected")');
-    expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
-    expect(workerSource).toContain('id="assistantSelectionTitle"');
-    expect(workerSource).toContain('id="moinaOS2Description"');
-    expect(workerSource).toContain('id="moinaOS1DetailsTitle"');
-    expect(workerSource).toContain('id="startMoinaOS1">Start with moinaOS 1');
-    expect(nativeAppCss).toContain(".assistant-option-locked");
-    expect(nativeAppCss).toContain("assistant-selection-landscape.svg");
-    expect(workerSource).toContain('Welcome, <span id="assistantSelectionFirstName">Newton</span>');
-    expect(workerSource).toContain('id="selectMoinaOS1" aria-label="Open moinaOS 1 details"');
-    expect(workerSource).toContain('id="postAuthSlideTitle">Slide to show<br>your problem');
-    expect(nativeAppScript).toContain('const overlay = $("#postAuthOnboarding")');
-    expect(nativeAppScript).toContain('sliderSlot.appendChild(slider)');
-    expect(nativeAppScript).toContain('completionObserver.observe(slider, { attributes: true, attributeFilter: ["class"] })');
-    expect(nativeAppCss).toContain(".post-auth-account-created");
-    expect(nativeAppCss).toContain(".post-auth-slide-stage");
-    expect(nativeAppCss).toContain(".post-auth-onboarding-slider-slot .show-problem-button");
+    expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
+    expect(workerSource).toContain("id='experienceMoinaOS1'");
+    expect(workerSource).toContain("id='experienceMoinaOS2'");
+    expect(workerSource).toContain('href="/experience-selection.css?v=20261017"');
+    expect(workerSource).toContain('src="/experience-selection.js?v=20261017"');
+    expect(workerSource).not.toContain('id="assistantSelectionTitle"');
+    expect(workerSource).not.toContain('id="moinaOS1DetailsTitle"');
+    expect(nativeAppScript).not.toContain('get("onboarding") === "1"');
+    expect(nativeAppScript).not.toContain('document.addEventListener("askmoina:user-disconnected"');
+    expect(experienceSelectionScript).toContain('const availableCard = document.querySelector("#experienceMoinaOS1")');
+    expect(experienceSelectionScript).toContain('const previewCard = document.querySelector("#experienceMoinaOS2")');
+    expect(experienceSelectionScript).toContain("cameraApp.inert = false");
     expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
   });
 
-  it("permanently removes the branded launch interstitial while preserving both entry flows", () => {
+  it("removes the launch interstitial and preserves the existing authenticated and sign-in entry flows", () => {
     expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
     expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
-    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY + '<script src=\"/auth.js?v='");
-    expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
-    expect(workerSource).toContain('id="assistantSelectionTitle"');
-    expect(workerSource).toContain('id="startMoinaOS1">Start with moinaOS 1');
+    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="\\/auth.js?v=\'');
+    expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
+    expect(workerSource).toContain("id='experienceMoinaOS1'");
+    expect(workerSource).toContain("id='experienceMoinaOS2'");
+    expect(experienceSelectionCss).toContain(".experience-card--preview");
+    expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
+    expect(experienceSelectionScript).toContain('window.matchMedia("(prefers-reduced-motion: reduce)")');
+    expect(nativeAppScript).toContain("nativeMenuSheet");
+    expect(nativeAppScript).not.toContain("assistantSelectionStage");
     expect(nativeAppCss).not.toContain(".app-launch-transition");
     expect(nativeAppCss).not.toContain(".launch-signature-orb");
     expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
-    expect(nativeAppCss).toContain(".assistant-selection-stage");
-    expect(nativeAppCss).toContain(".post-auth-slide-stage");
-  });
+  });;
 });
