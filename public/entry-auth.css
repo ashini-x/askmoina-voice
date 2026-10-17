@@ -400,7 +400,7 @@
   gap: 0;
   transform: translateY(-7px);
 }
-.biometric-stage-eyebrow {
+.biometric-auth-stage .biometric-stage-eyebrow {
   margin: 0 0 31px !important;
   color: rgba(221, 225, 244, .62) !important;
   font-size: .65rem !important;
@@ -571,7 +571,7 @@
   margin-bottom: 13px !important;
 }
 .entry-auth-panel.is-phone-flow.is-otp-flow #phoneStepLabel,
-.entry-auth-panel.is-phone-flow.is-otp-flow > .entry-phone-hint {
+.entry-auth-panel.is-phone-flow.is-otp-flow .entry-phone-flow > .entry-phone-hint {
   display: none !important;
 }
 .entry-auth-panel.is-phone-flow.is-otp-flow .entry-phone-label[for="phone"] {
