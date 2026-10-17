@@ -619,3 +619,166 @@
     transition: none !important;
   }
 }
+
+
+/* Phone auth refinement: remove the nested glass card and make the primary
+   action unmistakable. The Interface 1 background and edge animation above
+   remain untouched. */
+.entry-auth-panel.is-phone-flow {
+  width: min(100%, 350px) !important;
+  max-width: 350px !important;
+  padding: 16px 0 18px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-brand-lockup {
+  margin-bottom: 24px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 auto 27px !important;
+  text-align: center !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy h2 {
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  text-align: center !important;
+  font-size: clamp(1.45rem, 5.4vw, 1.65rem) !important;
+  letter-spacing: -.045em !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy p {
+  width: 100% !important;
+  max-width: 280px !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+  color: rgba(218, 223, 241, .72) !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-flow {
+  display: block;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+}
+.entry-auth-panel.is-phone-flow .entry-back-link {
+  margin: 0 0 17px !important;
+  padding: 4px 0;
+  color: rgba(222, 227, 245, .72) !important;
+  font-size: .8rem !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-row,
+.entry-auth-panel.is-phone-flow .entry-otp-row {
+  align-items: center !important;
+  gap: 9px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-country {
+  flex: 0 0 60px !important;
+  min-width: 60px !important;
+  min-height: 54px !important;
+  border-color: rgba(226, 233, 255, .16) !important;
+  border-radius: 15px !important;
+  background: rgba(245, 247, 255, .065) !important;
+  color: #f5f6ff !important;
+  font-size: .9rem !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-input,
+.entry-auth-panel.is-phone-flow .entry-otp-input {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  min-height: 54px !important;
+  padding: 0 15px !important;
+  border: 1px solid rgba(226, 233, 255, .18) !important;
+  border-radius: 15px !important;
+  background: rgba(5, 9, 23, .48) !important;
+  color: #fbfbff !important;
+  font-size: .93rem !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: blur(12px) saturate(115%);
+  backdrop-filter: blur(12px) saturate(115%);
+}
+.entry-auth-panel.is-phone-flow .entry-phone-input::placeholder,
+.entry-auth-panel.is-phone-flow .entry-otp-input::placeholder {
+  color: rgba(177, 185, 210, .64) !important;
+  opacity: 1 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-input:focus,
+.entry-auth-panel.is-phone-flow .entry-otp-input:focus {
+  border-color: rgba(196, 207, 255, .68) !important;
+  box-shadow: 0 0 0 3px rgba(145, 166, 255, .1) !important;
+}
+.entry-auth-panel.is-phone-flow .entry-next {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 54px !important;
+  width: 54px !important;
+  min-width: 54px !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, .92) !important;
+  border-radius: 50% !important;
+  background: #f4f5fb !important;
+  color: #111522 !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .16) !important;
+  opacity: 1 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-next svg {
+  display: block !important;
+  width: 21px !important;
+  height: 21px !important;
+  fill: none !important;
+  stroke: #111522 !important;
+  stroke-width: 2.15 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-next svg path {
+  fill: none !important;
+  stroke: #111522 !important;
+  stroke-width: 2.15 !important;
+  opacity: 1 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-next:disabled {
+  opacity: .52 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-next:active:not(:disabled) {
+  transform: scale(.95);
+}
+.entry-auth-panel.is-phone-flow .entry-otp-section {
+  margin-top: 20px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-legal-note {
+  margin: 20px 8px 0 !important;
+  text-align: center !important;
+}
+.entry-auth-panel.is-phone-flow .entry-status:not(:empty) {
+  margin-top: 12px !important;
+}
+@media (max-width: 380px) {
+  .entry-auth-panel.is-phone-flow .entry-phone-row,
+  .entry-auth-panel.is-phone-flow .entry-otp-row { gap: 7px !important; }
+  .entry-auth-panel.is-phone-flow .entry-country {
+    flex-basis: 55px !important;
+    min-width: 55px !important;
+  }
+  .entry-auth-panel.is-phone-flow .entry-next {
+    flex-basis: 49px !important;
+    width: 49px !important;
+    min-width: 49px !important;
+    height: 49px !important;
+    min-height: 49px !important;
+  }
+}
+@media (max-height: 700px) {
+  .entry-auth-panel.is-phone-flow .entry-brand-lockup { margin-bottom: 17px !important; }
+  .entry-auth-panel.is-phone-flow .entry-auth-state-copy { margin-bottom: 19px !important; }
+  .entry-auth-panel.is-phone-flow .entry-back-link { margin-bottom: 12px !important; }
+  .entry-auth-panel.is-phone-flow .entry-legal-note { margin-top: 14px !important; }
+}
