@@ -408,3 +408,13 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
   .app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}
   .launch-signature-orb>img,.launch-signature-title,.launch-signature-tagline{animation:none!important;opacity:1;transform:none}
 }
+
+
+/* askmoina typography — native, quiet, and consistent across screens. */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;font-synthesis:none;font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html,body,button,input,textarea,select{font-family:inherit}
+h1,h2,h3,h4,h5,h6{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;text-wrap:balance;font-kerning:normal}
+h1{letter-spacing:-.045em}
+h2{letter-spacing:-.03em}
+h3,h4,h5,h6{letter-spacing:-.02em}
+button,a,input,textarea,select{font-synthesis:none}
