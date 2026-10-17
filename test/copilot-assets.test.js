@@ -900,16 +900,17 @@ describe("Live microphone explicit activity detection", () => {
 
 
 describe("Native-first app experience v2", () => {
-  it("renders a camera-first native welcome state without a website-style branded header", () => {
-    expect(workerSource).toContain("const NATIVE_CAMERA_WELCOME = ");
-    expect(workerSource).toContain("nativeCameraWelcomeTitle");
+  it("uses the success and blurred-slider onboarding instead of separate camera welcome and splash pages", () => {
+    expect(workerSource).not.toContain("const NATIVE_CAMERA_WELCOME = ");
+    expect(workerSource).not.toContain("nativeCameraWelcomeTitle");
+    expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
+    expect(workerSource).not.toContain("Show Moina your world.");
     expect(workerSource).toContain("openAppMenu");
     expect(workerSource).toContain("openLibrary");
     expect(workerSource).toContain('const NATIVE_APP_HEADER_GUEST = "";');
-    expect(workerSource).toContain("html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker)");
-    expect(nativeAppCss).toContain(".native-camera-welcome");
+    expect(workerSource).not.toContain("html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker)");
+    expect(nativeAppCss).toContain(".post-auth-onboarding-slider-slot .show-problem-button");
     expect(nativeAppCss).toContain(".native-app-chrome .native-app-menu-trigger");
-    expect(nativeAppCss).toContain("native-orb-breathe");
     expect(nativeAppCss).toContain("prefers-reduced-motion:reduce");
   });
 
@@ -969,7 +970,11 @@ describe("Dark-first app shell and launch branding", () => {
   it("routes successful signup/sign-in through account-created confirmation and then the camera slider", () => {
     expect(authScript).toContain('"/?onboarding=1"');
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
-    expect(workerSource).toContain('authenticated && url.searchParams.get("onboarding") === "1"');
+    expect(workerSource).toContain('if (authenticated) {\n        html = html.replace("</body>", POST_AUTH_ONBOARDING + "</body>");\n      }');
+    expect(nativeAppScript).toContain('get("onboarding") === "1"');
+    expect(nativeAppScript).toContain('document.addEventListener("askmoina:user-disconnected"');
+    expect(nativeAppScript).toContain('overlay.classList.add("is-slide-mode")');
+    expect(script).toContain('new Event("askmoina:user-disconnected")');
     expect(workerSource).toContain('POST_AUTH_ONBOARDING + "</body>"');
     expect(workerSource).toContain('id="postAuthSuccessTitle"');
     expect(workerSource).toContain("You're all set!");
@@ -984,10 +989,12 @@ describe("Dark-first app shell and launch branding", () => {
     expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
   });
 
-  it("shows a short reduced-motion-aware transition before the camera slider", () => {
-    expect(workerSource).toContain('class="app-launch-transition"');
-    expect(nativeAppCss).toContain("@keyframes app-launch-mark-in");
+  it("removes the extra camera welcome page and splash from the onboarding path", () => {
+    expect(workerSource).not.toContain('class="app-launch-transition"');
+    expect(workerSource).not.toContain("NATIVE_CAMERA_WELCOME");
+    expect(workerSource).not.toContain("Show Moina your world.");
+    expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
-    expect(nativeAppCss).toContain(".app-launch-transition");
+    expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
   });
 });
