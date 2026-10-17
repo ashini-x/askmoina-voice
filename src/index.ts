@@ -61,7 +61,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   html = html.replace(/<title>[^<]*<\/title>/, "<title>AskMoina</title>");
   const version = encodeURIComponent(appVersion || "0.4.80");
   if (/<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html)) {
-    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><img src="/favicon.svg?v=' + version + '" alt="" width="64" height="64"></div>';
+    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><div class="launch-signature-orb"><img src="/askmoina-mark.svg?v=' + version + '" alt="" width="86" height="61"></div><span class="launch-signature-title">AskMoina</span><span class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span></div>';
     html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
   }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
