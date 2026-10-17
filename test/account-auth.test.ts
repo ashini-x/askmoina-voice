@@ -69,7 +69,7 @@ describe("unique account ID and no-guest access", () => {
     expect(authSource).toContain('symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP');
     expect(authSource).toContain('symbol.classList.toggle("biometric-face-symbol", isFace)');
     expect(authSource).toContain('symbol.classList.toggle("biometric-fingerprint-symbol", !isFace)');
-    expect(html).toContain('<script src="/auth.js?v=0.4.86" defer></script>');
+    expect(html).toContain('<script src="/auth.js?v=0.4.80" defer></script>');
     expect(html).not.toContain('<script src="/copilot.js"');
     expect(html).not.toContain('<script src="/transcript-merge.js"');
 
