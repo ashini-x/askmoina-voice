@@ -55,6 +55,31 @@
     if (sheet) sheet.hidden = true;
   }
 
+  function showBiometricStage(kind) {
+    const overlay = $(".entry-overlay");
+    const panel = $(".entry-auth-panel");
+    const stage = $("#biometricAuthStage");
+    const title = $("#biometricTitle");
+    const instruction = $("#biometricInstruction");
+    const faceSymbol = $("#biometricFaceSymbol");
+    const fingerprintSymbol = $("#biometricFingerprintSymbol");
+    if (!overlay || !panel || !stage) return;
+    if (!kind) {
+      overlay.classList.remove("is-biometric");
+      panel.hidden = false;
+      stage.hidden = true;
+      return;
+    }
+    const isFace = kind === "face";
+    if (title) title.textContent = isFace ? "Face Authentication" : "Fingerprint Authentication";
+    if (instruction) instruction.textContent = isFace ? "Look at the camera" : "Place your finger on the sensor";
+    if (faceSymbol) faceSymbol.hidden = !isFace;
+    if (fingerprintSymbol) fingerprintSymbol.hidden = isFace;
+    panel.hidden = true;
+    stage.hidden = false;
+    overlay.classList.add("is-biometric");
+  }
+
   function encode(value) {
     const bytes = value instanceof ArrayBuffer ? new Uint8Array(value) : value;
     let binary = "";
@@ -158,7 +183,7 @@
   async function register(method = "device passkey") {
     if (busy) return;
     try { assertPasskeySupport(); }
-    catch (error) { say(explainPasskeyError(error, "create"), "error"); return; }
+    catch (error) { showBiometricStage(null); say(explainPasskeyError(error, "create"), "error"); return; }
 
     const controller = new AbortController();
     activeCredentialAbort = controller;
@@ -186,6 +211,7 @@
       await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
     } catch (error) {
       hideSheet();
+      showBiometricStage(null);
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey signup failed", error.name || "Error", error.code || "");
       say(explainPasskeyError(error, "create"), "error");
     } finally {
@@ -197,7 +223,7 @@
   async function login() {
     if (busy) return;
     try { assertPasskeySupport(); }
-    catch (error) { say(explainPasskeyError(error, "login"), "error"); return; }
+    catch (error) { showBiometricStage(null); say(explainPasskeyError(error, "login"), "error"); return; }
 
     const controller = new AbortController();
     activeCredentialAbort = controller;
@@ -224,6 +250,7 @@
       await navigateAfterAuth("/");
     } catch (error) {
       hideSheet();
+      showBiometricStage(null);
       if (error && error.name !== "AbortError") console.warn("[AskMoina] Passkey sign-in failed", error.name || "Error", error.code || "");
       if (error && (error.code === "passkey_not_found" || error.name === "NotAllowedError")) {
         const createAlternative = $("#createPasskeyAlternative");
@@ -340,9 +367,15 @@
 
   document.querySelectorAll("[data-passkey]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.id === "passkeyAction") showBiometricStage("face");
+      else if (button.id === "touchIdAction") showBiometricStage("fingerprint");
       if (button.dataset.passkey === "register") register(button.dataset.method || "device passkey");
       else if (button.dataset.passkey === "login") login();
     });
+  });
+  $("#biometricCancel")?.addEventListener("click", () => {
+    activeCredentialAbort?.abort();
+    showBiometricStage(null);
   });
   $("#modeCreate")?.addEventListener("click", () => setMode("create"));
   $("#modeSignin")?.addEventListener("click", () => setMode("signin"));
@@ -395,7 +428,14 @@
     hideSheet();
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && sheet && !sheet.hidden) {
+    if (event.key !== "Escape") return;
+    const biometricStage = $("#biometricAuthStage");
+    if (biometricStage && !biometricStage.hidden) {
+      activeCredentialAbort?.abort();
+      showBiometricStage(null);
+      return;
+    }
+    if (sheet && !sheet.hidden) {
       activeCredentialAbort?.abort();
       hideSheet();
     }
