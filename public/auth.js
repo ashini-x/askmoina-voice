@@ -64,6 +64,7 @@
     const stage = $("#biometricAuthStage");
     const title = $("#biometricTitle");
     const instruction = $("#biometricInstruction");
+    const detail = $("#biometricDetail");
     const symbol = $("#biometricSymbol");
     if (!overlay || !panel || !stage) return;
     if (!kind) {
@@ -74,7 +75,10 @@
     }
     const isFace = kind === "face";
     if (title) title.textContent = isFace ? "Face Authentication" : "Fingerprint Authentication";
-    if (instruction) instruction.textContent = isFace ? "Look at the camera" : "Place your finger on the sensor";
+    if (instruction) instruction.textContent = isFace
+      ? "Follow your device’s face authentication prompt"
+      : "Follow your device’s fingerprint prompt";
+    if (detail) detail.textContent = "Your device completes the secure check. It may ask for a PIN or screen lock instead.";
     if (symbol) {
       // Replace paths inside one SVG. The two marks never coexist in the DOM.
       symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP;
@@ -332,6 +336,10 @@
       const result = await post("phone/start", { phone });
       pendingPhone = phone;
       pendingChallengeId = result.challengeId;
+      const panel = $(".entry-auth-panel");
+      const phoneInput = $("#phone");
+      if (panel) panel.classList.add("is-otp-flow");
+      if (phoneInput) phoneInput.readOnly = true;
       const section = $("#otpSection");
       if (section) section.hidden = false;
       const title = $("#authTitle");
@@ -388,6 +396,13 @@
   $("#modeCreate")?.addEventListener("click", () => setMode("create"));
   $("#modeSignin")?.addEventListener("click", () => setMode("signin"));
   $("#phoneOptionButton")?.addEventListener("click", () => {
+    const panel = $(".entry-auth-panel");
+    if (panel) {
+      panel.classList.add("is-phone-flow");
+      panel.classList.remove("is-otp-flow");
+    }
+    const phoneInput = $("#phone");
+    if (phoneInput) phoneInput.readOnly = false;
     const options = $("#authOptions");
     const phoneSection = $("#phoneEntrySection");
     const divider = $("#entryAuthDivider");
@@ -402,6 +417,12 @@
     $("#phone")?.focus();
   });
   $("#phoneBackButton")?.addEventListener("click", () => {
+    const panel = $(".entry-auth-panel");
+    if (panel) {
+      panel.classList.remove("is-phone-flow", "is-otp-flow");
+    }
+    const phoneInput = $("#phone");
+    if (phoneInput) phoneInput.readOnly = false;
     const options = $("#authOptions");
     const phoneSection = $("#phoneEntrySection");
     const divider = $("#entryAuthDivider");
@@ -416,6 +437,12 @@
     setMode(currentMode);
   });
   $("#modeToggleButton")?.addEventListener("click", () => {
+    const panel = $(".entry-auth-panel");
+    if (panel) {
+      panel.classList.remove("is-phone-flow", "is-otp-flow");
+    }
+    const phoneInput = $("#phone");
+    if (phoneInput) phoneInput.readOnly = false;
     const options = $("#authOptions");
     const phoneSection = $("#phoneEntrySection");
     const divider = $("#entryAuthDivider");
@@ -431,6 +458,18 @@
   });
   $("#sendOtp")?.addEventListener("click", sendOtp);
   $("#verifyOtp")?.addEventListener("click", verifyOtp);
+  $("#phone")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!busy) sendOtp();
+    }
+  });
+  $("#otpCode")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!busy) verifyOtp();
+    }
+  });
   $("#cancelAuth")?.addEventListener("click", () => {
     activeCredentialAbort?.abort();
     hideSheet();

@@ -385,3 +385,237 @@
   .entry-auth-panel { animation: none !important; }
   .entry-auth-option { transition: none !important; }
 }
+
+
+/* Authentication sub-pages — retain Interface 1's existing moving glow and backdrop.
+   Only the foreground layout and controls below are adjusted. */
+.biometric-auth-stage {
+  background: transparent !important;
+  color: #f7f7fa;
+}
+.biometric-stage-content {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 330px);
+  gap: 0;
+  transform: translateY(-7px);
+}
+.biometric-auth-stage .biometric-stage-eyebrow {
+  margin: 0 0 31px !important;
+  color: rgba(221, 225, 244, .62) !important;
+  font-size: .65rem !important;
+  font-weight: 650 !important;
+  line-height: 1.2 !important;
+  letter-spacing: .18em !important;
+  text-align: center;
+}
+.biometric-symbol {
+  width: 86px;
+  height: 86px;
+  margin: 0 0 28px;
+  color: #f4f4f8;
+  stroke: currentColor;
+}
+.biometric-face-symbol {
+  filter: drop-shadow(0 0 12px rgba(190, 205, 255, .18));
+  animation: biometric-face-breathe 2.6s ease-in-out infinite;
+}
+.biometric-fingerprint-symbol {
+  color: #eadbff;
+  stroke: currentColor;
+  filter: drop-shadow(0 0 9px rgba(163, 124, 255, .34)) drop-shadow(0 0 24px rgba(121, 99, 238, .14));
+  animation: biometric-fingerprint-breathe 2.25s ease-in-out infinite;
+}
+.biometric-auth-stage h2 {
+  margin: 0 0 11px !important;
+  color: #fbfbfe !important;
+  font-size: clamp(1.35rem, 5.3vw, 1.55rem) !important;
+  font-weight: 580 !important;
+  line-height: 1.16 !important;
+  letter-spacing: -.045em !important;
+  text-align: center;
+}
+.biometric-auth-stage #biometricInstruction {
+  max-width: 300px;
+  margin: 0 !important;
+  color: rgba(235, 237, 247, .88) !important;
+  font-size: .92rem !important;
+  line-height: 1.5 !important;
+  text-align: center;
+}
+.biometric-auth-stage .biometric-stage-detail {
+  max-width: 285px;
+  margin: 13px 0 0 !important;
+  color: rgba(202, 207, 226, .62) !important;
+  font-size: .78rem !important;
+  line-height: 1.55 !important;
+  text-align: center;
+}
+.biometric-cancel {
+  bottom: max(35px, calc(env(safe-area-inset-bottom) + 22px));
+  min-width: 112px;
+  min-height: 43px;
+  padding: 0 22px;
+  border: 1px solid rgba(244, 246, 255, .17);
+  border-radius: 999px;
+  background: rgba(245, 247, 255, .065);
+  color: rgba(239, 241, 250, .86);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  backdrop-filter: blur(14px) saturate(125%);
+}
+.biometric-cancel:hover {
+  border-color: rgba(244, 246, 255, .28);
+  background: rgba(245, 247, 255, .1);
+}
+.biometric-cancel:focus-visible {
+  outline-color: rgba(205, 215, 255, .85);
+}
+.entry-auth-panel.is-phone-flow {
+  width: min(100%, 350px) !important;
+  max-width: 350px !important;
+  padding-top: 18px !important;
+  padding-bottom: 23px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-brand-lockup {
+  margin-bottom: 28px;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy {
+  display: block !important;
+  margin: 0 auto 24px !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy h2 {
+  font-size: clamp(1.45rem, 5.4vw, 1.65rem) !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-state-copy p {
+  max-width: 300px;
+  color: rgba(213, 218, 237, .72) !important;
+}
+.entry-auth-panel.is-phone-flow .entry-auth-options,
+.entry-auth-panel.is-phone-flow .entry-divider,
+.entry-auth-panel.is-phone-flow .entry-auth-switch {
+  display: none !important;
+}
+.entry-auth-panel.is-phone-flow .entry-phone-flow {
+  display: block;
+  padding: 20px 17px 18px;
+  border: 1px solid rgba(239, 242, 255, .14);
+  border-radius: 22px;
+  background: rgba(8, 12, 26, .25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+  -webkit-backdrop-filter: blur(9px) saturate(112%);
+  backdrop-filter: blur(9px) saturate(112%);
+}
+.entry-auth-panel.is-phone-flow .entry-back-link {
+  margin: 0 0 24px;
+  color: rgba(219, 224, 243, .78);
+}
+.entry-auth-panel .entry-step-label {
+  margin: 0 0 12px !important;
+  color: rgba(174, 190, 255, .78) !important;
+  font-size: .62rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  letter-spacing: .15em !important;
+}
+.entry-auth-panel .entry-phone-hint {
+  margin: 0 0 18px !important;
+  color: rgba(202, 208, 228, .62) !important;
+  font-size: .76rem !important;
+  line-height: 1.5 !important;
+}
+.entry-auth-panel .entry-phone-label {
+  margin-bottom: 9px;
+  color: rgba(238, 240, 249, .85);
+  font-size: .76rem;
+}
+.entry-auth-panel .entry-country {
+  border-color: rgba(237, 241, 255, .16) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, .065) !important;
+  color: #f5f6fb !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.entry-auth-panel .entry-phone-input,
+.entry-auth-panel .entry-otp-input {
+  border-color: rgba(237, 241, 255, .17) !important;
+  border-radius: 13px !important;
+  background: rgba(5, 9, 20, .36) !important;
+  color: #fbfbfe !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  caret-color: #d8c4ff;
+}
+.entry-auth-panel .entry-phone-input:focus,
+.entry-auth-panel .entry-otp-input:focus {
+  border-color: rgba(198, 205, 255, .66) !important;
+  box-shadow: 0 0 0 3px rgba(156, 169, 255, .11) !important;
+}
+.entry-auth-panel .entry-next {
+  border: 1px solid rgba(255, 255, 255, .92) !important;
+  border-radius: 13px !important;
+  background: #f3f4f9 !important;
+  color: #10121b !important;
+  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
+}
+.entry-auth-panel .entry-next:active:not(:disabled) {
+  transform: scale(.96);
+}
+.entry-auth-panel.is-phone-flow .entry-otp-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top-color: rgba(239, 242, 255, .12);
+}
+.entry-auth-panel.is-phone-flow .entry-otp-section .entry-step-label {
+  margin-bottom: 13px !important;
+}
+.entry-auth-panel.is-phone-flow.is-otp-flow #phoneStepLabel,
+.entry-auth-panel.is-phone-flow.is-otp-flow .entry-phone-flow > .entry-phone-hint {
+  display: none !important;
+}
+.entry-auth-panel.is-phone-flow.is-otp-flow .entry-phone-label[for="phone"] {
+  color: rgba(213, 218, 237, .66);
+}
+.entry-auth-panel.is-phone-flow.is-otp-flow .entry-phone-input {
+  color: rgba(230, 233, 245, .75) !important;
+}
+.entry-auth-panel.is-phone-flow.is-otp-flow .entry-otp-hint {
+  margin: 12px 0 0 !important;
+}
+.entry-auth-panel.is-phone-flow .entry-legal-note {
+  margin: 16px 10px 0 !important;
+  color: rgba(211, 216, 234, .54);
+  font-size: .64rem;
+}
+.entry-auth-panel.is-phone-flow .entry-status:not(:empty) {
+  margin-top: 12px !important;
+}
+@media (max-width: 520px) {
+  .biometric-stage-eyebrow { margin-bottom: 27px !important; }
+  .biometric-symbol { width: 78px; height: 78px; margin-bottom: 24px; }
+  .entry-auth-panel.is-phone-flow { padding-top: 13px !important; }
+  .entry-auth-panel.is-phone-flow .entry-brand-lockup { margin-bottom: 21px; }
+  .entry-auth-panel.is-phone-flow .entry-phone-flow { padding: 17px 14px 16px; border-radius: 19px; }
+  .entry-auth-panel.is-phone-flow .entry-back-link { margin-bottom: 20px; }
+}
+@media (max-height: 610px) {
+  .biometric-stage-content { transform: none; }
+  .biometric-stage-eyebrow { margin-bottom: 18px !important; }
+  .biometric-symbol { width: 63px; height: 63px; margin-bottom: 16px; }
+  .biometric-auth-stage .biometric-stage-detail { margin-top: 8px !important; font-size: .72rem !important; }
+  .entry-auth-panel.is-phone-flow { padding-top: 8px !important; padding-bottom: 12px !important; }
+  .entry-auth-panel.is-phone-flow .entry-brand-lockup { margin-bottom: 12px; }
+  .entry-auth-panel.is-phone-flow .entry-phone-flow { padding: 12px 13px; }
+  .entry-auth-panel.is-phone-flow .entry-back-link { margin-bottom: 13px; }
+  .entry-auth-panel.is-phone-flow .entry-legal-note { margin-top: 9px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .biometric-face-symbol,
+  .biometric-fingerprint-symbol,
+  .biometric-auth-stage,
+  .entry-auth-panel .entry-next {
+    animation: none !important;
+    transition: none !important;
+  }
+}
