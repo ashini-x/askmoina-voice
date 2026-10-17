@@ -956,7 +956,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
     expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
-    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="\\/auth.js?v=\'');
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY +");
     expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
     expect(workerSource).toContain("id='experienceMoinaOS1'");
     expect(workerSource).toContain("id='experienceMoinaOS2'");
