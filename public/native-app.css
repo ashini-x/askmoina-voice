@@ -261,3 +261,150 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
 @keyframes app-launch-mark-in{0%{opacity:0;transform:scale(.88)}70%{opacity:1;transform:scale(1.035)}100%{opacity:1;transform:scale(1)}}
 @keyframes app-launch-fade-out{0%{opacity:1;visibility:visible}99%{opacity:0;visibility:visible}100%{opacity:0;visibility:hidden}}
 @media(prefers-reduced-motion:reduce){.app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}.app-launch-transition img{animation:none;opacity:1;transform:none}}
+
+
+/* AskMoina Signature — Interfaces 1 & 2.
+   Keep the official bird SVG as the source of truth; colour and motion belong to the orb, not the mark. */
+.app-launch-transition{
+  position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;gap:0;padding:24px;background:
+    radial-gradient(ellipse at 50% 43%,rgba(23,31,47,.62) 0%,rgba(8,10,15,.72) 35%,rgba(3,4,6,.98) 74%),
+    #030406;color:#f7f7fa;pointer-events:none;opacity:1;
+  animation:app-launch-fade-out .46s cubic-bezier(.25,.75,.25,1) 1.02s forwards;
+}
+.app-launch-transition:after{
+  content:"";position:absolute;left:50%;top:44%;width:min(76vw,360px);aspect-ratio:1;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(86,143,222,.105),rgba(116,79,199,.07) 37%,transparent 72%);
+  filter:blur(25px);pointer-events:none;
+}
+.launch-signature-orb{
+  position:relative;isolation:isolate;display:grid;place-items:center;flex:0 0 auto;width:clamp(136px,39vw,164px);aspect-ratio:1;
+  margin:0 0 25px;border:1px solid rgba(223,232,255,.26);border-radius:50%;
+  background:
+    radial-gradient(ellipse at 29% 26%,rgba(102,211,255,.20),transparent 31%),
+    radial-gradient(ellipse at 74% 64%,rgba(159,111,255,.21),transparent 37%),
+    radial-gradient(ellipse at 35% 83%,rgba(255,206,157,.13),transparent 30%),
+    radial-gradient(circle at 48% 43%,#151a26 0%,#080a10 62%,#030406 100%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.025),0 0 24px rgba(83,180,255,.12),0 0 56px rgba(126,87,229,.12),inset 0 1px rgba(255,255,255,.24);
+  animation:launch-orb-float 4.2s ease-in-out infinite;
+}
+.launch-signature-orb:before{
+  content:"";position:absolute;inset:-2px;z-index:1;border-radius:inherit;padding:1.25px;
+  background:conic-gradient(from 16deg,rgba(104,219,255,.82),rgba(113,155,255,.38),rgba(186,123,255,.88),rgba(242,186,239,.72),rgba(255,217,168,.54),rgba(95,207,255,.8));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+  filter:drop-shadow(0 0 8px rgba(117,175,255,.24));opacity:.76;
+}
+.launch-signature-orb:after{
+  content:"";position:absolute;z-index:-1;inset:-23px;border-radius:inherit;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(76,207,255,.46) 52deg,rgba(107,129,255,.22) 110deg,rgba(183,102,255,.46) 182deg,rgba(255,202,157,.22) 244deg,transparent 330deg);
+  filter:blur(19px);opacity:.82;animation:launch-smoke-turn 12s linear infinite;
+}
+.launch-signature-orb>img{
+  position:relative;z-index:2;display:block;width:clamp(69px,20vw,86px)!important;height:auto!important;
+  object-fit:contain;opacity:0;transform:scale(.88);
+  filter:drop-shadow(0 2px 10px rgba(255,255,255,.21));
+  animation:app-launch-mark-in .72s cubic-bezier(.16,1,.3,1) .08s forwards;
+}
+.launch-signature-title{
+  position:relative;z-index:2;display:block;margin:0;color:#f6f6f8;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
+  font-size:clamp(27px,7.5vw,31px);font-weight:480;letter-spacing:-.055em;line-height:1.12;
+  opacity:0;transform:translateY(7px);animation:launch-signature-rise .55s cubic-bezier(.16,1,.3,1) .2s forwards;
+}
+.launch-signature-tagline{
+  position:relative;z-index:2;display:block;margin:10px 0 0;color:rgba(229,233,243,.62);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;font-size:9px;font-weight:650;
+  letter-spacing:.23em;line-height:1.5;text-transform:uppercase;text-align:center;
+  opacity:0;transform:translateY(5px);animation:launch-signature-rise .55s cubic-bezier(.16,1,.3,1) .3s forwards;
+}
+
+/* Camera welcome = Interface 2. The mark remains untouched; the sphere carries the colour and state. */
+.native-camera-welcome{
+  top:39.5%;width:min(336px,calc(100% - 42px));font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",sans-serif;
+}
+.native-camera-orb{
+  position:relative;isolation:isolate;overflow:visible;width:clamp(104px,29vw,120px);height:clamp(104px,29vw,120px);
+  margin:0 0 23px;border:1px solid rgba(221,232,255,.42)!important;border-radius:50%;
+  background:
+    radial-gradient(ellipse at 27% 25%,rgba(93,211,255,.26),transparent 29%),
+    radial-gradient(ellipse at 75% 64%,rgba(158,110,255,.23),transparent 38%),
+    radial-gradient(ellipse at 35% 82%,rgba(255,205,157,.15),transparent 30%),
+    radial-gradient(circle at 48% 43%,#151a25 0%,#080a10 67%,#030406 100%)!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.035),0 0 24px rgba(91,183,255,.12),0 0 52px rgba(134,90,239,.12),inset 0 1px rgba(255,255,255,.22)!important;
+}
+.native-camera-orb:before{
+  content:"";display:block!important;position:absolute;inset:-3px;z-index:1;border:1px solid rgba(205,223,255,.55)!important;border-radius:inherit;
+  box-shadow:0 0 15px rgba(102,194,255,.13),0 0 25px rgba(173,118,255,.10)!important;
+  animation:askmoina-signature-breathe 4.8s ease-in-out infinite!important;opacity:.78!important;
+}
+.native-camera-orb:after{
+  content:"";display:block!important;position:absolute;z-index:-1;inset:-15px;border-radius:inherit;
+  background:conic-gradient(from 9deg,transparent 0deg,rgba(65,209,255,.53) 47deg,rgba(115,147,255,.28) 98deg,rgba(181,108,255,.56) 164deg,rgba(247,181,232,.35) 219deg,rgba(255,212,165,.26) 260deg,transparent 331deg)!important;
+  filter:blur(16px)!important;opacity:.45!important;animation:askmoina-signature-turn 13s linear infinite!important;
+}
+.native-camera-orb>img{
+  position:relative;z-index:2;display:block;width:clamp(53px,15vw,62px)!important;height:auto!important;object-fit:contain;
+  filter:drop-shadow(0 2px 9px rgba(255,255,255,.2))!important;
+}
+.native-camera-kicker{
+  margin:0 0 11px!important;color:rgba(207,220,246,.72)!important;font-size:9px!important;font-weight:700!important;
+  letter-spacing:.205em!important;
+}
+.native-camera-welcome h1{
+  max-width:14ch!important;margin:0!important;color:#f9f9fb!important;
+  font-size:clamp(30px,8vw,35px)!important;font-weight:590!important;line-height:1.055!important;
+  letter-spacing:-.062em!important;text-wrap:balance;
+}
+.native-camera-caption{
+  max-width:27ch!important;margin:13px 0 0!important;color:rgba(237,239,246,.72)!important;
+  font-size:13.5px!important;font-weight:400!important;line-height:1.48!important;letter-spacing:-.012em!important;
+}
+.camera-stage.pre-start .native-camera-orb:before{opacity:.62!important;animation:askmoina-signature-breathe 5s ease-in-out infinite!important}
+.camera-stage.pre-start .native-camera-orb:after{opacity:.44!important;animation:askmoina-signature-turn 17s linear infinite!important}
+.camera-stage.is-connecting .native-camera-orb:before{
+  border-color:rgba(191,230,255,.9)!important;box-shadow:0 0 18px rgba(80,195,255,.32),0 0 28px rgba(167,115,255,.2)!important;
+  opacity:1!important;animation:askmoina-signature-breathe 1.45s ease-in-out infinite!important;
+}
+.camera-stage.is-connecting .native-camera-orb:after{opacity:.9!important;animation:askmoina-signature-turn 2.6s linear infinite!important}
+.camera-stage.is-listening .native-camera-orb:before{
+  border-color:rgba(116,220,255,.9)!important;box-shadow:0 0 20px rgba(77,195,255,.36),0 0 34px rgba(108,136,255,.2)!important;
+  opacity:.95!important;animation:askmoina-signature-breathe 1.6s ease-in-out infinite!important;
+}
+.camera-stage.is-listening .native-camera-orb:after{opacity:.78!important;animation:askmoina-signature-turn 4.8s linear infinite!important}
+.camera-stage.is-speaking .native-camera-orb:before{
+  border-color:rgba(239,223,255,.95)!important;box-shadow:0 0 20px rgba(130,211,255,.3),0 0 35px rgba(183,113,255,.26)!important;
+  opacity:1!important;animation:askmoina-signature-response .92s ease-in-out infinite alternate!important;
+}
+.camera-stage.is-speaking .native-camera-orb:after{opacity:.95!important;animation:askmoina-signature-turn 3.5s linear infinite!important}
+.camera-stage.voice-active .native-camera-orb:after{opacity:.62!important}
+.camera-stage.voice-active.is-speaking .native-camera-orb:after{opacity:.95!important}
+@keyframes launch-signature-rise{to{opacity:1;transform:translateY(0)}}
+@keyframes launch-orb-float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
+@keyframes launch-smoke-turn{to{transform:rotate(360deg)}}
+@keyframes askmoina-signature-turn{to{transform:rotate(360deg)}}
+@keyframes askmoina-signature-breathe{0%,100%{transform:scale(1);filter:brightness(.98)}50%{transform:scale(1.035);filter:brightness(1.13)}}
+@keyframes askmoina-signature-response{from{transform:scale(1)}to{transform:scale(1.055)}}
+
+/* Keep processing energy local to the orb; never animate a frame around the entire display. */
+.edge-glow{display:none!important;opacity:0!important;animation:none!important}
+.edge-glow:before,.edge-glow:after{display:none!important;animation:none!important}
+@media(max-height:720px){
+  .native-camera-welcome{top:39%}
+  .native-camera-orb{width:100px;height:100px;margin-bottom:18px}
+  .native-camera-orb>img{width:51px!important}
+  .native-camera-welcome h1{font-size:clamp(28px,7.6vw,32px)!important}
+  .native-camera-caption{margin-top:9px!important;font-size:12.5px!important}
+  .show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}
+  .launch-signature-orb{width:136px}
+}
+@media(max-width:360px){
+  .native-camera-orb{width:96px;height:96px}
+  .native-camera-welcome h1{font-size:27px!important}
+  .native-camera-caption{font-size:12px!important}
+  .show-problem-button{width:calc(100% - 30px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .launch-signature-orb,.launch-signature-orb:after,.native-camera-orb:before,.native-camera-orb:after{animation:none!important;transform:none!important}
+  .app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}
+  .launch-signature-orb>img,.launch-signature-title,.launch-signature-tagline{animation:none!important;opacity:1;transform:none}
+}
