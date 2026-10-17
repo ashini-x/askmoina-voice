@@ -117,7 +117,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".askmoina-control-mark");
     expect(css).toContain("width:44px!important;");
     expect(css).toContain("height:auto!important;");
-    expect(css).not.toContain('mask-image:url("/askmoina-mark.svg?v=0.4.79")');
+    expect(css).toContain("radial-gradient(ellipse at 28% 15%,rgba(255,255,255,.93)");
+    expect(css).toContain("border-radius:50%!important");
   });
 
   it("uses roomier Apple-like camera controls and a recognizable camera-switch icon", () => {
@@ -170,15 +171,26 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).not.toContain("mask-image:url(\"/askmoina-mark.svg?v=0.4.79\")");
   });
 
-  it("keeps the white signature untouched above state-reactive flowing orb layers", () => {
+  it("renders the glossy 3D liquid orb with state-reactive cyan, blue, violet and pink currents", () => {
     expect(html).not.toContain("toggleCaptions");
     expect(html).toContain("askmoina-orb-control");
-    expect(html).toContain('src="/askmoina-mark.svg?v=0.4.79"');
-    expect(html).not.toContain("M7.1 4.2");
+    expect(html).not.toContain('class="askmoina-control-mark"');
+    expect(html).toContain('class="askmoina-orb-surface-cyan"');
+    expect(html).toContain('class="askmoina-orb-surface-violet"');
+    expect(html).toContain('class="askmoina-orb-surface-pink"');
+    expect(html).toContain('class="askmoina-orb-surface-ribbon"');
+    expect(html).toContain('class="askmoina-orb-specular"');
+    expect(html).toContain('class="askmoina-orb-gloss"');
     expect(script).toContain('toggleButton.dataset.orbState = state');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="listening"]:after');
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="responding"]:after');
     expect(css).toContain("#toggleCopilot.askmoina-orb-control");
+    expect(css).toContain("/* Reference orb: a glossy, iridescent liquid sphere");
+    expect(css).toContain("@keyframes askmoina-surface-cyan");
+    expect(css).toContain("@keyframes askmoina-surface-violet");
+    expect(css).toContain("@keyframes askmoina-surface-pink");
+    expect(css).toContain("@keyframes askmoina-surface-ribbon");
+    expect(css).toContain("@keyframes askmoina-orb-glint");
     expect(html).toContain('class="askmoina-orb-interior"');
     for (const layer of ["cyan", "blue", "violet", "pink"]) {
       expect(html).toContain(`class="askmoina-orb-flow askmoina-orb-flow-${layer}"`);
@@ -996,5 +1008,7 @@ describe("Dark-first app shell and launch branding", () => {
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
     expect(nativeAppCss).toContain(".post-auth-success-orb.presence-orb");
+    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-current-cyan");
+    expect(nativeAppCss).toContain(".post-auth-success-orb .liquid-specular");
   });
 });
