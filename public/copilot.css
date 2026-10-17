@@ -1482,3 +1482,234 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 .camera-stage.has-notice:not(.is-connecting):not(.voice-active) .edge-glow>span{animation-play-state:paused!important}
 @supports not ((-webkit-mask-composite:xor) or (mask-composite:exclude)){.edge-glow>span{background:transparent;border:var(--glow-width,6px) solid rgba(177,171,255,.78);padding:0;filter:blur(0)}.edge-glow .glow-halo-4{filter:blur(4px)}.edge-glow .glow-halo-12{filter:blur(12px)}.edge-glow .glow-halo-15{filter:blur(15px)}}
 @media(prefers-reduced-motion:reduce){.edge-glow{transition:none!important}.edge-glow>span{animation:none!important;transform:none!important}}
+
+
+/* ASKMOINA — Edge-only, sound-reactive intelligence lighting.
+   Four diffused edge fields replace the old conic-gradient outline.
+   Light is confined to the outer screen margins; nothing illuminates the center. */
+.camera-stage .edge-glow {
+  isolation: isolate;
+  overflow: hidden;
+  transition: opacity .24s ease;
+}
+.camera-stage .edge-glow::before,
+.camera-stage .edge-glow::after {
+  content: none !important;
+  display: none !important;
+  border: 0 !important;
+  background: none !important;
+  animation: none !important;
+  filter: none !important;
+}
+.camera-stage .edge-glow > span {
+  display: block !important;
+  position: absolute !important;
+  inset: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  -webkit-mask-composite: source-over !important;
+  mask-composite: add !important;
+  filter: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.camera-stage .edge-glow > span::before,
+.camera-stage .edge-glow > span::after {
+  content: "" !important;
+  display: block;
+  position: absolute;
+  border: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(5px) brightness(var(--edge-wave-brightness, 1));
+  opacity: var(--edge-wave-opacity, .38);
+  transform: scale(var(--edge-wave-scale, .9));
+  will-change: transform;
+}
+
+/* Left / right: long, feathered violet and cyan energy trails. */
+.camera-stage .edge-glow > .glow-crisp {
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: clamp(32px, 9vw, 62px) !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, rgba(125, 77, 255, .42) 0%, rgba(139, 91, 255, .24) 34%, rgba(140, 91, 255, .09) 62%, transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-crisp::before {
+  left: -14%;
+  top: -39%;
+  width: 128%;
+  height: 39%;
+  background: radial-gradient(ellipse at 5% 50%, rgba(221, 194, 255, .98) 0%, rgba(183, 141, 255, .75) 23%, rgba(144, 89, 255, .38) 48%, transparent 78%);
+  animation: askmoina-edge-wave-down var(--edge-wave-duration, 2.9s) linear infinite;
+}
+.camera-stage .edge-glow > .glow-crisp::after {
+  left: -18%;
+  top: -28%;
+  width: 130%;
+  height: 28%;
+  background: radial-gradient(ellipse at 4% 50%, rgba(182, 142, 255, .74) 0%, rgba(146, 96, 255, .34) 38%, transparent 78%);
+  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  animation: askmoina-edge-wave-down 3.8s linear infinite;
+  animation-delay: -1.8s;
+}
+.camera-stage .edge-glow > .glow-halo-4 {
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: clamp(32px, 9vw, 62px) !important;
+  height: 100% !important;
+  background: linear-gradient(270deg, rgba(42, 158, 255, .42) 0%, rgba(49, 166, 255, .24) 34%, rgba(55, 168, 255, .08) 62%, transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-4::before {
+  right: -14%;
+  bottom: -39%;
+  width: 128%;
+  height: 39%;
+  background: radial-gradient(ellipse at 95% 50%, rgba(185, 245, 255, .98) 0%, rgba(103, 204, 255, .74) 24%, rgba(38, 146, 255, .36) 49%, transparent 78%);
+  animation: askmoina-edge-wave-up var(--edge-wave-duration, 2.9s) linear infinite;
+}
+.camera-stage .edge-glow > .glow-halo-4::after {
+  right: -18%;
+  bottom: -28%;
+  width: 130%;
+  height: 28%;
+  background: radial-gradient(ellipse at 96% 50%, rgba(126, 222, 255, .72) 0%, rgba(49, 165, 255, .32) 38%, transparent 78%);
+  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  animation: askmoina-edge-wave-up 3.8s linear infinite;
+  animation-delay: -1.8s;
+}
+
+/* Top and bottom carry the light through the corners, never into the center. */
+.camera-stage .edge-glow > .glow-halo-12 {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: clamp(28px, 6vh, 58px) !important;
+  background:
+    radial-gradient(ellipse 34% 100% at 0 0, rgba(145, 99, 255, .33), transparent 100%),
+    radial-gradient(ellipse 34% 100% at 100% 0, rgba(71, 177, 255, .30), transparent 100%),
+    linear-gradient(180deg, rgba(110, 100, 255, .19), transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-12::before {
+  top: -22%;
+  left: -35%;
+  width: 36%;
+  height: 145%;
+  background: radial-gradient(ellipse at 50% 3%, rgba(213, 190, 255, .88) 0%, rgba(143, 102, 255, .50) 42%, transparent 80%);
+  animation: askmoina-edge-wave-right var(--edge-wave-duration, 2.9s) linear infinite;
+}
+.camera-stage .edge-glow > .glow-halo-12::after {
+  top: -24%;
+  left: -27%;
+  width: 28%;
+  height: 145%;
+  background: radial-gradient(ellipse at 50% 2%, rgba(156, 129, 255, .64) 0%, rgba(122, 108, 255, .30) 44%, transparent 80%);
+  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  animation: askmoina-edge-wave-right 3.8s linear infinite;
+  animation-delay: -1.8s;
+}
+.camera-stage .edge-glow > .glow-halo-15 {
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: clamp(28px, 7vh, 64px) !important;
+  background:
+    radial-gradient(ellipse 36% 100% at 0 100%, rgba(135, 78, 255, .36), transparent 100%),
+    radial-gradient(ellipse 36% 100% at 100% 100%, rgba(67, 185, 255, .32), transparent 100%),
+    linear-gradient(0deg, rgba(45, 137, 255, .18), transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-15::before {
+  right: -35%;
+  bottom: -22%;
+  width: 36%;
+  height: 145%;
+  background: radial-gradient(ellipse at 50% 97%, rgba(182, 241, 255, .86) 0%, rgba(82, 177, 255, .48) 42%, transparent 80%);
+  animation: askmoina-edge-wave-left var(--edge-wave-duration, 2.9s) linear infinite;
+}
+.camera-stage .edge-glow > .glow-halo-15::after {
+  right: -27%;
+  bottom: -24%;
+  width: 28%;
+  height: 145%;
+  background: radial-gradient(ellipse at 50% 98%, rgba(142, 203, 255, .64) 0%, rgba(73, 155, 255, .29) 44%, transparent 80%);
+  opacity: calc(var(--edge-wave-opacity, .38) * .72);
+  animation: askmoina-edge-wave-left 3.8s linear infinite;
+  animation-delay: -1.8s;
+}
+
+@keyframes askmoina-edge-wave-down {
+  0% { transform: translate3d(0, 0, 0) scale(var(--edge-wave-scale, .9)); }
+  100% { transform: translate3d(0, 370%, 0) scale(var(--edge-wave-scale, .9)); }
+}
+@keyframes askmoina-edge-wave-up {
+  0% { transform: translate3d(0, 0, 0) scale(var(--edge-wave-scale, .9)); }
+  100% { transform: translate3d(0, -370%, 0) scale(var(--edge-wave-scale, .9)); }
+}
+@keyframes askmoina-edge-wave-right {
+  0% { transform: translate3d(0, 0, 0) scale(var(--edge-wave-scale, .9)); }
+  100% { transform: translate3d(430%, 0, 0) scale(var(--edge-wave-scale, .9)); }
+}
+@keyframes askmoina-edge-wave-left {
+  0% { transform: translate3d(0, 0, 0) scale(var(--edge-wave-scale, .9)); }
+  100% { transform: translate3d(-430%, 0, 0) scale(var(--edge-wave-scale, .9)); }
+}
+
+/* Listening is visible at rest; actual microphone energy intensifies the waves. */
+.camera-stage.voice-active .edge-glow {
+  opacity: .78 !important;
+}
+.camera-stage.voice-active:not(.is-listening):not(.is-processing):not(.is-speaking) .edge-glow > span::before,
+.camera-stage.voice-active:not(.is-listening):not(.is-processing):not(.is-speaking) .edge-glow > span::after {
+  animation-duration: 3.6s;
+}
+.camera-stage.is-listening .edge-glow {
+  opacity: 1 !important;
+}
+.camera-stage.is-listening .edge-glow > span::before {
+  animation-duration: var(--edge-wave-duration, 2.4s);
+}
+.camera-stage.is-speaking .edge-glow {
+  opacity: 1 !important;
+}
+.camera-stage.is-speaking .edge-glow > span::before {
+  animation-duration: var(--edge-wave-duration, 2.1s);
+}
+.camera-stage.is-processing .edge-glow {
+  opacity: .95 !important;
+}
+.camera-stage.is-processing .edge-glow > span::before {
+  animation-duration: 2.45s !important;
+  opacity: .84 !important;
+}
+.camera-stage.is-processing .edge-glow > span::after {
+  animation-duration: 3.35s !important;
+  opacity: .62 !important;
+}
+.camera-stage.is-connecting .edge-glow {
+  opacity: .84 !important;
+}
+.camera-stage.pre-start:not(.is-connecting) .edge-glow {
+  opacity: 0 !important;
+}
+.camera-stage.has-notice:not(.is-connecting):not(.voice-active) .edge-glow {
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .camera-stage .edge-glow > span::before,
+  .camera-stage .edge-glow > span::after {
+    animation-duration: 8s !important;
+    filter: blur(5px) !important;
+  }
+  .camera-stage.is-processing .edge-glow > span::before,
+  .camera-stage.is-processing .edge-glow > span::after {
+    animation-duration: 8s !important;
+  }
+}
