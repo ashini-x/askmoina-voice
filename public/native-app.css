@@ -1,4 +1,4 @@
-/* AskMoina native-first mobile app shell — shared by iOS, Android and narrow desktop windows. */
+/* askmoina native-first mobile app shell — shared by iOS, Android and narrow desktop windows. */
 :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 button,a,input{font:inherit;-webkit-tap-highlight-color:transparent}button,a,[role=button]{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(113,139,255,.62);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.library-panel,.native-menu-panel,.show-problem-button,.library-tab,.native-info-main{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -222,7 +222,7 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
 }
 
 
-/* AskMoina brand lock: the welcome orb shares the same restrained live-signal language. */
+/* askmoina brand lock: the welcome orb shares the same restrained live-signal language. */
 .native-camera-orb{overflow:visible;border-color:rgba(248,248,250,.58);background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.14),rgba(255,255,255,.025) 57%,rgba(8,9,12,.94) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.04),0 8px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.18)}
 .native-camera-orb:before{display:block!important;inset:-6px;border-color:rgba(246,247,250,.32);box-shadow:0 0 20px rgba(245,246,250,.07);animation:none;opacity:.9}
 .native-camera-orb:after{display:block!important;inset:-14px;background:conic-gradient(from 8deg,transparent 0deg,rgba(248,248,250,.02) 44deg,rgba(231,235,249,.16) 95deg,rgba(183,193,222,.1) 154deg,transparent 225deg,transparent 360deg);filter:blur(14px);opacity:0;animation:none}
@@ -263,7 +263,7 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
 @media(prefers-reduced-motion:reduce){.app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}.app-launch-transition img{animation:none;opacity:1;transform:none}}
 
 
-/* AskMoina Signature — Interfaces 1 & 2.
+/* askmoina Signature — Interfaces 1 & 2.
    Keep the official bird SVG as the source of truth; colour and motion belong to the orb, not the mark. */
 .app-launch-transition{
   position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -408,3 +408,12 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
   .app-launch-transition{animation:app-launch-fade-out 1ms linear 0s forwards}
   .launch-signature-orb>img,.launch-signature-title,.launch-signature-tagline{animation:none!important;opacity:1;transform:none}
 }
+
+
+/* askmoina typography — native, quiet, and consistent across screens. */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;font-synthesis:none;font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html,body,button,input,textarea,select{font-family:inherit}
+h1,h2,h3,h4,h5,h6{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;text-wrap:balance;font-kerning:normal}
+h1{letter-spacing:-.045em}
+h2{letter-spacing:-.03em}
+h3,h4,h5,h6{letter-spacing:-.02em}

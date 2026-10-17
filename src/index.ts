@@ -31,7 +31,7 @@ import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 export { UserState } from "./sessions/user-state";
 
 
-const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"AskMoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"AskMoina home\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"AskMoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
+const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"askmoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"askmoina home\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"askmoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
 
 function renderSiteMenu(authenticated: boolean): string {
   const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About askMoina\"><a href=\"/?view=about\">About askMoina <span aria-hidden=\"true\">›</span></a><a href=\"/?view=developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/?view=help\">Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/?view=privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
@@ -41,11 +41,11 @@ function renderSiteMenu(authenticated: boolean): string {
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
-const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\"><h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1><div class=\"entry-page-heading auth-page-heading\"><h2>Welcome to AskMoina</h2><p>Your world, understood in real time.</p></div>\n    \n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening AskMoina</span></div>";
+const ENTRY_AUTH_OVERLAY = "<section class=\"entry-overlay\" aria-label=\"Secure sign in\">\n  <div class=\"entry-auth-panel\"><h1 class=\"sr-only\">Continue with Face ID or Touch ID</h1><div class=\"entry-page-heading auth-page-heading\"><h2>Welcome to askmoina</h2><p>Your world, understood in real time.</p></div>\n    \n    <button class=\"entry-passkey\" id=\"passkeyAction\" type=\"button\" data-passkey=\"login\" data-method=\"Face ID or Touch ID\" aria-describedby=\"deviceHint\">\n      <span class=\"entry-passkey-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3\"/><path d=\"M8 10.5c.5-2 1.8-3 4-3s3.5 1 4 3M8.5 13.2c.1 3.1-.4 4.6-1.1 5.5M12 10.4c1.7 0 2.5 1 2.5 2.5 0 2.4-.2 4.1-1 5.9M10.2 13.2c0 2-.2 3.6-.7 5\"/></svg></span>\n      <span id=\"passkeyTitle\">Continue with Face ID or Touch ID</span>\n      <span class=\"entry-hidden-copy\" id=\"passkeySubtitle\">Use your device passkey</span>\n      <span class=\"entry-passkey-trailing\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m9 5 7 7-7 7\"/></svg></span>\n    </button>\n    <p class=\"entry-hidden-copy device-hint\" id=\"deviceHint\">Use your saved passkey to sign in securely.</p>\n    <button type=\"button\" class=\"entry-passkey-alternative\" id=\"createPasskeyAlternative\" data-passkey=\"register\" data-method=\"device passkey\" hidden>Create a passkey on this device</button>\n    <div class=\"entry-divider\"><span>OR USE YOUR PHONE</span></div>\n    <div class=\"entry-phone-row\">\n      <span class=\"entry-country\" id=\"phoneCountry\" aria-label=\"Country calling code\">+91</span>\n      <input class=\"entry-phone-input\" id=\"phone\" name=\"phone\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel-national\" maxlength=\"10\" placeholder=\"Phone number\" aria-label=\"Phone number\">\n      <button class=\"entry-next\" id=\"sendOtp\" type=\"button\" aria-label=\"Continue with phone\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n    </div>\n    <div id=\"otpSection\" class=\"entry-otp-section\" hidden>\n      <div class=\"entry-otp-row\">\n        <input class=\"entry-otp-input\" id=\"otpCode\" name=\"otpCode\" type=\"text\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"10\" placeholder=\"Verification code\" aria-label=\"Verification code\">\n        <button class=\"entry-next\" id=\"verifyOtp\" type=\"button\" aria-label=\"Verify code\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h13M12 5l7 7-7 7\"/></svg></button>\n      </div>\n    </div>\n    <p id=\"status\" class=\"entry-status\" role=\"status\" aria-live=\"polite\"></p>\n  </div>\n</section>\n<div class=\"auth-sheet entry-auth-sheet\" id=\"authSheet\" hidden>\n  <section class=\"sheet-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheetTitle\" aria-describedby=\"sheetCopy\">\n    <div class=\"sheet-symbol\" aria-hidden=\"true\"><div class=\"spinner\"></div></div>\n    <h2 id=\"sheetTitle\">Confirm on your device</h2>\n    <p id=\"sheetCopy\">Use your device's secure passkey prompt.</p>\n    <button class=\"cancel-button\" id=\"cancelAuth\" type=\"button\" aria-label=\"Cancel\">Cancel</button>\n  </section>\n</div>\n<div class=\"auth-launch-screen\" id=\"authLaunchScreen\" hidden role=\"status\" aria-live=\"polite\"><span class=\"launch-spinner\" aria-hidden=\"true\"></span><span class=\"launch-title\">Opening askmoina</span></div>";
 const NATIVE_CAMERA_WELCOME = "<section class=\"native-camera-welcome\" aria-labelledby=\"nativeCameraWelcomeTitle\">\n  <div class=\"native-camera-orb\" aria-hidden=\"true\"><img src=\"/askmoina-mark.svg?v=0.4.80\" alt=\"\" width=\"58\" height=\"58\"></div>\n  <p class=\"native-camera-kicker\">YOUR REAL-WORLD CO-PILOT</p>\n  <h1 id=\"nativeCameraWelcomeTitle\">Show Moina your world.</h1>\n  <p class=\"native-camera-caption\">Point your camera at anything. We’ll figure it out together.</p>\n</section>";
-const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"AskMoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open AskMoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
+const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
 const NATIVE_APP_HEADER_GUEST = "";
-const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close AskMoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\">AskMoina</h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"AskMoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About AskMoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
+const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close askmoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\">askmoina</h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"askmoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About askmoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
 function withNativeAppShell(html: string, appVersion: string, authenticated: boolean): string {
   const nativeHeader = authenticated ? NATIVE_APP_HEADER_AUTH : "";
   const headerStart = html.indexOf('<header class="floating-top">');
@@ -58,10 +58,10 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
     html = html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker);
   }
   html = html.replace("<body>", '<body data-page="' + (authenticated ? "app" : "login") + '" data-entry-state="' + (authenticated ? "camera" : "login") + '">');
-  html = html.replace(/<title>[^<]*<\/title>/, "<title>AskMoina</title>");
+  html = html.replace(/<title>[^<]*<\/title>/, "<title>askmoina</title>");
   const version = encodeURIComponent(appVersion || "0.4.80");
   if (/<main\b[^>]*class=["'][^"']*\bcamera-app\b/i.test(html)) {
-    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><div class="launch-signature-orb"><img src="/askmoina-mark.svg?v=' + version + '" alt="" width="86" height="61"></div><span class="launch-signature-title">AskMoina</span><span class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span></div>';
+    const launchOverlay = '<div class="app-launch-transition" id="appLaunchTransition" aria-hidden="true"><div class="launch-signature-orb"><img src="/askmoina-mark.svg?v=' + version + '" alt="" width="86" height="61"></div><span class="launch-signature-title">askmoina</span><span class="launch-signature-tagline">SEE · UNDERSTAND · HELP</span></div>';
     html = html.replace(/<body\b[^>]*>/i, (opening) => opening + launchOverlay);
   }
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
@@ -80,12 +80,12 @@ const SITE_INFO_PATHS = new Set([
 ]);
 
 const NATIVE_SITE_INFO: Record<string, { kicker: string; title: string; lead: string; paragraphs: string[] }> = {
-  "/about": { kicker: "ABOUT ASKMOINA", title: "An AI that sees the problem with you.", lead: "A camera-first co-pilot for the real world.", paragraphs: ["AskMoina is built around showing what is happening, speaking naturally, and getting practical help in the moment—not opening another generic chat window.", "The goal is simple: understand what is in front of you, explain the next useful step, and help you work through it while keeping your conversation history and chosen preferences available to you."] },
-  "/developer": { kicker: "FOR BUILDERS", title: "Build with AskMoina.", lead: "Developer resources are being prepared.", paragraphs: ["This space will bring together integration guidance and developer updates as they become available.", "There are no public API credentials or integration guarantees published on this page yet."] },
+  "/about": { kicker: "ABOUT askmoina", title: "An AI that sees the problem with you.", lead: "A camera-first co-pilot for the real world.", paragraphs: ["askmoina is built around showing what is happening, speaking naturally, and getting practical help in the moment—not opening another generic chat window.", "The goal is simple: understand what is in front of you, explain the next useful step, and help you work through it while keeping your conversation history and chosen preferences available to you."] },
+  "/developer": { kicker: "FOR BUILDERS", title: "Build with askmoina.", lead: "Developer resources are being prepared.", paragraphs: ["This space will bring together integration guidance and developer updates as they become available.", "There are no public API credentials or integration guarantees published on this page yet."] },
   "/help": { kicker: "FEEDBACK & SUPPORT", title: "Help us make it better.", lead: "Useful feedback starts with what you were trying to do.", paragraphs: ["When reporting a problem, include the screen you were on, what you expected to happen, and what happened instead. Avoid sharing passwords, verification codes, or other sensitive information.", "For camera or microphone issues, check the app's permissions in your browser or device settings. You can revisit saved conversations and Key Memories from the main camera screen."] },
-  "/privacy": { kicker: "PRIVACY & SECURITY", title: "Your camera. Your control.", lead: "AskMoina is designed to help in the moment without turning the main screen into a transcript feed.", paragraphs: ["Live microphone audio and selected camera frames are processed by Google Cloud Vertex AI to generate responses. Raw audio and video are not saved to AskMoina history by default.", "Conversation transcripts, task summaries, and preferences you choose to save may be kept to support History and Key Memories. You can review and manage saved memories inside the app.", "Do not share passwords, one-time codes, or other secrets in a conversation."] },
-  "/pricing": { kicker: "INVESTOR RELATIONS", title: "A new way to work with AI.", lead: "Partnership and investor information is being prepared.", paragraphs: ["AskMoina is focused on camera-first, voice-led assistance for real-world tasks.", "There are no published investment terms or pricing commitments on this page."] },
-  "/donate": { kicker: "SUPPORT DEVELOPMENT", title: "Help us build what comes next.", lead: "AskMoina is in active development.", paragraphs: ["We are shaping a helpful, visual-first co-pilot for everyday problems, from understanding an object to working through a repair.", "Donation processing is not enabled on this page yet; no payment will be requested here."] }
+  "/privacy": { kicker: "PRIVACY & SECURITY", title: "Your camera. Your control.", lead: "askmoina is designed to help in the moment without turning the main screen into a transcript feed.", paragraphs: ["Live microphone audio and selected camera frames are processed by Google Cloud Vertex AI to generate responses. Raw audio and video are not saved to askmoina history by default.", "Conversation transcripts, task summaries, and preferences you choose to save may be kept to support History and Key Memories. You can review and manage saved memories inside the app.", "Do not share passwords, one-time codes, or other secrets in a conversation."] },
+  "/pricing": { kicker: "INVESTOR RELATIONS", title: "A new way to work with AI.", lead: "Partnership and investor information is being prepared.", paragraphs: ["askmoina is focused on camera-first, voice-led assistance for real-world tasks.", "There are no published investment terms or pricing commitments on this page."] },
+  "/donate": { kicker: "SUPPORT DEVELOPMENT", title: "Help us build what comes next.", lead: "askmoina is in active development.", paragraphs: ["We are shaping a helpful, visual-first co-pilot for everyday problems, from understanding an object to working through a repair.", "Donation processing is not enabled on this page yet; no payment will be requested here."] }
 };
 
 function renderSiteInfoPage(pathname: string, appVersion: string): string | null {
@@ -97,12 +97,12 @@ function renderSiteInfoPage(pathname: string, appVersion: string): string | null
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
     "<meta name=\"theme-color\" content=\"#090b0f\"><meta name=\"color-scheme\" content=\"dark\">" +
     "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
-    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><title>" + page.title + " · AskMoina</title></head>" +
+    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
-    "<a class=\"native-info-back\" href=\"/\" aria-label=\"Back to AskMoina\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m14.5 5.5-6.5 6.5 6.5 6.5\"/></svg><span>AskMoina</span></a>" +
-    "<img src=\"/favicon.svg?v=0.4.80\" width=\"25\" height=\"25\" alt=\"AskMoina\"></header>" +
+    "<a class=\"native-info-back\" href=\"/\" aria-label=\"Back to askmoina\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m14.5 5.5-6.5 6.5 6.5 6.5\"/></svg><span>askmoina</span></a>" +
+    "<img src=\"/favicon.svg?v=0.4.80\" width=\"25\" height=\"25\" alt=\"askmoina\"></header>" +
     "<main class=\"native-info-main\"><p class=\"native-info-kicker\">" + page.kicker + "</p><h1>" + page.title + "</h1><p class=\"native-info-lead\">" + page.lead + "</p>" +
-    paragraphs + "<a class=\"native-info-return\" href=\"/\">Return to AskMoina <span aria-hidden=\"true\">↗</span></a></main></body></html>";
+    paragraphs + "<a class=\"native-info-return\" href=\"/\">Return to askmoina <span aria-hidden=\"true\">↗</span></a></main></body></html>";
 }
 
 
@@ -231,7 +231,7 @@ function withPwaStandaloneGate(html: string): string {
       ? match
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
-  // AskMoina is a deliberately dark-only, camera-first app.
+  // askmoina is a deliberately dark-only, camera-first app.
   const themeColor = "#030406";
   const statusBarStyle = "black-translucent";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
@@ -240,7 +240,7 @@ function withPwaStandaloneGate(html: string): string {
     '<meta name="theme-color" content="' + themeColor + '">' +
     '<meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes">' +
-    '<meta name="apple-mobile-web-app-title" content="AskMoina">' +
+    '<meta name="apple-mobile-web-app-title" content="askmoina">' +
     '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
     '<meta name="color-scheme" content="dark">' +
     '<link rel="manifest" href="/manifest.webmanifest">' +
@@ -624,7 +624,7 @@ const SEARCH_GROUNDING_INSTRUCTION = [
   "Search for the exact manufacturer plus model/variant and requested material (official manual, service or user guide, labelled diagram, troubleshooting, recall, or compatibility). Prefer manufacturer-hosted sources and safety notices, then reputable sources only for explicitly generic context.",
   "Never present a procedure from a different model/version as applicable. If source titles/URLs do not establish the model match, say the match is unverified, ask for the exact identifier, or stay at a safe generic level. A source is a reference, not proof that the camera has identified the product or that a repair is safe.",
   "When results include model IDs, compare them with the requested model/variant; distinguish exact match, mismatch, and unknown. If no exact matching source is found, state that limitation clearly instead of filling gaps with a similar guide.",
-  "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the AskMoina server using Gemini with Google Search grounding.",
+  "LIVE WEB SEARCH IS AVAILABLE in this session through the search_current_web function. It is executed by the askmoina server using Gemini with Google Search grounding.",
   "The browser displays a contextual Apple-style loader during live lookup. If it takes more than a brief beat, keep the voice present with a short, natural, freshly phrased Assamese-English progress line grounded in the actual request. Wait for verified results before stating findings, then speak the grounded answer aloud and return to the camera view.",
   "If the user explicitly asks you to search/look something up, asks whether live search is available, asks for the latest/current/recent news, a current or historical sports leaderboard/season statistic, a ranked top-N list, a current release/version, today's information, current prices/compatibility, or a specific device manual/recall/troubleshooting procedure, you MUST call search_current_web before answering. Do not answer these requests from memory alone.",
   "For a top-N list, return the requested number of distinct ranked entries whenever sources support them. Search for a full leaderboard/table, not only preview snippets. If only a few results appear, run a more targeted alternate query or consult another credible source before concluding that the full list is unavailable. For a vague IPL 'rankers' request, default to IPL 2025 most-run scorers unless the context specifies wickets or another metric.",
@@ -874,7 +874,7 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
                 "Return newly found rows using their ORIGINAL rank numbers. Exact row format: rank. Player or item name — team/category — requested statistic.",
                 "Do not guess missing ranks. Include actual HTTPS source URLs from Google Search grounding in a final Sources section."
               ].join("\n\n"));
-              console.warn("[AskMoina] Grounded ranked list is incomplete; retrying specifically for missing ranks", JSON.stringify({
+              console.warn("[askmoina] Grounded ranked list is incomplete; retrying specifically for missing ranks", JSON.stringify({
                 requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempt, retrying: true
               }));
             } else {
@@ -891,14 +891,14 @@ async function performGroundedWebSearchOnce(env: Env, query: string, rawDeviceCo
                 "For IPL 2025 without a different explicit metric, use most runs (Orange Cap) and include runs. Never mix seasons or change metrics.",
                 "Never fabricate missing rows. Include only ranks that the alternate source really supports and its HTTPS source URLs under Sources."
               ].join("\n\n"));
-              console.warn("[AskMoina] Ranked-list retries remain incomplete; trying alternate complete table", JSON.stringify({
+              console.warn("[askmoina] Ranked-list retries remain incomplete; trying alternate complete table", JSON.stringify({
                 requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempt, retrying: true
               }));
             }
             if (!(await waitForGroundedRetry(250, groundingBudgetStartedAt, searchBudgetMs))) break;
             continue;
           }
-          console.warn("[AskMoina] Grounded ranked list remained incomplete after all attempts", JSON.stringify({
+          console.warn("[askmoina] Grounded ranked list remained incomplete after all attempts", JSON.stringify({
             requestedCount: requestedListCount, recoveredRows: rankedRows.length, missingRanks, attempts: attemptsUsed, complete: false
           }));
         }
@@ -1115,9 +1115,9 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
   const accountId = await getAuthenticatedUserId(request, env);
   const admin = await isAdmin(request, env);
-  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
+  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use askmoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
   if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
-  return json({ available: true, reason: "available", message: "Voice is ready. AskMoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
+  return json({ available: true, reason: "available", message: "Voice is ready. askmoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
 interface LiveRelayAttachment {
@@ -1176,7 +1176,7 @@ async function handleVoiceSocket(
   try {
     accessToken = await getGoogleAccessToken(env);
   } catch (error) {
-    console.error("[AskMoina] Google token exchange failed", error instanceof Error ? error.message : "unknown error");
+    console.error("[askmoina] Google token exchange failed", error instanceof Error ? error.message : "unknown error");
     finishAnalytics("provider_auth_error");
     await releaseVoiceSession(env, reservation);
     return json({ error: "voice_authentication_unavailable" }, 503);
@@ -1199,7 +1199,7 @@ async function handleVoiceSocket(
       },
     });
   } catch (error) {
-    console.error("[AskMoina] Vertex Live WebSocket request failed", error instanceof Error ? error.message : "unknown error");
+    console.error("[askmoina] Vertex Live WebSocket request failed", error instanceof Error ? error.message : "unknown error");
     finishAnalytics("provider_error");
     await releaseVoiceSession(env, reservation);
     return json({ error: "voice_provider_unavailable" }, 502);
@@ -1208,7 +1208,7 @@ async function handleVoiceSocket(
   const initialUpstreamSocket = upstreamResponse.webSocket;
   if (!initialUpstreamSocket || upstreamResponse.status !== 101) {
     const responseText = await upstreamResponse.clone().text().catch(() => "");
-    console.error("[AskMoina] Vertex Live handshake rejected", JSON.stringify({
+    console.error("[askmoina] Vertex Live handshake rejected", JSON.stringify({
       status: upstreamResponse.status,
       body: responseText.slice(0, 800),
     }));
@@ -1340,7 +1340,7 @@ async function handleVoiceSocket(
       (reason === "Client disconnected" && code === 1000 ? (analyticsSetupComplete ? "completed" : "disconnected_before_setup") :
       (code === 1008 ? "protocol_error" : "provider_error"));
     finishAnalytics(analyticsOutcome);
-    console.info("[AskMoina] Voice session efficiency summary", JSON.stringify({
+    console.info("[askmoina] Voice session efficiency summary", JSON.stringify({
       mode: copilotMode ? "copilot" : "voice",
       model,
       outcome: analyticsOutcome,
@@ -1369,7 +1369,7 @@ async function handleVoiceSocket(
 
     if (code !== 1000 || reason !== "Client disconnected") {
       // Log only safe close metadata—never microphone audio or conversation text.
-      console.warn("[AskMoina] Voice WebSocket closing", JSON.stringify({
+      console.warn("[askmoina] Voice WebSocket closing", JSON.stringify({
         closeCode: code,
         reason,
         setupForwarded,
@@ -1416,7 +1416,7 @@ async function handleVoiceSocket(
       catch { /* A close can race the readyState check; retain this frame for a quick reattach. */ }
     }
     if (pendingClientFramesChars + data.length > MAX_PENDING_CLIENT_FRAME_CHARS) {
-      console.warn("[AskMoina] Live client recovery output queue overflow", JSON.stringify({
+      console.warn("[askmoina] Live client recovery output queue overflow", JSON.stringify({
         queuedChars: pendingClientFramesChars, nextFrameChars: data.length,
       }));
       closeBoth(1011, "Client recovery output queue overflow");
@@ -1451,7 +1451,7 @@ async function handleVoiceSocket(
     detachedClientTimeout = setTimeout(() => {
       detachedClientTimeout = null;
       if (!closed && !clientAttached && Date.now() - lastClientDetachedAt >= CLIENT_REATTACH_GRACE_MS) {
-        console.warn("[AskMoina] Live browser did not reattach within grace window", JSON.stringify({
+        console.warn("[askmoina] Live browser did not reattach within grace window", JSON.stringify({
           graceMs: CLIENT_REATTACH_GRACE_MS,
           checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
           pendingClientFrames: pendingClientFrames.length,
@@ -1459,7 +1459,7 @@ async function handleVoiceSocket(
         closeBoth(1011, "Live client reconnect timed out");
       }
     }, CLIENT_REATTACH_GRACE_MS);
-    console.warn("[AskMoina] Preserving Live provider session during browser reconnect", JSON.stringify({
+    console.warn("[askmoina] Preserving Live provider session during browser reconnect", JSON.stringify({
       reason, clientCode: code, graceMs: CLIENT_REATTACH_GRACE_MS,
       checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
       pendingReplayMessages: upstreamReplayBuffer.length,
@@ -1488,7 +1488,7 @@ async function handleVoiceSocket(
         return;
       }
       if (!setupCompleteReceived && !closed) {
-        console.warn("[AskMoina] Browser socket closed before setup completed", JSON.stringify({
+        console.warn("[askmoina] Browser socket closed before setup completed", JSON.stringify({
           clientCode: event.code, setupForwarded, upstreamFrameCount,
         }));
       }
@@ -1580,7 +1580,7 @@ async function handleVoiceSocket(
     // Once unacknowledged input has been evicted, stop before forwarding more input.
     // It is safer to surface continuity loss than to present a partial task as continuous.
     if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpointConsumedMessageIndex())) {
-      console.warn("[AskMoina] Live replay window exceeded; continuity can no longer be guaranteed", JSON.stringify({
+      console.warn("[askmoina] Live replay window exceeded; continuity can no longer be guaranteed", JSON.stringify({
         highestEvictedClientMessageIndex,
         checkpointConsumedIndex: checkpointConsumedMessageIndex(),
         bufferedMessageCount: upstreamReplayBuffer.length,
@@ -1616,7 +1616,7 @@ async function handleVoiceSocket(
     );
     pendingUpstreamMessagesChars = trimmed.bufferChars;
     if (trimmed.droppedCount > 0) {
-      console.warn("[AskMoina] Pending Live input queue trimmed", JSON.stringify({
+      console.warn("[askmoina] Pending Live input queue trimmed", JSON.stringify({
         droppedMessageCount: trimmed.droppedCount,
         droppedNonReplaceable: trimmed.droppedNonReplaceable,
         pendingMessageCount: pendingUpstreamMessages.length,
@@ -1739,13 +1739,13 @@ async function handleVoiceSocket(
       try {
         groundedSearchCount += 1;
         lastGroundedSearchAt = Date.now();
-        console.info("[AskMoina] Mandatory ranked-list grounding started", JSON.stringify({
+        console.info("[askmoina] Mandatory ranked-list grounding started", JSON.stringify({
           requestedCount, queryLength: query.length,
         }));
         result = await performGroundedWebSearch(env, query, undefined, true);
       } catch (error) {
         result = "The live ranked-list lookup could not complete. No ranking has been verified, so do not guess names, teams, or statistics. Tell the user the lookup failed and offer a retry.";
-        console.warn("[AskMoina] Mandatory ranked-list grounding failed", error instanceof Error ? error.message.slice(0, 240) : "unknown error");
+        console.warn("[askmoina] Mandatory ranked-list grounding failed", error instanceof Error ? error.message.slice(0, 240) : "unknown error");
       } finally {
         pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
         // liveSearchProgressCuePending tracks the active assistant turn, not the lookup.
@@ -1780,7 +1780,7 @@ async function handleVoiceSocket(
         // discard the final turn. Wait for the progress sentence's turnComplete.
         pendingForcedRankedAnswerContinuation = continuationText;
         sendRankedContinuationStatus("continuation_queued");
-        console.info("[AskMoina] Queued mandatory ranked-list spoken continuation behind the active progress turn");
+        console.info("[askmoina] Queued mandatory ranked-list spoken continuation behind the active progress turn");
       } else {
         sendUpstreamMessage({
           clientContent: {
@@ -1789,12 +1789,12 @@ async function handleVoiceSocket(
           },
         });
         sendRankedContinuationStatus("continuation_dispatched");
-        console.info("[AskMoina] Dispatched final ranked-list spoken continuation to Live");
+        console.info("[askmoina] Dispatched final ranked-list spoken continuation to Live");
       }
       forcedRankedLookupActive = false;
     })().catch((error) => {
       forcedRankedLookupActive = false;
-      console.warn("[AskMoina] Forced ranked-list continuation failed", error instanceof Error ? error.message.slice(0, 180) : "unknown error");
+      console.warn("[askmoina] Forced ranked-list continuation failed", error instanceof Error ? error.message.slice(0, 180) : "unknown error");
       try { sendClientFrame(JSON.stringify({ live_search_status: { state: "lookup_complete" } })); } catch (_) {}
     }));
     return true;
@@ -1808,7 +1808,7 @@ async function handleVoiceSocket(
       checkpointConsumedIndex,
     );
     if (!replayWindowComplete) {
-      console.warn("[AskMoina] Refusing unsafe Live input replay", JSON.stringify({
+      console.warn("[askmoina] Refusing unsafe Live input replay", JSON.stringify({
         highestEvictedClientMessageIndex,
         checkpointConsumedIndex,
         replayedMessageCount: 0,
@@ -1856,7 +1856,7 @@ async function handleVoiceSocket(
           upstreamReplayBufferChars = trimmed.bufferChars;
           highestEvictedClientMessageIndex = trimmed.highestEvictedClientMessageIndex;
           if (!isReplayWindowComplete(highestEvictedClientMessageIndex, checkpointConsumedMessageIndex())) {
-            console.warn("[AskMoina] Live replay window exceeded during paced replay", JSON.stringify({
+            console.warn("[askmoina] Live replay window exceeded during paced replay", JSON.stringify({
               highestEvictedClientMessageIndex,
               checkpointConsumedIndex: checkpointConsumedMessageIndex(),
               replayedMessageCount: sentAudioFrames,
@@ -1875,7 +1875,7 @@ async function handleVoiceSocket(
         }
       }
     } catch {
-      console.warn("[AskMoina] Live replay send interrupted", JSON.stringify({
+      console.warn("[askmoina] Live replay send interrupted", JSON.stringify({
         reindexed: reindexForNewConnection,
         replayedMessageCount: sentAudioFrames,
         replayTotalMessages: replay.length,
@@ -1884,7 +1884,7 @@ async function handleVoiceSocket(
       return false;
     }
 
-    console.info("[AskMoina] Resumed Live input replay", JSON.stringify({
+    console.info("[askmoina] Resumed Live input replay", JSON.stringify({
       replayedMessageCount: replay.length,
       replayedChars: replay.reduce((total, item) => total + item.encoded.length, 0),
       replayedAudioFrames: sentAudioFrames,
@@ -2204,7 +2204,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       else if (ArrayBuffer.isView(frameData)) frameText = providerFrameDecoder.decode(frameData);
       else throw new TypeError("Unsupported provider frame type");
     } catch {
-      console.error("[AskMoina] Could not decode Vertex Live frame", JSON.stringify({ frameNumber, frameType, frameSize }));
+      console.error("[askmoina] Could not decode Vertex Live frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
         sendClientFrame(JSON.stringify({ error: {
           code: "PROVIDER_FRAME_DECODE_FAILED",
@@ -2221,7 +2221,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       firstAudioFrameLogged = true;
       const firstAudioAt = Date.now();
       requestToFirstAudioMs = firstAudioAt - analyticsStartedAt;
-      console.info("[AskMoina] First assistant audio frame", JSON.stringify({
+      console.info("[askmoina] First assistant audio frame", JSON.stringify({
         frameNumber,
         requestToFirstAudioMs,
         upstreamConnectedToFirstAudioMs: firstAudioAt - upstreamStartedAt,
@@ -2238,7 +2238,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       latestProviderUsage = { ...(latestProviderUsage || {}), ...measured };
       const estimate = estimateProviderCostUsd(latestProviderUsage, inputUsdPerMillionTokens, outputUsdPerMillionTokens);
       if (estimate !== null) estimatedInferenceCostUsd = estimate;
-      console.info("[AskMoina] Provider token usage snapshot", JSON.stringify({
+      console.info("[askmoina] Provider token usage snapshot", JSON.stringify({
         promptTokenCount: latestProviderUsage.promptTokenCount,
         responseTokenCount: latestProviderUsage.responseTokenCount,
         totalTokenCount: latestProviderUsage.totalTokenCount,
@@ -2254,7 +2254,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
     try {
       providerMessage = inspectProviderControlFrame(frameText);
     } catch {
-      console.error("[AskMoina] Vertex Live sent an invalid control frame", JSON.stringify({ frameNumber, frameType, frameSize }));
+      console.error("[askmoina] Vertex Live sent an invalid control frame", JSON.stringify({ frameNumber, frameType, frameSize }));
       try {
         sendClientFrame(JSON.stringify({ error: {
           code: "PROVIDER_PROTOCOL_ERROR",
@@ -2283,7 +2283,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             message: "Voice audio is flowing again. Your request is continuing.",
           } }));
         } catch { /* the browser may already be closing */ }
-        console.info("[AskMoina] Silent-turn recovery produced audio", JSON.stringify({ frameNumber }));
+        console.info("[askmoina] Silent-turn recovery produced audio", JSON.stringify({ frameNumber }));
       }
     }
     const isSessionResumptionUpdate = Boolean(providerMessage?.sessionResumptionUpdate);
@@ -2312,7 +2312,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           }
         }
       }
-      console.info("[AskMoina] Live session resumption checkpoint", JSON.stringify({
+      console.info("[askmoina] Live session resumption checkpoint", JSON.stringify({
         handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
         resumable: update.resumable === true,
         checkpointAccepted,
@@ -2327,7 +2327,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         Boolean(lastSessionResumptionCheckpoint?.handle),
         Boolean(securedSetupForResume),
       );
-      console.info("[AskMoina] Vertex Live requested connection rotation", JSON.stringify({
+      console.info("[askmoina] Vertex Live requested connection rotation", JSON.stringify({
         handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
         securedSetupAvailable: Boolean(securedSetupForResume),
         frameNumber,
@@ -2336,7 +2336,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       }));
       if (rotationDecision === "defer") {
         providerRotationPending = true;
-        console.warn("[AskMoina] Deferring provider rotation until paced replay finishes");
+        console.warn("[askmoina] Deferring provider rotation until paced replay finishes");
         return;
       }
       if (rotationDecision === "replace_session") {
@@ -2368,7 +2368,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         if (!replayReady) {
           if (closed) return;
           previousUpstreamSocket = null;
-          console.warn("[AskMoina] Resumed session could not replay pending input safely", JSON.stringify({
+          console.warn("[askmoina] Resumed session could not replay pending input safely", JSON.stringify({
             upstreamReadyState: upstreamSocket.readyState,
             checkpointAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
           }));
@@ -2400,7 +2400,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           void drainPendingUpstreamMessages();
         }
       }
-      console.log("[AskMoina] Vertex Live setup completed", JSON.stringify({
+      console.log("[askmoina] Vertex Live setup completed", JSON.stringify({
         frameNumber, requestToSetupMs,
         upstreamConnectedToSetupMs: Date.now() - upstreamStartedAt,
         resumed: resumedSessionSetupComplete,
@@ -2415,13 +2415,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
     if (providerMessage?.error) {
       const providerError = providerMessage.error;
-      console.error("[AskMoina] Vertex Live returned an error", JSON.stringify({
+      console.error("[askmoina] Vertex Live returned an error", JSON.stringify({
         code: providerError.code,
         status: providerError.status,
         message: typeof providerError.message === "string" ? providerError.message.slice(0, 800) : undefined,
       }));
       if (resumptionInProgress && isExpiredSessionResumptionError(providerError)) {
-        console.warn("[AskMoina] Provider rejected the Live resume handle; selecting the fresh-session path", JSON.stringify({
+        console.warn("[askmoina] Provider rejected the Live resume handle; selecting the fresh-session path", JSON.stringify({
           code: providerError.code,
           status: providerError.status,
           handleAvailable: Boolean(lastSessionResumptionCheckpoint?.handle),
@@ -2506,7 +2506,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
                 }
               } catch (error) {
                 historyResult = "Saved conversation history search failed temporarily. Do not guess; tell the user the precise past detail could not be retrieved right now.";
-                console.warn("[AskMoina] Past-conversation search failed", error instanceof Error ? error.name : "unknown");
+                console.warn("[askmoina] Past-conversation search failed", error instanceof Error ? error.name : "unknown");
               }
               responses.push({ id: call.id, name: "search_past_conversations", response: { result: historyResult }, scheduling: "WHEN_IDLE" });
               continue;
@@ -2562,7 +2562,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
               try {
                 result = await performGroundedWebSearch(env, effectiveQuery, deviceContext, copilotMode);
               } catch (error) {
-                console.warn("[AskMoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
+                console.warn("[askmoina] On-demand grounded search failed", error instanceof Error ? error.message : "unknown error");
                 const timedOut = error instanceof Error && /(timed out|latency budget|exceeded its .*budget)/i.test(error.message);
                 result = timedOut
                   ? "The live web lookup timed out before verified sources arrived. Tell the user this search attempt did not finish and do not present current or device-specific claims as verified. If appropriate, try one distinct, more focused search query; if it also fails, explain the limitation plainly."
@@ -2602,7 +2602,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           }
         }
       } catch (error) {
-        console.warn("[AskMoina] Could not process on-demand grounded search call", error instanceof Error ? error.message : "unknown error");
+        console.warn("[askmoina] Could not process on-demand grounded search call", error instanceof Error ? error.message : "unknown error");
       }
     }
 
@@ -2667,7 +2667,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
             turnComplete: true,
           },
         });
-        console.warn("[AskMoina] Completed Live turn had no audio; one controlled retry requested", JSON.stringify({
+        console.warn("[askmoina] Completed Live turn had no audio; one controlled retry requested", JSON.stringify({
           frameNumber,
           hadOutputTranscriptOrModelTurn: frameText.includes('"outputTranscription"') ||
             frameText.includes('"output_transcription"') || frameText.includes('"modelTurn"') || frameText.includes('"model_turn"'),
@@ -2705,7 +2705,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           },
         });
         sendRankedContinuationStatus("continuation_dispatched");
-        console.info("[AskMoina] Resumed queued ranked-list spoken continuation after progress turn completed");
+        console.info("[askmoina] Resumed queued ranked-list spoken continuation after progress turn completed");
       }
     } else if (liveSearchProgressCuePending && isCompletedAssistantTurn) {
       liveSearchProgressCuePending = false;
@@ -2719,7 +2719,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
 
   socketForConnection.addEventListener("close", (event: CloseEvent) => {
     if (socketForConnection !== upstreamSocket || closed) return;
-    console.warn("[AskMoina] Vertex Live socket closed", JSON.stringify({
+    console.warn("[askmoina] Vertex Live socket closed", JSON.stringify({
       code: event.code, reason: event.reason.slice(0, 300), setupForwarded, setupCompleteReceived,
       lifetimeMs: Date.now() - upstreamStartedAt,
       replayInProgress,
@@ -2742,7 +2742,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
   });
   socketForConnection.addEventListener("error", () => {
     if (socketForConnection !== upstreamSocket || closed) return;
-    console.error("[AskMoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded, replayInProgress }));
+    console.error("[askmoina] Vertex Live socket error", JSON.stringify({ setupCompleteReceived, setupForwarded, replayInProgress }));
     if (resumptionInProgress) { if (resolveResumeSetup) resolveResumeSetup(false); return; }
     if (replayInProgress) return;
     if (lastSessionResumptionCheckpoint?.handle) {
@@ -2819,7 +2819,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         upstreamSetupReady = false;
         previousUpstreamSocket = previousSocket;
         pendingResumeSessionCheckpoint = null;
-        console.warn("[AskMoina] Live session resume did not complete setup", JSON.stringify({ attempt, reason }));
+        console.warn("[askmoina] Live session resume did not complete setup", JSON.stringify({ attempt, reason }));
       } catch {
         if (candidate) { try { candidate.close(1011, "Resume attempt failed"); } catch {} }
         if (upstreamSocket === candidate) upstreamSocket = previousSocket;
@@ -2828,7 +2828,7 @@ const systemInstruction = buildPersonalizedSystemInstruction(
         pendingResumeSessionCheckpoint = null;
         if (resumeSetupTimeout !== null) { clearTimeout(resumeSetupTimeout); resumeSetupTimeout = null; }
         resolveResumeSetup = null;
-        console.warn("[AskMoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));
+        console.warn("[askmoina] Live session resume attempt failed", JSON.stringify({ attempt, reason }));
       }
     }
     resumptionInProgress = false;
@@ -2878,7 +2878,7 @@ export class LiveSessionRelay {
     if (wantsResume && this.activeRelay && !this.activeRelay.isClosed()) {
       const wasAttached = this.activeRelay.isAttached();
       if (!shouldAcceptBrowserReattachment(this.activeRelay.isClosed(), wasAttached)) {
-        console.warn("[AskMoina] Rejected duplicate browser reattachment while the existing socket owns the session");
+        console.warn("[askmoina] Rejected duplicate browser reattachment while the existing socket owns the session");
         return json({ error: "live_session_already_attached" }, 409);
       }
       const detachedForMs = this.activeRelay.detachedAt() ? Date.now() - this.activeRelay.detachedAt() : 0;
@@ -2888,7 +2888,7 @@ export class LiveSessionRelay {
         try { relaySocket.close(1011, "Live session is no longer available"); } catch {}
         return json({ error: "live_session_not_resumable" }, 409);
       }
-      console.info("[AskMoina] Reattached browser to the existing Live relay", JSON.stringify({ wasAttached, detachedForMs }));
+      console.info("[askmoina] Reattached browser to the existing Live relay", JSON.stringify({ wasAttached, detachedForMs }));
       return new Response(null, { status: 101, webSocket: clientSocket });
     }
 
@@ -3121,9 +3121,9 @@ export default {
       const adminAccess = await isAdmin(request, env);
       authenticatedForMenu = Boolean(accountId || adminAccess);
       if (!accountId && !adminAccess) {
-        if (url.pathname.startsWith("/api/")) return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
+        if (url.pathname.startsWith("/api/")) return json({ error: "authentication_required", message: "Sign up or log in to use askmoina. There is no guest access." }, 401);
         if (request.method === "GET" || request.method === "HEAD") return Response.redirect(new URL("/login", request.url).toString(), 302);
-        return json({ error: "authentication_required", message: "Sign up or log in to use AskMoina. There is no guest access." }, 401);
+        return json({ error: "authentication_required", message: "Sign up or log in to use askmoina. There is no guest access." }, 401);
       }
     }
     const memoryResponse = await handleUserMemoryRequest(request, env);
@@ -3221,7 +3221,7 @@ export default {
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       runRetentionMaintenance(env).catch((error) => {
-        console.error("[AskMoina] Scheduled retention maintenance failed", error instanceof Error ? error.name : "unknown");
+        console.error("[askmoina] Scheduled retention maintenance failed", error instanceof Error ? error.name : "unknown");
       }),
     );
   },
