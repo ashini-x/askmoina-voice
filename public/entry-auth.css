@@ -339,65 +339,99 @@
   .entry-auth-option { transition: none !important; }
 }
 
-/* Interface 1 performance pass — animate a small SVG dash along the frame.
-   This avoids recalculating full-viewport conic gradients and large masks per frame. */
-.entry-overlay {
-  --askmoina-edge-angle: 0deg;
-  animation: entry-welcome-fade .36s ease both !important;
-}
+
+/* SwiftUI-inspired Intelligence glow: one morphed angular gradient across four blurred strokes. */
+@property --moina-glow-color-1 { syntax: "<color>"; inherits: true; initial-value: #BC82F3; }
+@property --moina-glow-color-2 { syntax: "<color>"; inherits: true; initial-value: #F5B9EA; }
+@property --moina-glow-color-3 { syntax: "<color>"; inherits: true; initial-value: #8D9FFF; }
+@property --moina-glow-color-4 { syntax: "<color>"; inherits: true; initial-value: #FF6778; }
+@property --moina-glow-color-5 { syntax: "<color>"; inherits: true; initial-value: #FFBA71; }
+@property --moina-glow-color-6 { syntax: "<color>"; inherits: true; initial-value: #C686FF; }
+@property --moina-glow-stop-1 { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+@property --moina-glow-stop-2 { syntax: "<percentage>"; inherits: true; initial-value: 20%; }
+@property --moina-glow-stop-3 { syntax: "<percentage>"; inherits: true; initial-value: 40%; }
+@property --moina-glow-stop-4 { syntax: "<percentage>"; inherits: true; initial-value: 60%; }
+@property --moina-glow-stop-5 { syntax: "<percentage>"; inherits: true; initial-value: 80%; }
+@property --moina-glow-stop-6 { syntax: "<percentage>"; inherits: true; initial-value: 96%; }
+
 .entry-overlay::before,
 .entry-overlay::after {
   content: none !important;
   display: none !important;
 }
-.entry-edge-beam {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: visible !important;
-  pointer-events: none !important;
-  user-select: none !important;
+.entry-edge-beam { display: none !important; }
+.entry-edge-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: visible;
+  border-radius: 0;
+  pointer-events: none;
+  user-select: none;
+  isolation: isolate;
 }
-.entry-edge-stroke {
-  fill: none;
-  stroke: url(#entryEdgeBeamSpectrum);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dashoffset: 0;
-  animation: askmoina-svg-beam-travel 5.8s linear infinite;
-  will-change: stroke-dashoffset;
+.entry-edge-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  box-sizing: border-box;
+  border-radius: clamp(28px, 7.2vw, 55px);
+  background: conic-gradient(
+    from 0deg,
+    var(--moina-glow-color-1) 0%,
+    var(--moina-glow-color-1) var(--moina-glow-stop-1),
+    var(--moina-glow-color-2) var(--moina-glow-stop-2),
+    var(--moina-glow-color-3) var(--moina-glow-stop-3),
+    var(--moina-glow-color-4) var(--moina-glow-stop-4),
+    var(--moina-glow-color-5) var(--moina-glow-stop-5),
+    var(--moina-glow-color-6) var(--moina-glow-stop-6),
+    var(--moina-glow-color-1) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  transform: translateZ(0);
 }
-.entry-edge-ambient {
-  stroke-width: 46px;
-  stroke-dasharray: 250 750;
-  stroke-opacity: .22;
-  filter: url(#entryEdgeBeamAmbientBlur);
-  animation-delay: 0s;
+.entry-edge-sharp {
+  padding: 6px;
+  opacity: .3;
+  filter: none;
 }
-.entry-edge-soft {
-  stroke-width: 21px;
-  stroke-dasharray: 190 810;
-  stroke-opacity: .38;
-  filter: url(#entryEdgeBeamSoftBlur);
-  animation-delay: -.3484s;
+.entry-edge-blur-4 {
+  padding: 9px;
+  opacity: .6;
+  filter: blur(4px);
+  mix-blend-mode: screen;
 }
-.entry-edge-core {
-  stroke-width: 4px;
-  stroke-dasharray: 100 900;
-  stroke-opacity: .82;
-  animation-delay: -.87s;
+.entry-edge-blur-12 {
+  padding: 11px;
+  opacity: .72;
+  filter: blur(12px);
+  mix-blend-mode: screen;
 }
-@keyframes askmoina-svg-beam-travel {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -1000; }
+.entry-edge-blur-15 {
+  padding: 15px;
+  opacity: .82;
+  filter: blur(15px);
+  mix-blend-mode: screen;
 }
-
+.entry-overlay.edge-glow-animate {
+  transition:
+    --moina-glow-color-1 1000ms ease-in-out,
+    --moina-glow-color-2 1000ms ease-in-out,
+    --moina-glow-color-3 1000ms ease-in-out,
+    --moina-glow-color-4 1000ms ease-in-out,
+    --moina-glow-color-5 1000ms ease-in-out,
+    --moina-glow-color-6 1000ms ease-in-out,
+    --moina-glow-stop-1 1000ms ease-in-out,
+    --moina-glow-stop-2 1000ms ease-in-out,
+    --moina-glow-stop-3 1000ms ease-in-out,
+    --moina-glow-stop-4 1000ms ease-in-out,
+    --moina-glow-stop-5 1000ms ease-in-out,
+    --moina-glow-stop-6 1000ms ease-in-out;
+}
 @media (prefers-reduced-motion: reduce) {
-  .entry-edge-stroke {
-    animation: none !important;
-    stroke-dashoffset: 0 !important;
-  }
+  .entry-overlay.edge-glow-animate { transition: none !important; }
 }
