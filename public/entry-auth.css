@@ -88,7 +88,34 @@
   isolation: isolate !important;
   box-sizing: border-box !important;
   min-height: 100dvh;
-  background: #030406 !important;
+  background:
+    radial-gradient(ellipse 59% 39% at 67% 29%,
+      rgba(34, 76, 156, .36) 0%,
+      rgba(20, 43, 93, .25) 34%,
+      rgba(8, 18, 42, .08) 63%,
+      transparent 80%),
+    radial-gradient(ellipse 65% 18% at 88% 40%,
+      rgba(55, 100, 205, .26) 0%,
+      rgba(37, 70, 150, .16) 32%,
+      rgba(23, 41, 91, .06) 61%,
+      transparent 82%),
+    radial-gradient(ellipse 50% 20% at 23% 54%,
+      rgba(114, 99, 220, .19) 0%,
+      rgba(83, 78, 171, .11) 35%,
+      transparent 76%),
+    radial-gradient(ellipse 37% 22% at 0% 68%,
+      rgba(188, 112, 207, .16) 0%,
+      rgba(119, 78, 168, .08) 41%,
+      transparent 78%),
+    radial-gradient(ellipse 32% 22% at 100% 87%,
+      rgba(82, 112, 228, .17) 0%,
+      rgba(68, 77, 170, .08) 42%,
+      transparent 80%),
+    linear-gradient(145deg,
+      #121a32 0%,
+      #0b1227 31%,
+      #070c1c 59%,
+      #030610 100%) !important;
   padding-top: max(24px, env(safe-area-inset-top)) !important;
   padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
   /* Keep the inner edge curvature consistent on narrow and wide phones. */
