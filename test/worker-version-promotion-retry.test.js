@@ -11,8 +11,8 @@ describe("Cloudflare Worker version promotion", () => {
     expect(workflow).toContain('const manifestIconPath = (icon) => (icon.src || "").split("?")[0]');
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-192.svg"');
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-512.svg"');
-    expect(workflow).toContain("askmoina-pwa-shell-v3");
-    expect(workflow).not.toContain("askmoina-pwa-shell-v2");
+    expect(workflow).toContain("askmoina-pwa-shell-v4");
+    expect(workflow).not.toContain("askmoina-pwa-shell-v3");
   });
 
   it("retries temporary version-propagation delays before the guarded health fallback", () => {

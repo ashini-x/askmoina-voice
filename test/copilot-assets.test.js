@@ -14,6 +14,7 @@ const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.met
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
 const signatureMark = readFileSync(new URL("../public/askmoina-mark.svg", import.meta.url), "utf8");
+const favicon = readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8");
 const signatureGeometryPath = signatureMark.match(/<path[^>]* d="([^"]+)"/)?.[1] ?? "";
 const authScript = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
 const serviceWorkerScript = readFileSync(new URL("../public/service-worker.js", import.meta.url), "utf8");
@@ -57,7 +58,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-logo.svg"');
     expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
-    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v3"');
+    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v4"');
     for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg"]) {
       expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.79");
     }
@@ -72,6 +73,7 @@ describe("Live Co-Pilot browser assets", () => {
   it("uses the exact approved signature path in every vector brand variant", () => {
     const vectorFiles = [
       "askmoina-mark.svg",
+      "favicon.svg",
       "askmoina-mark-dark.svg",
       "askmoina-app-icon.svg",
       "askmoina-app-icon-light.svg",
@@ -91,6 +93,7 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps all raster logo variants as valid PNGs at the expected sizes", () => {
     const rasterFiles = [
+      ["favicon-32.png", 32],
       ["askmoina-app-icon-180.png", 180],
       ["askmoina-bird-final.png", 128],
       ["askmoina-bird-mark.png", 64],
@@ -531,8 +534,8 @@ describe("Live Co-Pilot browser assets", () => {
 
 describe("Native mobile-first AskMoina shell", () => {
   it("lands signed-in users on the camera instead of a website product chooser", () => {
-    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.64\", authenticated)");
-    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.64\", true)");
+    expect(workerSource).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.80\", authenticated)");
+    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.80\", true)");
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(workerSource).toContain('url.pathname === "/login" || url.pathname === "/login.html"');
     expect(workerSource).toContain('authenticated ? "camera" : "login"');
@@ -578,7 +581,7 @@ describe("Native mobile-first AskMoina shell", () => {
 
   it("serves secondary information as mobile screens, not blank placeholders with a generic header", () => {
     expect(workerSource).toContain("const NATIVE_SITE_INFO");
-    expect(workerSource).toContain("renderSiteInfoPage(infoPath, env.APP_VERSION || \"0.4.64\")");
+    expect(workerSource).toContain("renderSiteInfoPage(infoPath, env.APP_VERSION || \"0.4.80\")");
     expect(workerSource).toContain("url.searchParams.has(\"view\")");
     expect(workerSource).not.toContain("const pageHtml = withSiteChrome(infoPage");
     for (const phrase of ["A camera-first co-pilot for the real world.", "Developer resources are being prepared.", "Your camera. Your control.", "Partnership and investor information is being prepared.", "Donation processing is not enabled on this page yet"]) {
@@ -937,5 +940,34 @@ describe("Primary camera entry", () => {
     expect(html).toContain("askmoina-orb-control");
     expect(css).not.toContain('body[data-entry-state] .camera-controls');
     expect(css).toContain("z-index:95!important");
+  });
+});
+
+
+
+describe("Dark-first app shell and launch branding", () => {
+  it("uses a circular favicon while retaining the platform-masked Home Screen icon", () => {
+    expect(html).toContain('href="/favicon.svg?v=0.4.80"');
+    expect(html).toContain('href="/favicon-32.png?v=0.4.80"');
+    expect(favicon).toContain('<circle cx="32" cy="32" r="29.5" fill="#ffffff"');
+    expect(favicon).toContain(signatureGeometryPath);
+    expect(workerSource).toContain('href="/favicon.svg?v=0.4.80"');
+    expect(workerSource).toContain('href="/askmoina-app-icon-180.png?v=0.4.80"');
+  });
+
+  it("keeps Co-Pilot, sign-in, install, and app shell surfaces dark by default", () => {
+    expect(html).toContain('<meta name="color-scheme" content="dark">');
+    expect(css).toContain(".entry-overlay{background:#090b0f!important");
+    expect(nativeAppCss).toContain(":root{color-scheme:dark");
+    expect(readFileSync(new URL("../public/install.css", import.meta.url), "utf8")).toContain("color-scheme: dark");
+    expect(workerSource).toContain('const themeColor = "#090b0f"');
+    expect(workerSource).toContain('<meta name="color-scheme" content="dark">');
+  });
+
+  it("shows a short reduced-motion-aware transition before the camera slider", () => {
+    expect(workerSource).toContain('class="app-launch-transition"');
+    expect(nativeAppCss).toContain("@keyframes app-launch-mark-in");
+    expect(nativeAppCss).toContain("@media(prefers-reduced-motion:reduce)");
+    expect(nativeAppCss).toContain(".app-launch-transition");
   });
 });

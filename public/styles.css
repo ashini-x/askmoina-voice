@@ -1,4 +1,4 @@
-:root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;background:#f5f5f3;color:#1d1d1f;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;background:#f5f5f3;color:#1d1d1f;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f5f5f3;color:#1d1d1f}body{min-height:100vh;min-height:100svh}
 button,input{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer;color:inherit}button:disabled{cursor:wait;opacity:.45}a{color:inherit}[hidden]{display:none!important}
 .shell{position:relative;display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100svh;max-width:900px;margin:auto;padding:18px 20px 30px;overflow:hidden}
@@ -51,3 +51,20 @@ html,body{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highli
 @media(hover:none) and (pointer:coarse){
   button,a,[role="button"]{touch-action:manipulation}
 }
+
+
+/* Legacy voice and account surfaces follow the same dark-first app palette. */
+:root{color-scheme:dark;background:#090b0f;color:#f5f5f7}
+html,body,.shell{background:#090b0f!important;color:#f5f5f7!important}
+.app-nav a,.app-nav button{background:rgba(22,25,33,.8);border-color:rgba(255,255,255,.12);color:#f5f5f7;box-shadow:0 4px 18px rgba(0,0,0,.24)}
+.app-nav a:hover,.app-nav button:hover{background:#252a34}
+.orb{background:radial-gradient(circle at 37% 30%,#303541 0,#1b1f28 38%,#11141b 75%,#090b0f 100%);border-color:rgba(255,255,255,.13);box-shadow:0 20px 90px rgba(0,0,0,.35),inset -14px -22px 40px rgba(0,0,0,.25)}
+.orbit,.orbit-two{border-color:rgba(190,202,230,.18)}
+.conversation{background:rgba(15,18,25,.94);border-color:rgba(255,255,255,.12);color:#f5f5f7}
+.from-you{background:#29303c;color:#f5f5f7}
+.from-moina{background:#171b24;color:#f5f5f7;border-color:rgba(255,255,255,.1)}
+.transcript-text{color:#f5f5f7}
+.voice-button{background:#f5f5f7;color:#090b0f}
+.voice-button.is-live{background:#292e38;color:#f5f5f7}
+.voice-button:hover:not(:disabled){background:#fff;color:#090b0f}
+@media(hover:none) and (pointer:coarse){.app-nav a:hover,.app-nav button:hover{background:rgba(22,25,33,.8)}.voice-button:hover:not(:disabled){background:#f5f5f7;color:#090b0f}}

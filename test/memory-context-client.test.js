@@ -26,7 +26,7 @@ describe("static client memory handoff", () => {
     expect(worker).toContain("const ENTRY_AUTH_OVERLAY");
     expect(worker).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(worker).toContain("const NATIVE_APP_MENU_SHEET");
-    expect(worker).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.64\", authenticated)");
+    expect(worker).toContain("withNativeAppShell(html, env.APP_VERSION || \"0.4.80\", authenticated)");
     expect(worker).toContain('authenticated ? "camera" : "login"');
     expect(worker).toContain('authenticated ? "camera" : "login"');
   });
