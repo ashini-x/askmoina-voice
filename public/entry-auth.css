@@ -54,3 +54,25 @@
 @media(max-width:520px){.entry-overlay{padding-left:18px!important;padding-right:18px!important}.entry-auth-panel{padding:22px 5px 20px!important}.entry-auth-panel .entry-page-heading{margin-bottom:23px!important}.entry-auth-options{gap:9px}.entry-auth-option{min-height:55px;padding:0 15px}}
 @media(max-height:610px){.entry-overlay{align-items:flex-start!important}.entry-auth-panel{padding-top:19px!important;padding-bottom:17px!important}.entry-brand-mark{margin-bottom:12px}.entry-auth-panel .entry-page-heading{margin-bottom:17px!important}.entry-auth-option{min-height:51px}.entry-auth-panel .entry-divider{margin-top:18px!important;margin-bottom:12px!important}}
 @media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-phone-flow{animation:none!important}.entry-auth-option{transition:none!important}}
+
+
+/* Interface 3 & 4 — dedicated cross-platform biometric guidance screens. */
+.entry-overlay.is-biometric{align-items:stretch!important;justify-content:stretch!important;padding:0!important;overflow:hidden!important}
+.entry-overlay.is-biometric .entry-auth-panel{display:none!important}
+.biometric-auth-stage{position:relative;box-sizing:border-box;display:flex;flex:1 1 auto;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:100dvh;padding:max(88px,calc(env(safe-area-inset-top) + 48px)) 22px max(36px,calc(env(safe-area-inset-bottom) + 24px));background:#030406;color:#f5f5f7;text-align:center;overflow:hidden;animation:biometric-stage-arrive .32s cubic-bezier(.2,.72,.22,1) both}
+.biometric-stage-content{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:min(100%,350px);margin:auto;transform:translateY(-5px)}
+.biometric-symbol{display:block;width:82px;height:82px;margin:0 0 29px;fill:none;stroke:#f4f4f7;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.biometric-face-symbol{filter:drop-shadow(0 0 10px rgba(225,230,255,.09));animation:biometric-face-breathe 2.6s ease-in-out infinite}
+.biometric-fingerprint-symbol{stroke:#d8a2ff;stroke-width:3.05;filter:drop-shadow(0 0 7px rgba(172,86,255,.6)) drop-shadow(0 0 20px rgba(125,69,230,.24));animation:biometric-fingerprint-breathe 2.25s ease-in-out infinite}
+.biometric-symbol[hidden]{display:none!important}
+.biometric-auth-stage h2{margin:0 0 10px!important;color:#f5f5f7;font-size:clamp(1.15rem,4.8vw,1.35rem);font-weight:570;line-height:1.24;letter-spacing:-.035em}
+.biometric-auth-stage p{max-width:290px;margin:0!important;color:#9b9daa;font-size:.95rem;font-weight:400;line-height:1.45;letter-spacing:-.012em}
+.biometric-cancel{position:absolute;left:50%;bottom:max(42px,calc(env(safe-area-inset-bottom) + 25px));transform:translateX(-50%);display:inline-flex;align-items:center;justify-content:center;min-height:42px;min-width:96px;padding:7px 18px;border:0;border-radius:999px;background:transparent;color:#b4b6c1;font:500 .9rem/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;cursor:pointer;transition:color .18s ease,background .18s ease}
+.biometric-cancel:hover{color:#f5f5f7;background:rgba(255,255,255,.055)}
+.biometric-cancel:focus-visible{outline:2px solid rgba(220,225,255,.8);outline-offset:2px}
+.biometric-cancel:active{color:#fff}
+@keyframes biometric-stage-arrive{from{opacity:0}to{opacity:1}}
+@keyframes biometric-face-breathe{0%,100%{opacity:.88;transform:scale(1)}50%{opacity:1;transform:scale(1.025)}}
+@keyframes biometric-fingerprint-breathe{0%,100%{opacity:.82;transform:scale(.99)}50%{opacity:1;transform:scale(1.035)}}
+@media(max-height:560px){.biometric-auth-stage{padding-top:max(60px,calc(env(safe-area-inset-top) + 24px));padding-bottom:max(70px,calc(env(safe-area-inset-bottom) + 46px))}.biometric-symbol{width:64px;height:64px;margin-bottom:18px}.biometric-auth-stage h2{font-size:1.08rem}.biometric-auth-stage p{font-size:.83rem}.biometric-cancel{bottom:max(22px,calc(env(safe-area-inset-bottom) + 8px))}}
+@media(prefers-reduced-motion:reduce){.biometric-auth-stage,.biometric-face-symbol,.biometric-fingerprint-symbol{animation:none!important}}
