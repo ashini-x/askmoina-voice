@@ -1850,9 +1850,6 @@ html,body{background:#090b0f;color:#f5f5f7}
 .entry-auth-panel .entry-phone-row,.entry-auth-panel .entry-otp-row{background:transparent!important}
 .entry-auth-panel .entry-alternative,.entry-auth-panel .entry-link{color:#64a6ff!important}
 /* Preserve the production safety override: no full-screen edge pulse. */
-.edge-glow{display:none!important}
-
-
 /* askmoina premium type system: platform-native sans, refined headline rhythm. */
 :root,html,body,.camera-app,.camera-stage{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;font-synthesis:none;font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 button,input,textarea,select{font-family:inherit}
@@ -1860,3 +1857,4 @@ h1,h2,h3,h4,h5,h6,.camera-placeholder strong{font-family:-apple-system,BlinkMacS
 h1{letter-spacing:-.045em}
 h2{letter-spacing:-.03em}
 h3,h4,h5,h6{letter-spacing:-.02em}
+.edge-glow{display:none!important}
