@@ -353,6 +353,10 @@
 .entry-edge-layer {
   display: none !important;
 }
+.entry-overlay {
+  /* Cancel the now-unused angle-variable animation from the previous glow. */
+  animation: entry-welcome-fade .36s ease both !important;
+}
 .entry-edge-glow {
   position: fixed !important;
   inset: -8px !important;
@@ -367,6 +371,7 @@
 }
 .entry-glow-field {
   position: absolute;
+  z-index: 1;
   left: -19%;
   top: -13%;
   width: 138%;
@@ -427,6 +432,7 @@
 /* The rim's light is deliberately interrupted and low-opacity, never a solid neon outline. */
 .entry-glow-rim {
   position: absolute;
+  z-index: 2;
   inset: 0;
   display: block;
   box-sizing: border-box;
