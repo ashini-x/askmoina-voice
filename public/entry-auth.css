@@ -340,7 +340,9 @@
 }
 
 
-/* SwiftUI-inspired Intelligence glow: one morphed angular gradient across four blurred strokes. */
+
+/* Interface 1 — faithful SwiftUI-style Intelligence glow. Keep each gradient
+   stop paired with its colour, and use normal source-over compositing. */
 @property --moina-glow-color-1 { syntax: "<color>"; inherits: true; initial-value: #BC82F3; }
 @property --moina-glow-color-2 { syntax: "<color>"; inherits: true; initial-value: #F5B9EA; }
 @property --moina-glow-color-3 { syntax: "<color>"; inherits: true; initial-value: #8D9FFF; }
@@ -366,7 +368,6 @@
   z-index: 0;
   display: block;
   overflow: visible;
-  border-radius: 0;
   pointer-events: none;
   user-select: none;
   isolation: isolate;
@@ -376,46 +377,40 @@
   inset: 0;
   display: block;
   box-sizing: border-box;
-  border-radius: 55px;
+  border: 0;
+  border-radius: clamp(38px, 12.5vw, 55px);
   background: conic-gradient(
     from 0deg,
-    var(--moina-glow-color-1) 0%,
     var(--moina-glow-color-1) var(--moina-glow-stop-1),
     var(--moina-glow-color-2) var(--moina-glow-stop-2),
     var(--moina-glow-color-3) var(--moina-glow-stop-3),
     var(--moina-glow-color-4) var(--moina-glow-stop-4),
     var(--moina-glow-color-5) var(--moina-glow-stop-5),
-    var(--moina-glow-color-6) var(--moina-glow-stop-6),
-    var(--moina-glow-color-1) 100%
+    var(--moina-glow-color-6) var(--moina-glow-stop-6)
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  transform: translateZ(0);
 }
 .entry-edge-sharp {
   padding: 6px;
-  opacity: 1;
-  filter: none;
+  transform: translate3d(0, -26px, 0);
 }
 .entry-edge-blur-4 {
   padding: 9px;
-  opacity: 1;
   filter: blur(4px);
-  mix-blend-mode: screen;
+  transform: translate3d(0, -17px, 0);
 }
 .entry-edge-blur-12 {
   padding: 11px;
-  opacity: 1;
   filter: blur(12px);
-  mix-blend-mode: screen;
+  transform: translate3d(0, -17px, 0);
 }
 .entry-edge-blur-15 {
   padding: 15px;
-  opacity: 1;
   filter: blur(15px);
-  mix-blend-mode: screen;
+  transform: translate3d(0, -17px, 0);
 }
 .entry-overlay.edge-glow-animate {
   transition:
