@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import worker from "../src/index";
 import { handleAuthRequest, getAuthenticatedUserId } from "../src/auth/accounts";
 import type { Env } from "../src/config/env";
@@ -60,6 +61,14 @@ describe("unique account ID and no-guest access", () => {
     expect(html).toContain("Continue with Face ID or Touch ID");
     expect(html).toContain("OR USE YOUR PHONE");
     expect(html).toContain('id="phoneCountry"');
+    expect(html).toContain('id="biometricSymbol"');
+    expect(html).not.toContain('id="biometricFaceSymbol"');
+    expect(html).not.toContain('id="biometricFingerprintSymbol"');
+    const authSource = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
+    expect(authSource).toContain('symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP');
+    expect(authSource).toContain('symbol.classList.toggle("biometric-face-symbol", isFace)');
+    expect(authSource).toContain('symbol.classList.toggle("biometric-fingerprint-symbol", !isFace)');
+    expect(html).toContain('<script src="/auth.js?v=0.4.86" defer></script>');
     expect(html).not.toContain('<script src="/copilot.js"');
     expect(html).not.toContain('<script src="/transcript-merge.js"');
 
