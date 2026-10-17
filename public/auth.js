@@ -282,7 +282,7 @@
     if (launchScreen) launchScreen.hidden = false;
     document.body.classList.add("auth-transitioning");
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const next = destination === "/" && document.body.dataset.page !== "account" ? "/?onboarding=1" : destination;
+    const next = destination;
     window.location.replace(next);
   }
 
