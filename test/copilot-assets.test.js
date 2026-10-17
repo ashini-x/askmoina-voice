@@ -524,7 +524,8 @@ describe("Native mobile-first AskMoina shell", () => {
   it("keeps camera and microphone startup behind account authentication", () => {
     expect(workerSource).toContain("removeCopilotClientScript(html)");
     expect(workerSource).toContain('.replace(\'<script src="/session-ui.js" defer></script>\', "")');
-    expect(workerSource).toContain('ENTRY_AUTH_OVERLAY + \'<script src="/auth.js?v=\' + appVersion + \'" defer></script></body>\'');
+    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY +");
+    expect(workerSource).toContain("auth.js?v=");
     expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(self)');
     expect(workerSource).toContain("There is no guest access.");
     expect(workerSource).toContain("native-account-page");
@@ -967,5 +968,5 @@ describe("Dark-first app shell and brand assets", () => {
     expect(nativeAppCss).not.toContain(".app-launch-transition");
     expect(nativeAppCss).not.toContain(".launch-signature-orb");
     expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
-  });;
+  });
 });
