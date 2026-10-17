@@ -129,8 +129,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("width:28px!important;height:28px!important;stroke-width:1.65!important;");
     expect(css).toContain("@media(max-width:380px)");
     expect(css).toContain("flex:0 0 52px!important;width:52px!important;height:52px!important;");
-    expect(html).toContain('/copilot.css?v=0.4.89');
-    expect(html).toContain('/copilot.js?v=0.4.89');
+    expect(html).toContain('/copilot.css?v=0.4.90');
+    expect(html).toContain('/copilot.js?v=0.4.90');
   });
 
   it("keeps speech-reactive animation on the orb but disables the full-screen edge overlay", () => {
@@ -189,8 +189,8 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("@media(prefers-reduced-motion:reduce)");
     expect(css).toContain('#toggleCopilot.askmoina-orb-control[data-orb-state="processing"] .askmoina-orb-interior::before');
     expect(html).not.toContain('class="askmoina-control-mark"');
-    expect(html).toContain('/copilot.css?v=0.4.89');
-    expect(html).toContain('/copilot.js?v=0.4.89');
+    expect(html).toContain('/copilot.css?v=0.4.90');
+    expect(html).toContain('/copilot.js?v=0.4.90');
     expect(css).not.toContain('mask-image:url("/askmoina-mark.svg');
     expect(css).not.toContain(".askmoina-control-mark");
   });
