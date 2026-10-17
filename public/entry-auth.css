@@ -103,53 +103,82 @@
   mix-blend-mode: screen;
 }
 .entry-overlay::before {
+  /* Broad atmospheric bloom: a blurred wave, never a continuous border. */
   z-index: 0;
-  inset: -46px;
-  background:
-    radial-gradient(ellipse 54% 24% at -3% 1%, rgba(70, 142, 255, .84) 0%, rgba(85, 121, 255, .43) 31%, transparent 78%),
-    radial-gradient(ellipse 43% 31% at 103% 4%, rgba(224, 126, 255, .72) 0%, rgba(141, 114, 255, .38) 36%, transparent 79%),
-    radial-gradient(ellipse 49% 28% at 101% 103%, rgba(82, 118, 255, .78) 0%, rgba(151, 103, 255, .36) 37%, transparent 80%),
-    radial-gradient(ellipse 46% 31% at -2% 99%, rgba(255, 178, 171, .7) 0%, rgba(221, 123, 250, .38) 38%, transparent 79%),
-    radial-gradient(ellipse 74% 18% at 47% -3%, rgba(83, 185, 255, .48) 0%, rgba(112, 140, 255, .19) 38%, transparent 82%),
-    radial-gradient(ellipse 75% 20% at 55% 103%, rgba(183, 106, 255, .46) 0%, rgba(120, 119, 255, .18) 39%, transparent 82%),
-    radial-gradient(ellipse 23% 62% at -3% 48%, rgba(96, 128, 255, .34) 0%, transparent 78%),
-    radial-gradient(ellipse 24% 62% at 103% 56%, rgba(171, 119, 255, .32) 0%, transparent 79%);
-  filter: blur(34px) saturate(155%);
-  opacity: .88;
-  transform: translate3d(-.8%, -.4%, 0) scale(1.025);
-  transform-origin: center;
-  animation: askmoina-edge-wave-field 11s cubic-bezier(.45, 0, .55, 1) infinite alternate;
-}
-.entry-overlay::after {
-  z-index: 1;
-  inset: -30px;
+  inset: -58px;
   box-sizing: border-box;
   border: 0;
-  border-radius: clamp(48px, 9vw, 78px);
-  padding: 40px;
+  border-radius: clamp(58px, 11vw, 88px);
+  padding: 66px;
   background: conic-gradient(
     from var(--askmoina-edge-angle, 0deg),
-    rgba(82, 199, 255, .78) 0deg,
-    rgba(95, 126, 255, .78) 43deg,
-    rgba(156, 114, 255, .82) 82deg,
-    rgba(238, 147, 255, .75) 128deg,
-    rgba(255, 190, 216, .72) 169deg,
-    rgba(255, 220, 177, .7) 211deg,
-    rgba(223, 157, 255, .72) 253deg,
-    rgba(96, 113, 255, .8) 302deg,
-    rgba(91, 221, 255, .8) 345deg,
-    rgba(82, 199, 255, .78) 360deg
+    rgba(72, 151, 255, 0) 0deg,
+    rgba(72, 151, 255, 0) 143deg,
+    rgba(74, 146, 255, .012) 164deg,
+    rgba(89, 132, 255, .035) 188deg,
+    rgba(111, 119, 255, .075) 211deg,
+    rgba(141, 107, 255, .14) 235deg,
+    rgba(171, 105, 255, .26) 255deg,
+    rgba(207, 116, 255, .43) 275deg,
+    rgba(237, 151, 255, .65) 291deg,
+    rgba(255, 206, 229, .82) 304deg,
+    rgba(151, 181, 255, .7) 316deg,
+    rgba(93, 194, 255, .44) 330deg,
+    rgba(89, 171, 255, .19) 343deg,
+    rgba(105, 151, 255, .035) 354deg,
+    rgba(72, 151, 255, 0) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: blur(55px) saturate(165%);
+  opacity: .92;
+  transform: translate3d(-.8%, -.6%, 0) scale(1.02);
+  transform-origin: center;
+  animation:
+    askmoina-edge-spectrum 10.5s linear infinite,
+    askmoina-edge-halo-breathe 7.8s ease-in-out infinite alternate;
+}
+.entry-overlay::after {
+  /* Dimmer, fuller light mass supplies the travelling "head" and fading tail. */
+  z-index: 1;
+  inset: -27px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: clamp(47px, 9vw, 70px);
+  padding: 38px;
+  background: conic-gradient(
+    from var(--askmoina-edge-angle, 0deg),
+    rgba(72, 151, 255, 0) 0deg,
+    rgba(72, 151, 255, 0) 143deg,
+    rgba(74, 146, 255, .018) 164deg,
+    rgba(89, 132, 255, .045) 188deg,
+    rgba(111, 119, 255, .095) 211deg,
+    rgba(141, 107, 255, .18) 235deg,
+    rgba(171, 105, 255, .33) 255deg,
+    rgba(207, 116, 255, .52) 275deg,
+    rgba(237, 151, 255, .76) 291deg,
+    rgba(255, 206, 229, .96) 304deg,
+    rgba(151, 181, 255, .84) 316deg,
+    rgba(93, 194, 255, .59) 330deg,
+    rgba(89, 171, 255, .3) 343deg,
+    rgba(105, 151, 255, .055) 354deg,
+    rgba(72, 151, 255, 0) 360deg
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   filter:
-    blur(27px)
-    drop-shadow(0 0 15px rgba(113, 139, 255, .35))
-    drop-shadow(0 0 32px rgba(214, 115, 255, .22));
-  opacity: .72;
-  animation: askmoina-edge-spectrum 9s linear infinite;
+    blur(28px)
+    drop-shadow(0 0 16px rgba(113, 139, 255, .23))
+    drop-shadow(0 0 34px rgba(214, 115, 255, .14));
+  opacity: .76;
+  transform-origin: center;
+  animation:
+    askmoina-edge-spectrum 10.5s linear infinite,
+    askmoina-edge-head-breathe 5.6s ease-in-out infinite alternate;
 }
 .entry-auth-panel {
   z-index: 2 !important;
@@ -283,26 +312,35 @@
   from { --askmoina-edge-angle: 0deg; }
   to { --askmoina-edge-angle: 360deg; }
 }
-@keyframes askmoina-edge-wave-field {
+@keyframes askmoina-edge-halo-breathe {
   0% {
-    opacity: .72;
-    transform: translate3d(-1.6%, -.7%, 0) scale(1.02);
-    filter: blur(37px) saturate(145%);
+    opacity: .7;
+    transform: translate3d(-1.1%, -.7%, 0) scale(1.015);
+    filter: blur(58px) saturate(145%);
   }
-  36% {
-    opacity: .96;
-    transform: translate3d(1.1%, .9%, 0) scale(1.045);
-    filter: blur(43px) saturate(165%);
-  }
-  68% {
-    opacity: .82;
-    transform: translate3d(-.5%, .2%, 0) scale(1.035);
-    filter: blur(32px) saturate(155%);
+  43% {
+    opacity: .98;
+    transform: translate3d(.5%, .5%, 0) scale(1.045);
+    filter: blur(66px) saturate(178%);
   }
   100% {
-    opacity: .94;
-    transform: translate3d(.8%, -.8%, 0) scale(1.055);
-    filter: blur(40px) saturate(170%);
+    opacity: .8;
+    transform: translate3d(.8%, -.3%, 0) scale(1.025);
+    filter: blur(53px) saturate(158%);
+  }
+}
+@keyframes askmoina-edge-head-breathe {
+  0% {
+    opacity: .62;
+    filter: blur(32px) drop-shadow(0 0 18px rgba(113, 139, 255, .18));
+  }
+  55% {
+    opacity: .87;
+    filter: blur(25px) drop-shadow(0 0 22px rgba(173, 127, 255, .24));
+  }
+  100% {
+    opacity: .7;
+    filter: blur(30px) drop-shadow(0 0 20px rgba(113, 177, 255, .2));
   }
 }
 @keyframes askmoina-panel-arrive {
