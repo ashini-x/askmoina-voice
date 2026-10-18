@@ -216,3 +216,102 @@
   }
 }
 
+
+
+/* Interface 06 spacing refinement — full-width, evenly balanced cards. */
+.experience-selection-content {
+  width: min(100%, 460px);
+  height: 100%;
+  min-height: 100%;
+  padding: max(calc(env(safe-area-inset-top,0px) + 18px), clamp(24px, 5.2dvh, 42px))
+    max(18px,env(safe-area-inset-right,0px))
+    max(calc(env(safe-area-inset-bottom,0px) + 20px), 24px)
+    max(18px,env(safe-area-inset-left,0px));
+}
+.experience-selection-eyebrow {
+  margin: 0 0 clamp(18px, 2.5dvh, 24px) 2px;
+}
+.experience-selection-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2dvh, 18px);
+  align-content: stretch;
+}
+.experience-card,
+.experience-card--available,
+.experience-card--preview {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  aspect-ratio: auto;
+  padding: clamp(20px, 4.8vw, 27px);
+  border-radius: 24px;
+}
+.experience-card-header {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  padding-right: 28px;
+  gap: 8px;
+  transform: none;
+}
+.experience-card-title {
+  font-size: clamp(24px, 5.8vw, 28px);
+  line-height: 1.12;
+}
+.experience-card-chevron {
+  top: 3px;
+  width: 19px;
+  height: 19px;
+}
+.experience-status-pill {
+  max-width: none;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+.experience-feature-list {
+  flex: 1 1 auto;
+  width: 100%;
+  margin-top: clamp(20px, 3dvh, 26px);
+  gap: clamp(10px, 1.5dvh, 13px);
+  align-content: start;
+  transform: none;
+}
+.experience-feature-row {
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  font-size: clamp(13px, 3.6vw, 14px);
+  line-height: 1.35;
+}
+.experience-feature-check {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+.experience-card--preview {
+  border-color: rgba(126, 137, 164, .22);
+}
+@media (max-height: 700px) {
+  .experience-selection-content {
+    height: auto;
+    min-height: 100%;
+    padding-top: max(calc(env(safe-area-inset-top,0px) + 14px), 4dvh);
+  }
+  .experience-selection-cards {
+    flex: 0 0 auto;
+    grid-template-rows: repeat(2, minmax(225px, 1fr));
+    gap: 14px;
+  }
+  .experience-card,
+  .experience-card--available,
+  .experience-card--preview {
+    min-height: 225px;
+  }
+}
