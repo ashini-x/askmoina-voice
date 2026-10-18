@@ -39,8 +39,8 @@ function withFluidInteractivity(html: string, version: string): string {
   if (headStart < 0 || headEnd < 0 ||
       !(next === ">" || next === " " || next === "\n" || next === "\r" || next === "\t")) return html;
   const v = encodeURIComponent(version || "dev");
-  const styles = '<link rel="stylesheet" href="/fluid-interactivity.css?v=' + v + '">';
-  const script = '<script defer src="/fluid-interactivity.js?v=' + v + '"></script>';
+  const styles = '<link rel="stylesheet" href="/fluid-interactivity.css?v=' + v + '&motion=20261018-1">';
+  const script = '<script defer src="/fluid-interactivity.js?v=' + v + '&motion=20261018-1"></script>';
   // Deferred shared motion code is inserted first so the existing controllers can bind to it.
   return html.slice(0, headEnd + 1) + styles + script + html.slice(headEnd + 1);
 }
@@ -3207,8 +3207,8 @@ export default {
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
         const experienceAssetVersion = encodeURIComponent(appVersion);
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '" defer></script></body>');
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1" defer></script></body>');
 
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
