@@ -282,6 +282,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/askmoina-logo-dark.svg",
   "/askmoina-social-avatar.svg",
   "/askmoina-visual-guide.svg",
+  "/askmoina-liquid-intelligence-orb-v1-smoky-core.webp",
 ]);
 
 const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
@@ -309,6 +310,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/askmoina-logo-dark.svg": "image/svg+xml; charset=utf-8",
   "/askmoina-social-avatar.svg": "image/svg+xml; charset=utf-8",
   "/askmoina-visual-guide.svg": "image/svg+xml; charset=utf-8",
+  "/askmoina-liquid-intelligence-orb-v1-smoky-core.webp": "image/webp",
 };
 
 const PWA_STANDALONE_APP_PATHS = new Set([
