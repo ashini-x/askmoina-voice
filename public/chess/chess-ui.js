@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.144";
+import { recognizeChessboardFrame, boardRowsToFen, retryStableChessboardRecognition, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.145";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -394,11 +394,11 @@ import {
     const elapsed = Date.now() - lastRecognitionCompletedAt;
     const waitMs = Math.max(0, CONFIRM_SCAN_INTERVAL_MS - elapsed);
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
-    const secondResult = await recognizeOneFrame();
-    return verifyStableChessboardRecognition({
-      ok: true,
-      recognition: firstRecognition
-    }, secondResult);
+    return retryStableChessboardRecognition(
+      firstRecognition,
+      () => recognizeOneFrame(),
+      { maxAttempts: 2, retryDelayMs: 450 }
+    );
   }
 
   function startBackgroundConfirmation(recognition) {
@@ -429,10 +429,13 @@ import {
     let result;
     if (pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement) {
       result = await pendingRecognitionConfirmation.promise;
-    }
-    if (!result || !result.ok) {
+      if (result && result.ok) return result;
+      // A cached background failure is stale, not a verdict about the current
+      // frame. Clear it and perform a fresh bounded confirmation sequence.
       pendingRecognitionConfirmation = null;
-      if (result) return result;
+      result = null;
+    }
+    if (!result) {
       result = await confirmStableRecognition(recognition).catch((error) => ({
         ok: false,
         reason: "confirmation_scan_failed",
@@ -496,6 +499,7 @@ import {
         const confirmation = await confirmStableRecognition(observation);
         if (!confirmation.ok) {
           setStatus("Couldn’t confirm the position", confirmation.message, "warning");
+          scheduleDetection(BASE_RETRY_MS);
           return;
         }
         observation = confirmation.recognition;
