@@ -28,7 +28,7 @@ PROMPTS = [
     "What is one easy way to organize a desk?",
     "Explain photosynthesis in very simple words.",
     "Say something encouraging before an exam.",
-    "What is the capital of Assam?",
+    "Tell me one interesting fact about ordinary household magnets.",
     "Name one simple way to save phone battery.",
     "Give me one tip for staying focused while reading.",
     "What is one easy way to remember a new word?",
