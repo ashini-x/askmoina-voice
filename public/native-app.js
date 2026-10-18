@@ -33,7 +33,7 @@
     closer?.focus({ preventScroll: true });
   };
 
-  const close = (exitVelocityY = 0) => {
+  const close = (exitVelocityY = 0, exitY = 24) => {
     if (sheet.hidden || isClosing) return;
     isClosing = true;
     const epoch = ++closeEpoch;
@@ -50,7 +50,7 @@
       remaining--;
       if (remaining === 0) finishClose(epoch);
     };
-    engine.animate(panel, { y: 24, opacity: 0.72 }, engine.profiles.exit, {
+    engine.animate(panel, { y: Math.max(24, exitY), opacity: 0.72 }, engine.profiles.exit, {
       velocity: { y: Math.max(0, exitVelocityY), opacity: exitVelocityY > 0 ? -0.12 : 0 },
       onComplete: oneFinished
     });
@@ -109,7 +109,8 @@
       drag = null;
       try { grabber.releasePointerCapture(event.pointerId); } catch (_) {}
       if (released.y > 96 || released.velocityY > 680) {
-        close(released.velocityY);
+        const exitY = Math.max(released.y + 48, panel.getBoundingClientRect().height * 0.45);
+        close(released.velocityY, exitY);
         return;
       }
       const engine = motion();
