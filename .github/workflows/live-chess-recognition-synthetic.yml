@@ -66,22 +66,25 @@ jobs:
             ui_status="$(curl --silent --show-error --max-time 10 --output /tmp/chess-ui.js --write-out '%{http_code}' \
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
               "$BASE_URL/chess/chess-ui.js?v=0.4.145" || true)"
-            if [[ "$client_status" == "200" && "$ui_status" == "200" ]] &&
+            engine_status="$(curl --silent --show-error --max-time 10 --dump-header /tmp/stockfish.headers --output /dev/null --write-out '%{http_code}' \
+              "$BASE_URL/chess/stockfish-19-lite-single.js" || true)"
+            if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" ]] &&
                grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&
                grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js &&
                grep -Fq 'retryStableChessboardRecognition' /tmp/chess-ui.js &&
-               grep -Fq 'recognition-client.js?v=0.4.145' /tmp/chess-ui.js; then
+               grep -Fq 'recognition-client.js?v=0.4.145' /tmp/chess-ui.js &&
+               grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/stockfish.headers; then
               ready=true
               break
             fi
-            echo "Waiting for the second-read retry fix (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response})."
+            echo "Waiting for the deployed chess fixes (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response}, engine HTTP ${engine_status:-no-response}, WASM CSP pending)."
             sleep 5
           done
           if [[ "$ready" != "true" ]]; then
-            echo "::error::The deployed chess client did not expose the expected confirmation-retry code."
+            echo "::error::The deployed chess client/Stockfish worker did not expose the expected confirmation-retry and WASM CSP fixes."
             exit 1
           fi
-          echo "Production client and UI both contain the second-read retry fix."
+          echo "Production recognition retry is ready and Stockfish worker CSP allows WebAssembly compilation."
 
       - name: Verify the live digital chessboard end to end
         run: node scripts/live-chess-recognition-smoke.mjs
