@@ -12,6 +12,7 @@ const suite = JSON.parse(readFileSync(
 ));
 
 const candidates = suite.candidates as AssameseConversationReferenceRow[];
+const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 function row(overrides: Partial<AssameseConversationReferenceRow> = {}): AssameseConversationReferenceRow {
   return {
@@ -39,6 +40,15 @@ function mockDb(
 }
 
 describe("M5 query-aware Assamese contextual retrieval", () => {
+  it("exposes retrieval as a server-side Live tool without preloading all reviewed examples", () => {
+    expect(workerSource).toContain('name: "retrieve_assamese_conversation_reference"');
+    expect(workerSource).toContain("retrieveAssameseConversationReferences(env.DB, query)");
+    expect(workerSource).toContain("ASSAMESE_REFERENCE_SEARCH_FUNCTION");
+    expect(workerSource).toContain("SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION");
+    expect(workerSource).not.toContain("buildAssameseConversationReferenceInstruction(env.DB)");
+    expect(workerSource).toContain('call?.name !== "retrieve_assamese_conversation_reference"');
+  });
+
   it("beats priority-only selection on the synthetic held-out top-three benchmark", () => {
     const limit = suite.retrieval_limits.result_limit as number;
     const baseline = [...candidates].sort((a, b) => a.priority - b.priority).slice(0, limit);
