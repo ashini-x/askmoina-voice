@@ -85,3 +85,10 @@
 @media (max-height: 700px) {
   .experience-selection-content { padding-top: max(calc(env(safe-area-inset-top,0px) + 12px), 6.8dvh); }
 }
+
+/* Interface 06: typography-led cards, with product artwork intentionally removed. */
+.experience-card { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+.experience-card-header { grid-column: 1; grid-row: 1; margin-top: 0; padding-right: 23px; transform: none; }
+.experience-feature-list { grid-column: 1; grid-row: 2; align-self: stretch; gap: clamp(5px, .8vh, 8px); margin-top: 10px; transform: none; }
+.experience-product-art, .experience-product-art::after, .experience-glass-art { display: none !important; }
+@media (max-width: 380px) { .experience-card { grid-template-columns: minmax(0, 1fr); column-gap: 0; } .experience-card-header { transform: none; } .experience-feature-list { gap: 4px; margin-top: 7px; transform: none; } }
