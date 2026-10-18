@@ -43,23 +43,59 @@
     });
   }
 
+  let sheetMotionEpoch = 0;
   function showSheet(title, message) {
     if (!sheet) return;
+    const wasHidden = sheet.hidden;
+    sheetMotionEpoch++;
+    sheet.dataset.springClosing = "false";
     const heading = $("#sheetTitle");
     const copy = $("#sheetCopy");
     if (heading) heading.textContent = title;
     if (copy) copy.textContent = message;
     sheet.hidden = false;
+    const engine = window.__askmoinaFluidMotion;
+    if (engine) {
+      const card = sheet.querySelector(".sheet-card");
+      engine.animate(sheet, { opacity: 1 }, engine.profiles.sheet,
+        { ...(wasHidden ? { from: { opacity: 0.01 } } : {}), persistTarget: true });
+      if (card) engine.animate(card, { y: 0, opacity: 1, scale: 1 }, engine.profiles.sheet,
+        { ...(wasHidden ? { from: { y: 12, opacity: 0, scale: 0.985 } } : {}), persistTarget: true });
+    }
   }
 
   function hideSheet() {
-    if (sheet) sheet.hidden = true;
-    verificationInProgress = false;
     const cancelButton = $("#cancelAuth");
-    if (cancelButton) {
-      cancelButton.hidden = false;
-      cancelButton.disabled = false;
+    const finish = () => {
+      if (sheet) {
+        sheet.hidden = true;
+        sheet.dataset.springClosing = "false";
+      }
+      verificationInProgress = false;
+      if (cancelButton) {
+        cancelButton.hidden = false;
+        cancelButton.disabled = false;
+      }
+    };
+    if (!sheet || sheet.hidden) {
+      finish();
+      return;
     }
+    const epoch = ++sheetMotionEpoch;
+    sheet.dataset.springClosing = "true";
+    const engine = window.__askmoinaFluidMotion;
+    const card = sheet.querySelector(".sheet-card");
+    if (!engine || !card) {
+      finish();
+      return;
+    }
+    let remaining = 2;
+    const oneFinished = () => {
+      if (epoch !== sheetMotionEpoch || sheet.dataset.springClosing !== "true") return;
+      if (--remaining === 0) finish();
+    };
+    engine.animate(card, { y: 12, opacity: 0, scale: 0.985 }, engine.profiles.exit, { onComplete: oneFinished });
+    engine.animate(sheet, { opacity: 0.01 }, engine.profiles.exit, { onComplete: oneFinished });
   }
 
   // Fixed vector paths; a single SVG element prevents two biometric marks showing together.
