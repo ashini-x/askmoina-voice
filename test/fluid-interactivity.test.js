@@ -42,7 +42,7 @@ describe("AskMoina fluid interactivity", () => {
     expect(worker).toContain('"/fluid-interactivity.css"');
     expect(worker).toContain('url.pathname === "/fluid-interactivity.js"');
     expect(worker).toContain('url.pathname === "/fluid-interactivity.css"');
-    expect(worker).toContain("return withFluidInteractivity(html, appVersion)");
+    expect(worker).toContain("html = withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, \"0.4.80\")");
   });
