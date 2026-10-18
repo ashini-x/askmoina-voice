@@ -110,7 +110,7 @@ import {
     if (gameState && gameState.gameMode === "midgame-seed") {
       const note = document.createElement("li");
       note.className = "chess-history-warning";
-      note.textContent = "Historical castling/en-passant rights are unknown for this seeded position; moves requiring unknown rights will not be inferred.";
+      note.textContent = gameState.rightsKnown ? "Earlier moves and en-passant eligibility are unknown; castling rights were confirmed by you." : "Earlier moves, castling rights, and en-passant eligibility are unknown and will not be inferred.";
       moveListNode.appendChild(note);
     }
   }
@@ -234,7 +234,7 @@ import {
       persistGame();
       sideToMoveNode.value = seeded.state.currentFen.split(" ")[1];
       renderPosition(seeded.position, null);
-      const rightsMessage = rightsKnown ? " Confirmed castling rights will be tracked." : " Historical castling/en-passant rights remain unknown and will not be guessed.";
+      const rightsMessage = " Earlier moves and en-passant eligibility remain unknown." + (rightsKnown ? " Confirmed castling rights will be tracked." : " Castling rights also remain unknown and will not be guessed.");
       setStatus("Position seeded successfully." + rightsMessage, "success");
       await analyzeCurrentPosition();
     } catch (error) {
