@@ -16,6 +16,23 @@
   }
 
   let previewNoticeTimer = 0;
+
+  function showExperienceSelection() {
+    overlay.hidden = false;
+    overlay.classList.remove("is-leaving");
+    document.body.classList.add("experience-selection-open");
+    if (previewNoticeTimer) window.clearTimeout(previewNoticeTimer);
+    previewNoticeTimer = 0;
+    if (previewNotice) previewNotice.hidden = true;
+    if (cameraApp) {
+      cameraApp.setAttribute("aria-hidden", "true");
+      cameraApp.inert = true;
+    }
+    availableCard.focus({ preventScroll: true });
+  }
+
+  window.addEventListener("askmoina:user-disconnected", showExperienceSelection);
+
   previewCard.addEventListener("click", () => {
     if (!previewNotice) return;
     previewNotice.hidden = false;
