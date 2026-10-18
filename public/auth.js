@@ -235,13 +235,17 @@
       // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.create({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled passkey creation.");
-      showVerificationTransition("Creating your account…", "Your device is verified. We're opening askmoina.");
+      const destination = document.body.dataset.page === "account" ? "/account" : "/";
+      showVerificationTransition(
+        destination === "/" ? "Starting MoinaOS" : "Saving your secure account…",
+        destination === "/" ? "Just a moment..." : "Your device is verified. Updating your account."
+      );
       await post("passkey/register/verify", {
         challengeId: options.challengeId,
         credential: registration(credential)
       });
-      // Keep the verification overlay visible until the authenticated page replaces this one.
-      await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
+      // Keep the matching loading overlay visible until the destination replaces this page.
+      await navigateAfterAuth(destination);
     } catch (error) {
       hideSheet();
       showBiometricStage(null);
@@ -273,12 +277,12 @@
       // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.get({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled sign-in.");
-      showVerificationTransition("Signing you in…", "Verifying your device and opening askmoina.");
+      showVerificationTransition("Starting MoinaOS", "Just a moment...");
       await post("passkey/login/verify", {
         challengeId: options.challengeId,
         credential: authentication(credential)
       });
-      // Keep the verification overlay visible until the authenticated page replaces this one.
+      // The Worker renders MoinaOS immediately beneath the same startup overlay.
       await navigateAfterAuth("/");
     } catch (error) {
       hideSheet();
@@ -300,8 +304,9 @@
   }
 
   async function navigateAfterAuth(destination) {
-    // Go straight to the authenticated experience; no extra startup interstitial or timed wait.
-    window.location.replace(destination);
+    // Keep the experience visible beneath its loading overlay while the page finishes loading.
+    const next = destination === "/" ? "/?startup=1" : destination;
+    window.location.replace(next);
   }
 
   function setMode(mode) {
@@ -386,8 +391,8 @@
     setBusy(true);
     const accountPage = document.body.dataset.page === "account";
     showVerificationTransition(
-      accountPage ? "Saving verified number…" : "Verifying your number…",
-      accountPage ? "Finishing the security update." : "Checking your code and opening askmoina."
+      accountPage ? "Saving verified number…" : "Starting MoinaOS",
+      accountPage ? "Finishing the security update." : "Just a moment..."
     );
     try {
       await post("phone/verify", { challengeId: pendingChallengeId, phone: pendingPhone, code });
