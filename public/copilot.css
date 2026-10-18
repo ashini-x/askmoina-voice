@@ -479,11 +479,11 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 .camera-stage.pre-start #videoPreview{filter:blur(13px) saturate(.78) brightness(.66);transform:scale(1.055);transition:filter .65s ease,transform .65s ease}
 .camera-stage.pre-start{background:radial-gradient(ellipse at 50% 46%,#181b24 0,#0b0c11 54%,#07080b 100%)}
 .camera-stage.pre-start .camera-controls,.camera-stage.is-connecting .camera-controls{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .25s ease}
-.camera-stage.pre-start .show-problem-button{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}
-.camera-stage.is-connecting .show-problem-button,.camera-stage.voice-active .show-problem-button{opacity:0;pointer-events:none;transform:translate(-50%,9px) scale(.97)}
-.show-problem-button{position:absolute;z-index:45;left:50%;bottom:calc(23% + env(safe-area-inset-bottom)*.1);display:flex;align-items:center;justify-content:center;gap:12px;width:max-content;max-width:calc(100% - 38px);min-height:61px;padding:0 clamp(20px,4vw,30px);border:1px solid #ffffffb3;border-radius:20px;background:#f9f9f7e8;color:#1d1d1f;font-size:clamp(.76rem,2.8vw,.91rem);font-weight:740;letter-spacing:.075em;box-shadow:0 15px 54px #0004,inset 0 1px #ffffffd9;backdrop-filter:blur(34px) saturate(150%);-webkit-backdrop-filter:blur(34px) saturate(150%);cursor:pointer;transition:opacity .25s ease,transform .25s ease,background .2s ease;white-space:nowrap}
-.show-problem-button svg{width:22px;height:22px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.show-problem-button:hover{background:#fff}.show-problem-button:focus-visible{outline:3px solid #dce4ffe6;outline-offset:4px}
+
+
+
+
+
 .edge-glow{position:absolute;z-index:80;inset:0;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .45s ease}
 .edge-glow:before,.edge-glow:after{content:"";position:absolute;inset:0;padding:4px;background:conic-gradient(from 0deg,#91b8ff,#bca7ff 18%,#f3c2d7 33%,#a7e5e2 51%,#c7d7ff 68%,#e9d8b0 84%,#91b8ff);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:edge-orbit 8s linear infinite}
 .edge-glow:after{padding:8px;filter:blur(11px);opacity:.62}
@@ -535,10 +535,10 @@ html,body,.camera-app,.camera-stage{background:#08090c;color:#fff;font-family:-a
 .entry-product-card.is-disabled .entry-product-icon{color:#9b9ba0;background:#f4f4f28f;border-color:#ffffff99}.entry-product-card.is-disabled .entry-product-meta{color:#aaaab0}
 .entry-signout{position:fixed;z-index:4;top:max(19px,env(safe-area-inset-top));right:max(19px,env(safe-area-inset-right));display:grid;place-items:center;width:39px;height:39px;border:1px solid #ffffffb3;border-radius:50%;background:#ffffff99;color:#3b3b40;box-shadow:0 5px 19px #14191e0d;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
 .entry-signout svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.entry-signout:disabled{opacity:.45}
-body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .floating-top,body[data-entry-state="login"] .camera-controls,body[data-entry-state="products"] .camera-controls,body[data-entry-state="login"] .show-problem-button,body[data-entry-state="products"] .show-problem-button{display:none!important}
+body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .floating-top,body[data-entry-state="login"] .camera-controls,body[data-entry-state="products"] .camera-controls{display:none!important}
 @keyframes entry-fade{from{opacity:0}to{opacity:1}}@keyframes entry-arrive{from{opacity:0;transform:translateY(11px) scale(.992)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:520px){.entry-overlay{padding-left:12px;padding-right:12px}.entry-auth-panel{border-radius:25px;padding:23px 17px 20px}.entry-products{grid-template-columns:1fr;gap:11px}.entry-product-panel{padding:0;width:min(100%,400px)}.entry-product-card{min-height:clamp(135px,22vh,190px);border-radius:23px;padding:20px}.entry-product-icon{width:46px;height:46px;border-radius:16px}.entry-product-arrow{right:20px;bottom:20px}.entry-mode-icons{margin-bottom:17px}.entry-divider{margin-top:22px}.show-problem-button{min-height:56px;padding:0 17px;font-size:.73rem;gap:9px}}
-@media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.show-problem-button,.edge-glow:before,.edge-glow:after{animation:none!important;transition:none!important}}
+@media(max-width:520px){.entry-overlay{padding-left:12px;padding-right:12px}.entry-auth-panel{border-radius:25px;padding:23px 17px 20px}.entry-products{grid-template-columns:1fr;gap:11px}.entry-product-panel{padding:0;width:min(100%,400px)}.entry-product-card{min-height:clamp(135px,22vh,190px);border-radius:23px;padding:20px}.entry-product-icon{width:46px;height:46px;border-radius:16px}.entry-product-arrow{right:20px;bottom:20px}.entry-mode-icons{margin-bottom:17px}.entry-divider{margin-top:22px}}
+@media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.edge-glow:before,.edge-glow:after{animation:none!important;transition:none!important}}
 
 .entry-auth-sheet[hidden],.entry-otp-section[hidden]{display:none!important}
 
@@ -657,11 +657,7 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 }
 
 /* Keep the primary camera action hidden under a blocking notice, and keep hang-up native and quiet. */
-.camera-stage.has-notice .show-problem-button {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transform: translate(-50%, 9px) scale(.97) !important;
-}
+
 .stop-button.is-live {
   background: #ff3b30;
   box-shadow: 0 8px 24px rgba(0,0,0,.25);
@@ -690,8 +686,8 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 .back-control,.logout-control{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid #ffffff38;border-radius:50%;background:#090b0fc2;color:#fff;box-shadow:0 4px 18px #0002;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .back-control svg,.logout-control svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 .back-control:active,.logout-control:active{transform:scale(.96)}
-.show-problem-button{border:1px solid #ffffffd9;border-radius:999px;background:rgba(245,245,247,.96);color:#1d1d1f;box-shadow:0 8px 28px #0003;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-weight:650;letter-spacing:.005em}
-.show-problem-button svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+
 #spatialArButton{display:none!important;visibility:hidden!important;pointer-events:none!important}
 #spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}
 .edge-glow{opacity:0;transition:opacity .22s ease}
@@ -759,17 +755,17 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 .intro-ribbon-three{width:83px;height:27px;transform:rotate(96deg);filter:blur(7px);opacity:.7;animation:intro-ribbon-float 1.28s ease-in-out both}
 @keyframes intelligence-intro-arrive{0%{opacity:0;transform:translate(-50%,-46%) scale(.72);filter:blur(5px)}18%{opacity:.96;transform:translate(-50%,-50%) scale(1.03);filter:blur(0)}66%{opacity:.82;transform:translate(-50%,-50%) scale(1);filter:blur(0)}100%{opacity:0;transform:translate(-50%,-51%) scale(1.08);filter:blur(4px)}}
 @keyframes intro-ribbon-float{0%{rotate:-36deg;scale:.68}50%{scale:1.09}100%{rotate:36deg;scale:.87}}
-.show-problem-button{bottom:calc(23% + env(safe-area-inset-bottom)*.1);display:block;width:min(346px,calc(100% - 36px));height:68px;min-height:68px;padding:5px;border:1px solid rgba(255,255,255,.7);border-radius:23px;background:rgba(245,246,249,.94);color:#1c1c1e;box-shadow:0 10px 36px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.95);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
-.vision-slide-track{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 62px;border-radius:18px;overflow:hidden}
-.vision-slide-track:before{content:"";position:absolute;z-index:0;left:3px;top:3px;bottom:3px;width:calc(54px + var(--slide-distance,0px));max-width:calc(100% - 6px);border-radius:15px;background:linear-gradient(105deg,rgba(138,169,255,.26),rgba(177,157,244,.17),rgba(133,218,208,.19));transition:width .16s ease;pointer-events:none}
-.vision-slide-label{position:relative;z-index:1;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(.78rem,2.8vw,.91rem);font-weight:600;letter-spacing:-.018em;color:#222329;text-align:center;transition:opacity .15s ease}
 
-.vision-slide-handle{position:absolute;z-index:2;left:5px;top:5px;width:48px;height:48px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.95);border-radius:50%;background:linear-gradient(145deg,#fff,#e8eaf0);color:#202126;box-shadow:0 2px 8px rgba(0,0,0,.15),inset 0 1px 0 #fff;transform:translateX(var(--slide-distance,0px));transition:transform .22s cubic-bezier(.2,.75,.25,1),box-shadow .2s ease}
-.vision-slide-handle svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
-.show-problem-button.is-sliding .vision-slide-handle{transition:none;box-shadow:0 3px 14px rgba(30,38,64,.24),inset 0 1px 0 #fff}
 
-.show-problem-button.is-complete{background:rgba(238,244,255,.98);border-color:#dce5ff;box-shadow:0 0 0 4px rgba(156,177,255,.15),0 8px 30px rgba(0,0,0,.18)}
-.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 6px);background:linear-gradient(105deg,rgba(124,165,255,.35),rgba(193,164,255,.27),rgba(115,222,210,.3))}
+
+
+
+
+
+
+
+
+
 50%{opacity:.85;translate:3px -50%}}
 /* A faint halo is the only voice signal. No solid ring, idle animation, or network-wait pulsing. */
 .edge-glow{opacity:0!important}
@@ -805,18 +801,18 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 #toggleCopilot:disabled{opacity:.44}
 .vault-control:focus-visible,.camera-controls .control-icon:focus-visible{outline:3px solid rgba(205,219,255,.92);outline-offset:4px}
 #zoomDock,.zoom-dock[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
-@media(max-width:380px){.camera-controls .primary-control-row{gap:8px;padding:0 7px}.camera-controls .primary-control-row .control-icon:not(#toggleCopilot){width:50px;height:50px;min-width:50px;min-height:50px;flex-basis:50px}.camera-controls .primary-control-row #toggleCopilot.stop-button{flex-basis:58px;width:58px;height:58px;min-width:58px!important;max-width:58px;min-height:58px}.camera-controls .primary-control-row .control-icon svg{width:24px;height:24px}#toggleCopilot .icon-start,#toggleCopilot .icon-end{width:25px;height:25px}.vision-slide-label{font-size:.77rem}}
-@media(prefers-reduced-motion:reduce){.camera-stage.initial-intro .intelligence-intro,.intro-ribbon-one,.intro-ribbon-two,.intro-ribbon-three,.camera-stage.initial-intro .intelligence-intro{opacity:0!important}.edge-glow:after{animation:none!important}.vision-slide-handle,.vision-slide-track:before{transition:none!important}}
+@media(max-width:380px){.camera-controls .primary-control-row{gap:8px;padding:0 7px}.camera-controls .primary-control-row .control-icon:not(#toggleCopilot){width:50px;height:50px;min-width:50px;min-height:50px;flex-basis:50px}.camera-controls .primary-control-row #toggleCopilot.stop-button{flex-basis:58px;width:58px;height:58px;min-width:58px!important;max-width:58px;min-height:58px}.camera-controls .primary-control-row .control-icon svg{width:24px;height:24px}#toggleCopilot .icon-start,#toggleCopilot .icon-end{width:25px;height:25px}}
+@media(prefers-reduced-motion:reduce){.camera-stage.initial-intro .intelligence-intro,.intro-ribbon-one,.intro-ribbon-two,.intro-ribbon-three,.camera-stage.initial-intro .intelligence-intro{opacity:0!important}.edge-glow:after{animation:none!important}}
 
 /* Final slide polish: a moving text glint with the arrow group aligned to the same baseline. */
-.vision-slide-copy{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%;min-width:0;white-space:nowrap;overflow:hidden}
-.vision-slide-label{flex:0 1 auto;min-width:0;max-width:100%;overflow:visible;text-overflow:clip;white-space:nowrap;background:linear-gradient(105deg,#292a31 0%,#292a31 36%,#777b88 44%,#fff 49%,#b9ceff 52%,#292a31 61%,#292a31 100%);background-size:240% 100%;background-position:100% 0;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:vision-text-shimmer 2.45s cubic-bezier(.42,0,.58,1) infinite}
-@keyframes vision-text-shimmer{0%,18%{background-position:100% 0}78%,100%{background-position:0 0}}
+
+
+
 
 50%{translate:3px 0;opacity:.88}}
 .camera-stage.is-listening .edge-glow:after,.camera-stage.is-speaking .edge-glow:after{filter:blur(18px) saturate(1.34) brightness(1.24)}
 .camera-stage.is-listening .edge-glow,.camera-stage.is-speaking .edge-glow{opacity:.86!important}
-@media(prefers-reduced-motion:reduce){.vision-slide-label,.vision-slide-label{background-position:50% 0}}
+
 
 .camera-stage.is-returning{opacity:0;transition:opacity .18s ease}
 @media(prefers-reduced-motion:reduce){.camera-stage.is-returning{transition:none}}
@@ -852,7 +848,7 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 }
 
 /* The slide arrows stay crisp and pinned to the far right of the track. */
-.vision-slide-copy{position:static;overflow:visible;max-width:100%}
+
 
 
   50%{translate:3px 0;opacity:1}
@@ -1278,19 +1274,8 @@ button{touch-action:manipulation}
 
 
 /* Reliable primary entry: a camera-first app must always expose a clear, tappable start action. */
-.camera-stage.pre-start #showProblemButton{
-  display:flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-  z-index:95!important;
-  transform:translate(-50%,0) scale(1)!important;
-}
-.camera-stage.pre-start #showProblemButton .vision-slide-label{
-  font-size:14px;
-  font-weight:680;
-  letter-spacing:-.015em;
-}
+
+
 
 
 /* Premium monochrome interaction language: restrained contrast, SF typography, no accent green. */
@@ -1299,48 +1284,16 @@ button{touch-action:manipulation}
   font-synthesis:none;
   letter-spacing:-.012em;
 }
-.show-problem-button{
-  width:min(352px,calc(100% - 34px));
-  height:64px;
-  min-height:64px;
-  padding:4px;
-  border:1px solid rgba(255,255,255,.82);
-  border-radius:999px;
-  background:rgba(250,250,252,.96);
-  color:#171719;
-  box-shadow:0 14px 44px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.96);
-  backdrop-filter:blur(32px) saturate(130%);
-  -webkit-backdrop-filter:blur(32px) saturate(130%);
-}
-.vision-slide-track{padding:0 39px 0 56px;border-radius:999px}
-.vision-slide-track:before{
-  left:2px;top:2px;bottom:2px;width:calc(50px + var(--slide-distance,0px));
-  max-width:calc(100% - 4px);border-radius:999px;
-  background:linear-gradient(90deg,rgba(20,20,22,.12),rgba(20,20,22,.035));
-  transition:width .14s ease;
-}
-.vision-slide-copy{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:11px;min-width:0}
-.vision-slide-label{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
-  font-size:14px;font-weight:600;letter-spacing:-.025em;text-transform:none;color:#202024;
-}
-.vision-slide-arrows{
-  display:inline-block;flex:0 0 auto;color:#7a7a80;font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  font-size:18px;font-weight:400;line-height:1;letter-spacing:-.13em;opacity:.8;
-  animation:ios-slide-arrow-nudge 1.35s ease-in-out infinite;
-}
-.vision-slide-handle{
-  left:4px;top:4px;width:48px;height:48px;border:1px solid rgba(255,255,255,.16);
-  border-radius:50%;background:#171719;color:#fff;
-  box-shadow:0 2px 7px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08);
-  transform:translateX(var(--slide-distance,0px));
-}
-.vision-slide-handle svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.7;fill:none}
-.show-problem-button.is-complete{
-  background:rgba(247,247,249,.98);border-color:#fff;
-  box-shadow:0 0 0 4px rgba(255,255,255,.09),0 10px 32px rgba(0,0,0,.22);
-}
-.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 4px);background:rgba(20,20,22,.1)}
+
+
+
+
+
+
+
+
+
+
 /* The slider is the sole control on the welcome surface. The camera controls appear after sliding into the live camera screen. */
 .camera-stage.pre-start .camera-controls{
   display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;
@@ -1368,15 +1321,9 @@ button{touch-action:manipulation}
   background:rgba(18,18,20,.72);color:#fff;border-color:rgba(255,255,255,.28);
 }
 .camera-stage.is-connecting .camera-controls .control-icon:disabled{opacity:.5}
-@keyframes ios-slide-arrow-nudge{0%,100%{transform:translateX(0);opacity:.55}50%{transform:translateX(2px);opacity:.9}}
-@media(prefers-reduced-motion:reduce){.vision-slide-arrows{animation:none!important}}
-@media(max-width:380px){
-  .show-problem-button{width:calc(100% - 28px);height:60px;min-height:60px}
-  .vision-slide-track{padding-right:33px;padding-left:52px}
-  .vision-slide-arrows{font-size:17px}
-  .vision-slide-label{font-size:13px}
-  .vision-slide-handle{width:46px;height:46px;left:3px;top:3px}
-}
+
+
+
 
 
 
@@ -1698,7 +1645,6 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 /* Interface 06 — onboarding connection: camera-only backdrop, quiet one-line status. */
 .camera-stage.is-onboarding .floating-top,
 .camera-stage.is-onboarding .camera-controls,
-.camera-stage.is-onboarding .show-problem-button,
 .camera-stage.is-onboarding .privacy-hint {
   opacity: 0 !important;
   visibility: hidden !important;
