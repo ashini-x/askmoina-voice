@@ -7,6 +7,24 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
+const globalFontCss = read("public/askmoina-global-font.css");
+assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
+assert.ok(globalFontCss.includes('font-family: var(--askmoina-global-font) !important'), "global font must apply to current and dynamically rendered UI text");
+for (const path of [
+  "public/account.html",
+  "public/copilot.html",
+  "public/install.html",
+  "public/login.html",
+  "public/offline.html",
+  "public/voice-lab.html",
+]) {
+  assert.ok(read(path).includes("/askmoina-global-font.css"), path + " must load the canonical global font");
+}
+const workerSource = read("src/index.ts");
+assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated shells must load the canonical global font");
+assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
+assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
+
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
