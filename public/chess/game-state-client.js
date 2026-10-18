@@ -235,7 +235,7 @@ export function reconcileChessObservation(inputState, observation) {
     if (candidates.length > 1) {
       return fail("ambiguous_transition", "More than one legal move fits this scan. I have not changed the game history. Improve the view or clarify the move.");
     }
-    const suffix = state.rightsKnown ? "" : " This game began from a photographed mid-game position, so historical castling/en-passant rights are unknown.";
+    const suffix = state.gameMode === "midgame-seed" ? (state.rightsKnown ? " This game began from a photographed mid-game position; earlier moves and en-passant eligibility remain unknown, although castling rights were confirmed." : " This game began from a photographed mid-game position, so historical moves, castling rights and en-passant eligibility are unknown.") : "";
     return fail(
       "transition_not_one_legal_move",
       "I could not match this image to exactly one legal move from the last confirmed position. I have not changed the game history. Scan each move, or use “current position” to safely reseed." + suffix
