@@ -1,7 +1,7 @@
 import { Chess, validateFen } from "./chess.js";
-import { boardRowsToFen, validateBoardRows } from "./recognition-client.js?v=0.4.137";
+import { boardRowsToFen, validateBoardRows } from "./recognition-client.js?v=0.4.138";
 
-export const CHESS_GAME_STATE_VERSION = 1;
+export const CHESS_GAME_STATE_VERSION = 2;
 const STARTING_ROWS = [
   "rnbqkbnr",
   "pppppppp",
