@@ -56,6 +56,11 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("returns to moinaOS selection when the user ends a live call", () => {
     expect(script).toContain('stopCopilot(true, "", "normal", false, false, true)');
+    expect(script).toContain("function returnToMoinaOSSelection()");
+    expect(script).toContain('overlay.hidden = false;');
+    expect(script).toContain('document.body.classList.add("experience-selection-open")');
+    expect(script).toContain('cameraApp.inert = true;');
+    expect(script).toContain("returnToMoinaOSSelection();");
     expect(script).toContain("returnToExperienceSelection = false");
     expect(script).toContain('window.dispatchEvent(new Event("askmoina:user-disconnected"))');
     expect(experienceSelectionScript).toContain('window.addEventListener("askmoina:user-disconnected", showExperienceSelection)');
