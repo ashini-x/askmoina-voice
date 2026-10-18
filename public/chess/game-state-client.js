@@ -1,5 +1,5 @@
 import { Chess, validateFen } from "./chess.js";
-import { boardRowsToFen, validateBoardRows } from "./recognition-client.js?v=0.4.138";
+import { boardRowsToFen, validateBoardRows } from "./recognition-client.js?v=0.4.139";
 
 export const CHESS_GAME_STATE_VERSION = 2;
 const STARTING_ROWS = [
