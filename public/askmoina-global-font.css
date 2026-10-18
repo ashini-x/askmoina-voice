@@ -38,6 +38,7 @@
   font-family: inherit !important;
   font-weight: 300 !important;
 }
+.askmoina-wordmark > span:not(:last-child) { margin-right: -.028em; }
 .askmoina-wordmark > span:nth-child(5) { -webkit-text-stroke: .012em currentColor; }
 .askmoina-wordmark > span:nth-child(6) { -webkit-text-stroke: .022em currentColor; }
 .askmoina-wordmark > span:nth-child(7) { -webkit-text-stroke: .032em currentColor; }
