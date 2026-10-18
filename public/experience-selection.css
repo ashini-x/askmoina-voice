@@ -92,3 +92,127 @@
 .experience-feature-list { grid-column: 1; grid-row: 2; align-self: stretch; gap: clamp(5px, .8vh, 8px); margin-top: 10px; transform: none; }
 .experience-product-art, .experience-product-art::after, .experience-glass-art { display: none !important; }
 @media (max-width: 380px) { .experience-card { grid-template-columns: minmax(0, 1fr); column-gap: 0; } .experience-card-header { transform: none; } .experience-feature-list { gap: 4px; margin-top: 7px; transform: none; } }
+
+
+/* Interface 06 final spacing pass — symmetric, full-height, text-first cards. */
+.experience-selection-content {
+  height: 100%;
+  min-height: 100%;
+  padding: max(calc(env(safe-area-inset-top,0px) + 18px), 7dvh)
+    max(22px,env(safe-area-inset-right,0px))
+    max(calc(env(safe-area-inset-bottom,0px) + 22px), 22px)
+    max(22px,env(safe-area-inset-left,0px));
+}
+.experience-selection-eyebrow {
+  margin: 0 0 clamp(18px, 2.8dvh, 26px) 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: .15em;
+}
+.experience-selection-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2.1dvh, 20px);
+  align-content: stretch;
+}
+.experience-card,
+.experience-card--available,
+.experience-card--preview {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  padding: clamp(22px, 4.8vw, 30px) clamp(22px, 5vw, 30px);
+  border-radius: 26px;
+}
+.experience-card-header {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  padding-right: 28px;
+  gap: 10px;
+  transform: none;
+}
+.experience-card-title {
+  font-size: clamp(24px, 5.8vw, 29px);
+  font-weight: 550;
+  line-height: 1.12;
+  letter-spacing: -.045em;
+}
+.experience-card-chevron {
+  top: 3px;
+  width: 19px;
+  height: 19px;
+}
+.experience-status-pill {
+  max-width: none;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+.experience-feature-list {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: clamp(24px, 3.6dvh, 34px);
+  gap: clamp(12px, 1.8dvh, 17px);
+  transform: none;
+}
+.experience-feature-row {
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  font-size: clamp(13px, 3.6vw, 15px);
+  line-height: 1.35;
+  letter-spacing: -.012em;
+}
+.experience-feature-check {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+.experience-card--preview {
+  border-color: rgba(126, 137, 164, .22);
+}
+.experience-card--preview .experience-card-title {
+  color: rgba(181, 187, 208, .82);
+}
+@media (max-width: 380px) {
+  .experience-selection-content {
+    padding-right: max(18px,env(safe-area-inset-right,0px));
+    padding-left: max(18px,env(safe-area-inset-left,0px));
+  }
+  .experience-card,
+  .experience-card--available,
+  .experience-card--preview {
+    padding: 20px 20px;
+    border-radius: 23px;
+  }
+  .experience-card-title { font-size: 23px; }
+  .experience-feature-list { margin-top: 22px; gap: 11px; }
+  .experience-feature-row { font-size: 12.5px; grid-template-columns: 19px minmax(0, 1fr); gap: 9px; }
+  .experience-feature-check { width: 19px; height: 19px; flex-basis: 19px; }
+}
+@media (max-height: 700px) {
+  .experience-selection-content {
+    height: auto;
+    min-height: 100%;
+    padding-top: max(calc(env(safe-area-inset-top,0px) + 14px), 4dvh);
+  }
+  .experience-selection-cards {
+    flex: 0 0 auto;
+    grid-template-rows: repeat(2, minmax(215px, auto));
+  }
+  .experience-card,
+  .experience-card--available,
+  .experience-card--preview {
+    min-height: 215px;
+  }
+}
+
