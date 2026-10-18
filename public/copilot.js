@@ -2960,7 +2960,27 @@
 
   function setResponseCardExpanded(expanded) {
     responseCardExpanded = Boolean(expanded);
-    if (responseCardDetails) responseCardDetails.hidden = !responseCardExpanded;
+    if (responseCardDetails) {
+      const engine = window.__askmoinaFluidMotion;
+      const wasHidden = responseCardDetails.hidden;
+      if (responseCardExpanded) {
+        responseCardDetails.hidden = false;
+        if (engine) engine.animate(
+          responseCardDetails,
+          { y: 0, opacity: 1 },
+          engine.profiles.expand,
+          { ...(wasHidden ? { from: { y: 8, opacity: 0 } } : {}), persistTarget: true }
+        );
+      } else if (engine && !wasHidden) {
+        engine.animate(responseCardDetails, { y: 8, opacity: 0 }, engine.profiles.exit, {
+          onComplete: () => {
+            if (!responseCardExpanded) responseCardDetails.hidden = true;
+          }
+        });
+      } else {
+        responseCardDetails.hidden = true;
+      }
+    }
     if (responseCardCollapseButton) {
       responseCardCollapseButton.setAttribute("aria-expanded", String(responseCardExpanded));
       responseCardCollapseButton.setAttribute("aria-label", responseCardExpanded ? "Collapse card details" : "Expand card details");
