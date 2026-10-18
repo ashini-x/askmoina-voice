@@ -23,6 +23,7 @@ import {
   const suggestButton = $("#chessSuggestMove");
   const trackButton = $("#chessTrackGame");
   const dismissButton = $("#chessDismiss");
+  const pauseButton = $("#chessPauseDetection");
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
   const STORAGE_KEY = "askmoina.chess.session.v3";
@@ -35,7 +36,7 @@ import {
   const MAX_RETRY_MS = 10000;
   const DISMISS_COOLDOWN_MS = 30000;
 
-  if (!launch || !popup || !popupTitle || !popupMessage || !video) return;
+  if (!launch || !popup || !popupTitle || !popupMessage || !pauseButton || !video) return;
 
   let engine = null;
   let gameState = null;
@@ -71,7 +72,7 @@ import {
     popupTitle.textContent = title;
     popupMessage.textContent = message;
     popup.dataset.kind = kind;
-    popup.hidden = false;
+    setPopupOpen(true);
     pendingMode = "message";
     turnSelector.hidden = true;
     suggestButton.hidden = true;
@@ -85,15 +86,28 @@ import {
   function updateAutoControl() {
     launch.classList.toggle("chess-autodetect-active", autoEnabled);
     launch.classList.toggle("chess-autodetect-paused", !autoEnabled);
-    launch.setAttribute("aria-pressed", String(autoEnabled));
-    launch.setAttribute("aria-label", autoEnabled ? "Chess assistant on. Automatic board detection is active; tap to pause." : "Chess assistant off. Tap to resume automatic board detection.");
-    launch.title = autoEnabled ? "Chess assistant · watching for a board · tap to pause" : "Chess assistant · paused · tap to resume";
+    launch.setAttribute("aria-label", autoEnabled
+      ? "Open chess assistant. Automatic board detection is active; tap to open Next strong move."
+      : "Open chess assistant. Automatic board detection is paused; tap to open the panel and resume.");
+    launch.setAttribute("aria-haspopup", "dialog");
+    launch.setAttribute("aria-controls", "chessDetectionPopup");
+    launch.setAttribute("aria-expanded", String(!popup.hidden));
+    launch.title = autoEnabled
+      ? "Chess assistant · open Next strong move · automatic scan active"
+      : "Chess assistant · open Next strong move · automatic scan paused";
+    pauseButton.textContent = autoEnabled ? "Pause automatic scan" : "Resume automatic scan";
+    pauseButton.setAttribute("aria-pressed", String(autoEnabled));
+  }
+
+  function setPopupOpen(open) {
+    popup.hidden = !open;
+    launch.setAttribute("aria-expanded", String(open));
   }
 
   function hidePopup(nextDelay = DISMISS_COOLDOWN_MS) {
     if (statusMessageTimer) clearTimeout(statusMessageTimer);
     statusMessageTimer = null;
-    popup.hidden = true;
+    setPopupOpen(false);
     popup.dataset.kind = "info";
     pendingMode = "hidden";
     pendingRecognition = null;
@@ -126,7 +140,7 @@ import {
     popupMessage.textContent = options.message || (knownStart
       ? "Chess detected. " + colorName(userColor) + " is your side; White moves first."
       : "Chess detected. Near side is " + colorName(userColor) + ". I’ll use that as your default color.");
-    popup.hidden = false;
+    setPopupOpen(true);
     dismissButton.textContent = "Not now";
     turnSelector.hidden = true;
     whiteTurn.setAttribute("aria-pressed", String(selectedSide === "w"));
@@ -154,7 +168,7 @@ import {
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
     dismissButton.textContent = "Not now";
-    popup.hidden = false;
+    setPopupOpen(true);
 
     const moveLabel = move && move.san ? "Move registered (" + move.san + "). " : "Position updated. ";
     if (isPlayersTurn(gameState)) {
@@ -193,7 +207,7 @@ import {
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
     dismissButton.textContent = "Not now";
-    popup.hidden = false;
+    setPopupOpen(true);
     scheduleDetection(BASE_RETRY_MS);
   }
 
@@ -697,7 +711,7 @@ import {
       pendingRecognitionConfirmation = null;
       if (statusMessageTimer) clearTimeout(statusMessageTimer);
       statusMessageTimer = null;
-      popup.hidden = false;
+      setPopupOpen(true);
       scheduleDetection(BASE_RETRY_MS);
     } catch (error) {
       popupTitle.textContent = "Next strong move";
@@ -740,12 +754,50 @@ import {
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
     dismissButton.textContent = "Not now";
-    popup.hidden = false;
+    setPopupOpen(true);
     scheduleDetection(BASE_RETRY_MS);
     if (yourTurn) queueAutomaticRecommendation();
   }
 
-  launch.addEventListener("click", () => setAutoEnabled(!autoEnabled));
+  launch.addEventListener("click", () => {
+    // The horse icon is the main entry point, not a hidden pause switch.
+    // Always open the panel and resume automatic detection on an intentional tap.
+    dismissedPlacement = null;
+    dismissedUntil = 0;
+    setAutoEnabled(true);
+    if (autoTimer) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
+    if (gameState) {
+      showTrackedState();
+      if (isPlayersTurn(gameState)) queueAutomaticRecommendation();
+      return;
+    }
+    if (pendingRecognition) {
+      showBoardPrompt(pendingRecognition);
+      return;
+    }
+    const cameraReady = cameraIsActive();
+    setStatus("Next strong move", cameraReady
+      ? "Looking for a chessboard. Keep the full board and all four corners in view. I'll use the side nearest the bottom of the screen as your default color."
+      : "Chess assistant is ready. Start the camera, then point it at the full chessboard. I'll use the side nearest the bottom of the screen as your default color.");
+    void detectChessboard(true);
+  });
+  pauseButton.addEventListener("click", () => {
+    setAutoEnabled(!autoEnabled);
+    if (gameState) {
+      showTrackedState();
+      return;
+    }
+    if (pendingRecognition) {
+      showBoardPrompt(pendingRecognition);
+      return;
+    }
+    setStatus("Next strong move", autoEnabled
+      ? "Automatic board scanning is on. Keep the full chessboard in view. Tap Pause automatic scan any time."
+      : "Automatic board scanning is paused. Tap Resume automatic scan when you want me to look again.");
+  });
   whiteTurn.addEventListener("click", () => setSide("w"));
   blackTurn.addEventListener("click", () => setSide("b"));
   suggestButton.addEventListener("click", () => { void suggestMove(); });
