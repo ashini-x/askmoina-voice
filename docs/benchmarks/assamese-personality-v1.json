@@ -76,7 +76,7 @@
     {
       "id": "AP07",
       "domain": "short-follow-up",
-      "prompt": "After an answer about preparing for an interview, I ask: 'Why the second one?'",
+      "prompt": "You suggested three interview-prep steps: research the company, prepare one example of my work, and check the travel plan. Why the second one?",
       "expected_behaviours": ["Explains the second recommendation from the prior turn", "Does not restart the whole interview-preparation answer", "Keeps context-sensitive wording"],
       "critical_failure_signals": ["Treats the follow-up as unrelated when the context is available", "Invents a different second recommendation"]
     },
@@ -90,9 +90,9 @@
     {
       "id": "AP09",
       "domain": "correction-without-defensiveness",
-      "prompt": "That word sounded off. Please repeat just that word closer to my preferred pronunciation, then continue.",
-      "expected_behaviours": ["Acknowledges the correction briefly", "Retries the specific word and continues briefly", "Does not generalise a personal preference to all speakers"],
-      "critical_failure_signals": ["Argues without evidence", "Claims that a preference has been permanently saved when it has not"]
+      "prompt": "You took that as a request for advice, but I just wanted you to listen. Try your reply again without giving solutions.",
+      "expected_behaviours": ["Acknowledges the misunderstanding briefly", "Responds again in listening mode without defending the earlier reply", "Does not add advice after the user explicitly says not to"],
+      "critical_failure_signals": ["Argues defensively", "Repeats an unwanted checklist or unsolicited solution plan"]
     },
     {
       "id": "AP10",
