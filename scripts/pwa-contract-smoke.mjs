@@ -8,6 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
 const globalFontCss = read("public/askmoina-global-font.css");
+assert.ok(globalFontCss.includes("data:font/woff2;base64,"), "global font must embed its reference-matched typeface");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
 assert.ok(globalFontCss.includes('font-family: var(--askmoina-global-font) !important'), "global font must apply to current and dynamically rendered UI text");
 for (const path of [
@@ -179,6 +180,7 @@ assert.ok(worker.includes('url.searchParams.get("experience-selection") === "1"'
 assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && read("public/copilot.js").includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
 
 const serviceWorker = read("public/service-worker.js");
+assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=2"'), "global font stylesheet must be cached for the offline shell");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
 assert.ok(serviceWorker.includes("askmoina-pwa-shell-v16"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.131"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.131"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");

@@ -18,6 +18,7 @@ const SHELL_URLS = [
   "/pwa-icon-192.svg?v=0.4.83",
   "/pwa-icon-512.svg?v=0.4.83",
   "/pwa-icon-512.png?v=0.4.83",
+  "/askmoina-global-font.css?v=2",
   "/pwa-gate.css",
   "/pwa-gate.js",
   "/pwa-runtime.js?v=0.4.131"
@@ -62,7 +63,7 @@ self.addEventListener("fetch", (event) => {
   const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
   event.respondWith(
     (isImmutableVersionedAsset ? fetch(request) : fetch(request, { cache: "no-store" })).catch(async () => {
-      if (request.mode !== "navigate") return Response.error();
+      if (request.mode !== "navigate") return (await caches.match(request)) || Response.error();
       const offline = await caches.match("/offline");
       return offline || new Response(
         "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>AskMoina offline</title><p>AskMoina needs an internet connection for its live camera and voice experience.</p><a href=\"/\">Try again</a></html>",
