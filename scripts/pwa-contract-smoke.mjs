@@ -72,6 +72,14 @@ const nativeAppScript = read("public/native-app.js");
 const experienceCss = read("public/experience-selection.css");
 const experienceJs = read("public/experience-selection.js");
 assert.ok(authScript.includes("const next = destination;") && !authScript.includes("/?onboarding=1"), "successful authentication must navigate straight to the default authenticated home");
+assert.ok(
+  authScript.includes("window.location.replace(next);") &&
+    !authScript.includes("authLaunchScreen") &&
+    !authScript.includes("requestAnimationFrame(() => requestAnimationFrame(resolve))") &&
+    !worker.includes('class="auth-launch-screen"'),
+  "authentication must not block the moinaOS selection behind a launch interstitial or artificial frame delay",
+);
+assert.ok(!read("public/copilot.css").includes(".auth-launch-screen"), "removed auth launch interstitial must not retain full-screen styling");
 assert.ok(!nativeAppScript.includes('get("onboarding") === "1"'), "obsolete post-auth onboarding flow must not remain active");
 assert.ok(worker.includes("CHOOSE YOUR EXPERIENCE"), "Interface 06 heading is missing");
 for (const label of [

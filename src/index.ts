@@ -109,7 +109,7 @@ const ENTRY_AUTH_OVERLAY = `<section class="entry-overlay" aria-label="Secure si
     <button class="cancel-button" id="cancelAuth" type="button" aria-label="Cancel">Cancel</button>
   </section>
 </div>
-<div class="auth-launch-screen" id="authLaunchScreen" hidden role="status" aria-live="polite"><span class="launch-spinner" aria-hidden="true"></span><span class="launch-title">Opening askmoina</span></div>`;
+`;
 const POST_AUTH_ONBOARDING = `
 <section class='post-auth-onboarding experience-selection-overlay' id='postAuthOnboarding' aria-label='Choose your experience'>
   <div class='ambient-edge-light' aria-hidden='true'></div>
