@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation } from "./recognition-client.js?v=0.4.139";
+import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation } from "./recognition-client.js?v=0.4.142";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,

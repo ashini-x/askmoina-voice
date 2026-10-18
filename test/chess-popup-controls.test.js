@@ -38,7 +38,7 @@ describe("chess assistant popup and main control", () => {
   });
 
   it("cache-busts the changed chess UI and popup stylesheet", () => {
-    expect(html).toContain('/chess/chess-ui.js?v=0.4.141');
+    expect(html).toContain('/chess/chess-ui.js?v=0.4.142');
     expect(html).toContain('/chess/chess-ui.css?v=0.4.140');
   });
 });

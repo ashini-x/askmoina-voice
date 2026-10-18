@@ -160,7 +160,7 @@ export async function handleChessRecognitionRequest(
     const accessToken = await getAccessToken(env);
     const remainingMs = REQUEST_BUDGET_MS - ((dependencies.now ? dependencies.now() : Date.now()) - startedAt);
     if (remainingMs <= 500) {
-      return json({ ok: false, reason: "recognition_timeout", message: "Chessboard recognition took too long. Try a clear frame again." }, 504);
+      return json({ ok: false, reason: "recognition_timeout", message: "Chessboard recognition timed out before finishing this frame. Keep the 8×8 grid centred and try again; digital boards on a screen, including Chess.com, are supported." }, 504);
     }
 
     const controller = new AbortController();
@@ -242,7 +242,7 @@ export async function handleChessRecognitionRequest(
       ok: false,
       reason: isAbort ? "recognition_timeout" : "recognition_unavailable",
       message: isAbort
-        ? "Chessboard recognition took too long. Reposition the camera and scan again."
+        ? "Chessboard recognition timed out before finishing this frame. Keep the 8×8 grid centred and try again; digital boards on a screen, including Chess.com, are supported."
         : "Chessboard recognition is temporarily unavailable. Please try again."
     }, isAbort ? 504 : 503);
   }
@@ -253,7 +253,9 @@ export function buildChessRecognitionPrompt(sideToMove: "White" | "Black" | null
     "You are a cautious chessboard visual-recognition component, not a chess-playing assistant.",
     "Analyze only the supplied single image. It is sent by AskMoina chess auto-detection or for a user-requested chessboard scan.",
     "Do not guess. If there is no physical chessboard, any corner is cropped, any square is hidden/unclear, perspective prevents reliable square mapping, or any piece identity is uncertain, report low confidence and list affected squares.",
-    "The position is a real-world physical board, possibly 3D pieces, tilted, rotated, lit unevenly, or in a mid-game arrangement. Do not assume the starting position or infer a move history.",
+    "The board may be a physical board or a DIGITAL 2D chessboard shown on a monitor, laptop, tablet, or phone, including Chess.com or another chess website/app. A board displayed on a screen is valid: do not reject flat digital pieces, square highlights, move arrows, browser tabs, menus, or surrounding webpage UI.",
+    "First locate the largest complete 8x8 chessboard region, then ignore everything outside its grid. Use the visible square boundaries and piece silhouettes to read all 64 squares. A screen photographed at an angle is still a valid chessboard if its four board corners and squares are visible.",
+    "Do not assume the starting position or infer a move history. The board may be mid-game, rotated, tilted in perspective, or lit unevenly.",
     "Return boardRows as exactly eight strings of exactly eight characters, with rank 8 first and rank 1 last; within every row files a through h. Use uppercase P,N,B,R,Q,K for White pieces, lowercase p,n,b,r,q,k for Black pieces, and . for an empty square.",
     "Normalize the rows to standard chess coordinates regardless of camera rotation. orientation must say which color's pieces are physically at the nearest/bottom edge of the image: white_at_bottom or black_at_bottom. Use unknown if uncertain.",
     "allFourCornersVisible is true only when the entire 8x8 board boundary and all four corners are visible. boardVisible is false for any non-chess scene.",
