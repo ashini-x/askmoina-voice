@@ -18,6 +18,10 @@ jobs:
       - run: npm run check
       - run: node --check public/app.js
       - run: node --check public/copilot.js
+      - run: node --check public/chess/engine-client.js
+      - run: node --check public/chess/recognition-client.js
+      - run: node --check public/chess/game-state-client.js
+      - run: node --check public/chess/chess-ui.js
       - run: node --check public/auth.js
       - run: node --check public/session-ui.js
       - run: node --check public/native-app.js
