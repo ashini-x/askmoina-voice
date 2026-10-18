@@ -10,7 +10,7 @@ Phase 3 adds a local, explicit chess workflow to the camera-first Co-Pilot:
 - State is kept on the current browser device in localStorage, restored through a replay of the bounded move list, and checked against the recorded current FEN on reload.
 - A following scan is accepted as a move only when its piece placement and confirmed side-to-move match exactly one legal single-ply transition under chess.js. Repeated frames are idempotent. Missed/ambiguous/unexplained transitions are rejected rather than fabricated.
 - Stockfish runs in the existing same-origin browser Worker and returns an optional next-move recommendation after a valid position is confirmed.
-- Castling/en-passant legality is retained from a tracked new game. For a seeded mid-game position, castling rights are used only when the user explicitly confirms them. Otherwise the state marks historical rights incomplete and uses conservative FEN rights; no past move history is invented.
+- Castling/en-passant legality is retained from a tracked new game. For a seeded mid-game position, castling rights are used only when the user explicitly confirms them. Even then, prior moves and en-passant eligibility remain unknown; the state uses conservative FEN rights and never invents a move history.
 - Camera orientation may change without resetting a game because recognition returns rows normalized to standard chess coordinates. A change of camera orientation does not itself count as a move.
 
 ## Validation
