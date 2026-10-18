@@ -715,8 +715,8 @@ body[data-entry-state="login"] .floating-top,body[data-entry-state="products"] .
 .entry-passkey-trailing svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease,color .18s ease}
 .entry-passkey:hover:not(:disabled) .entry-passkey-trailing svg{transform:translateX(2px);color:#1d1d1f}
 .entry-passkey .entry-hidden-copy{display:none!important}
-.entry-launch-screen,.auth-launch-screen{position:fixed;z-index:500;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px;background:#f5f5f7;color:#1d1d1f}
-.entry-launch-screen[hidden],.auth-launch-screen[hidden]{display:none!important}
+.entry-launch-screen{position:fixed;z-index:500;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px;background:#f5f5f7;color:#1d1d1f}
+.entry-launch-screen[hidden]{display:none!important}
 .launch-spinner{display:block;width:24px;height:24px;border:2px solid #d2d2d7;border-top-color:#1d1d1f;border-radius:50%;animation:launch-spin .8s linear infinite}
 .launch-title{font-size:.92rem;font-weight:560;letter-spacing:-.015em;color:#6e6e73}
 @keyframes launch-spin{to{transform:rotate(360deg)}}
