@@ -15,7 +15,8 @@ The repository already contains:
 - `docs/benchmarks/assamese-speech-v1.json`: 15 cases across six dimensions, with an 85% overall pass threshold, dimension thresholds, and zero tolerated critical failures.
 - `docs/benchmarks/reality-benchmark-v1.json`: 18 task/evidence/safety cases across eight dimensions, with an 85% overall pass threshold and zero tolerated critical failures.
 - `scripts/reality-benchmark.mjs`: suite validation, score-template generation, and scoring.
-- CI validation via `npm run benchmark:validate`.
+- `scripts/live-turn-latency-benchmark.py`: 20 locally synthesized, non-user speech turns over the production Live WebSocket; records response-start latency and generated-audio byte counts only.
+- CI validation via `npm run benchmark:validate`, with the latency script syntax-checked in Release Validation.
 
 These files define repeatable acceptance criteria, but validating a suite is not the same as running it against real generated speech. No scored live-audio acceptance result was identified in the files reviewed for this snapshot.
 
