@@ -405,6 +405,8 @@ jobs:
           # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
+          python scripts/live-turn-latency-benchmark.py
+          TURN_LATENCY_STATUS=$?
           python scripts/live-grounding-smoke.py
           GROUNDING_STATUS=$?
           python scripts/live-spoken-turn-smoke.py
@@ -425,6 +427,7 @@ jobs:
           trap - EXIT
           echo "Synthetic session revoked: OK"
           for result in \
+            "turn-latency benchmark:$TURN_LATENCY_STATUS" \
             "grounded web search:$GROUNDING_STATUS" \
             "speech-first voice turn:$SPOKEN_TURN_STATUS" \
             "ranked-list flow:$RANKED_LIST_STATUS" \
@@ -440,6 +443,7 @@ jobs:
               echo "::error::Synthetic $name failed (exit $status)."
             fi
           done
+          test "$TURN_LATENCY_STATUS" -eq 0
           test "$GROUNDING_STATUS" -eq 0
           test "$SPOKEN_TURN_STATUS" -eq 0
           test "$RANKED_LIST_STATUS" -eq 0
