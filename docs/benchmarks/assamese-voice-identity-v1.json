@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "assamese-voice-identity-v1",
+  "suite_version": "1.0.0",
+  "title": "AskMoina live voice identity audition",
+  "purpose": "Compare documented prebuilt Live voices on the same prompts for Assamese intelligibility, code-switching, pacing, warmth, and emotional fit. Voice descriptions are not quality results.",
+  "recording_policy": "Audition live without saving recordings, transcripts, screenshots, names, phone numbers, or personal details. Store only score-only ratings, non-identifying evaluator codes, candidate voice names, critical-failure flags, and short non-identifying notes.",
+  "candidate_voices": [
+    {
+      "name": "Leda",
+      "style": "Youthful"
+    },
+    {
+      "name": "Zephyr",
+      "style": "Bright"
+    },
+    {
+      "name": "Autonoe",
+      "style": "Bright"
+    },
+    {
+      "name": "Aoede",
+      "style": "Breezy"
+    },
+    {
+      "name": "Laomedeia",
+      "style": "Upbeat"
+    },
+    {
+      "name": "Sadachbia",
+      "style": "Lively"
+    },
+    {
+      "name": "Achernar",
+      "style": "Soft"
+    },
+    {
+      "name": "Vindemiatrix",
+      "style": "Gentle"
+    },
+    {
+      "name": "Sulafat",
+      "style": "Warm"
+    },
+    {
+      "name": "Callirrhoe",
+      "style": "Easy-going"
+    },
+    {
+      "name": "Puck",
+      "style": "Upbeat"
+    },
+    {
+      "name": "Fenrir",
+      "style": "Excitable"
+    },
+    {
+      "name": "Kore",
+      "style": "Firm"
+    },
+    {
+      "name": "Orus",
+      "style": "Firm"
+    },
+    {
+      "name": "Umbriel",
+      "style": "Easy-going"
+    },
+    {
+      "name": "Erinome",
+      "style": "Clear"
+    },
+    {
+      "name": "Schedar",
+      "style": "Even"
+    },
+    {
+      "name": "Achird",
+      "style": "Friendly"
+    },
+    {
+      "name": "Enceladus",
+      "style": "Breathy"
+    },
+    {
+      "name": "Algieba",
+      "style": "Smooth"
+    },
+    {
+      "name": "Algenib",
+      "style": "Gravelly"
+    },
+    {
+      "name": "Gacrux",
+      "style": "Mature"
+    },
+    {
+      "name": "Zubenelgenubi",
+      "style": "Casual"
+    },
+    {
+      "name": "Sadaltager",
+      "style": "Knowledgeable"
+    },
+    {
+      "name": "Charon",
+      "style": "Informative"
+    },
+    {
+      "name": "Iapetus",
+      "style": "Clear"
+    },
+    {
+      "name": "Despina",
+      "style": "Smooth"
+    },
+    {
+      "name": "Rasalgethi",
+      "style": "Informative"
+    },
+    {
+      "name": "Alnilam",
+      "style": "Firm"
+    },
+    {
+      "name": "Pulcherrima",
+      "style": "Forward"
+    }
+  ],
+  "minimum_completed_cases": 8,
+  "dimensions": [
+    {
+      "id": "assamese_intelligibility",
+      "label": "Assamese words remain intelligible and naturally articulated"
+    },
+    {
+      "id": "code_switch_control",
+      "label": "Switches naturally between Assamese and English without flattening either"
+    },
+    {
+      "id": "english_clarity",
+      "label": "English negative-control phrases retain recognisable English pronunciation"
+    },
+    {
+      "id": "naturalness",
+      "label": "Timbre and prosody sound natural rather than brittle, robotic, or exaggerated"
+    },
+    {
+      "id": "warmth_and_fit",
+      "label": "Warmth and energy fit AskMoina's friendly, non-theatrical persona"
+    },
+    {
+      "id": "pacing_and_turns",
+      "label": "Pacing is easy to follow and leaves space for conversational turn-taking"
+    }
+  ],
+  "pass_thresholds": {
+    "overall_percent": 85,
+    "minimum_completed_cases": 8,
+    "max_critical_failures": 0,
+    "dimensions": {
+      "assamese_intelligibility": 85,
+      "code_switch_control": 85,
+      "english_clarity": 85,
+      "naturalness": 85,
+      "pacing_and_turns": 80
+    }
+  },
+  "rating_guide": {
+    "0": "Fail or materially wrong",
+    "1": "Partial success or noticeable weakness",
+    "2": "Pass: clear, natural, and well matched"
+  },
+  "cases": [
+    {
+      "id": "VI01",
+      "domain": "everyday-assamese",
+      "prompt": "Greet me in everyday Assamese and ask how my day is going.",
+      "expected_behaviours": [
+        "Clear Assamese phrase",
+        "Warm but restrained voice",
+        "Natural pacing"
+      ],
+      "critical_failure_signals": [
+        "Unintelligible core phrase",
+        "Strongly exaggerated accent"
+      ]
+    },
+    {
+      "id": "VI02",
+      "domain": "assamese-english-empathy",
+      "prompt": "Aji mood tu bhal nai yaar. Honestly, eku koribo mon ja nai. Reply briefly and gently.",
+      "expected_behaviours": [
+        "Understandable mixed speech",
+        "Empathetic without theatrical sadness",
+        "Natural English phrase articulation"
+      ],
+      "critical_failure_signals": [
+        "Mocking or dismissive tone",
+        "English phrase heavily distorted"
+      ]
+    },
+    {
+      "id": "VI03",
+      "domain": "english-negative-control",
+      "prompt": "Say naturally in English: 'I am studying the system seriously.'",
+      "expected_behaviours": [
+        "Recognisable English pronunciation",
+        "Even, natural pace",
+        "No mechanically inserted breathiness or exaggerated pitch"
+      ],
+      "critical_failure_signals": [
+        "Systematic consonant substitutions",
+        "Core phrase unintelligible"
+      ]
+    },
+    {
+      "id": "VI04",
+      "domain": "word-specific-target",
+      "prompt": "In Assamese, say সৰু meaning 'small' closer to the listener's preferred 'horu' for this word only.",
+      "expected_behaviours": [
+        "Attempts the exact lexical target",
+        "Voice remains intelligible and natural",
+        "Does not exaggerate the regional feature"
+      ],
+      "critical_failure_signals": [
+        "Ignores explicit word target",
+        "Distorts unrelated words"
+      ]
+    },
+    {
+      "id": "VI05",
+      "domain": "happy-reaction",
+      "prompt": "I got selected for the job! Bohut din dhori try kori asilu. Congratulate me naturally.",
+      "expected_behaviours": [
+        "Audibly pleased but not theatrical",
+        "Clear mixed-language response",
+        "Appropriate variation in energy"
+      ],
+      "critical_failure_signals": [
+        "Flat or incongruously exaggerated reaction",
+        "Forced laugh that dominates response"
+      ]
+    },
+    {
+      "id": "VI06",
+      "domain": "serious-support",
+      "prompt": "Aji gharot ekta serious problem hoise. Moi bohut tense feel kori asu. Please respond calmly.",
+      "expected_behaviours": [
+        "Calm and respectful delivery",
+        "No playful vocalisation",
+        "Speech stays easy to understand"
+      ],
+      "critical_failure_signals": [
+        "Laughs or sounds playful during serious distress"
+      ]
+    },
+    {
+      "id": "VI07",
+      "domain": "repeat-and-slow",
+      "prompt": "Repeat just your last sentence slowly, then stop.",
+      "expected_behaviours": [
+        "Clear slower repeat",
+        "Stable intelligibility at slower pace",
+        "No unnecessary extra sentence"
+      ],
+      "critical_failure_signals": [
+        "Cannot keep repeated phrase intelligible",
+        "Adds unrelated explanation"
+      ]
+    },
+    {
+      "id": "VI08",
+      "domain": "sustained-explanation",
+      "prompt": "Explain in three short sentences how to prepare for a job interview, then pause for my reply.",
+      "expected_behaviours": [
+        "Clear articulation over multiple sentences",
+        "Natural pauses and manageable pace",
+        "Audible conversational stop rather than continued monologue"
+      ],
+      "critical_failure_signals": [
+        "Runs words together so key points are unclear",
+        "Continues with an extended unsolicited monologue"
+      ]
+    }
+  ]
+}
