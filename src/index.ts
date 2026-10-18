@@ -163,30 +163,13 @@ const POST_AUTH_ONBOARDING = `
 </section>
 `;
 const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
-/* First authenticated frame: subtle, compositor-friendly entrance. */
+/* Initial values are revealed by the interruptible spring runtime. */
 .experience-selection-eyebrow,
 .experience-card--available,
 .experience-card--preview {
   opacity: 0;
-  animation: askmoina-selection-arrive 420ms cubic-bezier(.2,.78,.2,1) both;
+  animation: none !important;
 }
-.experience-selection-eyebrow { animation-delay: 20ms; }
-.experience-card--available { animation-delay: 70ms; }
-.experience-card--preview { animation-delay: 130ms; }
-@keyframes askmoina-selection-arrive {
-  from { opacity: 0; transform: translate3d(0,16px,0) scale(.992); }
-  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .experience-selection-eyebrow,
-  .experience-card--available,
-  .experience-card--preview {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
-}
-
 `;
 
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
