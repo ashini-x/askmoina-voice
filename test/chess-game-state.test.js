@@ -52,8 +52,7 @@ describe("AskMoina chess phase 3 game state", () => {
 
   it("refuses an observation whose turn does not match the board transition", () => {
     const start = createNewChessGame({ gameId: "turn-test" });
-    const e4 = applyMove(start.currentFen, "e4");
-    const mismatch = reconcileChessObservation(start, { ...e4.observation, sideToMove: "w" });
+    const mismatch = reconcileChessObservation(start, { ...observation(start.currentFen), sideToMove: "b" });
     expect(mismatch).toMatchObject({ ok: false, reason: "side_to_move_mismatch" });
     expect(start.moveHistory).toHaveLength(0);
   });
