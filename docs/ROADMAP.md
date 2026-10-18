@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-18 (M0 Assamese Gen-Z product identity documented as a separate additive track; existing M31–M38 status remains subject to the evidence notes below).
+Last updated: 2026-10-18 (M0 documented; M1 turn-latency instrumentation and benchmark harness are in the production release path; scored baseline evidence remains pending).
 
 ## Product vision
 
@@ -14,7 +14,7 @@ The ambition is not simply to add voice to a camera or decorate the view with AR
 This initiative strengthens AskMoina's local Assamese-English conversational personality while preserving the general-purpose visual Co-Pilot vision below. It does **not** renumber or replace the existing M1–M40 engineering roadmap or RC1–RC8 response-card track.
 
 - **M0 — Product identity and differentiation (documented):** define the north star, audience, initial competitive landscape, product principles, scope boundaries, and release policy. See [M0 product identity](M0_ASSAMESE_GENZ_PRODUCT_IDENTITY.md). This is a product-definition milestone only; no runtime behavior changed and market exclusivity is not proven.
-- **M1 — Baseline and performance benchmark (next):** measure current live-session latency, natural turn-taking, pronunciation, code-switching, and reliability before changing the experience.
+- **M1 — Baseline and performance benchmark (instrumentation deployed; evidence capture in progress):** turn-boundary-to-first-audio timing, a 20-turn production synthetic runner, and a 15-case Assamese speech suite exist in the release path. The initial seven-day snapshot is only a small historical sample; a linked successful timing result, representative per-mode production samples, and scored native-listener results are still required before marking M1 fully accepted. See [M1 baseline and acceptance gates](benchmarks/m1-baseline.md).
 - **M2 — Assamese Gen-Z language intelligence:** build a permissioned, source-attributed, native-reviewed conversation and phrase reference.
 - **M3 — Native conversational personality:** refine the instructions and contextual examples based on held-out scenarios and listening evaluation.
 - **M4 — Pronunciation and voice identity:** verify word-specific guidance and select voice behavior against native-speaker audio criteria.
