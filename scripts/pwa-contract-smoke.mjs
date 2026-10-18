@@ -92,7 +92,7 @@ assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes(
 assert.ok(experienceJs.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'), "Interface 06 navigation must honor reduced-motion preferences");
 assert.ok(experienceJs.includes('cameraApp.inert = false'), "moinaOS 1 selection must return interaction to the existing camera interface");
 assert.ok(worker.includes('url.searchParams.get("experience-selection") === "1"'), "Interface 06 CSS/JS query routes must be served by the authenticated Worker");
-assert.ok(worker.includes("experienceSelectionPending") && worker.includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
+assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && read("public/copilot.js").includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
