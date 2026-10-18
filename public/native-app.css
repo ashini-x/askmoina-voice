@@ -139,7 +139,7 @@ body[data-page="login"] .entry-status:empty{display:none}
 
 
 
-/* Quiet, premium monochrome welcome screen. Let the typography and slider carry the interface. */
+
 .native-camera-welcome{
   top:40%;
   width:min(328px,calc(100% - 46px));
@@ -165,7 +165,7 @@ body[data-page="login"] .entry-status:empty{display:none}
   font-size:14px;font-weight:400;line-height:1.48;letter-spacing:-.018em;
   text-wrap:balance;
 }
-/* The iOS-style slider uses porcelain, graphite and a calm monochrome progress fill. */
+
 .camera-stage.pre-start .camera-controls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 
 
