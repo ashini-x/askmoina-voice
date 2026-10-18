@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition } from "./recognition-client.js?v=0.4.138";
+import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation } from "./recognition-client.js?v=0.4.139";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -50,7 +50,8 @@ import {
   let analysisSequence = 0;
   let statusMessageTimer = null;
   let lastRecognitionCompletedAt = 0;
-  const CONFIRM_SCAN_INTERVAL_MS = 3150;
+  let pendingRecognitionConfirmation = null;
+  const CONFIRM_SCAN_INTERVAL_MS = 1050;
 
   function loadAutoSetting() {
     try {
@@ -81,8 +82,8 @@ import {
     launch.classList.toggle("chess-autodetect-active", autoEnabled);
     launch.classList.toggle("chess-autodetect-paused", !autoEnabled);
     launch.setAttribute("aria-pressed", String(autoEnabled));
-    launch.setAttribute("aria-label", autoEnabled ? "Pause automatic chess detection" : "Resume automatic chess detection");
-    launch.title = autoEnabled ? "Chess auto-detection is on · tap to pause" : "Chess auto-detection is paused · tap to resume";
+    launch.setAttribute("aria-label", autoEnabled ? "Chess assistant on. Automatic board detection is active; tap to pause." : "Chess assistant off. Tap to resume automatic board detection.");
+    launch.title = autoEnabled ? "Chess assistant · watching for a board · tap to pause" : "Chess assistant · paused · tap to resume";
   }
 
   function hidePopup(nextDelay = DISMISS_COOLDOWN_MS) {
@@ -113,29 +114,25 @@ import {
     pendingRecognition = recognition;
     pendingMode = options.mode || "detected";
     popup.dataset.kind = "info";
-    popupTitle.textContent = options.title || "Chessboard detected";
-    popupMessage.textContent = options.message || "I can read this board. Choose what you need.";
-    popup.hidden = false;
-    dismissButton.textContent = "Not now";
+    popupTitle.textContent = "Next strong move";
     const placement = placementFromRows(recognition.boardRows);
     const knownStart = placement === INITIAL_POSITION;
-    selectedSide = options.sideToMove || (knownStart ? "w" : null);
-    turnSelector.hidden = Boolean(options.hideTurnChoice || knownStart);
-    if (!turnSelector.hidden) {
-      setSide(selectedSide);
-    } else {
-      whiteTurn.setAttribute("aria-pressed", "false");
-      blackTurn.setAttribute("aria-pressed", "false");
-      suggestButton.disabled = false;
-      trackButton.disabled = false;
-    }
+    const userColor = inferUserColorFromOrientation(recognition.orientation) || "w";
+    selectedSide = options.sideToMove || (knownStart ? "w" : userColor);
+    popupMessage.textContent = options.message || (knownStart
+      ? "Chess detected. " + colorName(userColor) + " is your side; White moves first."
+      : "Chess detected. Near side is " + colorName(userColor) + ". I’ll use that as your default color.");
+    popup.hidden = false;
+    dismissButton.textContent = "Not now";
+    turnSelector.hidden = true;
+    whiteTurn.setAttribute("aria-pressed", String(selectedSide === "w"));
+    blackTurn.setAttribute("aria-pressed", String(selectedSide === "b"));
     suggestButton.hidden = false;
-    trackButton.hidden = false;
-    suggestButton.textContent = options.suggestLabel || "Suggest a move";
-    trackButton.textContent = options.trackLabel || (options.mode === "recover" ? "Resume from here" : "Track game");
-    if (options.mode === "recover") {
-      popupMessage.textContent = options.message || "The board changed, but I couldn't match one legal move. Confirm whose turn it is to resume here.";
-    }
+    suggestButton.disabled = false;
+    suggestButton.textContent = "Next strong move";
+    suggestButton.classList.add("chess-popup-action-primary");
+    trackButton.hidden = true;
+    scheduleDetection(BASE_RETRY_MS);
   }
 
   function showMoveToast(move, sideToMove) {
@@ -143,18 +140,20 @@ import {
     statusMessageTimer = null;
     pendingMode = "move";
     pendingRecognition = null;
+    pendingRecognitionConfirmation = null;
     selectedSide = sideToMove;
     popup.dataset.kind = "success";
-    popupTitle.textContent = "Move detected · " + move.san;
-    popupMessage.textContent = colorName(sideToMove) + " to move. I’m watching for the next position.";
+    popupTitle.textContent = "Next strong move";
+    popupMessage.textContent = "Position updated. " + colorName(sideToMove) + " to move. Tap to calculate the next move.";
     turnSelector.hidden = true;
     suggestButton.hidden = false;
     suggestButton.disabled = false;
-    suggestButton.textContent = "Suggest a reply";
+    suggestButton.textContent = "Next strong move";
+    suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
-    dismissButton.textContent = "Keep watching";
+    dismissButton.textContent = "Not now";
     popup.hidden = false;
-    statusMessageTimer = setTimeout(() => hidePopup(BASE_RETRY_MS), 6500);
+    scheduleDetection(BASE_RETRY_MS);
   }
 
   function colorName(color) {
@@ -290,9 +289,7 @@ import {
   }
 
   async function confirmStableRecognition(firstRecognition) {
-    // The server applies a 3-second per-account scan throttle. Respect it, then
-    // take a fresh frame; never ask Stockfish to recommend from one uncertain
-    // reading or from a board that changed between the two scans.
+    // Start a confirmation while the glass prompt is already visible.
     const elapsed = Date.now() - lastRecognitionCompletedAt;
     const waitMs = Math.max(0, CONFIRM_SCAN_INTERVAL_MS - elapsed);
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -301,6 +298,46 @@ import {
       ok: true,
       recognition: firstRecognition
     }, secondResult);
+  }
+
+  function startBackgroundConfirmation(recognition) {
+    const placement = placementFromRows(recognition.boardRows);
+    if (!placement) return null;
+    if (pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement) {
+      return pendingRecognitionConfirmation.promise;
+    }
+    const entry = { placement, promise: null, result: null };
+    entry.promise = confirmStableRecognition(recognition).catch((error) => ({
+      ok: false,
+      reason: "confirmation_scan_failed",
+      message: error && error.message ? error.message : "Couldn't confirm the board. Keep it still and try again."
+    })).then((result) => {
+      entry.result = result;
+      if (result.ok && pendingRecognition && placementFromRows(pendingRecognition.boardRows) === placement) {
+        pendingRecognition = result.recognition;
+      }
+      return result;
+    });
+    pendingRecognitionConfirmation = entry;
+    return entry.promise;
+  }
+
+  async function getConfirmedRecognition(recognition) {
+    const placement = placementFromRows(recognition && recognition.boardRows);
+    if (!placement) return { ok: false, message: "The board reading is incomplete. Scan again." };
+    let result;
+    if (pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement) {
+      result = await pendingRecognitionConfirmation.promise;
+    }
+    if (!result || !result.ok) {
+      pendingRecognitionConfirmation = null;
+      result = await confirmStableRecognition(recognition).catch((error) => ({
+        ok: false,
+        reason: "confirmation_scan_failed",
+        message: error && error.message ? error.message : "Couldn't confirm the board. Keep it still and try again."
+      }));
+    }
+    return result;
   }
 
   function scheduleDetection(delay = BASE_RETRY_MS) {
@@ -318,10 +355,6 @@ import {
     }
     if (!cameraIsActive()) {
       scheduleDetection(1800);
-      return;
-    }
-    if (!manual && !popup.hidden) {
-      scheduleDetection(BASE_RETRY_MS);
       return;
     }
     scanning = true;
@@ -346,8 +379,12 @@ import {
       if (gameState) {
         const currentPlacement = String(gameState.currentFen).split(" ")[0];
         if (placement === currentPlacement) {
-          dismissedPlacement = null;
-          scheduleDetection(BASE_RETRY_MS + 3000);
+          if (popup.hidden && placement === dismissedPlacement && Date.now() < dismissedUntil) {
+            scheduleDetection(MAX_RETRY_MS);
+            return;
+          }
+          if (popup.hidden) showTrackedState();
+          scheduleDetection(BASE_RETRY_MS);
           return;
         }
         const confirmation = await confirmStableRecognition(observation);
@@ -393,15 +430,12 @@ import {
         scheduleDetection(MAX_RETRY_MS);
         return;
       }
-      const isStartingPosition = placement === INITIAL_POSITION;
-      showBoardPrompt(observation, {
-        mode: "detected",
-        sideToMove: isStartingPosition ? "w" : null,
-        title: "Chessboard detected",
-        message: isStartingPosition
-          ? "Looks like a new game. White moves first."
-          : "I can read the board. Who moves next?"
-      });
+      if (!popup.hidden && pendingRecognition && placementFromRows(pendingRecognition.boardRows) === placement) {
+        scheduleDetection(BASE_RETRY_MS);
+        return;
+      }
+      showBoardPrompt(observation);
+      void startBackgroundConfirmation(observation);
     } catch (error) {
       if (manual) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
       consecutiveMisses += 1;
@@ -422,13 +456,13 @@ import {
     }
   }
 
-  function createSeed(observation, sideToMove) {
+  function createSeed(observation, sideToMove, playerColor) {
     return seedChessGameFromObservation({
       boardRows: observation.boardRows,
       orientation: observation.orientation,
       sideToMove: sideToMove,
       observedAt: nowIso()
-    }, { playerColor: "w", rightsKnown: false });
+    }, { playerColor: playerColor || inferUserColorFromOrientation(observation.orientation) || "w", rightsKnown: false });
   }
 
   async function trackDetectedPosition() {
