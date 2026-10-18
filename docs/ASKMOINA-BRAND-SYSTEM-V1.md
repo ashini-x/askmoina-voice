@@ -23,6 +23,14 @@ A custom, swept-wing bird mark represents a helpful presence and forward motion.
 
 Do not use a permanent neon rainbow, green call colour, or red call badge as part of the primary identity. Do not approximate another company's icon.
 
+## Typography — canonical global font
+
+The canonical UI typography name is **`askmoina-global-font`**. Its shared implementation is `public/askmoina-global-font.css`, loaded by all user-facing application shells and static HTML pages. Use the SF Pro look where available, with native sans-serif fallbacks on platforms that do not provide it. No third-party font binary is bundled by this change, so the visual match should be checked on the target devices.
+
+All visible UI text must inherit this one family: headings, body copy, navigation, buttons, form controls, dialogs, overlays, captions, response cards, and dynamically rendered content. Do not introduce another font family for ordinary interface text. Component-specific size, weight, line-height, spacing, and typographic hierarchy can still vary.
+
+Future UI work must load `/askmoina-global-font.css` after component stylesheets. Worker-generated shells and site-chrome pages inject it automatically; standalone new HTML pages must include it explicitly. The repository contract test verifies the token and key page entry points.
+
 ## Orb placement and behaviour
 The orb is the existing primary start/stop control in the bottom-centre control row of the camera experience. This keeps it where a primary action belongs, avoids adding a second floating control, and preserves the camera's sightline. The separate welcome orb sits above the “Slide to start” action while idle.
 
