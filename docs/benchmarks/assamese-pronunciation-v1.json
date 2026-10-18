@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "assamese-pronunciation-v1",
+  "suite_version": "1.0.0",
+  "title": "Assamese word-level pronunciation and correction acceptance",
+  "purpose": "Held-out, human-listened evaluation of exact-word pronunciation targets, English negative controls, Romanized Assamese, repeat/slow behavior, and uncertainty. Prompt checks do not prove generated audio pronunciation.",
+  "recording_policy": "Listen live without saving recordings, transcripts, screenshots, names, phone numbers, or personal details. Store score-only ratings, non-identifying evaluator codes, critical-failure flags, and short non-identifying notes.",
+  "minimum_completed_cases": 10,
+  "dimensions": [
+    {
+      "id": "lexeme_accuracy",
+      "label": "Applies the intended pronunciation target to the exact requested word"
+    },
+    {
+      "id": "pronunciation_clarity",
+      "label": "Generated speech is intelligible and naturally articulated"
+    },
+    {
+      "id": "correction_followthrough",
+      "label": "Acknowledges and follows specific word-level correction and repeat/slow requests"
+    },
+    {
+      "id": "code_switch_integrity",
+      "label": "Keeps conventional English pronunciation inside Assamese-English speech"
+    },
+    {
+      "id": "regional_humility",
+      "label": "Does not generalize one listener's preference into a universal dialect rule"
+    },
+    {
+      "id": "uncertainty_handling",
+      "label": "Asks rather than inventing an uncertain local word or place-name pronunciation"
+    }
+  ],
+  "pass_thresholds": {
+    "overall_percent": 85,
+    "minimum_completed_cases": 10,
+    "max_critical_failures": 0,
+    "dimensions": {
+      "lexeme_accuracy": 85,
+      "pronunciation_clarity": 80,
+      "correction_followthrough": 85,
+      "code_switch_integrity": 85
+    }
+  },
+  "rating_guide": {
+    "0": "Fail or materially wrong",
+    "1": "Partial success with a material miss",
+    "2": "Pass: clear, responsive, and appropriately scoped"
+  },
+  "cases": [
+    {
+      "id": "PR01",
+      "domain": "exact-lexeme-preference",
+      "prompt": "In Assamese, say সৰু meaning 'small' closer to my preferred 'horu' than 'soru/xoru'. Only correct that word.",
+      "expected_behaviours": [
+        "Attempts the reported target for this exact lexeme",
+        "Does not generalize h-for-s/x to other words",
+        "Does not speak phonetic notation"
+      ],
+      "critical_failure_signals": [
+        "Ignores the word-specific correction",
+        "Claims the preferred target is universal for Upper Assam"
+      ]
+    },
+    {
+      "id": "PR02",
+      "domain": "english-negative-control",
+      "prompt": "Say naturally in English: 'I am studying the system seriously.'",
+      "expected_behaviours": [
+        "Keeps study, system, and seriously recognisably English",
+        "Does not mechanically replace English /s/ with /h/",
+        "Maintains natural cadence"
+      ],
+      "critical_failure_signals": [
+        "Systematic English consonant substitutions"
+      ]
+    },
+    {
+      "id": "PR03",
+      "domain": "mixed-code-switching",
+      "prompt": "Reply casually to: 'Aji office-or pora ahi moi tired, so etiya rest lom.' Keep the English words sounding like English.",
+      "expected_behaviours": [
+        "Recognizes Romanized Assamese in context",
+        "Preserves English words and phrases",
+        "Does not transliterate one letter at a time"
+      ],
+      "critical_failure_signals": [
+        "Mechanical letter substitution changes English pronunciation or meaning"
+      ]
+    },
+    {
+      "id": "PR04",
+      "domain": "correction-follow-through",
+      "prompt": "That pronunciation sounded like 'soru'. Please try just the Assamese word সৰু closer to 'horu' once more.",
+      "expected_behaviours": [
+        "Retries only the requested word",
+        "Acknowledges correction briefly or simply retries",
+        "Does not claim permanent learning"
+      ],
+      "critical_failure_signals": [
+        "Repeats a long unrelated answer",
+        "Claims preference was permanently saved without confirmation"
+      ]
+    },
+    {
+      "id": "PR05",
+      "domain": "repeat-unit",
+      "prompt": "Repeat only your last sentence, with the same meaning; don't explain it again.",
+      "expected_behaviours": [
+        "Repeats the relevant sentence only",
+        "Preserves meaning",
+        "Avoids a new lecture"
+      ],
+      "critical_failure_signals": [
+        "Repeats a different sentence or changes its meaning"
+      ]
+    },
+    {
+      "id": "PR06",
+      "domain": "slow-down",
+      "prompt": "Moi last line-tu bhalke hunibo nuwarilu. Repeat just that line more slowly, please.",
+      "expected_behaviours": [
+        "Repeats only the relevant line",
+        "Clearly slows delivery while staying intelligible",
+        "Preserves words and meaning"
+      ],
+      "critical_failure_signals": [
+        "Restarts a long answer or materially changes content"
+      ]
+    },
+    {
+      "id": "PR07",
+      "domain": "formal-register-control",
+      "prompt": "Say this in formal Assamese, not casual chat: 'মই কাইলৈ আবেদনখন দাখিল কৰিম।' Keep the register formal.",
+      "expected_behaviours": [
+        "Honours the requested register",
+        "Keeps pronunciation clear without injecting slang",
+        "Does not reinterpret the request as a dialect performance"
+      ],
+      "critical_failure_signals": [
+        "Ignores the register request"
+      ]
+    },
+    {
+      "id": "PR08",
+      "domain": "romanized-ambiguity",
+      "prompt": "I wrote a local Assamese word in Roman letters, but I'm not sure the spelling is clear. What would help you pronounce it accurately?",
+      "expected_behaviours": [
+        "Asks for the word in Assamese script, meaning, or an audio repeat as appropriate",
+        "Explains briefly that Roman spellings vary",
+        "Does not bluff certainty"
+      ],
+      "critical_failure_signals": [
+        "Invents a specific pronunciation without knowing the word"
+      ]
+    },
+    {
+      "id": "PR09",
+      "domain": "sound-variant-scope",
+      "prompt": "For this one Assamese word, a listener says they use an initial 'h' sound locally. Try that specific word but don't change other words.",
+      "expected_behaviours": [
+        "Treats the target as word-specific listener feedback",
+        "Does not infer an all-words sound replacement",
+        "Makes uncertainty clear if the word is not identified"
+      ],
+      "critical_failure_signals": [
+        "Applies the proposed substitution to unrelated words"
+      ]
+    },
+    {
+      "id": "PR10",
+      "domain": "local-name-uncertainty",
+      "prompt": "Can you confirm the exact local pronunciation of a place name if I haven't told you the name yet?",
+      "expected_behaviours": [
+        "Asks for the place name and useful spelling/context",
+        "Does not invent a place or pronunciation",
+        "Keeps the clarification concise"
+      ],
+      "critical_failure_signals": [
+        "Fabricates a local name or claims certainty without input"
+      ]
+    },
+    {
+      "id": "PR11",
+      "domain": "word-level-vs-general-rule",
+      "prompt": "I corrected one word earlier. Does that mean every Assamese word beginning with the same Roman letter should change too?",
+      "expected_behaviours": [
+        "Says no; a personal correction applies only to the identified word unless more evidence supports a broader rule",
+        "Avoids a universal dialect claim",
+        "Distinguishes the listener's preference from verified community guidance"
+      ],
+      "critical_failure_signals": [
+        "Generalizes a word-specific preference to all similar words"
+      ]
+    },
+    {
+      "id": "PR12",
+      "domain": "language-switch-and-clarity",
+      "prompt": "Say one short sentence in Assamese, then switch to clear English when I ask, 'English please—repeat just the key phrase.'",
+      "expected_behaviours": [
+        "Follows the language switch promptly",
+        "Repeats only the requested phrase",
+        "Uses ordinary English pronunciation"
+      ],
+      "critical_failure_signals": [
+        "Keeps using the prior language or alters the key phrase"
+      ]
+    }
+  ]
+}
