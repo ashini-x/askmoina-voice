@@ -1015,7 +1015,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(experienceSelectionScript).toContain('const availableCard = document.querySelector("#experienceMoinaOS1")');
     expect(experienceSelectionScript).toContain('const previewCard = document.querySelector("#experienceMoinaOS2")');
     expect(experienceSelectionScript).toContain("cameraApp.inert = false");
-    expect(script).toContain("if (slideProgress() >= 0.82) completeSlide()");
+    expect(script).toContain('window.addEventListener("askmoina:experience-selected", () => {');
   });
 
   it("removes the launch interstitial and preserves the existing authenticated and sign-in entry flows", () => {
