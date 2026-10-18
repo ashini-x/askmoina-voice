@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "../src/copilot-assets";
+import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERIENCE_SELECTION_JS } from "../src/copilot-assets";
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
@@ -26,6 +26,8 @@ describe("Worker-embedded Co-Pilot assets", () => {
     expect(COPILOT_HTML).toBe(html);
     expect(COPILOT_JS).toBe(script);
     expect(COPILOT_CSS).toBe(css);
+    expect(EXPERIENCE_SELECTION_CSS).toBe(experienceSelectionCss);
+    expect(EXPERIENCE_SELECTION_JS).toBe(experienceSelectionScript);
   });
 });
 
@@ -936,8 +938,15 @@ describe("Dark-first app shell and brand assets", () => {
 
   it("routes successful signup/sign-in directly to Interface 06", () => {
     expect(authScript).not.toContain('"/?onboarding=1"');
-    expect(authScript).toContain("const next = destination;");
+    expect(authScript).toContain('destination === "/" ? "/?startup=1" : destination');
     expect(authScript).toContain("window.location.replace(next)");
+    expect(workerSource).toContain("Starting moinaOS");
+    expect(workerSource).toContain("id='moinaOSStartupOverlay' hidden");
+    expect(workerSource).toContain('url.searchParams.get("startup") === "1"');
+    expect(experienceSelectionCss).toContain(".moinaos-startup-card");
+    expect(experienceSelectionCss).toContain(".moinaos-startup-ring");
+    expect(experienceSelectionScript).toContain("finishStartupWhenReady");
+    expect(experienceSelectionScript).toContain("Taking a little longer");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
     expect(workerSource).toContain("id='experienceMoinaOS1'");

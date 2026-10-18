@@ -279,7 +279,7 @@
 
   async function navigateAfterAuth(destination) {
     // Navigate as soon as authentication succeeds; do not cover the screen with a launch interstitial.
-    const next = destination;
+    const next = destination === "/" ? "/?startup=1" : destination;
     window.location.replace(next);
   }
 
