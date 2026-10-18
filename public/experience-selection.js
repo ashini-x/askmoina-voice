@@ -104,6 +104,7 @@
       cameraApp.removeAttribute("aria-hidden");
       cameraApp.inert = false;
       cameraApp.style.zIndex = "100000";
+      overlay.classList.add("is-leaving");
       motion.flip(cameraApp, sourceRect, motion.profiles.expand, { onComplete: finishSelection });
       motion.animate(overlay, { opacity: 0 }, motion.profiles.exit, { persistTarget: true });
     } else {
