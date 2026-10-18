@@ -5,6 +5,7 @@
   const previewCard = document.querySelector("#experienceMoinaOS2");
   const previewNotice = document.querySelector("#experiencePreviewNotice");
   const cameraApp = document.querySelector(".camera-app");
+  const cameraStart = document.querySelector("#showProblemButton");
   if (!overlay || !availableCard || !previewCard) return;
 
   document.body.classList.add("experience-selection-open");
@@ -109,3 +110,4 @@
       motion.animate(overlay, { y: -12, opacity: 0 }, motion.profiles.exit, { onComplete: finishSelection });
     }
   });
+})();
