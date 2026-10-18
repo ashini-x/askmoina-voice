@@ -1,6 +1,5 @@
 (() => {
   "use strict";
-
   const overlay = document.querySelector("#postAuthOnboarding");
   const availableCard = document.querySelector("#experienceMoinaOS1");
   const previewCard = document.querySelector("#experienceMoinaOS2");
@@ -38,6 +37,7 @@
         cameraApp.inert = false;
       }
       if (cameraStart instanceof HTMLElement) cameraStart.focus({ preventScroll: true });
+      window.dispatchEvent(new Event("askmoina:experience-selected"));
     };
     if (reducedMotion) finishSelection();
     else window.setTimeout(finishSelection, 160);
