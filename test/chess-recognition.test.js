@@ -5,6 +5,7 @@ import {
   boardRowsToFen,
   recognizeChessboardFrame,
   verifyStableChessboardRecognition,
+  inferUserColorFromOrientation,
   validateBoardRows
 } from "../public/chess/recognition-client.js";
 import { assessRecognition, buildChessRecognitionPrompt, handleChessRecognitionRequest } from "../src/chess/recognition.ts";
@@ -76,6 +77,11 @@ function makeRequest(body = requestBody(), overrides = {}) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("board rows and FEN", () => {
+  it("defaults the user's color to the color on the near edge", () => {
+    expect(inferUserColorFromOrientation("white_at_bottom")).toBe("w");
+    expect(inferUserColorFromOrientation("black_at_bottom")).toBe("b");
+    expect(inferUserColorFromOrientation("unknown")).toBeNull();
+  });
   it("converts all 64 starting squares in standard FEN order and validates with chess.js", () => {
     const result = boardRowsToFen(STARTING_ROWS, "w");
     expect(result.ok).toBe(true);
