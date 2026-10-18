@@ -132,6 +132,31 @@ export function assessChessboardRecognition(recognition) {
  * conservative FEN. Side-to-move is user/session supplied, never guessed from
  * piece placement. A photographed position cannot reveal historical rights.
  */
+/** Require two independent camera reads to agree before using a photographed position. */
+export function verifyStableChessboardRecognition(firstResult, secondResult) {
+  const fail = (reason, message) => ({ ok: false, reason, message });
+  if (!firstResult || firstResult.ok !== true || !firstResult.recognition) {
+    return fail("first_scan_unavailable", "The first board reading is unavailable. Scan the board again.");
+  }
+  if (!secondResult || secondResult.ok !== true || !secondResult.recognition) {
+    const detail = secondResult && typeof secondResult.message === "string" ? " " + secondResult.message : "";
+    return fail("confirmation_scan_unavailable", "I couldn't confirm the board with a second reading." + detail);
+  }
+  const first = firstResult.recognition;
+  const second = secondResult.recognition;
+  const firstRows = validateBoardRows(first.boardRows);
+  const secondRows = validateBoardRows(second.boardRows);
+  if (!firstRows.ok || !secondRows.ok) {
+    return fail("invalid_confirmation_reading", "One of the board readings was incomplete. Keep all 64 squares visible and scan again.");
+  }
+  const firstPlacement = first.boardRows.join("/");
+  const secondPlacement = second.boardRows.join("/");
+  if (firstPlacement !== secondPlacement || first.orientation !== second.orientation) {
+    return fail("unstable_board_reading", "The two board readings did not agree. I won't recommend a move from this scan. Keep the board still and try again.");
+  }
+  return { ok: true, recognition: second };
+}
+
 export function boardRowsToFen(rows, sideToMove) {
   if (sideToMove !== "w" && sideToMove !== "b") {
     return failure("side_to_move_required", "Confirm whether White or Black moves next.");
@@ -164,6 +189,14 @@ export function boardRowsToFen(rows, sideToMove) {
   }
   try {
     const chess = new Chess(fen);
+    // The side that just moved cannot leave its own king in check. Check this
+    // separately because a structurally valid FEN can still be an impossible
+    // photograph reading and otherwise produce legal moves for the wrong board.
+    const oppositeSide = sideToMove === "w" ? "b" : "w";
+    const previousMoverPosition = new Chess(placement + " " + oppositeSide + " - - 0 1");
+    if (previousMoverPosition.isCheck()) {
+      return failure("impossible_check_state", "The scanned position appears to leave the side that just moved in check. I won't recommend a move from this reading. Scan the board again.");
+    }
     return {
       ok: true,
       fen: chess.fen(),
