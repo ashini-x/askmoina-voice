@@ -6,6 +6,7 @@ import {
   boardRowsToFen,
   recognizeChessboardFrame,
   verifyStableChessboardRecognition,
+  retryStableChessboardRecognition,
   inferUserColorFromOrientation,
   validateBoardRows,
   computeCoverCrop
@@ -212,6 +213,45 @@ describe("board rows and FEN", () => {
       ok: false,
       reason: "unstable_board_reading"
     });
+  });
+
+  it("retries a failed second read and confirms on the next independent frame", async () => {
+    const first = strongRecognition();
+    const readConfirmation = vi.fn()
+      .mockResolvedValueOnce({ ok: false, reason: "provider_error", message: "Vision request failed." })
+      .mockResolvedValueOnce({ ok: true, recognition: strongRecognition() });
+    const result = await retryStableChessboardRecognition(first, readConfirmation, {
+      maxAttempts: 2,
+      retryDelayMs: 0
+    });
+    expect(result).toMatchObject({ ok: true });
+    expect(result.recognition.boardRows).toEqual(STARTING_ROWS);
+    expect(readConfirmation).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a mismatched confirmation but never accepts an unstable position", async () => {
+    const movedRows = [...STARTING_ROWS];
+    movedRows[6] = "PPPP.PPP";
+    const readConfirmation = vi.fn()
+      .mockResolvedValueOnce({ ok: true, recognition: strongRecognition(movedRows) })
+      .mockResolvedValueOnce({ ok: true, recognition: strongRecognition() });
+    const result = await retryStableChessboardRecognition(strongRecognition(), readConfirmation, {
+      maxAttempts: 2,
+      retryDelayMs: 0
+    });
+    expect(result).toMatchObject({ ok: true });
+    expect(readConfirmation).toHaveBeenCalledTimes(2);
+  });
+
+  it("still rejects if no confirmation read agrees with the candidate board", async () => {
+    const readConfirmation = vi.fn()
+      .mockResolvedValue({ ok: false, reason: "provider_error", message: "Vision unavailable." });
+    const result = await retryStableChessboardRecognition(strongRecognition(), readConfirmation, {
+      maxAttempts: 2,
+      retryDelayMs: 0
+    });
+    expect(result).toMatchObject({ ok: false, reason: "confirmation_scan_unavailable" });
+    expect(readConfirmation).toHaveBeenCalledTimes(2);
   });
 
   it("does not trust a second scan that failed or could not reach recognition", () => {
