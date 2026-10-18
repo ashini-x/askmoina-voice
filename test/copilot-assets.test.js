@@ -1028,9 +1028,9 @@ describe("Dark-first app shell and brand assets", () => {
     expect(experienceSelectionCss).toContain(".experience-card--preview");
     expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
     expect(experienceSelectionScript).toContain("window.__askmoinaFluidMotion");
-    expect(experienceSelectionScript).toContain("engine.profiles.expand");
-    expect(experienceSelectionScript).toContain("engine.profiles.exit");
-    expect(experienceSelectionScript).toContain("engine.flip(cameraApp, sourceRect, motion.profiles.expand");
+    expect(experienceSelectionScript).toContain("motion.profiles.expand");
+    expect(experienceSelectionScript).toContain("motion.profiles.exit");
+    expect(experienceSelectionScript).toContain("motion.flip(cameraApp, sourceRect, motion.profiles.expand");
     expect(nativeAppScript).toContain("nativeMenuSheet");
     expect(nativeAppScript).not.toContain("assistantSelectionStage");
     expect(nativeAppCss).not.toContain(".app-launch-transition");
