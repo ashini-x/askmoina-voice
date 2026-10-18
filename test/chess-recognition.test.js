@@ -230,6 +230,8 @@ describe("provider result assessment", () => {
   it("instructs the model not to invent pieces or infer side-to-move/history", () => {
     const prompt = buildChessRecognitionPrompt("Black");
     expect(prompt).toContain("Do not guess");
+    expect(prompt).toContain("physical or digital chessboard");
+    expect(prompt).not.toContain("there is no physical chessboard");
     expect(prompt).toContain("Do not assume the starting position");
     expect(prompt).toContain("Do not infer or change that side");
     expect(buildChessRecognitionPrompt(null)).toContain("The side to move is unknown");
@@ -237,6 +239,7 @@ describe("provider result assessment", () => {
     expect(prompt).toContain("Chess.com");
     expect(prompt).toContain("monitor, laptop, tablet, or phone");
     expect(prompt).toContain("ignore everything outside its grid");
+    expect(prompt).toContain("visually nearest the bottom edge of the chessboard image");
   });
 });
 
