@@ -1,6 +1,6 @@
 # M1 — Baseline and performance benchmark
 
-Status: **in progress**. This document records the initial source and production-telemetry review. It is not a release certificate.
+Status: **measurement instrumentation deployed; baseline acceptance still in progress**. This is an evidence record, not a release certificate. This baseline is also the measurement foundation for the additive Assamese Gen-Z initiative (M0–M9); it does not renumber the older M1–M40 engineering roadmap.
 
 ## Snapshot
 
@@ -33,24 +33,43 @@ The legacy `requestToFirstAudioMs` starts at session initialization. It can incl
 
 During the same seven-day review, 14 session-efficiency summary records were found: seven marked `completed` and seven marked `provider_error` (11 Co-Pilot mode records and three voice mode records). This is a small, log-derived sample—not a reliable estimate of the production error rate. The provider-error records should be inspected before any release-readiness claim.
 
-## M1 instrumentation correction
+## M1 instrumentation and production measurement path
 
-The M1 feature branch adds a privacy-safe `activity_end`-to-first-audio metric for client-detected spoken turns. It logs only:
+The current `main` source includes the privacy-safe turn-latency helper in `src/sessions/turn-latency.ts`, its live-session integration in `src/index.ts`, and regression tests in `test/turn-latency.test.ts`. For each client-detected `activity_end`, the server records a one-shot pending boundary and measures the first subsequent audio-bearing provider frame. A new `activity_start` clears a pending measurement so an interrupted prior turn is not misattributed.
 
-- operating mode (voice or Co-Pilot),
-- elapsed milliseconds from the server receiving the activity-end signal to the first audio-bearing provider frame,
-- setup-complete flag and frame size.
+The metric logs only:
+- operating mode (`voice` or `copilot`),
+- elapsed milliseconds from the server observing the activity-end signal to the first audio-bearing provider frame,
+- setup-complete state and provider frame size.
 
-It does not capture audio, transcript text, or user content. It does not change turn detection, silence thresholds, prompts, audio formats, or generation configuration.
+No audio, transcript, prompt, or personal content is written by this metric. It does not alter turn detection, silence thresholds, prompts, audio format, or generation configuration.
 
-Important interpretation: this measurement starts after the client-side silence tolerance has already elapsed. It isolates the server/provider response-start interval; it does not by itself measure total time from the user's final phoneme to audible playback. The fixed client silence tolerance and playback scheduling must be reported separately when comparing full perceived latency.
+The existing `scripts/live-turn-latency-benchmark.py` sends 20 locally synthesized **English** speech turns through the production Live WebSocket and reports sample count plus p50, p90, p95, minimum, and maximum boundary-to-first-audio latency. The standard production workflow invokes this benchmark using an authenticated synthetic account. The result must be read from the corresponding GitHub Actions logs; validating or syntax-checking the script is not evidence that the run passed.
 
-The new metric cannot be collected from production until this branch is reviewed, validated and deliberately deployed. No production deployment is part of this milestone change.
+**Interpretation limit:** this starts after the browser's silence-tolerance logic has closed the turn. It measures the server/provider response-start interval, not total perceived latency from the user's final phoneme to sound reaching the speaker. Client VAD delay, browser scheduling, playback scheduling, and device/network differences must be kept separate. The English synthetic benchmark is not a measure of Assamese pronunciation, dialect fit, or naturalness.
 
-## M1 exit gates
+The measurement path is included in the production release process, but M1 is not accepted solely because the code was deployed. Numeric benchmark output, repeated production samples by mode where available, failure investigation, and native-speaker scoring remain evidence gates.
 
-1. CI passes for the measurement helper and existing benchmark suites.
-2. Turn-latency samples are collected from a sufficient number of real sessions, split by voice and Co-Pilot mode where available.
-3. Report p50/p95 with sample counts and no personal content.
-4. Complete the Assamese speech acceptance suite against actual generated audio; do not mark native naturalness as passed from prompt tests alone.
-5. Investigate provider-error outcomes before calling the runtime baseline healthy.
+## Assamese Gen-Z initiative: M1 baseline procedure
+
+### Technical baseline
+
+1. Run the normal release-validation workflow, including `npm run benchmark:validate`, the turn-latency helper tests, and the Wrangler dry-run.
+2. Run the production workflow's 20-turn latency benchmark; record the run URL, the requested/completed turn counts, p50/p90/p95, min/max, and failures from the workflow output.
+3. Report the source-observed `activity_end`-to-first-audio metric separately from total user-perceived response latency and from the legacy session-start metric.
+4. Gather enough production observations to stratify by voice and Co-Pilot mode where available. Include sample counts and the measurement window. Do not write raw media or transcripts into benchmark results.
+5. Reproduce and investigate provider-error, clipped-turn, interruption, reconnect, and session-continuity failures before calling the runtime baseline healthy.
+
+### Assamese-English conversational baseline
+
+The existing `docs/benchmarks/assamese-speech-v1.json` is the baseline evaluation suite: 15 scenarios across six dimensions (language matching, conversational naturalness, pronunciation clarity, code-switching, turn-taking, and uncertainty honesty). Use `node scripts/reality-benchmark.mjs init speech <path-to-run.json>` to create a score-only reviewer template, then `node scripts/reality-benchmark.mjs score speech <path-to-run.json>` to calculate its score.
+
+Have consenting Upper Assam speakers rate the actual generated audio in a private evaluation. Do not save audio or transcripts by default; store only evaluator codes, ratings, critical-failure flags, and brief non-identifying notes. Keep disputed regional variants marked as variants. One reviewer's preference must not be presented as a universal dialect rule.
+
+### M1 status and acceptance
+
+**Deployed:** turn-latency instrumentation, its unit tests, an existing 20-turn synthetic runner, the 15-case speech suite, and score-only evaluation tooling are already in the repository and in the production release path.
+
+**Still pending:** a linked successful 20-turn production timing result; a sufficiently sampled per-mode baseline from production telemetry; root-cause review of the small historical provider-error sample; and a scored native-listener run of the Assamese speech suite. No native pronunciation/naturalness result should be invented from synthetic tests or prompt contracts.
+
+M1 can be marked fully accepted only once the measurement run results are attached and the native-speaker baseline has been collected privately. This is a pre-release quality task, not a public-beta requirement.
