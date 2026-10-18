@@ -185,12 +185,10 @@ export async function handleChessRecognitionRequest(
             ]
           }],
           generationConfig: {
-            temperature: 0,
-            topP: 0.1,
-            candidateCount: 1,
-            maxOutputTokens: 900,
+              maxOutputTokens: 900,
             responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA
+            responseSchema: RESPONSE_SCHEMA,
+            thinkingConfig: { thinkingLevel: "LOW" }
           }
         })
       });
@@ -200,9 +198,14 @@ export async function handleChessRecognitionRequest(
 
     if (!response.ok) {
       // Deliberately do not send provider response details, prompts, or frame data to the browser.
-      return json({ ok: false, reason: response.status === 429 ? "provider_busy" : "provider_error", message: response.status === 429
-        ? "Chessboard recognition is temporarily busy. Please try again in a moment."
-        : "Chessboard recognition is temporarily unavailable." }, response.status === 429 ? 429 : 502);
+      return json({
+        ok: false,
+        reason: response.status === 429 ? "provider_busy" : "provider_error",
+        providerStatus: response.status,
+        message: response.status === 429
+          ? "Chessboard recognition is temporarily busy. Please try again in a moment."
+          : "Chessboard recognition is temporarily unavailable."
+      }, response.status === 429 ? 429 : 502);
     }
 
     let providerData: unknown;
