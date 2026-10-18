@@ -16,6 +16,7 @@ import { handleContinuityRequest, isAdmin, recordSessionStart, recordSessionFini
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
+import { buildAssameseConversationReferenceInstruction } from "./sessions/assamese-conversation-reference";
 import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./sessions/assamese-speech-evaluation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
@@ -2159,9 +2160,13 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
-const baseInstruction = pronunciationGuidance
-  ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
+        const [pronunciationGuidance, conversationReferenceGuidance] = await Promise.all([
+          buildAssamesePronunciationInstruction(env.DB),
+          buildAssameseConversationReferenceInstruction(env.DB),
+        ]);
+const referenceGuidance = [pronunciationGuidance, conversationReferenceGuidance].filter(Boolean).join("\n\n");
+const baseInstruction = referenceGuidance
+  ? `${SYSTEM_INSTRUCTION}\n\n${referenceGuidance}`
   : SYSTEM_INSTRUCTION;
 const enableCopilotForSetup = message.copilot_mode === true;
 const systemInstruction = buildPersonalizedSystemInstruction(
