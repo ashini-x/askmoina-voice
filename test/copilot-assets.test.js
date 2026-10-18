@@ -938,8 +938,15 @@ describe("Dark-first app shell and brand assets", () => {
 
   it("routes successful signup/sign-in directly to Interface 06", () => {
     expect(authScript).not.toContain('"/?onboarding=1"');
-    expect(authScript).toContain("const next = destination;");
+    expect(authScript).toContain('destination === "/" ? "/?startup=1" : destination');
     expect(authScript).toContain("window.location.replace(next)");
+    expect(workerSource).toContain("Starting moinaOS");
+    expect(workerSource).toContain("id='moinaOSStartupOverlay' hidden");
+    expect(workerSource).toContain('url.searchParams.get("startup") === "1"');
+    expect(experienceSelectionCss).toContain(".moinaos-startup-card");
+    expect(experienceSelectionCss).toContain(".moinaos-startup-ring");
+    expect(experienceSelectionScript).toContain("finishStartupWhenReady");
+    expect(experienceSelectionScript).toContain("Taking a little longer");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
     expect(workerSource).toContain("id='experienceMoinaOS1'");
