@@ -3,7 +3,7 @@
 <meta charset="utf-8"><link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin fetchpriority="high"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b0f"><meta name="color-scheme" content="dark"><meta name="description" content="askmoina sees, understands, and helps with real-world problems."><link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.80"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.80">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
-<title>askmoina · Real-world co-pilot</title><link rel="stylesheet" href="/copilot.css?v=0.4.94&ambient=20261017"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><script src="/transcript-merge.js" defer></script><script src="/copilot.js?v=0.4.93" defer></script><script src="/session-ui.js" defer></script></head>
+<title>askmoina · Real-world co-pilot</title><link rel="stylesheet" href="/copilot.css?v=0.4.94&ambient=20261017"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><link rel="stylesheet" href="/chess/chess-ui.css?v=0.4.134"><script type="module" src="/chess/chess-ui.js?v=0.4.134"></script><script src="/transcript-merge.js" defer></script><script src="/copilot.js?v=0.4.93" defer></script><script src="/session-ui.js" defer></script></head>
 <body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage pre-start initial-intro" id="cameraStage" aria-label="Live camera view">
 <div class="ambient-edge-light" aria-hidden="true"></div>
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
@@ -111,7 +111,50 @@
 <button type="button" id="muteMic" class="control-icon" disabled aria-label="Mute microphone" title="Mute microphone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span></button>
 <button type="button" id="toggleCopilot" class="control-icon call-action-button" disabled aria-pressed="false" aria-label="Start askmoina call" title="Start askmoina call"><svg class="icon-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.8 5.7 4.4c-.9.3-1.4 1.2-1.2 2.1 1.1 6.3 6 11.2 12.3 12.3.9.2 1.8-.4 2.1-1.2l.6-1.5-3.5-1.7-1.1 1.4a12.4 12.4 0 0 1-5.2-5.2l1.4-1.1-1.7-3.5Z"/></svg><svg class="icon-end" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.8 5.7 4.4c-.9.3-1.4 1.2-1.2 2.1 1.1 6.3 6 11.2 12.3 12.3.9.2 1.8-.4 2.1-1.2l.6-1.5-3.5-1.7-1.1 1.4a12.4 12.4 0 0 1-5.2-5.2l1.4-1.1-1.7-3.5Z"/><path d="M4 20 20 4"/></svg><span id="buttonLabel" class="sr-only">Checking voice</span></button>
 <button type="button" id="flipCamera" class="control-icon" disabled aria-label="Switch camera" title="Switch camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 7.1A7.2 7.2 0 0 1 18 6l1.5 1.5"/><path d="M19.5 4.4v3.1h-3.1"/><path d="M16.8 16.9A7.2 7.2 0 0 1 6 18l-1.5-1.5"/><path d="M4.5 19.6v-3.1h3.1"/><rect x="8.5" y="8.7" width="7" height="6.6" rx="1.2"/><circle cx="12" cy="12" r="2"/></svg></button>
-</div></nav>
+</div>
+<button type="button" id="chessAssistantButton" class="control-icon chess-launch-button" aria-label="Chess assistant" title="Chess assistant" aria-expanded="false"><span aria-hidden="true">♞</span><span class="sr-only">Chess assistant</span></button>
+</nav>
+<section id="chessAssistantOverlay" class="chess-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="chessHeading">
+  <div class="chess-backdrop" data-chess-dismiss aria-hidden="true"></div>
+  <div class="chess-sheet">
+    <header class="chess-header">
+      <div><span class="chess-eyebrow">ASKMOINA · OPTIONAL CAPABILITY</span><h2 id="chessHeading" class="chess-heading">Chess</h2><p class="chess-subtitle">Scan a physical board, track confirmed legal moves, and ask Stockfish for a recommendation.</p></div>
+      <button type="button" id="chessClose" class="chess-close" aria-label="Close chess assistant">×</button>
+    </header>
+    <div class="chess-settings">
+      <label class="chess-field" for="chessPlayerColor">I am playing
+        <select id="chessPlayerColor"><option value="w">White</option><option value="b">Black</option></select>
+      </label>
+      <label class="chess-field" for="chessSideToMove">Side to move in the scanned position
+        <select id="chessSideToMove"><option value="w">White</option><option value="b">Black</option></select>
+      </label>
+    </div>
+    <details class="chess-rights">
+      <summary>Mid-game position · castling rights (optional)</summary>
+      <p>Only mark rights you know are still available. If the game history is unknown, leave this unconfirmed; AskMoina will not infer past castling or en-passant rights from a photograph.</p>
+      <label class="chess-rights-confirm"><input id="chessRightsKnown" type="checkbox"> I confirm the selected castling rights below, including none if all are unchecked.</label>
+      <div class="chess-right-grid">
+        <label class="chess-right-item"><input id="chessRightK" type="checkbox" disabled> White king-side</label>
+        <label class="chess-right-item"><input id="chessRightQ" type="checkbox" disabled> White queen-side</label>
+        <label class="chess-right-item"><input id="chessRightk" type="checkbox" disabled> Black king-side</label>
+        <label class="chess-right-item"><input id="chessRightq" type="checkbox" disabled> Black queen-side</label>
+      </div>
+    </details>
+    <div class="chess-actions">
+      <button type="button" id="chessNewGame" class="chess-action">New game</button>
+      <button type="button" id="chessSeedPosition" class="chess-action">Scan current position</button>
+      <button type="button" id="chessScan" class="chess-action chess-action-primary">Scan &amp; update</button>
+    </div>
+    <p id="chessStatus" class="chess-status" data-kind="info" role="status" aria-live="polite">Chess scans are manual. Choose a starting point before tracking moves.</p>
+    <section id="chessResult" class="chess-result" hidden aria-label="Chess position and analysis">
+      <h3>Confirmed position</h3>
+      <p id="chessNextMove" class="chess-next-move"></p>
+      <code id="chessPosition" class="chess-position"></code>
+      <ul id="chessMoveList" class="chess-move-list" aria-label="Recent moves"></ul>
+    </section>
+    <p class="chess-privacy">A single frame is sent to Google Cloud only when you scan. AskMoina does not save the image. Move history is stored locally on this device, not synced to your account.</p>
+  </div>
+</section>
 <div class="spatial-hud spatial-hud-jarvis" id="spatialHud" hidden aria-label="Moina visual guide">
   <section class="spatial-card">
     <header class="spatial-topbar">
