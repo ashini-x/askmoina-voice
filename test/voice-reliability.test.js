@@ -32,3 +32,14 @@ describe("voice media backpressure without app usage caps", () => {
     expect(worker).not.toContain("targetSelectionCount >= 12");
   });
 });
+
+
+describe("M6 interrupt-aware response-start telemetry", () => {
+  it("records an interrupted-before-audio outcome without logging user content", () => {
+    expect(worker).toContain("measureTurnInterruptedBeforeFirstAudio");
+    expect(worker).toContain("[AskMoina] Turn response interrupted before first audio");
+    expect(worker).toContain('outcome: interrupted.outcome');
+    expect(worker).toContain('boundaryKind: "activity_end"');
+    expect(worker).not.toContain('latestUserRequestText: latestUserRequestText');
+  });
+});
