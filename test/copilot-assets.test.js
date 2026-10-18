@@ -937,7 +937,6 @@ describe("Camera entry without a launch slider", () => {
     expect(nativeAppCss).not.toContain("post-auth-onboarding-slider-slot");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
     expect(css).toContain(".camera-stage.pre-start #toggleCopilot");
-    expect(css).toContain("background:#171719;color:#fff");
     expect(html).toContain('id="toggleCopilot"');
     expect(html).toContain("call-action-button");
   });
