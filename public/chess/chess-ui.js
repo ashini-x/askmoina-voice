@@ -26,7 +26,7 @@ import {
   const stage = $("#cameraStage");
   const STORAGE_KEY = "askmoina.chess.session.v2";
   const LEGACY_STORAGE_KEY = "askmoina.chess.session.v1";
-  const AUTO_KEY = "askmoina.chess.autodetect.v1";
+  const AUTO_KEY = "askmoina.chess.autodetect.v2";
   const MAX_FRAME_BYTES = 512 * 1024;
   const INITIAL_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
   const FIRST_SCAN_DELAY_MS = 1800;
@@ -331,6 +331,7 @@ import {
     }
     if (!result || !result.ok) {
       pendingRecognitionConfirmation = null;
+      if (result) return result;
       result = await confirmStableRecognition(recognition).catch((error) => ({
         ok: false,
         reason: "confirmation_scan_failed",
@@ -421,8 +422,9 @@ import {
         }
         showBoardPrompt(observation, {
           mode: "recover",
-          message: "The board changed, but I couldn't match one legal move. Confirm whose turn it is to resume here."
+          message: "The board changed by more than one tracked move. Near side is your default color; confirm the board reading with Next strong move."
         });
+        void startBackgroundConfirmation(observation);
         return;
       }
 
@@ -635,20 +637,21 @@ import {
   function showTrackedState() {
     if (!gameState) return;
     if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
     const game = new Chess(gameState.currentFen);
     pendingMode = "message";
-    popupTitle.textContent = "Game tracking is on";
-    popupMessage.textContent = "I’ll watch for the next move while the camera is active. " + colorName(game.turn()) + " to move.";
+    popupTitle.textContent = "Next strong move";
+    popupMessage.textContent = "Board detected. " + colorName(game.turn()) + " to move. Tap to calculate the strongest move.";
     popup.dataset.kind = "success";
     turnSelector.hidden = true;
     suggestButton.hidden = false;
     suggestButton.disabled = false;
-    suggestButton.textContent = "Suggest a move";
+    suggestButton.textContent = "Next strong move";
+    suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
-    dismissButton.textContent = "Keep watching";
+    dismissButton.textContent = "Not now";
     popup.hidden = false;
-    statusMessageTimer = setTimeout(() => hidePopup(BASE_RETRY_MS), 6500);
-    scheduleDetection(9000);
+    scheduleDetection(BASE_RETRY_MS);
   }
 
   launch.addEventListener("click", () => setAutoEnabled(!autoEnabled));
