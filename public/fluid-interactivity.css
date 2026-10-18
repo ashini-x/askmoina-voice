@@ -1,0 +1,69 @@
+/* Shared iOS-style touch defaults and spring ownership for AskMoina. */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+button, a, summary, [role="button"], input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
+}
+.ios-interactive-node {
+  touch-action: none;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+/* Interactive state changes are spring-driven by fluid-interactivity.js, never CSS timelines. */
+button, a[href], summary, [role="button"], input, textarea, select {
+  transition: none !important;
+}
+/* Avoid competing :active scale transforms; the spring runtime owns tactile scale. */
+.ios-interactive-node:active {
+  transition: none !important;
+  transform: none !important;
+}
+.ios-interactive-node.voice-button:active:not(:disabled),
+.ios-interactive-node.biometric-cancel:active {
+  transform: translateX(-50%) !important;
+}
+.ios-interactive-node.control-icon:active,
+.ios-interactive-node.entry-auth-option:active,
+.ios-interactive-node.entry-next:active,
+.ios-interactive-node.entry-phone-option:active,
+.entry-site-menu > summary.ios-interactive-node:active,
+.ios-interactive-node.entry-menu-logout:active,
+.ios-interactive-node.connection-notice-action:active,
+.ios-interactive-node.back-control:active,
+.ios-interactive-node.logout-control:active,
+.ios-interactive-node.stop-button:active,
+.ios-interactive-node.vault-control:active,
+.ios-interactive-node.entry-site-menu-trigger:active,
+.ios-interactive-node.library-open-control:active,
+.ios-interactive-node.native-app-menu-trigger:active,
+.entry-site-menu > summary.ios-interactive-node:active,
+.ios-interactive-node.entry-next:active,
+.ios-interactive-node.post-auth-get-started:active,
+.ios-interactive-node.assistant-option:active,
+.ios-interactive-node.moinaos1-start-button:active,
+.ios-interactive-node.experience-card:active,
+.ios-interactive-node.entry-passkey:active,
+.ios-interactive-node:where(#toggleCopilot):active,
+.ios-interactive-node:where(#toggleCopilot):active:not(:disabled) {
+  transform: none !important;
+}
+/* These surfaces enter/exit through the spring runtime instead of CSS duration-based motion. */
+.experience-selection-overlay .experience-selection-eyebrow,
+.experience-selection-overlay .experience-card {
+  animation: none !important;
+}
+.experience-selection-overlay,
+.experience-selection-overlay .experience-selection-eyebrow,
+.experience-selection-overlay .experience-card,
+.native-menu-panel, .native-menu-scrim,
+.library-panel, .library-scrim,
+.auth-sheet, .auth-sheet .sheet-card,
+.entry-auth-sheet, .entry-auth-sheet .sheet-card {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ios-interactive-node { will-change: auto; }
+}
