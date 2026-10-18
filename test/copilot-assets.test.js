@@ -54,6 +54,15 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain("#spatialHud{display:none!important;visibility:hidden!important;pointer-events:none!important}");
   });
 
+  it("returns to moinaOS selection when the user ends a live call", () => {
+    expect(script).toContain('stopCopilot(true, "", "normal", false, false, true)');
+    expect(script).toContain("returnToExperienceSelection = false");
+    expect(script).toContain('window.dispatchEvent(new Event("askmoina:user-disconnected"))');
+    expect(experienceSelectionScript).toContain('window.addEventListener("askmoina:user-disconnected", showExperienceSelection)');
+    expect(experienceSelectionScript).toContain("overlay.hidden = false;");
+    expect(experienceSelectionScript).toContain("cameraApp.inert = true;");
+  });
+
   it("keeps the Android splash dark and serves the complete AskMoina brand asset family", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
     expect(workerSource).toContain('const themeColor = "#000000"');
