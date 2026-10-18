@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-18 (M0 documented; M1 turn-latency instrumentation and benchmark harness are in the production release path; scored baseline evidence remains pending).
+Last updated: 2026-10-18 (M0 documented; M1 instrumentation deployed with baseline evidence gates pending; M2 review-gated conversation-reference capability added, with native approval still pending).
 
 ## Product vision
 
@@ -15,7 +15,7 @@ This initiative strengthens AskMoina's local Assamese-English conversational per
 
 - **M0 — Product identity and differentiation (documented):** define the north star, audience, initial competitive landscape, product principles, scope boundaries, and release policy. See [M0 product identity](M0_ASSAMESE_GENZ_PRODUCT_IDENTITY.md). This is a product-definition milestone only; no runtime behavior changed and market exclusivity is not proven.
 - **M1 — Baseline and performance benchmark (instrumentation deployed; evidence capture in progress):** turn-boundary-to-first-audio timing, a 20-turn production synthetic runner, and a 15-case Assamese speech suite exist in the release path. The initial seven-day snapshot is only a small historical sample; a linked successful timing result, representative per-mode production samples, and scored native-listener results are still required before marking M1 fully accepted. See [M1 baseline and acceptance gates](benchmarks/m1-baseline.md).
-- **M2 — Assamese Gen-Z language intelligence:** build a permissioned, source-attributed, native-reviewed conversation and phrase reference.
+- **M2 — Assamese Gen-Z language intelligence (review-gated reference implemented; native-speaker acceptance pending):** add a provenance/rights-aware D1 dialogue reference and load only approved examples with two distinct native-speaker approvals. Twelve starter entries are disabled pending review; they do not affect live prompts. See [M2 conversation reference and review procedure](ASSAMESE_GENZ_LANGUAGE_REFERENCE.md).
 - **M3 — Native conversational personality:** refine the instructions and contextual examples based on held-out scenarios and listening evaluation.
 - **M4 — Pronunciation and voice identity:** verify word-specific guidance and select voice behavior against native-speaker audio criteria.
 - **M5 — Intelligent contextual retrieval:** evaluate bounded semantic retrieval only if it outperforms simpler D1 lookup without unacceptable latency.
