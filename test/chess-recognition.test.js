@@ -4,6 +4,7 @@ import {
   assessChessboardRecognition,
   boardRowsToFen,
   recognizeChessboardFrame,
+  verifyStableChessboardRecognition,
   validateBoardRows
 } from "../public/chess/recognition-client.js";
 import { assessRecognition, buildChessRecognitionPrompt, handleChessRecognitionRequest } from "../src/chess/recognition.ts";
@@ -119,6 +120,50 @@ describe("board rows and FEN", () => {
     expect(boardRowsToFen(STARTING_ROWS, undefined)).toMatchObject({ ok: false, reason: "side_to_move_required" });
     expect(boardRowsToFen(STARTING_ROWS, "w").sideToMove).toBe("w");
     expect(boardRowsToFen(STARTING_ROWS, "b").sideToMove).toBe("b");
+  });
+
+  it("rejects a position where the previous mover's king is already in check", () => {
+    const impossible = [
+      "....k...",
+      "....Q...",
+      "........",
+      "........",
+      "........",
+      "........",
+      "........",
+      "....K..."
+    ];
+    expect(boardRowsToFen(impossible, "w")).toMatchObject({
+      ok: false,
+      reason: "impossible_check_state"
+    });
+  });
+
+  it("requires two independent chessboard reads to agree before analysis", () => {
+    const first = { ok: true, recognition: strongRecognition() };
+    const same = { ok: true, recognition: strongRecognition() };
+    expect(verifyStableChessboardRecognition(first, same)).toMatchObject({ ok: true });
+
+    const movedPiece = [...STARTING_ROWS];
+    movedPiece[6] = "PPPP.PPP";
+    const changed = { ok: true, recognition: strongRecognition(movedPiece) };
+    expect(verifyStableChessboardRecognition(first, changed)).toMatchObject({
+      ok: false,
+      reason: "unstable_board_reading"
+    });
+
+    const rotated = { ok: true, recognition: strongRecognition(STARTING_ROWS, { orientation: "black_at_bottom" }) };
+    expect(verifyStableChessboardRecognition(first, rotated)).toMatchObject({
+      ok: false,
+      reason: "unstable_board_reading"
+    });
+  });
+
+  it("does not trust a second scan that failed or could not reach recognition", () => {
+    const first = { ok: true, recognition: strongRecognition() };
+    expect(verifyStableChessboardRecognition(first, {
+      ok: false, reason: "recognition_unavailable", message: "Try again."
+    })).toMatchObject({ ok: false, reason: "confirmation_scan_unavailable" });
   });
 
   it("rejects adjacent kings instead of handing an impossible position to the engine", () => {
