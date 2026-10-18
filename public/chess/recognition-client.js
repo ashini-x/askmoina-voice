@@ -14,8 +14,8 @@ const SQUARE_PATTERN = /^[a-h][1-8]$/;
  */
 export async function recognizeChessboardFrame(imageBlob, options = {}) {
   const sideToMove = options.sideToMove;
-  if (sideToMove !== "w" && sideToMove !== "b") {
-    return { ok: false, reason: "side_to_move_required", message: "Confirm whether White or Black moves next." };
+  if (sideToMove != null && sideToMove !== "w" && sideToMove !== "b") {
+    return { ok: false, reason: "invalid_side_to_move", message: "Choose White or Black, or leave the turn unknown until AskMoina asks." };
   }
   if (!(imageBlob instanceof Blob) || imageBlob.type !== "image/jpeg" || imageBlob.size < 4 || imageBlob.size > MAX_FRAME_BYTES) {
     return { ok: false, reason: "invalid_frame", message: "Capture one clear JPEG frame under 512 KiB and try again." };
@@ -41,7 +41,7 @@ export async function recognizeChessboardFrame(imageBlob, options = {}) {
         purpose: "chess_board_scan",
         imageMimeType: "image/jpeg",
         imageData,
-        sideToMove
+        ...(sideToMove === "w" || sideToMove === "b" ? { sideToMove } : {})
       }),
       signal: options.signal || AbortSignal.timeout(18_000)
     });
@@ -64,8 +64,10 @@ export async function recognizeChessboardFrame(imageBlob, options = {}) {
   const assessed = assessChessboardRecognition(payload.recognition);
   if (!assessed.ok) return assessed;
 
-  const position = boardRowsToFen(payload.recognition.boardRows, sideToMove);
-  if (!position.ok) return position;
+  const position = sideToMove === "w" || sideToMove === "b"
+    ? boardRowsToFen(payload.recognition.boardRows, sideToMove)
+    : null;
+  if (position && !position.ok) return position;
 
   return {
     ok: true,
@@ -80,6 +82,7 @@ export async function recognizeChessboardFrame(imageBlob, options = {}) {
       geometry: "all four board corners reported visible"
     },
     position,
+    sideToMove: sideToMove === "w" || sideToMove === "b" ? sideToMove : null,
     history: {
       castlingRights: "unknown_from_image",
       enPassantSquare: "unknown_from_image",
