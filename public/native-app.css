@@ -1,7 +1,7 @@
 /* askmoina native-first mobile app shell — shared by iOS, Android and narrow desktop windows. */
 :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 button,a,input{font:inherit;-webkit-tap-highlight-color:transparent}button,a,[role=button]{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(113,139,255,.62);outline-offset:3px}
-@media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.library-panel,.native-menu-panel,.show-problem-button,.library-tab,.native-info-main{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(prefers-reduced-motion:reduce){.entry-overlay,.entry-auth-panel,.entry-product-panel,.entry-product-card,.library-panel,.native-menu-panel,.library-tab,.native-info-main{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* Immersive camera canvas: no website navbar, footer, cards or desktop page spacing. */
 html:has(.camera-app),body:has(.camera-app){width:100%;height:100%;margin:0;overflow:hidden;background:#090b0f}
@@ -16,7 +16,7 @@ body[data-page=login] .native-app-chrome-guest{z-index:205}
 .native-app-chrome .library-open-control svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 .native-app-chrome .library-open-control:active,.native-app-logo:active{transform:scale(.96)}
 body[data-page=login] .native-app-chrome .top-actions{display:none!important}
-.show-problem-button{bottom:calc(21% + env(safe-area-inset-bottom,0px)*.35);min-height:58px;border-radius:999px;letter-spacing:.035em;box-shadow:0 12px 38px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.92)}
+
 .camera-controls{bottom:calc(max(18px,env(safe-area-inset-bottom,0px) + 12px));padding-bottom:0}.control-pill{min-height:46px}.stop-button{min-width:54px;min-height:54px}
 
 /* App menu: contextual native sheet instead of a persistent website navigation bar. */
@@ -106,9 +106,9 @@ body[data-page="login"] .native-app-chrome-guest{display:none!important}
 .native-camera-caption{max-width:28ch;margin:13px 0 0;color:rgba(228,230,239,.72);font-size:14px;line-height:1.5;font-weight:420;letter-spacing:-.015em;text-wrap:balance}
 .camera-stage:not(.pre-start) .native-camera-welcome{opacity:0;visibility:hidden;transform:translate(-50%,calc(-50% - 10px))}
 .camera-stage.pre-start .native-camera-welcome{opacity:1;visibility:visible}
-.show-problem-button{bottom:calc(19% + env(safe-area-inset-bottom,0px)*.2);width:min(344px,calc(100% - 36px));min-height:60px;padding:0 21px;border-radius:21px;background:rgba(249,249,247,.94);border:1px solid rgba(255,255,255,.88);box-shadow:0 12px 42px rgba(0,0,0,.26),inset 0 1px rgba(255,255,255,.95);letter-spacing:.005em}
-.vision-slide-track{width:100%;min-width:0}
-.vision-slide-label{letter-spacing:-.012em;font-size:14px;font-weight:650}
+
+
+
 body[data-page="login"] .entry-auth-panel{padding-top:25px}
 body[data-page="login"] .entry-page-heading.auth-page-heading{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:23px}
 body[data-page="login"] .entry-page-heading.auth-page-heading:before{content:"";display:block;width:48px;height:48px;margin:0 0 17px;border-radius:16px;background:#fff url("/askmoina-mark-dark.svg?v=0.4.80") center/31px 31px no-repeat;box-shadow:0 5px 18px rgba(25,27,35,.08),inset 0 0 0 1px rgba(60,60,67,.055)}
@@ -129,24 +129,17 @@ body[data-page="login"] .entry-status:empty{display:none}
 .response-card-details{width:min(100%,720px);margin:16px auto 12px}
 @keyframes native-orb-breathe{0%,100%{transform:scale(.97);opacity:.62}50%{transform:scale(1.035);opacity:1}}
 @keyframes native-orb-turn{to{transform:rotate(360deg)}}
-@media(max-height:720px){.native-camera-welcome{top:39%}.native-camera-orb{width:92px;height:92px;margin-bottom:19px}.native-camera-orb img{width:49px;height:49px}.native-camera-kicker{margin-bottom:8px}.native-camera-welcome h1{font-size:29px}.native-camera-caption{margin-top:9px;font-size:13px}.show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}}
+@media(max-height:720px){.native-camera-welcome{top:39%}.native-camera-orb{width:92px;height:92px;margin-bottom:19px}.native-camera-orb img{width:49px;height:49px}.native-camera-kicker{margin-bottom:8px}.native-camera-welcome h1{font-size:29px}.native-camera-caption{margin-top:9px;font-size:13px}}
 @media(max-width:360px){.native-camera-orb{width:88px;height:88px}.native-camera-welcome h1{font-size:27px}.native-camera-caption{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.native-camera-orb:before,.native-camera-orb:after{animation:none!important}.native-camera-welcome,.native-app-menu-trigger{transition:none!important}}
 
 
 /* The primary camera entry remains visible above decorative overlays on small screens. */
-body[data-page="app"] .camera-stage.pre-start #showProblemButton{
-  display:flex!important;visibility:visible!important;opacity:1!important;
-  pointer-events:auto!important;z-index:96!important;
-}
-@media(max-height:680px){
-  body[data-page="app"] .camera-stage.pre-start #showProblemButton{
-    bottom:calc(14% + env(safe-area-inset-bottom,0px)*.15)!important;
-  }
-}
 
 
-/* Quiet, premium monochrome welcome screen. Let the typography and slider carry the interface. */
+
+
+
 .native-camera-welcome{
   top:40%;
   width:min(328px,calc(100% - 46px));
@@ -172,39 +165,17 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
   font-size:14px;font-weight:400;line-height:1.48;letter-spacing:-.018em;
   text-wrap:balance;
 }
-/* The iOS-style slider uses porcelain, graphite and a calm monochrome progress fill. */
+
 .camera-stage.pre-start .camera-controls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-.show-problem-button{
-  bottom:calc(19% + env(safe-area-inset-bottom,0px)*.2);
-  width:min(352px,calc(100% - 34px));height:64px;min-height:64px;padding:4px;
-  border:1px solid rgba(255,255,255,.82);border-radius:999px;
-  background:rgba(250,250,252,.96);color:#171719;
-  box-shadow:0 14px 44px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.96);
-  backdrop-filter:blur(32px) saturate(130%);-webkit-backdrop-filter:blur(32px) saturate(130%);
-  letter-spacing:0;
-}
-.vision-slide-track{padding:0 39px 0 56px;border-radius:999px}
-.vision-slide-track:before{
-  left:2px;top:2px;bottom:2px;width:calc(50px + var(--slide-distance,0px));
-  max-width:calc(100% - 4px);border-radius:999px;
-  background:linear-gradient(90deg,rgba(20,20,22,.12),rgba(20,20,22,.035));
-}
-.vision-slide-label{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
-  font-size:14px;font-weight:600;letter-spacing:-.025em;text-transform:none;color:#202024;
-}
-.vision-slide-arrows{color:#7a7a80;font-size:18px;font-weight:400;letter-spacing:-.13em;opacity:.8}
-.vision-slide-handle{
-  left:4px;top:4px;width:48px;height:48px;border:1px solid rgba(255,255,255,.16);
-  border-radius:50%;background:#171719;color:#fff;
-  box-shadow:0 2px 7px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08);
-}
-.vision-slide-handle svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.7;fill:none}
-.show-problem-button.is-complete{
-  background:rgba(247,247,249,.98);border-color:#fff;
-  box-shadow:0 0 0 4px rgba(255,255,255,.09),0 10px 32px rgba(0,0,0,.22);
-}
-.show-problem-button.is-complete .vision-slide-track:before{width:calc(100% - 4px);background:rgba(20,20,22,.1)}
+
+
+
+
+
+
+
+
+
 .camera-stage.is-connecting .camera-controls{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 @media(max-height:720px){
  .native-camera-welcome{top:39%}
@@ -212,14 +183,9 @@ body[data-page="app"] .camera-stage.pre-start #showProblemButton{
  .native-camera-orb img{width:49px;height:49px}
  .native-camera-welcome h1{font-size:clamp(29px,7.8vw,33px)}
  .native-camera-caption{margin-top:10px;font-size:13px}
- .show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}
+ 
 }
-@media(max-width:380px){
- .show-problem-button{width:calc(100% - 28px);height:60px;min-height:60px}
- .vision-slide-track{padding-right:33px;padding-left:52px}
- .vision-slide-label{font-size:13px}
- .vision-slide-handle{width:46px;height:46px;left:3px;top:3px}
-}
+
 
 
 /* askmoina brand lock: the welcome orb shares the same restrained live-signal language. */
@@ -248,8 +214,8 @@ html:has(.native-info-page),body.native-info-page{background:#090b0f!important;c
 .native-info-kicker,.native-info-lead,.native-info-main>p:not(.native-info-lead){color:#a1a1aa!important}
 .native-info-return{color:#f5f5f7!important;background:#181b23!important;border-color:rgba(255,255,255,.12)!important}
 body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:url("/favicon.svg?v=0.4.80") center/54px 54px no-repeat!important;border:0!important;border-radius:50%!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 8px 28px rgba(0,0,0,.28)!important}
-.show-problem-button{background:rgba(24,27,35,.94)!important;border-color:rgba(255,255,255,.16)!important;color:#f5f5f7!important;box-shadow:0 12px 42px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08)!important}
-.vision-slide-label,.vision-slide-copy{color:#f5f5f7!important}
+
+
 .native-menu-panel,.native-menu-sheet{background:#151820!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.1)!important}
 .native-menu-heading{border-bottom-color:rgba(255,255,255,.12)!important}
 .native-menu-heading h2,.native-menu-links a,.native-menu-footer,.native-menu-footer p{color:#f5f5f7!important}
@@ -329,13 +295,13 @@ body[data-page="login"] .entry-page-heading.auth-page-heading:before{background:
   .native-camera-orb>img{width:51px!important}
   .native-camera-welcome h1{font-size:clamp(28px,7.6vw,32px)!important}
   .native-camera-caption{margin-top:9px!important;font-size:12.5px!important}
-  .show-problem-button{bottom:calc(17% + env(safe-area-inset-bottom,0px)*.2)}
+  
 }
 @media(max-width:360px){
   .native-camera-orb{width:96px;height:96px}
   .native-camera-welcome h1{font-size:27px!important}
   .native-camera-caption{font-size:12px!important}
-  .show-problem-button{width:calc(100% - 30px)}
+  
 }
 @media(prefers-reduced-motion:reduce){
   .native-camera-orb:before,.native-camera-orb:after{animation:none!important;transform:none!important}
@@ -371,23 +337,23 @@ h3,h4,h5,h6{letter-spacing:-.02em}
 .post-auth-slide-stage{background:rgba(4,5,8,.34);backdrop-filter:blur(24px) brightness(.66) saturate(.8);-webkit-backdrop-filter:blur(24px) brightness(.66) saturate(.8)}
 .post-auth-slide-copy{width:min(100%,360px);margin:auto;transform:translateY(-9vh)}
 .post-auth-slide-copy h1{margin:0;color:#fff;font-size:clamp(1.45rem,6vw,1.9rem);font-weight:610;line-height:1.18;letter-spacing:-.043em;text-shadow:0 2px 24px rgba(0,0,0,.32)}
-.post-auth-onboarding-slider-slot{position:absolute;left:50%;bottom:max(105px,calc(env(safe-area-inset-bottom) + 17%));transform:translateX(-50%);width:min(88%,370px);min-height:64px;display:flex;align-items:center;justify-content:center}
-.post-auth-onboarding-slider-slot .show-problem-button{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;transform:none!important;display:flex!important;align-items:center;justify-content:center;width:100%!important;max-width:100%!important;min-height:64px;height:64px;padding:0!important;margin:0!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:999px!important;background:rgba(15,17,24,.54)!important;color:#f5f5f7!important;box-shadow:0 12px 35px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.11)!important;backdrop-filter:blur(24px) saturate(130%)!important;-webkit-backdrop-filter:blur(24px) saturate(130%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}
-.post-auth-onboarding-slider-slot .vision-slide-track{padding:0 45px 0 57px;border-radius:999px}
-.post-auth-onboarding-slider-slot .vision-slide-track:before{left:2px;top:2px;bottom:2px;width:calc(50px + var(--slide-distance,0px));max-width:calc(100% - 4px);border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,.13),rgba(255,255,255,.025))}
-.post-auth-onboarding-slider-slot .vision-slide-label{color:#f5f5f7!important;background:none!important;-webkit-text-fill-color:#f5f5f7!important;font-size:clamp(.76rem,3vw,.9rem)!important;font-weight:550!important;letter-spacing:-.015em!important}
-.post-auth-onboarding-slider-slot .vision-slide-arrows{display:none!important}
-.post-auth-onboarding-slider-slot .show-problem-button:after{content:"";position:absolute;z-index:3;right:9px;top:50%;width:26px;height:26px;transform:translateY(-50%);border:1px solid rgba(255,255,255,.54);border-radius:50%;background:radial-gradient(circle at 29% 24%,rgba(255,255,255,.96) 0,rgba(223,237,255,.72) 9%,transparent 27%),radial-gradient(circle at 68% 70%,rgba(237,127,235,.88),transparent 43%),conic-gradient(from 28deg,#5acbff,#6f9bff,#a78aff,#ef8edb,#9be4e2,#5acbff);box-shadow:0 0 9px rgba(105,156,255,.65),0 0 19px rgba(177,109,255,.37),inset -3px -4px 6px rgba(27,32,97,.36),inset 2px 2px 4px rgba(255,255,255,.52);animation:post-auth-slider-orb-turn 8s linear infinite}
-.post-auth-onboarding-slider-slot .vision-slide-handle{left:4px;top:4px;width:50px;height:50px;border:1px solid rgba(255,255,255,.9);background:linear-gradient(145deg,#fff,#e7e9f0);color:#15161b;box-shadow:0 2px 10px rgba(0,0,0,.2),inset 0 1px #fff}
-.post-auth-onboarding-slider-slot .vision-slide-handle svg{display:none}
-.post-auth-onboarding-slider-slot .vision-slide-handle:after{content:"›";display:block;font-family:system-ui,sans-serif;font-size:32px;font-weight:350;line-height:1;transform:translateY(-2px)}
-.post-auth-onboarding-slider-slot .show-problem-button.is-complete{background:rgba(245,245,247,.96)!important}
-@keyframes post-auth-slider-orb-turn{to{filter:hue-rotate(30deg);transform:translateY(-50%) rotate(360deg)}}
+
+
+
+
+
+
+
+
+
+
+
+
 @keyframes post-auth-stage-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes post-auth-orb-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes post-auth-orb-turn{to{transform:rotate(360deg)}}
 @keyframes post-auth-orb-morph{0%{border-radius:45% 55% 51% 49%/48% 42% 58% 52%}100%{border-radius:55% 45% 43% 57%/42% 56% 44% 58%}}
-@media(max-height:620px){.post-auth-success-orb{width:80px;height:80px;margin-bottom:22px}.post-auth-success-content h1{font-size:1.55rem}.post-auth-get-started{margin-top:clamp(28px,8vh,58px)}.post-auth-slide-copy{transform:translateY(-5vh)}.post-auth-onboarding-slider-slot{bottom:max(82px,calc(env(safe-area-inset-bottom) + 14%))}}
+@media(max-height:620px){.post-auth-success-orb{width:80px;height:80px;margin-bottom:22px}.post-auth-success-content h1{font-size:1.55rem}.post-auth-get-started{margin-top:clamp(28px,8vh,58px)}.post-auth-slide-copy{transform:translateY(-5vh)}}
 @media(prefers-reduced-motion:reduce){.post-auth-onboarding-stage,.post-auth-success-orb,.post-auth-success-orb:before,.post-auth-success-orb:after{animation:none!important;transition:none!important}}
 
 

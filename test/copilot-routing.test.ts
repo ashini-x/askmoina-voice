@@ -52,7 +52,7 @@ describe("public Live Co-Pilot routing", () => {
     const style = await worker.fetch(new Request("https://askmoina.test/copilot.css"), styleMock.env, ctx);
     expect(style.status).toBe(200);
     expect(style.headers.get("Content-Type")).toContain("text/css");
-    expect(await style.text()).toContain(".show-problem-button");
+    expect(await style.text()).toContain(".camera-stage.pre-start .camera-controls");
     expect(styleMock.requestedPath()).toBe("");
   });
 

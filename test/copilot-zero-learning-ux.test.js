@@ -8,27 +8,25 @@ const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
 describe("Milestone 34 zero-learning camera-first UX", () => {
-  it("makes the first action obvious without adding a tutorial or mode selector", () => {
+  it("keeps the camera-first entry free of a launch slider", () => {
     expect(html).not.toContain("Point. Ask. Follow.");
     expect(html).not.toContain("Tap Start, then tell Moina what you want to do.");
     expect(html).not.toContain("presence-orb");
-    expect(html).toContain("id=\"toggleCopilot\"");
-    expect(html).toContain("id=\"showProblemButton\"");
-    expect(html).toContain("id=\"backButton\"");
-    expect(html).toContain("Slide to start askmoina camera guidance.");
-    expect(html).toContain("Slide to start");
+    expect(html).toContain('id="toggleCopilot"');
+    expect(html).not.toContain("showProblemButton");
+    expect(html).not.toContain("Slide to start");
+    expect(html).not.toContain("vision-slide");
+    expect(html).toContain('id="backButton"');
     expect(html).not.toContain("Tap to open camera");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
     expect(css).toContain("display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;");
     expect(html).not.toContain('id="intelligenceIntro"');
     expect(html).not.toContain('class="intelligence-intro"');
-    expect(html).toContain('id="visionSlideHandle"');
     expect(html).not.toContain('id="secondaryControls"');
     expect(html).not.toContain('id="toggleMoreControls"');
     expect(html).not.toContain('id="vaultButton" href="/vault"');
     expect(html).toContain('id="openLibrary"');
   });
-
   it("provides a compact natural-language invitation and optional examples", () => {
     expect(html).not.toContain("Tell Moina your goal in your own words.");
     expect(html).not.toContain("Set this up");
@@ -41,15 +39,16 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(css).not.toContain(".presence-orb");
   });
 
-  it("keeps the camera controls simple without a Vault lock and uses a native camera-flip icon", () => {
+  it("keeps camera controls simple and contains no startup slider", () => {
     expect(html).not.toContain('id="vaultButton"');
     expect(html).toContain('id="openLibrary"');
     expect(html).toContain('<circle cx="12" cy="12" r="2"/>');
-    expect(html).not.toContain("vision-slide-chevron");
-    expect(css).not.toContain("vision-slide-chevron");
-    expect(css).not.toContain("vision-slide-hint");
+    expect(html).not.toContain("showProblemButton");
+    expect(html).not.toContain("vision-slide");
+    expect(css).not.toContain("show-problem-button");
+    expect(css).not.toContain("vision-slide");
+    expect(script).not.toContain("showProblemButton");
   });
-
   it("matches edge pulse intensity to live microphone and assistant playback audio", () => {
     expect(html).toContain('<p id="connectionNoticeMessage">Just a moment</p>');
     expect(script).toContain('showConnectionNotice("Connecting end-to-end", "", "onboarding")');
