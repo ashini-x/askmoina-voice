@@ -10,7 +10,7 @@ import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { buildLiveWebSocketUrl } from "./sessions/live-endpoint";
 import { RealtimeMediaRateLimiter } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
-import { beginTurnLatencyMeasurement, measureFirstAudioAfterBoundary, type PendingTurnLatencyMeasurement } from "./sessions/turn-latency";
+import { beginTurnLatencyMeasurement, measureFirstAudioAfterBoundary, measureTurnInterruptedBeforeFirstAudio, type PendingTurnLatencyMeasurement } from "./sessions/turn-latency";
 import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
 import { handleContinuityRequest, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
@@ -2308,7 +2308,23 @@ async function handleVoiceSocket(
           return;
         }
         if (parsed.kind === "activity_start") {
-          // Do not attribute audio from an interrupted prior turn to the next user turn.
+          // A user speaking before assistant audio is a turn-taking interruption,
+          // not a successful first-audio latency sample. Record only timing, mode,
+          // and outcome; never log transcripts, prompts, or media content.
+          if (pendingTurnLatencyMeasurement) {
+            const interrupted = measureTurnInterruptedBeforeFirstAudio(
+              pendingTurnLatencyMeasurement,
+              Date.now(),
+            );
+            if (interrupted) {
+              console.info("[AskMoina] Turn response interrupted before first audio", JSON.stringify({
+                mode: copilotMode ? "copilot" : "voice",
+                outcome: interrupted.outcome,
+                elapsedMs: interrupted.elapsedMs,
+                boundaryKind: "activity_end",
+              }));
+            }
+          }
           pendingTurnLatencyMeasurement = null;
         } else if (parsed.kind === "activity_end") {
           // Start timing after the client-side silence detector has closed the turn.

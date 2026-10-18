@@ -37,3 +37,33 @@ export function measureFirstAudioAfterBoundary(
 
   return { latencyMs: Math.round(firstAudioAtMs - pending.boundaryAtMs) };
 }
+
+export interface InterruptedTurnSample {
+  outcome: "interrupted_before_first_audio";
+  elapsedMs: number;
+}
+
+/**
+ * Classify a pending response when the user begins speaking before any
+ * assistant audio has arrived. This is an interruption/turn-taking signal,
+ * not a successful first-audio latency sample.
+ */
+export function measureTurnInterruptedBeforeFirstAudio(
+  pending: PendingTurnLatencyMeasurement | null,
+  interruptedAtMs: number,
+): InterruptedTurnSample | null {
+  if (
+    !pending ||
+    !Number.isFinite(pending.boundaryAtMs) ||
+    pending.boundaryAtMs < 0 ||
+    !Number.isFinite(interruptedAtMs) ||
+    interruptedAtMs < pending.boundaryAtMs
+  ) {
+    return null;
+  }
+
+  return {
+    outcome: "interrupted_before_first_audio",
+    elapsedMs: Math.round(interruptedAtMs - pending.boundaryAtMs),
+  };
+}
