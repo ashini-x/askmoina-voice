@@ -278,10 +278,7 @@
   }
 
   async function navigateAfterAuth(destination) {
-    const launchScreen = $("#authLaunchScreen");
-    if (launchScreen) launchScreen.hidden = false;
-    document.body.classList.add("auth-transitioning");
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // Navigate as soon as authentication succeeds; do not cover the screen with a launch interstitial.
     const next = destination;
     window.location.replace(next);
   }
