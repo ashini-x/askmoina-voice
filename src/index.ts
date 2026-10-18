@@ -19,7 +19,7 @@ import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./sessions/assamese-spee
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
 import { parseLiveClientInput, toProviderRealtimeInput } from "./sessions/copilot-protocol";
-import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "./copilot-assets";
+import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERIENCE_SELECTION_JS } from "./copilot-assets";
 import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourceUrl } from "./grounded-expertise";
 import { SingleFlight } from "./sessions/single-flight";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
@@ -209,9 +209,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   const version = encodeURIComponent(appVersion || "0.4.80");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
-  const experienceStyles = authenticated ? '<link rel="stylesheet" href="/experience-selection.css?v=20261017">' : "";
-  const experienceScript = authenticated ? '<script src="/experience-selection.js?v=20261017" defer></script>' : "";
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + experienceStyles + nativeScript + experienceScript + '</head>');
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST);
   return html;
@@ -3185,8 +3183,8 @@ export default {
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</head>", '<link rel="stylesheet" href="/experience-selection.css?v=20261017"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/experience-selection.js?v=20261017" defer></script></body>');
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261017"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261017" defer></script></body>');
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
@@ -3203,7 +3201,8 @@ export default {
     }
 
     if (url.pathname === "/copilot.css") {
-      return new Response(COPILOT_CSS, { headers: {
+      const responseCss = url.searchParams.get("experience-selection") === "1" ? COPILOT_CSS + "\n" + EXPERIENCE_SELECTION_CSS : COPILOT_CSS;
+      return new Response(responseCss, { headers: {
         "Content-Type": "text/css; charset=utf-8",
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
         "X-Content-Type-Options": "nosniff",
@@ -3217,6 +3216,14 @@ export default {
       if (!accountId && !await isAdmin(request, env)) {
         if (url.pathname === "/copilot" || url.pathname === "/copilot.html") return Response.redirect(new URL("/", request.url).toString(), 302);
         return json({ error: "authentication_required", message: "Sign up or log in to load the Co-Pilot." }, 401);
+      }
+      if (url.pathname === "/copilot.js" && url.searchParams.get("experience-selection") === "1") {
+        return new Response(EXPERIENCE_SELECTION_JS, { headers: {
+          "Content-Type": "text/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+          "X-Content-Type-Options": "nosniff",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        } });
       }
       const isScript = url.pathname === "/copilot.js";
       const isStyle = url.pathname === "/copilot.css";
