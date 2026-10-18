@@ -3262,6 +3262,7 @@
     }
 
     if (message.setup_complete || message.setupComplete) {
+      stage.classList.remove("is-onboarding");
       setupReady = true;
       active = true;
       recordRealityLoopEvent("voice_ready");
@@ -3542,37 +3543,23 @@
     setControls("Starting…", true);
     setConnectionState("CONNECTING", "ready");
     if (connectionNoticeAction) connectionNoticeAction.disabled = true;
-    setStatus("Just a moment");
-    showConnectionNotice("Connecting securely", "Just a moment", "connecting");
+    // Keep the first frame clean while the browser handles native media permission prompts.
+    setStatus("");
+    hideConnectionNotice(true);
     let sessionSocket = null;
     try {
-      // Keep preflight inside the guarded start path so a rejected fetch cannot
-      // strand the camera stage in a stale connecting/recovery state.
-      const [preflight] = await Promise.all([
-        refreshAvailabilityAfterRelease(),
-        refreshAccountMemories()
-      ]);
-      if (!isCurrentStart()) return;
-      if (preflight && !preflight.available) {
-        starting = false;
-        recoveryPreviewClear = true;
-        stage.classList.remove("is-listening", "is-speaking", "is-connecting");
-        stage.classList.add("pre-start");
-        setControls("Try again", false);
-        setConnectionState("BUSY", "error");
-        setStatus(
-          preflight.message || "Voice isn't available right now.",
-          "error",
-        );
-        syncDisconnectedPreviewAppearance();
-        void prepareCameraPreview();
-        return;
-      }
-
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("This browser does not support camera and microphone access.");
       }
       const previewTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
+
+      // Ask for the required media immediately. Backend preflight runs in parallel so
+      // permission checks do not wait for avoidable network round trips.
+      const preflightPromise = Promise.all([
+        refreshAvailabilityAfterRelease(),
+        refreshAccountMemories()
+      ]).then(([availability]) => ({ availability }), (error) => ({ error }));
+
       const captured = await navigator.mediaDevices.getUserMedia({
         video: previewTrack ? false : {
           facingMode: { ideal: facingMode },
@@ -3608,6 +3595,28 @@
       initializeZoom();
       stage.classList.add("has-camera");
       setCameraState("Camera ready", "live");
+
+      // The live camera is now behind the glass blur. Only now show the progress bar.
+      setStatus("Connecting end-to-end");
+      showConnectionNotice("Connecting end-to-end", "", "onboarding");
+
+      const preflightResult = await preflightPromise;
+      if (!isCurrentStart()) return;
+      if (preflightResult.error) throw preflightResult.error;
+      const preflight = preflightResult.availability;
+      if (preflight && !preflight.available) {
+        cleanupMedia();
+        starting = false;
+        recoveryPreviewClear = true;
+        stage.classList.remove("is-listening", "is-speaking", "is-connecting", "is-onboarding");
+        stage.classList.add("pre-start");
+        setControls("Try again", false);
+        setConnectionState("BUSY", "error");
+        setStatus(preflight.message || "Voice isn't available right now.", "error");
+        syncDisconnectedPreviewAppearance();
+        void prepareCameraPreview();
+        return;
+      }
 
       const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextConstructor) throw new Error("This browser does not support live audio.");
@@ -3679,7 +3688,7 @@
       active = false;
       socket = null;
       recoveryPreviewClear = true;
-      stage.classList.remove("is-listening", "is-speaking", "is-connecting");
+      stage.classList.remove("is-listening", "is-speaking", "is-connecting", "is-onboarding");
       stage.classList.add("pre-start");
       setControls("Try again", false);
       setConnectionState("READY", "error");
@@ -6250,7 +6259,10 @@
   setCameraState("Camera paused", "idle");
   setControls("Checking voice…", true);
   window.addEventListener("askmoina:experience-selected", () => {
-    if (!document.querySelector("#postAuthOnboarding:not([hidden])")) void prepareCameraPreview();
+    if (!document.querySelector("#postAuthOnboarding:not([hidden])")) {
+      stage.classList.add("is-onboarding");
+      void startCopilot();
+    }
   });
   const experienceSelectionPending = Boolean(document.querySelector("#postAuthOnboarding:not([hidden])"));
   if (!experienceSelectionPending) void prepareCameraPreview();
