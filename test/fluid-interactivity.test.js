@@ -46,6 +46,7 @@ describe("AskMoina fluid interactivity", () => {
     expect(worker).toContain("withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, \"0.4.80\")");
     expect(worker).toContain("const decorated = withFluidInteractivity(pwaDecorated, appVersion);");
+    expect(worker).toContain("const usesSiteChrome = shouldUseSiteChrome(pathname);");
     expect(worker).toContain("withSiteChromeResponse(authResponse, url.pathname, authenticated, env.APP_VERSION || \"0.4.80\")");
     expect(worker).toContain("withSiteChromeResponse(labResponse, labUrl.pathname, true, env.APP_VERSION || \"0.4.80\")");
     expect(worker).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu, env.APP_VERSION || \"0.4.80\")");
