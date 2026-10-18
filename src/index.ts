@@ -163,11 +163,12 @@ const POST_AUTH_ONBOARDING = `
 </section>
 `;
 const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
-/* Initial values are revealed by the interruptible spring runtime. */
+/* Keep moinaOS visible even if the optional spring runtime fails to load.
+   The spring controller supplies its own explicit starting pose on entrance. */
 .experience-selection-eyebrow,
 .experience-card--available,
 .experience-card--preview {
-  opacity: 0;
+  opacity: 1;
   animation: none !important;
 }
 `;
