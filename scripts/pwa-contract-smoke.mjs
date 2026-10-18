@@ -87,8 +87,13 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261021"'), "Interface 06 CSS must be attached to the authenticated home route");
-assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261021"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(worker.includes("const experienceAssetVersion = encodeURIComponent(appVersion)"), "Interface 06 assets must use the current release version for cache busting");
+assert.ok(worker.includes("copilot.css?experience-selection=1&v=' + experienceAssetVersion") && worker.includes("copilot.js?experience-selection=1&v=' + experienceAssetVersion"), "Interface 06 CSS and JavaScript URLs must be release-versioned");
+assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned Co-Pilot assets should use long-lived immutable caching while unversioned URLs remain revalidated");
+assert.ok(worker.includes("const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/"), "immutable cache selection must validate semantic version URLs exactly");
+const nativeAppCss = read("public/native-app.css");
+assert.ok(nativeAppCss.includes("@keyframes askmoina-screen-fade-up") && nativeAppCss.includes("170ms cubic-bezier(.22,1,.36,1)"), "native app screens must use the lightweight premium fade-in");
+assert.ok(nativeAppCss.includes("@media(prefers-reduced-motion:reduce)") && nativeAppCss.includes(".experience-selection-overlay:not([hidden]) .experience-selection-content"), "fade-in must respect reduced-motion preferences");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
 assert.ok(experienceCss.includes("grid-template-columns: minmax(0, 1fr)"), "Interface 06 text-only cards must use a single-column layout");
 assert.ok(experienceCss.includes("grid-template-rows: repeat(2, minmax(0, 1fr))"), "Interface 06 cards must share the page height symmetrically");
@@ -111,7 +116,8 @@ assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker mus
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
 assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
-assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
+assert.ok(serviceWorker.includes('const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/'), "service worker must recognize only semantic release-versioned assets for HTTP caching");
+assert.ok(serviceWorker.includes('(isImmutableVersionedAsset ? fetch(request) : fetch(request, { cache: "no-store" }))'), "service worker must cache versioned assets while revalidating unversioned code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");
 assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation network-first behavior is required");
 assert.ok(!serviceWorker.includes('"/app.js"'), "app JavaScript must not be precached");

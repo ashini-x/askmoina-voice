@@ -3137,8 +3137,9 @@ export default {
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261021"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261021" defer></script></body>');
+        const experienceAssetVersion = encodeURIComponent(appVersion);
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '" defer></script></body>');
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
@@ -3156,9 +3157,15 @@ export default {
 
     if (url.pathname === "/copilot.css") {
       const responseCss = url.searchParams.get("experience-selection") === "1" ? EXPERIENCE_SELECTION_CSS : COPILOT_CSS;
+      // Long-lived caching is safe only for explicit release-versioned assets.
+      // Unversioned callers retain the short revalidation window.
+      const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
+      const assetCacheControl = isImmutableVersionedAsset
+        ? "public, max-age=31536000, immutable"
+        : "public, max-age=300, stale-while-revalidate=3600";
       return new Response(responseCss, { headers: {
         "Content-Type": "text/css; charset=utf-8",
-        "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+        "Cache-Control": assetCacheControl,
         "X-Content-Type-Options": "nosniff",
         "Cross-Origin-Resource-Policy": "same-origin",
       } });
@@ -3172,9 +3179,15 @@ export default {
         return json({ error: "authentication_required", message: "Sign up or log in to load the Co-Pilot." }, 401);
       }
       if (url.pathname === "/copilot.js" && url.searchParams.get("experience-selection") === "1") {
+        // The page includes the release version in this URL, so clients can
+        // reuse this small controller without a round trip until it changes.
+        const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
+        const assetCacheControl = isImmutableVersionedAsset
+          ? "public, max-age=31536000, immutable"
+          : "public, max-age=300, stale-while-revalidate=3600";
         return new Response(EXPERIENCE_SELECTION_JS, { headers: {
           "Content-Type": "text/javascript; charset=utf-8",
-          "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+          "Cache-Control": assetCacheControl,
           "X-Content-Type-Options": "nosniff",
           "Cross-Origin-Resource-Policy": "same-origin",
         } });
