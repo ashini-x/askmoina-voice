@@ -84,7 +84,9 @@ export async function recognizeChessboardFrame(imageBlob, options = {}) {
         imageData,
         ...(sideToMove === "w" || sideToMove === "b" ? { sideToMove } : {})
       }),
-      signal: options.signal || AbortSignal.timeout(18_000)
+      // The Worker permits up to 30 seconds for provider recognition; avoid
+      // aborting a valid slow frame before the server's own bounded timeout.
+      signal: options.signal || AbortSignal.timeout(32_000)
     });
   } catch (error) {
     const timedOut = Boolean(error && (error.name === "TimeoutError" || error.name === "AbortError"));

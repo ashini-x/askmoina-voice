@@ -396,6 +396,19 @@ describe("browser scan client", () => {
     expect(result.message).toContain("timed out");
   });
 
+  it("lets the browser wait longer than the Worker recognition budget", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(new AbortController().signal);
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      ok: false,
+      reason: "recognition_timeout",
+      message: "Chessboard recognition timed out."
+    }), { status: 504, headers: { "Content-Type": "application/json" } }));
+    const blob = new Blob([Uint8Array.from([255, 216, 255, 0])], { type: "image/jpeg" });
+    const result = await recognizeChessboardFrame(blob, { fetchImpl });
+    expect(timeoutSpy).toHaveBeenCalledWith(32_000);
+    expect(result).toMatchObject({ ok: false, reason: "recognition_timeout" });
+  });
+
   it("validates returned board data and produces FEN only after confidence checks", async () => {
     const fetchImpl = vi.fn(async (_url, init) => new Response(JSON.stringify({
       ok: true, recognition: strongRecognition(), sideToMove: "w"
