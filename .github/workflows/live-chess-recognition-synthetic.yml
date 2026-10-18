@@ -1,0 +1,94 @@
+name: Live chess recognition synthetic
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-live-chess-recognition-synthetic
+  cancel-in-progress: true
+
+jobs:
+  live-chess-recognition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Install Chromium for the synthetic screen
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node --check scripts/live-chess-recognition-smoke.mjs
+          node --check scripts/synthetic-passkey-session.mjs
+
+      - name: Create temporary authenticated synthetic session
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          SMOKE_COOKIE="$(node scripts/synthetic-passkey-session.mjs)"
+          if [[ ! "$SMOKE_COOKIE" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
+            echo "::error::Synthetic passkey setup did not return a valid session."
+            exit 1
+          fi
+          echo "::add-mask::$SMOKE_COOKIE"
+          echo "ASKMOINA_SYNTHETIC_COOKIE=$SMOKE_COOKIE" >> "$GITHUB_ENV"
+          echo "Synthetic authenticated session: ready"
+
+      - name: Wait for the deployed client/server timeout fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in $(seq 1 60); do
+            status="$(curl --silent --show-error --max-time 10 --output /tmp/recognition-client.js --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              "$BASE_URL/chess/recognition-client.js?v=0.4.144" || true)"
+            if [[ "$status" == "200" ]] && grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js; then
+              ready=true
+              break
+            fi
+            echo "Waiting for the 32-second chess client asset (attempt $attempt/60; HTTP ${status:-no-response})."
+            sleep 5
+          done
+          if [[ "$ready" != "true" ]]; then
+            echo "::error::The expected chess client asset was not observed in production."
+            exit 1
+          fi
+          echo "Production chess client asset matches the tested release."
+
+      - name: Verify the live digital chessboard end to end
+        run: node scripts/live-chess-recognition-smoke.mjs
+
+      - name: Revoke synthetic session
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [[ -n "${ASKMOINA_SYNTHETIC_COOKIE:-}" ]]; then
+            curl --silent --show-error --max-time 12 --output /dev/null \
+              --request POST "$BASE_URL/api/auth/logout" \
+              --header "Origin: $BASE_URL" \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              --header "Content-Type: application/json" --data '{}'
+          fi
+          echo "Synthetic session cleanup requested."
