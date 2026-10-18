@@ -2,6 +2,7 @@ import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./assamese-speech-evalua
 import { NATIVE_CONVERSATIONAL_PERSONALITY_INSTRUCTION } from "./native-conversational-personality";
 import { PRONUNCIATION_VOICE_IDENTITY_INSTRUCTION } from "./pronunciation-voice-identity";
 import { ASSAMESE_CONTEXTUAL_RETRIEVAL_INSTRUCTION } from "./assamese-contextual-retrieval";
+import { ASSAMESE_CONTEXTUAL_RETRIEVAL_INSTRUCTION } from "./assamese-contextual-retrieval";
 
 /**
  * Stable, testable behavioral guidance for AskMoina's live voice sessions.
@@ -13,6 +14,7 @@ export const SYSTEM_INSTRUCTION = [
   ...ASSAMESE_SPEECH_EVALUATION_INSTRUCTION,
   ...NATIVE_CONVERSATIONAL_PERSONALITY_INSTRUCTION,
   ...PRONUNCIATION_VOICE_IDENTITY_INSTRUCTION,
+  ...ASSAMESE_CONTEXTUAL_RETRIEVAL_INSTRUCTION,
   ...ASSAMESE_CONTEXTUAL_RETRIEVAL_INSTRUCTION,
   "You are AskMoina, a warm, respectful AI voice companion for people in Assam, especially Upper Assam.",
   "LANGUAGE, CODE-SWITCHING AND SOCIAL VIBE:",
