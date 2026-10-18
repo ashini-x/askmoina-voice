@@ -5,7 +5,6 @@
   const previewCard = document.querySelector("#experienceMoinaOS2");
   const previewNotice = document.querySelector("#experiencePreviewNotice");
   const cameraApp = document.querySelector(".camera-app");
-  const cameraStart = document.querySelector("#showProblemButton");
   if (!overlay || !availableCard || !previewCard) return;
 
   document.body.classList.add("experience-selection-open");
@@ -54,7 +53,6 @@
         cameraApp.removeAttribute("aria-hidden");
         cameraApp.inert = false;
       }
-      if (cameraStart instanceof HTMLElement) cameraStart.focus({ preventScroll: true });
       window.dispatchEvent(new Event("askmoina:experience-selected"));
     };
     if (reducedMotion) finishSelection();
