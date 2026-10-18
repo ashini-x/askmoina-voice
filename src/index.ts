@@ -146,6 +146,14 @@ const POST_AUTH_ONBOARDING = `
     </div>
   </div>
   <div class='experience-preview-notice' id='experiencePreviewNotice' hidden role='status' aria-live='polite'>moinaOS 2 is planned for the next release.</div>
+  <div class='moinaos-startup-overlay' id='moinaOSStartupOverlay' hidden role='status' aria-live='polite' aria-atomic='true'>
+    <div class='moinaos-startup-card'>
+      <span class='moinaos-startup-ring' aria-hidden='true'></span>
+      <p class='moinaos-startup-title' id='moinaOSStartupTitle'>Starting moinaOS</p>
+      <p class='moinaos-startup-message' id='moinaOSStartupMessage'>Just a moment…</p>
+      <a class='moinaos-startup-continue' id='moinaOSStartupContinue' href='/'>Continue</a>
+    </div>
+  </div>
 </section>
 `;
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
@@ -3140,6 +3148,17 @@ export default {
         const experienceAssetVersion = encodeURIComponent(appVersion);
         html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '"></head>');
         html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '" defer></script></body>');
+        if (url.searchParams.get("startup") === "1") {
+          html = html.replace(
+            "<section class='post-auth-onboarding experience-selection-overlay' id='postAuthOnboarding' aria-label='Choose your experience'>",
+            "<section class='post-auth-onboarding experience-selection-overlay is-startup-pending' id='postAuthOnboarding' aria-label='Choose your experience'>",
+          );
+          html = html.replace(
+            "<div class='experience-selection-scroll'>",
+            "<div class='experience-selection-scroll' aria-hidden='true' inert>",
+          );
+          html = html.replace("id='moinaOSStartupOverlay' hidden", "id='moinaOSStartupOverlay'");
+        }
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
