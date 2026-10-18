@@ -513,71 +513,119 @@ import {
   async function suggestMove() {
     let fen;
     let sideToMove;
+    if (suggestButton.disabled) return;
+    suggestButton.disabled = true;
     try {
       if (gameState && !pendingRecognition) {
         fen = gameState.currentFen;
         sideToMove = new Chess(fen).turn();
       } else {
-        if (!pendingRecognition || !selectedSide) return;
-        scanning = true;
-        let confirmation;
-        try {
-          confirmation = await confirmStableRecognition(pendingRecognition);
-        } finally {
-          scanning = false;
+        if (!pendingRecognition || !selectedSide) {
+          suggestButton.disabled = false;
+          return;
         }
+        const firstRecognition = pendingRecognition;
+        const confirmation = await getConfirmedRecognition(firstRecognition);
         if (!confirmation.ok) {
-          setStatus("Position not confirmed", confirmation.message, "warning");
-          return;
-        }
-        pendingRecognition = confirmation.recognition;
-        const position = boardRowsToFen(pendingRecognition.boardRows, selectedSide);
-        if (!position.ok) {
-          showBoardPrompt(pendingRecognition, { mode: pendingMode, sideToMove: selectedSide, title: "Need a clearer position", message: position.message });
           popup.dataset.kind = "warning";
+          popupTitle.textContent = "Next strong move";
+          popupMessage.textContent = confirmation.message || "I couldn't confirm the board. Keep all 64 squares visible and try again.";
+          suggestButton.textContent = "Try again";
+          suggestButton.disabled = false;
           return;
         }
-        fen = position.fen;
-        sideToMove = position.sideToMove;
+
+        pendingRecognition = confirmation.recognition;
+        pendingRecognitionConfirmation = null;
+        const placement = placementFromRows(pendingRecognition.boardRows);
+        const userColor = inferUserColorFromOrientation(pendingRecognition.orientation) || "w";
+        // White moves first in a new game. For a photographed mid-game position,
+        // default to the color on the near edge instead of asking a setup question.
+        const requestedTurn = placement === INITIAL_POSITION ? "w" : (selectedSide || userColor);
+        const position = boardRowsToFen(pendingRecognition.boardRows, requestedTurn);
+        if (!position.ok) {
+          popup.dataset.kind = "warning";
+          popupTitle.textContent = "Next strong move";
+          popupMessage.textContent = position.message;
+          suggestButton.textContent = "Try again";
+          suggestButton.disabled = false;
+          return;
+        }
+
+        // The first confirmed suggestion implicitly starts tracking. This keeps
+        // later scans aligned with the current FEN instead of re-seeding each turn.
+        if (placement === INITIAL_POSITION && requestedTurn === "w") {
+          gameState = createNewChessGame({ playerColor: userColor, now: nowIso() });
+          gameState.lastBoardRows = pendingRecognition.boardRows.slice();
+          gameState.lastOrientation = pendingRecognition.orientation;
+          gameState.lastObservationAt = nowIso();
+          gameState.updatedAt = nowIso();
+        } else {
+          const seeded = createSeed(pendingRecognition, requestedTurn, userColor);
+          if (!seeded.ok) {
+            popup.dataset.kind = "warning";
+            popupTitle.textContent = "Next strong move";
+            popupMessage.textContent = seeded.message || "I couldn't validate this position. Scan the board again.";
+            suggestButton.textContent = "Try again";
+            suggestButton.disabled = false;
+            return;
+          }
+          gameState = seeded.state;
+        }
+        persistGame();
+        fen = gameState.currentFen;
+        sideToMove = new Chess(fen).turn();
+        pendingRecognition = null;
       }
     } catch (error) {
-      setStatus("Position unavailable", error && error.message ? error.message : "Try scanning the board again.", "warning");
+      popup.dataset.kind = "warning";
+      popupTitle.textContent = "Next strong move";
+      popupMessage.textContent = error && error.message ? error.message : "Try scanning the board again.";
+      suggestButton.textContent = "Try again";
+      suggestButton.disabled = false;
       return;
     }
-    suggestButton.disabled = true;
+
     trackButton.disabled = true;
-    popupTitle.textContent = "Finding a move…";
-    popupMessage.textContent = "Checking the position with Stockfish.";
+    popupTitle.textContent = "Next strong move";
+    popupMessage.textContent = "Checking the confirmed position with Stockfish…";
     const sequence = ++analysisSequence;
     try {
       const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 1200 });
       if (sequence !== analysisSequence) return;
       pendingMode = "message";
+      popup.dataset.kind = analysis.bestMove ? "success" : "warning";
       if (!analysis.bestMove) {
-        popupTitle.textContent = analysis.status === "checkmate" ? "Checkmate" : analysis.status === "stalemate" ? "Stalemate" : "Draw";
-        popupMessage.textContent = "There is no legal move to recommend.";
+        popupMessage.textContent = analysis.status === "checkmate" ? "This position is checkmate. There is no legal move." : analysis.status === "stalemate" ? "This position is stalemate. There is no legal move." : "There is no legal move to recommend.";
       } else {
         emitChessVoiceContext("analysis", { analysis, fen });
-        popupTitle.textContent = "Suggested move · " + analysis.bestMove.san;
-        popupMessage.textContent = colorName(sideToMove) + " to move. " + analysis.bestMove.san + " (" + analysis.bestMove.uci + ") is Stockfish’s recommendation.";
+        popupMessage.textContent = colorName(sideToMove) + " to move: " + analysis.bestMove.san + " (" + analysis.bestMove.uci + "). Stockfish’s strongest move for this position.";
       }
-      popup.dataset.kind = "success";
       turnSelector.hidden = true;
-      suggestButton.hidden = true;
+      suggestButton.hidden = false;
+      suggestButton.disabled = false;
+      suggestButton.textContent = "Next strong move";
+      suggestButton.classList.add("chess-popup-action-primary");
       trackButton.hidden = true;
-      dismissButton.textContent = gameState ? "Keep watching" : "Done";
+      dismissButton.textContent = "Not now";
       pendingRecognition = null;
+      pendingRecognitionConfirmation = null;
       if (statusMessageTimer) clearTimeout(statusMessageTimer);
-      statusMessageTimer = setTimeout(() => hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS), 12000);
+      statusMessageTimer = null;
+      popup.hidden = false;
+      scheduleDetection(BASE_RETRY_MS);
     } catch (error) {
-      popupTitle.textContent = "Move suggestion unavailable";
-      popupMessage.textContent = error && error.message ? error.message : "Stockfish couldn't finish this analysis. Try again.";
+      popupTitle.textContent = "Next strong move";
+      popupMessage.textContent = error && error.message ? error.message : "Stockfish couldn't finish this analysis. Tap to try again.";
       popup.dataset.kind = "warning";
-      suggestButton.hidden = true;
+      suggestButton.hidden = false;
+      suggestButton.disabled = false;
+      suggestButton.textContent = "Try again";
+      suggestButton.classList.add("chess-popup-action-primary");
       trackButton.hidden = true;
-      dismissButton.textContent = "Done";
+      dismissButton.textContent = "Not now";
       if (statusMessageTimer) clearTimeout(statusMessageTimer);
-      statusMessageTimer = setTimeout(() => hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS), 9000);
+      statusMessageTimer = null;
     } finally {
       suggestButton.disabled = false;
       trackButton.disabled = false;
