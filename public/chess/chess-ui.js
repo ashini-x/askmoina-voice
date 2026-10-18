@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen } from "./recognition-client.js";
+import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition } from "./recognition-client.js?v=0.4.137";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -48,6 +48,8 @@ import {
   let dismissedUntil = 0;
   let analysisSequence = 0;
   let statusMessageTimer = null;
+  let lastRecognitionCompletedAt = 0;
+  const CONFIRM_SCAN_INTERVAL_MS = 3150;
 
   function loadAutoSetting() {
     try {
@@ -278,7 +280,23 @@ import {
 
   async function recognizeOneFrame() {
     const frame = await captureSingleFrame();
-    return recognizeChessboardFrame(frame);
+    const result = await recognizeChessboardFrame(frame);
+    lastRecognitionCompletedAt = Date.now();
+    return result;
+  }
+
+  async function confirmStableRecognition(firstRecognition) {
+    // The server applies a 3-second per-account scan throttle. Respect it, then
+    // take a fresh frame; never ask Stockfish to recommend from one uncertain
+    // reading or from a board that changed between the two scans.
+    const elapsed = Date.now() - lastRecognitionCompletedAt;
+    const waitMs = Math.max(0, CONFIRM_SCAN_INTERVAL_MS - elapsed);
+    if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    const secondResult = await recognizeOneFrame();
+    return verifyStableChessboardRecognition({
+      ok: true,
+      recognition: firstRecognition
+    }, secondResult);
   }
 
   function scheduleDetection(delay = BASE_RETRY_MS) {
@@ -314,8 +332,8 @@ import {
         return;
       }
       consecutiveMisses = 0;
-      const observation = result.recognition;
-      const placement = placementFromRows(observation.boardRows);
+      let observation = result.recognition;
+      let placement = placementFromRows(observation.boardRows);
       if (!placement) {
         scheduleDetection(BASE_RETRY_MS);
         return;
@@ -326,6 +344,17 @@ import {
         if (placement === currentPlacement) {
           dismissedPlacement = null;
           scheduleDetection(BASE_RETRY_MS + 3000);
+          return;
+        }
+        const confirmation = await confirmStableRecognition(observation);
+        if (!confirmation.ok) {
+          setStatus("Couldn’t confirm the position", confirmation.message, "warning");
+          return;
+        }
+        observation = confirmation.recognition;
+        placement = placementFromRows(observation.boardRows);
+        if (!placement) {
+          setStatus("Couldn’t confirm the position", "The second board reading was incomplete. Keep all four corners visible and scan again.", "warning");
           return;
         }
         const nextSide = opposite(new Chess(gameState.currentFen).turn());
@@ -400,11 +429,18 @@ import {
 
   async function trackDetectedPosition() {
     if (!pendingRecognition || !selectedSide || scanning) return;
-    const observation = pendingRecognition;
+    let observation = pendingRecognition;
     scanning = true;
     trackButton.disabled = true;
     suggestButton.disabled = true;
     try {
+      const confirmation = await confirmStableRecognition(observation);
+      if (!confirmation.ok) {
+        setStatus("Position not confirmed", confirmation.message, "warning");
+        return;
+      }
+      observation = confirmation.recognition;
+      pendingRecognition = observation;
       const placement = placementFromRows(observation.boardRows);
       let result;
       if (placement === INITIAL_POSITION && selectedSide === "w") {
@@ -445,6 +481,18 @@ import {
         sideToMove = new Chess(fen).turn();
       } else {
         if (!pendingRecognition || !selectedSide) return;
+        scanning = true;
+        let confirmation;
+        try {
+          confirmation = await confirmStableRecognition(pendingRecognition);
+        } finally {
+          scanning = false;
+        }
+        if (!confirmation.ok) {
+          setStatus("Position not confirmed", confirmation.message, "warning");
+          return;
+        }
+        pendingRecognition = confirmation.recognition;
         const position = boardRowsToFen(pendingRecognition.boardRows, selectedSide);
         if (!position.ok) {
           showBoardPrompt(pendingRecognition, { mode: pendingMode, sideToMove: selectedSide, title: "Need a clearer position", message: position.message });
