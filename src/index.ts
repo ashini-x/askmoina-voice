@@ -124,27 +124,38 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-product-art' aria-hidden='true'>
-            <svg class='experience-glass-art' viewBox='0 0 320 220' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
-              <defs>
-                <linearGradient id='exp1-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#c08aff' stop-opacity='.12'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.37'/><stop offset='.68' stop-color='#0e2440' stop-opacity='.52'/><stop offset='1' stop-color='#c08aff' stop-opacity='.14'/></linearGradient>
-                <linearGradient id='exp1-upper-fill' x1='0' y1='0' x2='.86' y2='1'><stop offset='0' stop-color='#eaf4ff' stop-opacity='.14'/><stop offset='.32' stop-color='#3c669a' stop-opacity='.39'/><stop offset='.69' stop-color='#0e2440' stop-opacity='.59'/><stop offset='1' stop-color='#c08aff' stop-opacity='.16'/></linearGradient>
-                <linearGradient id='exp1-rim' x1='0' y1='0' x2='1' y2='.12'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.28' stop-color='#a5c5ff' stop-opacity='.82'/><stop offset='.57' stop-color='#eaf4ff' stop-opacity='.78'/><stop offset='.81' stop-color='#3c669a' stop-opacity='.72'/><stop offset='1' stop-color='#eaf4ff' stop-opacity='.96'/></linearGradient>
-                <linearGradient id='exp1-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#c08aff' stop-opacity='.74'/><stop offset='.34' stop-color='#eaf4ff' stop-opacity='.61'/><stop offset='.72' stop-color='#a5c5ff' stop-opacity='.32'/><stop offset='1' stop-color='#eaf4ff' stop-opacity='.78'/></linearGradient>
-                <radialGradient id='exp1-reflection' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#c08aff' stop-opacity='.23'/><stop offset='1' stop-color='#c08aff' stop-opacity='0'/></radialGradient>
-              </defs>
-              <ellipse cx='145' cy='177' rx='120' ry='13' fill='url(#exp1-reflection)'/>
-              <g transform='rotate(-19 160 134)'>
-                <path d='M18 135 C34 104 92 83 157 82 C220 80 276 100 299 125 C309 137 279 156 222 170 C158 185 76 176 36 151 C23 143 15 139 18 135Z' fill='url(#exp1-lower-fill)' stroke='url(#exp1-rim)' stroke-width='1.05'/>
-                <path d='M22 137 C57 158 123 169 189 160 C235 154 274 139 297 125' fill='none' stroke='url(#exp1-glint)' stroke-width='1.05' opacity='.76'/>
-                <path d='M44 121 C93 95 151 91 207 99 C243 104 275 115 291 127' fill='none' stroke='#a5c5ff' stroke-opacity='.26' stroke-width='.85'/>
-              </g>
-              <g transform='rotate(-20 160 91)'>
-                <path d='M16 99 C35 69 91 38 153 27 C213 16 273 30 299 54 C313 67 280 92 229 115 C169 141 82 139 35 116 C23 110 15 104 16 99Z' fill='url(#exp1-upper-fill)' stroke='url(#exp1-rim)' stroke-width='1.2'/>
-                <path d='M19 98 C46 71 99 42 154 32 C209 22 266 35 296 56' fill='none' stroke='url(#exp1-glint)' stroke-width='1.25' opacity='.9'/>
-                <path d='M25 104 C64 130 129 136 190 121 C234 111 275 88 299 54' fill='none' stroke='#a5c5ff' stroke-opacity='.33' stroke-width='.9'/>
-                <path d='M65 68 C107 44 157 31 202 34' fill='none' stroke='#eaf4ff' stroke-opacity='.24' stroke-width='.8'/>
-              </g>
-            </svg>
+            <svg class='experience-glass-art' viewBox='0 0 380 250' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+<defs>
+<linearGradient id='exp1-surface' x1='0%' y1='100%' x2='100%' y2='0%'><stop offset='0' stop-color='#e4b5ff' stop-opacity='.38'/><stop offset='.16' stop-color='#b77dff' stop-opacity='.33'/><stop offset='.42' stop-color='#071b36' stop-opacity='.73'/><stop offset='.67' stop-color='#2559a1' stop-opacity='.70'/><stop offset='.86' stop-color='#6d9cff' stop-opacity='.49'/><stop offset='1' stop-color='#dff7ff' stop-opacity='.28'/></linearGradient>
+<radialGradient id='exp1-inner-blue' cx='66%' cy='25%' r='75%'><stop offset='0' stop-color='#6d9cff' stop-opacity='.46'/><stop offset='.45' stop-color='#2a66b8' stop-opacity='.25'/><stop offset='1' stop-color='#071b36' stop-opacity='.22'/></radialGradient>
+<linearGradient id='exp1-rim' x1='0' y1='1' x2='1' y2='0'><stop offset='0' stop-color='#dff7ff' stop-opacity='.96'/><stop offset='.14' stop-color='#e4b5ff' stop-opacity='.96'/><stop offset='.31' stop-color='#6d9cff' stop-opacity='.88'/><stop offset='.55' stop-color='#dff7ff' stop-opacity='.94'/><stop offset='.77' stop-color='#6d9cff' stop-opacity='.90'/><stop offset='1' stop-color='#dff7ff' stop-opacity='.98'/></linearGradient>
+<linearGradient id='exp1-spec' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#dff7ff' stop-opacity='.98'/><stop offset='.18' stop-color='#e4b5ff' stop-opacity='.80'/><stop offset='.44' stop-color='#dff7ff' stop-opacity='.42'/><stop offset='.76' stop-color='#6d9cff' stop-opacity='.70'/><stop offset='1' stop-color='#dff7ff' stop-opacity='.98'/></linearGradient>
+<radialGradient id='exp1-floor' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#6e95ff' stop-opacity='.36'/><stop offset='.38' stop-color='#6d9cff' stop-opacity='.19'/><stop offset='.72' stop-color='#e4b5ff' stop-opacity='.13'/><stop offset='1' stop-color='#6e95ff' stop-opacity='0'/></radialGradient>
+<radialGradient id='exp1-left-bloom' cx='32%' cy='50%' r='65%'><stop offset='0' stop-color='#dff7ff' stop-opacity='.96'/><stop offset='.21' stop-color='#e4b5ff' stop-opacity='.83'/><stop offset='.48' stop-color='#b77dff' stop-opacity='.35'/><stop offset='1' stop-color='#e4b5ff' stop-opacity='0'/></radialGradient>
+<filter id='exp1-glow' x='-35%' y='-40%' width='170%' height='190%'><feGaussianBlur stdDeviation='7.2'/></filter>
+<filter id='exp1-soft' x='-25%' y='-30%' width='150%' height='160%'><feGaussianBlur stdDeviation='3.1'/></filter>
+</defs>
+<ellipse cx='180' cy='221' rx='165' ry='21' fill='url(#exp1-floor)' filter='url(#exp1-glow)'/>
+<ellipse cx='62' cy='201' rx='68' ry='22' fill='url(#exp1-left-bloom)' filter='url(#exp1-glow)'/>
+<path d='M16 166 C35 139 88 111 150 94 C213 76 280 78 323 96 C345 105 346 119 325 138 C288 169 224 194 157 210 C96 225 42 218 21 198 C12 189 10 176 16 166Z' fill='url(#exp1-surface)' opacity='.58' stroke='url(#exp1-rim)' stroke-opacity='.78' stroke-width='1.4'/>
+<path d='M17 166 C49 138 103 119 158 104 C219 87 280 87 322 97' fill='none' stroke='#dff7ff' stroke-opacity='.34' stroke-width='1.25'/>
+<path d='M20 190 C59 213 113 215 168 201 C229 185 287 160 325 138' fill='none' stroke='url(#exp1-spec)' stroke-opacity='.78' stroke-width='1.25'/>
+<path d='M47 175 C102 152 177 125 238 121 C272 119 297 124 315 134' fill='none' stroke='#6d9cff' stroke-opacity='.30' stroke-width='1.1'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='none' stroke='#6d9cff' stroke-opacity='.72' stroke-width='7' filter='url(#exp1-glow)'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='url(#exp1-surface)' stroke='url(#exp1-rim)' stroke-width='1.8'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='url(#exp1-inner-blue)' opacity='.92'/>
+<path d='M14 157 C29 122 84 77 151 42 C212 10 275 5 321 21' fill='none' stroke='#6d9cff' stroke-opacity='.82' stroke-width='6' filter='url(#exp1-soft)'/>
+<path d='M14 157 C29 122 84 77 151 42 C212 10 275 5 321 21' fill='none' stroke='url(#exp1-spec)' stroke-opacity='.96' stroke-width='1.8'/>
+<path d='M14 157 C10 168 13 179 21 187 C44 208 85 209 126 198' fill='none' stroke='#e4b5ff' stroke-opacity='.96' stroke-width='6' filter='url(#exp1-soft)'/>
+<path d='M14 157 C10 168 13 179 21 187 C44 208 85 209 126 198' fill='none' stroke='url(#exp1-spec)' stroke-width='1.8'/>
+<path d='M51 126 C95 87 153 52 212 31 C247 19 278 19 303 26' fill='none' stroke='#dff7ff' stroke-opacity='.37' stroke-width='1.15'/>
+<path d='M35 165 C77 188 121 183 177 158 C226 136 270 105 307 69' fill='none' stroke='url(#exp1-spec)' stroke-opacity='.66' stroke-width='1.3'/>
+<path d='M88 95 C133 63 181 41 226 31' fill='none' stroke='#dff7ff' stroke-opacity='.24' stroke-width='1'/>
+<ellipse cx='24' cy='188' rx='45' ry='16' fill='url(#exp1-left-bloom)' filter='url(#exp1-soft)'/>
+<path d='M27 202 C83 210 144 208 202 192' fill='none' stroke='#6d9cff' stroke-opacity='.54' stroke-width='3' filter='url(#exp1-soft)'/>
+<path d='M27 202 C83 210 144 208 202 192' fill='none' stroke='#dff7ff' stroke-opacity='.64' stroke-width='1'/>
+<path d='M15 187 C37 198 63 202 89 200' fill='none' stroke='#dff7ff' stroke-opacity='.75' stroke-width='2.4' filter='url(#exp1-soft)'/>
+</svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 1 features'>
             <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Real-time visual intelligence</span></span>
@@ -160,27 +171,38 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-product-art' aria-hidden='true'>
-            <svg class='experience-glass-art' viewBox='0 0 320 220' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
-              <defs>
-                <linearGradient id='exp2-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.12'/><stop offset='.34' stop-color='#71839d' stop-opacity='.37'/><stop offset='.68' stop-color='#28364a' stop-opacity='.52'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='.14'/></linearGradient>
-                <linearGradient id='exp2-upper-fill' x1='0' y1='0' x2='.86' y2='1'><stop offset='0' stop-color='#d8e0ee' stop-opacity='.14'/><stop offset='.32' stop-color='#71839d' stop-opacity='.39'/><stop offset='.69' stop-color='#28364a' stop-opacity='.59'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='.16'/></linearGradient>
-                <linearGradient id='exp2-rim' x1='0' y1='0' x2='1' y2='.12'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.6'/><stop offset='.28' stop-color='#aebdd3' stop-opacity='.52'/><stop offset='.57' stop-color='#d8e0ee' stop-opacity='.48'/><stop offset='.81' stop-color='#71839d' stop-opacity='.42'/><stop offset='1' stop-color='#d8e0ee' stop-opacity='.6'/></linearGradient>
-                <linearGradient id='exp2-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.32'/><stop offset='.34' stop-color='#d8e0ee' stop-opacity='.36'/><stop offset='.72' stop-color='#aebdd3' stop-opacity='.18'/><stop offset='1' stop-color='#d8e0ee' stop-opacity='.34'/></linearGradient>
-                <radialGradient id='exp2-reflection' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.08'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='0'/></radialGradient>
-              </defs>
-              <ellipse cx='145' cy='177' rx='120' ry='13' fill='url(#exp2-reflection)'/>
-              <g transform='rotate(-19 160 134)'>
-                <path d='M18 135 C34 104 92 83 157 82 C220 80 276 100 299 125 C309 137 279 156 222 170 C158 185 76 176 36 151 C23 143 15 139 18 135Z' fill='url(#exp2-lower-fill)' stroke='url(#exp2-rim)' stroke-width='1.05'/>
-                <path d='M22 137 C57 158 123 169 189 160 C235 154 274 139 297 125' fill='none' stroke='url(#exp2-glint)' stroke-width='1.05' opacity='.76'/>
-                <path d='M44 121 C93 95 151 91 207 99 C243 104 275 115 291 127' fill='none' stroke='#aebdd3' stroke-opacity='.16' stroke-width='.85'/>
-              </g>
-              <g transform='rotate(-20 160 91)'>
-                <path d='M16 99 C35 69 91 38 153 27 C213 16 273 30 299 54 C313 67 280 92 229 115 C169 141 82 139 35 116 C23 110 15 104 16 99Z' fill='url(#exp2-upper-fill)' stroke='url(#exp2-rim)' stroke-width='1.2'/>
-                <path d='M19 98 C46 71 99 42 154 32 C209 22 266 35 296 56' fill='none' stroke='url(#exp2-glint)' stroke-width='1.25' opacity='.9'/>
-                <path d='M25 104 C64 130 129 136 190 121 C234 111 275 88 299 54' fill='none' stroke='#aebdd3' stroke-opacity='.20' stroke-width='.9'/>
-                <path d='M65 68 C107 44 157 31 202 34' fill='none' stroke='#d8e0ee' stroke-opacity='.16' stroke-width='.8'/>
-              </g>
-            </svg>
+            <svg class='experience-glass-art' viewBox='0 0 380 250' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+<defs>
+<linearGradient id='exp2-surface' x1='0%' y1='100%' x2='100%' y2='0%'><stop offset='0' stop-color='#bbc9e1' stop-opacity='.20'/><stop offset='.16' stop-color='#a8a9d4' stop-opacity='.18'/><stop offset='.42' stop-color='#101a2a' stop-opacity='.73'/><stop offset='.67' stop-color='#52647e' stop-opacity='.38'/><stop offset='.86' stop-color='#9db9de' stop-opacity='.24'/><stop offset='1' stop-color='#e4f3ff' stop-opacity='.16'/></linearGradient>
+<radialGradient id='exp2-inner-blue' cx='66%' cy='25%' r='75%'><stop offset='0' stop-color='#9db9de' stop-opacity='.18'/><stop offset='.45' stop-color='#7e8da7' stop-opacity='.11'/><stop offset='1' stop-color='#101a2a' stop-opacity='.22'/></radialGradient>
+<linearGradient id='exp2-rim' x1='0' y1='1' x2='1' y2='0'><stop offset='0' stop-color='#e4f3ff' stop-opacity='.66'/><stop offset='.14' stop-color='#bbc9e1' stop-opacity='.66'/><stop offset='.31' stop-color='#9db9de' stop-opacity='.48'/><stop offset='.55' stop-color='#e4f3ff' stop-opacity='.52'/><stop offset='.77' stop-color='#9db9de' stop-opacity='.44'/><stop offset='1' stop-color='#e4f3ff' stop-opacity='.58'/></linearGradient>
+<linearGradient id='exp2-spec' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#e4f3ff' stop-opacity='.50'/><stop offset='.18' stop-color='#bbc9e1' stop-opacity='.35'/><stop offset='.44' stop-color='#e4f3ff' stop-opacity='.25'/><stop offset='.76' stop-color='#9db9de' stop-opacity='.32'/><stop offset='1' stop-color='#e4f3ff' stop-opacity='.50'/></linearGradient>
+<radialGradient id='exp2-floor' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#b1c4e4' stop-opacity='.12'/><stop offset='.38' stop-color='#9db9de' stop-opacity='.07'/><stop offset='.72' stop-color='#bbc9e1' stop-opacity='.04'/><stop offset='1' stop-color='#b1c4e4' stop-opacity='0'/></radialGradient>
+<radialGradient id='exp2-left-bloom' cx='32%' cy='50%' r='65%'><stop offset='0' stop-color='#e4f3ff' stop-opacity='.48'/><stop offset='.21' stop-color='#bbc9e1' stop-opacity='.28'/><stop offset='.48' stop-color='#a8a9d4' stop-opacity='.12'/><stop offset='1' stop-color='#bbc9e1' stop-opacity='0'/></radialGradient>
+<filter id='exp2-glow' x='-35%' y='-40%' width='170%' height='190%'><feGaussianBlur stdDeviation='4.5'/></filter>
+<filter id='exp2-soft' x='-25%' y='-30%' width='150%' height='160%'><feGaussianBlur stdDeviation='2'/></filter>
+</defs>
+<ellipse cx='180' cy='221' rx='165' ry='21' fill='url(#exp2-floor)' filter='url(#exp2-glow)'/>
+<ellipse cx='62' cy='201' rx='68' ry='22' fill='url(#exp2-left-bloom)' filter='url(#exp2-glow)'/>
+<path d='M16 166 C35 139 88 111 150 94 C213 76 280 78 323 96 C345 105 346 119 325 138 C288 169 224 194 157 210 C96 225 42 218 21 198 C12 189 10 176 16 166Z' fill='url(#exp2-surface)' opacity='.40' stroke='url(#exp2-rim)' stroke-opacity='.44' stroke-width='1.4'/>
+<path d='M17 166 C49 138 103 119 158 104 C219 87 280 87 322 97' fill='none' stroke='#e4f3ff' stroke-opacity='.17' stroke-width='1.25'/>
+<path d='M20 190 C59 213 113 215 168 201 C229 185 287 160 325 138' fill='none' stroke='url(#exp2-spec)' stroke-opacity='.40' stroke-width='1.25'/>
+<path d='M47 175 C102 152 177 125 238 121 C272 119 297 124 315 134' fill='none' stroke='#9db9de' stroke-opacity='.14' stroke-width='1.1'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='none' stroke='#9db9de' stroke-opacity='.42' stroke-width='7' filter='url(#exp2-glow)'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='url(#exp2-surface)' stroke='url(#exp2-rim)' stroke-width='1.8'/>
+<path d='M13 157 C28 120 83 76 151 41 C214 8 278 4 326 23 C348 32 347 49 328 72 C294 111 233 151 169 180 C108 207 49 211 20 188 C12 181 8 168 13 157Z' fill='url(#exp2-inner-blue)' opacity='.72'/>
+<path d='M14 157 C29 122 84 77 151 42 C212 10 275 5 321 21' fill='none' stroke='#9db9de' stroke-opacity='.35' stroke-width='6' filter='url(#exp2-soft)'/>
+<path d='M14 157 C29 122 84 77 151 42 C212 10 275 5 321 21' fill='none' stroke='url(#exp2-spec)' stroke-opacity='.55' stroke-width='1.8'/>
+<path d='M14 157 C10 168 13 179 21 187 C44 208 85 209 126 198' fill='none' stroke='#bbc9e1' stroke-opacity='.48' stroke-width='6' filter='url(#exp2-soft)'/>
+<path d='M14 157 C10 168 13 179 21 187 C44 208 85 209 126 198' fill='none' stroke='url(#exp2-spec)' stroke-width='1.8'/>
+<path d='M51 126 C95 87 153 52 212 31 C247 19 278 19 303 26' fill='none' stroke='#e4f3ff' stroke-opacity='.16' stroke-width='1.15'/>
+<path d='M35 165 C77 188 121 183 177 158 C226 136 270 105 307 69' fill='none' stroke='url(#exp2-spec)' stroke-opacity='.28' stroke-width='1.3'/>
+<path d='M88 95 C133 63 181 41 226 31' fill='none' stroke='#e4f3ff' stroke-opacity='.10' stroke-width='1'/>
+<ellipse cx='24' cy='188' rx='45' ry='16' fill='url(#exp2-left-bloom)' filter='url(#exp2-soft)'/>
+<path d='M27 202 C83 210 144 208 202 192' fill='none' stroke='#9db9de' stroke-opacity='.22' stroke-width='3' filter='url(#exp2-soft)'/>
+<path d='M27 202 C83 210 144 208 202 192' fill='none' stroke='#e4f3ff' stroke-opacity='.25' stroke-width='1'/>
+<path d='M15 187 C37 198 63 202 89 200' fill='none' stroke='#e4f3ff' stroke-opacity='.30' stroke-width='2.4' filter='url(#exp2-soft)'/>
+</svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 2 preview features'>
             <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>More powerful models</span></span>
