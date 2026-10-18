@@ -116,7 +116,8 @@ assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker mus
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
 assert.ok(serviceWorker.includes('caches.match("/offline")'), "service worker must use the canonical offline route");
-assert.ok(serviceWorker.includes('fetch(request, { cache: "no-store" })'), "service worker must revalidate active UI code");
+assert.ok(serviceWorker.includes('const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/'), "service worker must recognize only semantic release-versioned assets for HTTP caching");
+assert.ok(serviceWorker.includes('(isImmutableVersionedAsset ? fetch(request) : fetch(request, { cache: "no-store" }))'), "service worker must cache versioned assets while revalidating unversioned code");
 assert.ok(serviceWorker.includes('if (url.pathname.startsWith("/api/")'), "authenticated APIs must bypass the service worker cache strategy");
 assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation network-first behavior is required");
 assert.ok(!serviceWorker.includes('"/app.js"'), "app JavaScript must not be precached");
