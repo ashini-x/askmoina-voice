@@ -90,6 +90,7 @@ for (const label of [
 assert.ok(worker.includes("const experienceAssetVersion = encodeURIComponent(appVersion)"), "Interface 06 assets must use the current release version for cache busting");
 assert.ok(worker.includes("copilot.css?experience-selection=1&v=' + experienceAssetVersion") && worker.includes("copilot.js?experience-selection=1&v=' + experienceAssetVersion"), "Interface 06 CSS and JavaScript URLs must be release-versioned");
 assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned Co-Pilot assets should use long-lived immutable caching while unversioned URLs remain revalidated");
+assert.ok(worker.includes("const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/"), "immutable cache selection must validate semantic version URLs exactly");
 const nativeAppCss = read("public/native-app.css");
 assert.ok(nativeAppCss.includes("@keyframes askmoina-screen-fade-up") && nativeAppCss.includes("170ms cubic-bezier(.22,1,.36,1)"), "native app screens must use the lightweight premium fade-in");
 assert.ok(nativeAppCss.includes("@media(prefers-reduced-motion:reduce)") && nativeAppCss.includes(".experience-selection-overlay:not([hidden]) .experience-selection-content"), "fade-in must respect reduced-motion preferences");
