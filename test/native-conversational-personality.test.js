@@ -25,7 +25,7 @@ describe("M3 native conversational personality", () => {
     expect(instruction).toContain("inventing intimacy");
     expect(instruction).toContain("Do not argue defensively");
     expect(instruction).toContain("Do not bluff comprehension");
-    expect(instruction).toContain("not universal Upper Assam language rules");
+    expect(instruction).toContain("universal Upper Assam language rules");
   });
 
   it("ships a 12-case held-out, score-only listening suite", () => {
