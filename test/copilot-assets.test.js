@@ -940,27 +940,29 @@ describe("Dark-first app shell and brand assets", () => {
 
 
 
-  it("routes successful signup/sign-in directly to Interface 06", () => {
+  it("routes successful signup/sign-in directly to Interface 06 with one auth-only loader", () => {
     expect(authScript).not.toContain('"/?onboarding=1"');
-    expect(authScript).toContain('destination === "/" ? "/?startup=1" : destination');
-    expect(authScript).toContain("window.location.replace(next)");
+    expect(authScript).not.toContain("/?startup=1");
+    expect(authScript).toContain("window.location.replace(destination)");
     expect(authScript).toContain("showVerificationTransition");
     expect(authScript).toContain("verificationInProgress");
+    expect(authScript).toContain('Starting moinaOS');
     expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
     expect(workerSource).toContain("askmoina-selection-arrive");
     expect(workerSource).toContain("translate3d(0,16px,0) scale(.992)");
-    expect(workerSource).toContain("Starting MoinaOS");
-    expect(workerSource).toContain("id='moinaOSStartupOverlay' hidden");
-    expect(workerSource).toContain('url.searchParams.get("startup") === "1"');
-    expect(experienceSelectionCss).toContain(".moinaos-startup-card");
-    expect(experienceSelectionCss).toContain(".moinaos-startup-ring");
+    expect(workerSource).not.toContain("Starting MoinaOS");
+    expect(workerSource).not.toContain("moinaOSStartupOverlay");
+    expect(workerSource).not.toContain('url.searchParams.get("startup") === "1"');
+    expect(experienceSelectionCss).not.toContain(".moinaos-startup-card");
+    expect(experienceSelectionCss).not.toContain(".moinaos-startup-ring");
     expect(entryAuthCss).toContain(".entry-auth-sheet .sheet-card {");
     expect(entryAuthCss).toContain("min-height: clamp(300px, 43vw, 438px)");
     expect(entryAuthCss).toContain("askmoina-auth-spinner");
-    expect(workerSource).toContain("min-height: clamp(300px, 43vw, 438px)");
+    expect(entryAuthCss).toContain("blur(36px) saturate(170%)");
+    expect(entryAuthCss).toContain("rgba(245, 248, 255, .20)");
     expect(experienceSelectionScript).not.toContain("minimumVisibleMs");
-    expect(experienceSelectionScript).toContain("finishStartupWhenReady");
-    expect(experienceSelectionScript).toContain("Taking a little longer");
+    expect(experienceSelectionScript).not.toContain("finishStartupWhenReady");
+    expect(experienceSelectionScript).not.toContain("Taking a little longer");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
     expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
     expect(workerSource).toContain("id='experienceMoinaOS1'");
