@@ -2164,17 +2164,17 @@ async function handleVoiceSocket(
           buildAssamesePronunciationInstruction(env.DB),
           buildAssameseConversationReferenceInstruction(env.DB),
         ]);
-const referenceGuidance = [pronunciationGuidance, conversationReferenceGuidance].filter(Boolean).join("\n\n");
-const baseInstruction = referenceGuidance
-  ? `${SYSTEM_INSTRUCTION}\n\n${referenceGuidance}`
-  : SYSTEM_INSTRUCTION;
-const enableCopilotForSetup = message.copilot_mode === true;
-const systemInstruction = buildPersonalizedSystemInstruction(
-  enableCopilotForSetup
-    ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-    : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
-  memoryContext,
-);
+        const referenceGuidance = [pronunciationGuidance, conversationReferenceGuidance].filter(Boolean).join("\n\n");
+        const baseInstruction = referenceGuidance
+          ? `${SYSTEM_INSTRUCTION}\n\n${referenceGuidance}`
+          : SYSTEM_INSTRUCTION;
+        const enableCopilotForSetup = message.copilot_mode === true;
+        const systemInstruction = buildPersonalizedSystemInstruction(
+          enableCopilotForSetup
+            ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
+            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
+          memoryContext,
+        );
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
