@@ -178,7 +178,17 @@ const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
 const NATIVE_APP_HEADER_GUEST = "";
 const NATIVE_APP_MENU_SHEET = "<section class=\"native-menu-sheet\" id=\"nativeMenuSheet\" hidden aria-hidden=\"true\">\n  <button type=\"button\" class=\"native-menu-scrim\" id=\"nativeMenuScrim\" aria-label=\"Close askmoina menu\"></button>\n  <div class=\"native-menu-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"nativeMenuTitle\">\n    <div class=\"native-menu-grabber\" aria-hidden=\"true\"></div>\n    <header class=\"native-menu-heading\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"38\" height=\"38\"><div><h2 id=\"nativeMenuTitle\" class=\"askmoina-wordmark\"><span>a</span><span>s</span><span>k</span><span>m</span><span>o</span><span>i</span><span>n</span><span>a</span></h2><p>Your world, understood.</p></div><button type=\"button\" class=\"native-menu-close\" id=\"nativeMenuClose\" aria-label=\"Close menu\">×</button></header>\n    <nav class=\"native-menu-links\" aria-label=\"askmoina\">\n      <a href=\"/account\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"3.4\"/><path d=\"M5 20c.7-3.4 3-5.2 7-5.2s6.3 1.8 7 5.2\"/></svg></span><span>Account &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=about\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 2.8 2.3 7 7 2.2-7 2.3-2.3 7-2.2-7-7-2.3 7-2.2z\"/></svg></span><span>About askmoina</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=developer\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16\"/></svg></span><span>Developer</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=help\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 5.5h16v11H9l-5 3z\"/></svg></span><span>Feedback &amp; support</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=privacy\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m12 3 7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><span>Privacy &amp; security</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=pricing\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19V5M4 19h16M7 15l4-4 3 2 5-6M15 7h4v4\"/></svg></span><span>Investor relations</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <a href=\"/?view=donate\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.8 2.4Z\"/></svg></span><span>Support development</span><span class=\"native-menu-chevron\" aria-hidden=\"true\">›</span></a>\n      <div class=\"native-menu-disabled\" aria-disabled=\"true\"><span class=\"native-menu-symbol\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3\"/></svg></span><span>Hardware</span><span class=\"native-menu-coming\">Under development</span></div>\n    </nav>\n    <div class=\"native-menu-footer\"><button type=\"button\" class=\"native-menu-signout\" data-logout><span aria-hidden=\"true\">↪</span> Sign out</button><p>Built for the real world.</p></div>\n  </div>\n</section>"
+const ASKMOINA_FONT_PRELOAD_URL = "/askmoina-global-font.woff2?v=0.4.132";
+function withAskMoinaFontPreload(html: string): string {
+  if (html.includes('rel="preload"') && html.includes(ASKMOINA_FONT_PRELOAD_URL)) return html;
+  const preload = '<link rel="preload" href="' + ASKMOINA_FONT_PRELOAD_URL + '" as="font" type="font/woff2" crossorigin fetchpriority="high">';
+  const charset = /<meta\b[^>]*\bcharset\s*=\s*["'][^"']+["'][^>]*>/i;
+  if (charset.test(html)) return html.replace(charset, (match) => match + preload);
+  return html.replace(/<head\b[^>]*>/i, (match) => match + preload);
+}
+
 function withNativeAppShell(html: string, appVersion: string, authenticated: boolean): string {
+  html = withAskMoinaFontPreload(html);
   const nativeHeader = authenticated ? NATIVE_APP_HEADER_AUTH : "";
   const headerStart = html.indexOf('<header class="floating-top">');
   if (headerStart >= 0) {
@@ -237,12 +247,13 @@ function shouldUseSiteChrome(pathname: string): boolean {
     !SITE_INFO_PATHS.has(pathname) && !pathname.startsWith("/admin") && !pathname.startsWith("/api/");
 }
 function withSiteChrome(html: string, authenticated = false): string {
+  html = withAskMoinaFontPreload(html);
   if (html.includes('class="camera-app"') || html.includes('class="entry-site-header"')) return html;
   let start = html.indexOf("<body");
   let end = start >= 0 ? html.indexOf(">", start) : -1;
   if (start < 0 || end < 0) return html;
   if (!html.includes('href="/site-chrome.css"')) html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
-  if (!html.includes('href="/askmoina-global-font.css')) html = html.replace("</head>", '<link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.132"></head>');
+  if (!html.includes('href="/askmoina-global-font.css')) html = html.replace("</head>", '<link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"></head>');
   start = html.indexOf("<body");
   end = html.indexOf(">", start);
   let bodyTag = html.slice(start, end + 1);
@@ -3122,7 +3133,7 @@ export default {
       if (authResponse.status === 200 && authResponse.headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
         const authenticated = Boolean(await getAuthenticatedUserId(request, env) || await isAdmin(request, env));
         if (url.pathname === "/account" || url.pathname === "/account.html") {
-          let html = await authResponse.text();
+          let html = withAskMoinaFontPreload(await authResponse.text());
           html = html.replace("<body>", '<body class="native-account-page" data-page="account">');
           html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"><link rel="stylesheet" href="/askmoina-global-font.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"></head>');
           const headers = new Headers(authResponse.headers);
@@ -3139,7 +3150,7 @@ export default {
       const infoPath = url.pathname === "/" && url.searchParams.has("view") ? "/" + (url.searchParams.get("view") || "") : url.pathname;
       const infoPage = renderSiteInfoPage(infoPath, env.APP_VERSION || "0.4.80");
       if (infoPage) {
-        const pageHtml = infoPage;
+        const pageHtml = withAskMoinaFontPreload(infoPage);
         return new Response(request.method === "HEAD" ? null : pageHtml, {
           status: 200,
           headers: {

@@ -7,7 +7,7 @@
   src: url("/askmoina-global-font.woff2?v=0.4.132") format("woff2");
   font-style: normal;
   font-weight: 300;
-  font-display: swap;
+  font-display: block;
 }
 :root {
   --askmoina-global-font: "askmoina-global-font", "Comfortaa", "Avenir Next",

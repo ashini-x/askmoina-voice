@@ -1,4 +1,4 @@
-const CACHE_NAME = "askmoina-pwa-shell-v17";
+const CACHE_NAME = "askmoina-pwa-shell-v18";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",
@@ -18,7 +18,7 @@ const SHELL_URLS = [
   "/pwa-icon-192.svg?v=0.4.83",
   "/pwa-icon-512.svg?v=0.4.83",
   "/pwa-icon-512.png?v=0.4.83",
-  "/askmoina-global-font.css?v=0.4.132",
+  "/askmoina-global-font.css?v=0.4.133",
   "/askmoina-global-font.woff2?v=0.4.132",
   "/pwa-gate.css",
   "/pwa-gate.js",
