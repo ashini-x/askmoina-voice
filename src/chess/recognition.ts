@@ -16,7 +16,7 @@ const HOST = "aiplatform.googleapis.com";
 // Best-effort per-isolate guard. The browser also makes only a single explicit
 // scan call; this is not presented as a globally distributed quota.
 const recentScanByAccount = new Map<string, number>();
-const MIN_SCAN_INTERVAL_MS = 3_000;
+const MIN_SCAN_INTERVAL_MS = 900;
 
 type BoardRecognition = {
   boardVisible: boolean;
