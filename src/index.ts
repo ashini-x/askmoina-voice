@@ -303,6 +303,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/askmoina-visual-guide.svg",
   "/askmoina-liquid-intelligence-orb-v1-smoky-core.webp",
   "/askmoina-install-reference.webp",
+  "/askmoina-install-reference-mobile.webp",
 ]);
 
 const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
@@ -332,6 +333,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/askmoina-visual-guide.svg": "image/svg+xml; charset=utf-8",
   "/askmoina-liquid-intelligence-orb-v1-smoky-core.webp": "image/webp",
   "/askmoina-install-reference.webp": "image/webp",
+  "/askmoina-install-reference-mobile.webp": "image/webp",
 };
 
 const PWA_STANDALONE_APP_PATHS = new Set([

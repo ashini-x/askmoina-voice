@@ -328,7 +328,7 @@ jobs:
           console.log("PWA manifest contract: OK");
           NODE
 
-          for asset in /favicon.svg /favicon-32.png /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg /pwa-icon-512.png /askmoina-app-icon-180.png /askmoina-mark.svg /askmoina-mark-dark.svg /askmoina-app-icon.svg /askmoina-app-icon-light.svg /askmoina-logo.svg /askmoina-logo-dark.svg /askmoina-social-avatar.svg /askmoina-visual-guide.svg /askmoina-install-reference.webp; do
+          for asset in /favicon.svg /favicon-32.png /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg /pwa-icon-512.png /askmoina-app-icon-180.png /askmoina-mark.svg /askmoina-mark-dark.svg /askmoina-app-icon.svg /askmoina-app-icon-light.svg /askmoina-logo.svg /askmoina-logo-dark.svg /askmoina-social-avatar.svg /askmoina-visual-guide.svg /askmoina-install-reference.webp /askmoina-install-reference-mobile.webp; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             if [[ "$status" != "200" ]]; then
               echo "::error::PWA asset $asset returned HTTP $status"
@@ -338,7 +338,7 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v10' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v11' /tmp/moina-service-worker.js
           grep -q 'isImmutableVersionedAsset ? fetch(request)' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"
