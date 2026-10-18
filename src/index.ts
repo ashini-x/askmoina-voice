@@ -117,10 +117,10 @@ const POST_AUTH_ONBOARDING = `
     <div class='experience-selection-content'>
       <p class='experience-selection-eyebrow' id='experienceSelectionHeading'>CHOOSE YOUR EXPERIENCE</p>
       <div class='experience-selection-cards'>
-        <button type='button' class='experience-card experience-card--available' id='experienceMoinaOS1' aria-label='Open moinaOS 1, available now'>
+        <button type='button' class='experience-card experience-card--available' id='experienceMoinaOS1' aria-label='Open moinaOS 1, Early Release Access'>
           <span class='experience-card-header'>
             <span class='experience-card-title'>moinaOS 1</span>
-            <span class='experience-status-pill'>Online</span>
+            <span class='experience-status-pill'>Early Release Access</span>
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 1 features'>
@@ -130,7 +130,7 @@ const POST_AUTH_ONBOARDING = `
             <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Private and secure</span></span>
           </span>
         </button>
-        <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, coming later' aria-describedby='experiencePreviewNotice'>
+        <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, Next Release' aria-describedby='experiencePreviewNotice'>
           <span class='experience-card-header'>
             <span class='experience-card-title'>moinaOS 2</span>
             <span class='experience-status-pill'>Next Release</span>
@@ -145,7 +145,7 @@ const POST_AUTH_ONBOARDING = `
       </div>
     </div>
   </div>
-  <div class='experience-preview-notice' id='experiencePreviewNotice' hidden role='status' aria-live='polite'>moinaOS 2 is coming later.</div>
+  <div class='experience-preview-notice' id='experiencePreviewNotice' hidden role='status' aria-live='polite'>moinaOS 2 is planned for the next release.</div>
 </section>
 `;
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
@@ -3137,8 +3137,8 @@ export default {
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261019"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261019" defer></script></body>');
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261020"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261020" defer></script></body>');
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
