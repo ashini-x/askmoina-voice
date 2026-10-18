@@ -20,6 +20,11 @@ function applyMove(fen, san) {
 }
 
 describe("AskMoina chess phase 3 game state", () => {
+  it("rejects pre-hardening saved state versions", () => {
+    const oldState = { ...createNewChessGame({ gameId: "legacy-state-test" }), schemaVersion: 1 };
+    expect(restoreChessGameState(oldState)).toMatchObject({ ok: false, reason: "invalid_saved_state" });
+  });
+
   it("creates a complete tracked new game without inventing move history", () => {
     const state = createNewChessGame({ playerColor: "b", gameId: "test-game", now: "2026-10-18T12:00:00.000Z" });
     expect(state.gameMode).toBe("new-game");
