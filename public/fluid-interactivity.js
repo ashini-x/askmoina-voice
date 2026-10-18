@@ -102,11 +102,37 @@
     );
     if (!requestedKeys.length) { options.onComplete?.(); return; }
 
-    const previous = active.get(el);
+    let previous = active.get(el);
     if (previous) cancelAnimationFrame(previous.raf);
-    // Retarget in-place: keep axes already in motion so an interruption never drops coordinates.
-    const keys = [...new Set([...(previous?.keys ?? []), ...requestedKeys])];
-    const finalTarget = { ...(previous?.target ?? {}), ...target };
+    let incomingTarget = { ...target };
+
+    // Convert uniform scale to two axes (and vice versa) before retargeting.
+    // This preserves the rendered geometry and velocity when a gesture changes animation profiles.
+    if (previous && previous.keys.includes("scale") &&
+        (incomingTarget.scaleX !== undefined || incomingTarget.scaleY !== undefined)) {
+      const uniform = previous.values.scale;
+      const uniformVelocity = previous.velocities.scale;
+      const uniformTarget = previous.target.scale ?? 1;
+      const nextKeys = previous.keys.filter(key => key !== "scale");
+      nextKeys.push("scaleX", "scaleY");
+      const nextValues = { ...previous.values, scaleX: uniform, scaleY: uniform };
+      const nextVelocities = { ...previous.velocities, scaleX: uniformVelocity, scaleY: uniformVelocity };
+      const nextTarget = { ...previous.target, scaleX: uniformTarget, scaleY: uniformTarget };
+      delete nextValues.scale; delete nextVelocities.scale; delete nextTarget.scale;
+      previous = { ...previous, keys: [...new Set(nextKeys)], values: nextValues, velocities: nextVelocities, target: nextTarget };
+    }
+    if (previous && previous.keys.some(key => key === "scaleX" || key === "scaleY") &&
+        incomingTarget.scale !== undefined) {
+      incomingTarget.scaleX = incomingTarget.scale;
+      incomingTarget.scaleY = incomingTarget.scale;
+      delete incomingTarget.scale;
+    }
+
+    // Retarget in-place: keep active axes, current coordinates and velocities.
+    const keys = [...new Set([...(previous?.keys ?? []), ...Object.keys(incomingTarget).filter(key =>
+      key === "x" || key === "y" || key === "scale" || key === "scaleX" || key === "scaleY" || key === "opacity"
+    )])];
+    const finalTarget = { ...(previous?.target ?? {}), ...incomingTarget };
     const original = { ...(previous?.original ?? {}) };
     for (const key of requestedKeys) {
       const property = propertyFor(key);
