@@ -40,7 +40,7 @@ describe("AskMoina fluid interactivity", () => {
   it("loads the runtime early and injects it into the Co-Pilot and native shells", () => {
     expect(worker).toContain('"/fluid-interactivity.js"');
     expect(worker).toContain('"/fluid-interactivity.css"');
-    expect(worker).toContain("withFluidInteractivity(body");
+    expect(worker).toContain("return withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, \"0.4.80\")");
   });
