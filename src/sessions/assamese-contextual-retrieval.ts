@@ -54,7 +54,7 @@ const STOP_WORDS = new Set([
   "that","the","their","them","then","there","these","they","this","those","through",
   "to","too","under","until","up","us","very","was","we","were","what","when",
   "where","which","who","why","will","with","would","you","your","reply","respond",
-  "tell","moi","tumi","ami","eta","eitu","etu","tu","aru","ne","nki"
+  "tell","moi","tumi","ami","eta","eitu","etu","tu","aru","ne","nki","user","users","says","said"
 ]);
 function safeText(value: unknown, maximum: number): string {
   if (typeof value !== "string") return "";
@@ -113,7 +113,7 @@ export function rankAssameseConversationReferences(
   if (!terms.length || !Number.isFinite(limit) || limit < 1) return [];
   return rows.filter(isEligibleAssameseConversationReference)
     .map((row) => ({ row, ...fieldScore(row, terms) }))
-    .filter((item) => item.score > 0 && item.matchedTerms > 0)
+    .filter((item) => item.score > 0 && item.matchedTerms >= Math.min(2, terms.length))
     .sort((a, b) =>
       b.score - a.score || b.matchedTerms - a.matchedTerms
       || Number(a.row.priority) - Number(b.row.priority)
