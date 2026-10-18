@@ -150,6 +150,7 @@ import {
     trackButton.hidden = true;
     dismissButton.textContent = "Keep watching";
     popup.hidden = false;
+    statusMessageTimer = setTimeout(() => hidePopup(BASE_RETRY_MS), 6500);
   }
 
   function colorName(color) {
@@ -209,7 +210,7 @@ import {
   }
 
   function cameraIsActive() {
-    if (!video.isConnected || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.paused || document.visibilityState === "hidden") return false;
+    if (!video.isConnected || (stage && !stage.classList.contains("has-camera")) || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.paused || document.visibilityState === "hidden") return false;
     const stream = video.srcObject;
     if (!stream || typeof stream.getVideoTracks !== "function") return false;
     return stream.getVideoTracks().some((track) => track.readyState === "live" && track.enabled);
