@@ -1,6 +1,7 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
 import { recognizeChessboardFrame, boardRowsToFen } from "./recognition-client.js";
+import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
   reconcileChessObservation,
@@ -183,6 +184,33 @@ import {
     return new Date().toISOString();
   }
 
+  function emitChessVoiceContext(kind, details = {}) {
+    let state = gameState;
+    if (details.fen) {
+      state = {
+        ...(gameState || {}),
+        currentFen: details.fen,
+        moveHistory: gameState && Array.isArray(gameState.moveHistory) ? gameState.moveHistory : [],
+        historyStatus: gameState ? gameState.historyStatus : "incomplete",
+        gameMode: gameState ? gameState.gameMode : "midgame-seed"
+      };
+    }
+    const message = buildChessVoiceContext(state, {
+      kind,
+      move: details.move,
+      analysis: details.analysis
+    });
+    if (message) {
+      window.dispatchEvent(new CustomEvent("askmoina:chess-context-update", {
+        detail: { kind, message }
+      }));
+    }
+    return message;
+  }
+
+  window.__askmoinaChessVoiceContext = (kind = "resume") =>
+    buildChessVoiceContext(gameState, { kind });
+
   function persistGame() {
     try {
       if (gameState) localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
@@ -311,6 +339,7 @@ import {
           gameState = reconciled.state;
           persistGame();
           showMoveToast(reconciled.move, reconciled.position.sideToMove);
+          emitChessVoiceContext("move", { move: reconciled.move });
           scheduleDetection(BASE_RETRY_MS + 3000);
           return;
         }
@@ -397,6 +426,7 @@ import {
       persistGame();
       hidePopup(6000);
       showTrackedState();
+      emitChessVoiceContext("tracking");
     } catch (error) {
       setStatus("Couldn’t start tracking", error && error.message ? error.message : "Try again with the full board in view.", "warning");
     } finally {
@@ -441,6 +471,7 @@ import {
         popupTitle.textContent = analysis.status === "checkmate" ? "Checkmate" : analysis.status === "stalemate" ? "Stalemate" : "Draw";
         popupMessage.textContent = "There is no legal move to recommend.";
       } else {
+        emitChessVoiceContext("analysis", { analysis, fen });
         popupTitle.textContent = "Suggested move · " + analysis.bestMove.san;
         popupMessage.textContent = colorName(sideToMove) + " to move. " + analysis.bestMove.san + " (" + analysis.bestMove.uci + ") is Stockfish’s recommendation.";
       }

@@ -528,6 +528,9 @@
   // Unlike the 4001 handoff code, 4002 deliberately closes the stale provider session.
   const LIVE_CLIENT_REPLACEMENT_CLOSE_CODE = 4002;
   let setupReady = false;
+  const PENDING_CHESS_ANALYSIS_KEY = "askmoina.chess.pendingVoiceAnalysis.v1";
+  let chessContextSentForStart = false;
+  let queuedChessContextMessage = "";
   let recoveryPreviewClear = false;
   let setupTimer = null;
   let videoTimer = null;
@@ -3311,6 +3314,8 @@
     if (message.setup_complete || message.setupComplete) {
       stage.classList.remove("is-onboarding");
       setupReady = true;
+      chessContextSentForStart = message.resumed === true;
+      queuedChessContextMessage = "";
       active = true;
       recordRealityLoopEvent("voice_ready");
       starting = false;
@@ -3530,8 +3535,48 @@
     }
   }
 
+  function takeStartupChessContext() {
+    if (queuedChessContextMessage) {
+      const message = queuedChessContextMessage;
+      queuedChessContextMessage = "";
+      return message.slice(0, 1450);
+    }
+    try {
+      const raw = localStorage.getItem(PENDING_CHESS_ANALYSIS_KEY);
+      if (raw) {
+        localStorage.removeItem(PENDING_CHESS_ANALYSIS_KEY);
+        const pending = JSON.parse(raw);
+        const age = Date.now() - pending.createdAt;
+        if (pending && typeof pending.message === "string" &&
+            Number.isFinite(pending.createdAt) && age >= 0 && age <= 15 * 60 * 1000) {
+          return pending.message.slice(0, 1450);
+        }
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.__askmoinaChessVoiceContext === "function") {
+        const message = window.__askmoinaChessVoiceContext("resume");
+        if (typeof message === "string" && message.length) return message.slice(0, 1450);
+      }
+    } catch (_) {}
+    return "";
+  }
+
   function beginListeningAfterGreeting() {
     if (!greetingTurnPending) return;
+    if (!chessContextSentForStart) {
+      const chessContext = takeStartupChessContext();
+      chessContextSentForStart = true;
+      if (chessContext && active && setupReady && socket && socket.readyState === WebSocket.OPEN && !stopping) {
+        try {
+          socket.send(JSON.stringify({ text_input: chessContext }));
+          if (greetingTimer) window.clearTimeout(greetingTimer);
+          greetingTimer = window.setTimeout(() => beginListeningAfterGreeting(), 12_000);
+          setStatus("Chess position ready. Moina is catching up on the board…");
+          return;
+        } catch (_) {}
+      }
+    }
     greetingTurnPending = false;
     if (greetingTimer) window.clearTimeout(greetingTimer);
     greetingTimer = null;
@@ -3551,6 +3596,8 @@
   }
 
   async function startCopilot() {
+    chessContextSentForStart = false;
+    queuedChessContextMessage = "";
     // Two timer/event callbacks must not cancel and restart an awaited start operation.
     if (starting || active) return;
     const startGeneration = ++copilotStartGeneration;
@@ -6256,6 +6303,30 @@
 
   setCameraState("Camera paused", "idle");
   setControls("Checking voice…", true);
+  window.addEventListener("askmoina:chess-context-update", (event) => {
+    const detail = event && event.detail;
+    const message = detail && typeof detail.message === "string" ? detail.message.slice(0, 1450) : "";
+    if (!message) return;
+    if (active && setupReady && socket && socket.readyState === WebSocket.OPEN && !stopping) {
+      if (greetingTurnPending && !chessContextSentForStart) {
+        queuedChessContextMessage = message;
+        return;
+      }
+      try {
+        socket.send(JSON.stringify({ text_input: message }));
+        try { localStorage.removeItem(PENDING_CHESS_ANALYSIS_KEY); } catch (_) {}
+        return;
+      } catch (_) {}
+    }
+    try {
+      if (detail.kind === "analysis") {
+        localStorage.setItem(PENDING_CHESS_ANALYSIS_KEY, JSON.stringify({ message, createdAt: Date.now() }));
+      } else {
+        localStorage.removeItem(PENDING_CHESS_ANALYSIS_KEY);
+      }
+    } catch (_) {}
+  });
+
   window.addEventListener("askmoina:experience-selected", () => {
     if (!document.querySelector("#postAuthOnboarding:not([hidden])")) {
       stage.classList.add("is-onboarding");
