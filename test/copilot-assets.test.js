@@ -939,8 +939,11 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
     expect(workerSource).toContain("id='experienceMoinaOS1'");
     expect(workerSource).toContain("id='experienceMoinaOS2'");
-    expect(workerSource).toContain('href="/copilot.css?experience-selection=1&v=20261019"');
-    expect(workerSource).toContain('src="/copilot.js?experience-selection=1&v=20261019"');
+    expect(workerSource).toContain("<span class='experience-status-pill'>Early Release Access</span>");
+    expect(workerSource).toContain("<span class='experience-status-pill'>Next Release</span>");
+    expect(workerSource).toContain("moinaOS 2 is planned for the next release.");
+    expect(workerSource).toContain('href="/copilot.css?experience-selection=1&v=20261020"');
+    expect(workerSource).toContain('src="/copilot.js?experience-selection=1&v=20261020"');
     expect(workerSource).not.toContain('id="assistantSelectionTitle"');
     expect(workerSource).not.toContain('id="moinaOS1DetailsTitle"');
     expect(nativeAppScript).not.toContain('get("onboarding") === "1"');
