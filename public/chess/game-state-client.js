@@ -163,7 +163,7 @@ export function seedChessGameFromObservation(observation, options = {}) {
         lastOrientation: checked.orientation,
         lastObservationAt: timestamp,
         rightsKnown: rightsKnown,
-        historyStatus: rightsKnown ? "seeded-rights-confirmed" : "seeded-history-incomplete",
+        historyStatus: "seeded-history-incomplete",
         createdAt: timestamp,
         updatedAt: timestamp,
         status: "ready"
