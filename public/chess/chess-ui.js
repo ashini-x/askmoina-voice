@@ -4,10 +4,11 @@ import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecogni
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
+  isPlayersTurn,
   reconcileChessObservation,
   restoreChessGameState,
   seedChessGameFromObservation
-} from "./game-state-client.js";
+} from "./game-state-client.js?v=0.4.140";
 
 (() => {
   "use strict";
@@ -30,8 +31,8 @@ import {
   const MAX_FRAME_BYTES = 512 * 1024;
   const INITIAL_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
   const FIRST_SCAN_DELAY_MS = 1800;
-  const BASE_RETRY_MS = 6000;
-  const MAX_RETRY_MS = 14000;
+  const BASE_RETRY_MS = 4000;
+  const MAX_RETRY_MS = 10000;
   const DISMISS_COOLDOWN_MS = 30000;
 
   if (!launch || !popup || !popupTitle || !popupMessage || !video) return;
@@ -51,6 +52,9 @@ import {
   let statusMessageTimer = null;
   let lastRecognitionCompletedAt = 0;
   let pendingRecognitionConfirmation = null;
+  let lastSuggestedFen = null;
+  let queuedRecommendationFen = null;
+  let analysisInProgress = false;
   const CONFIRM_SCAN_INTERVAL_MS = 1050;
 
   function loadAutoSetting() {
@@ -144,10 +148,47 @@ import {
     selectedSide = sideToMove;
     popup.dataset.kind = "success";
     popupTitle.textContent = "Next strong move";
-    popupMessage.textContent = "Position updated. " + colorName(sideToMove) + " to move. Tap to calculate the next move.";
     turnSelector.hidden = true;
     suggestButton.hidden = false;
-    suggestButton.disabled = false;
+    suggestButton.textContent = "Next strong move";
+    suggestButton.classList.add("chess-popup-action-primary");
+    trackButton.hidden = true;
+    dismissButton.textContent = "Not now";
+    popup.hidden = false;
+
+    const moveLabel = move && move.san ? "Move registered (" + move.san + "). " : "Position updated. ";
+    if (isPlayersTurn(gameState)) {
+      popupMessage.textContent = moveLabel + (autoEnabled
+        ? "Your turn. Calculating your next strong move…"
+        : "Your turn. Tap Next strong move when you're ready.");
+      suggestButton.disabled = autoEnabled;
+      if (autoEnabled) queueAutomaticRecommendation();
+    } else {
+      const playerColor = gameState && gameState.playerColor ? gameState.playerColor : opposite(sideToMove);
+      popupMessage.textContent = moveLabel + colorName(sideToMove) +
+        " to move. I'll automatically show your next strong move when it's " +
+        colorName(playerColor) + "'s turn.";
+      suggestButton.disabled = true;
+    }
+    scheduleDetection(BASE_RETRY_MS);
+  }
+
+  function colorName(color) {
+    return color === "w" ? "White" : "Black";
+  }
+
+  function showWaitingForUserTurn(sideToMove) {
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
+    pendingMode = "waiting";
+    popup.dataset.kind = "info";
+    popupTitle.textContent = "Next strong move";
+    popupMessage.textContent = colorName(sideToMove) +
+      " to move. I'll calculate your next strong move automatically when it's your turn (" +
+      colorName(gameState && gameState.playerColor ? gameState.playerColor : opposite(sideToMove)) + ").";
+    turnSelector.hidden = true;
+    suggestButton.hidden = false;
+    suggestButton.disabled = true;
     suggestButton.textContent = "Next strong move";
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
@@ -156,8 +197,31 @@ import {
     scheduleDetection(BASE_RETRY_MS);
   }
 
-  function colorName(color) {
-    return color === "w" ? "White" : "Black";
+  function queueAutomaticRecommendation() {
+    if (!autoEnabled || !gameState || !isPlayersTurn(gameState)) return;
+    const fen = gameState.currentFen;
+    if (lastSuggestedFen === fen || queuedRecommendationFen === fen) return;
+    queuedRecommendationFen = fen;
+
+    const startWhenReady = () => {
+      if (queuedRecommendationFen !== fen) return;
+      if (!autoEnabled || !gameState || gameState.currentFen !== fen || !isPlayersTurn(gameState)) {
+        queuedRecommendationFen = null;
+        return;
+      }
+      if (scanning || analysisInProgress) {
+        window.setTimeout(startWhenReady, 250);
+        return;
+      }
+      if (popup.hidden) {
+        queuedRecommendationFen = null;
+        if (isPlayersTurn(gameState)) suggestButton.disabled = false;
+        return;
+      }
+      queuedRecommendationFen = null;
+      void suggestMove({ automatic: true });
+    };
+    window.setTimeout(startWhenReady, 0);
   }
 
   function opposite(color) {
@@ -413,13 +477,13 @@ import {
           persistGame();
           showMoveToast(reconciled.move, reconciled.position.sideToMove);
           emitChessVoiceContext("move", { move: reconciled.move });
-          scheduleDetection(BASE_RETRY_MS + 3000);
+          scheduleDetection(BASE_RETRY_MS);
           return;
         }
         if (reconciled.ok && reconciled.status === "unchanged") {
           gameState = reconciled.state;
           persistGame();
-          scheduleDetection(BASE_RETRY_MS + 3000);
+          scheduleDetection(BASE_RETRY_MS);
           return;
         }
         showBoardPrompt(observation, {
@@ -453,10 +517,18 @@ import {
     autoEnabled = Boolean(value);
     try { localStorage.setItem(AUTO_KEY, autoEnabled ? "on" : "off"); } catch {}
     updateAutoControl();
-    if (autoEnabled) scheduleDetection(450);
-    else if (autoTimer) {
-      clearTimeout(autoTimer);
-      autoTimer = null;
+    if (autoEnabled) {
+      scheduleDetection(450);
+      queueAutomaticRecommendation();
+    } else {
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+      if (queuedRecommendationFen) {
+        queuedRecommendationFen = null;
+        if (gameState && isPlayersTurn(gameState)) suggestButton.disabled = false;
+      }
     }
   }
 
@@ -514,10 +586,12 @@ import {
     }
   }
 
-  async function suggestMove() {
+  async function suggestMove(options = {}) {
+    const automatic = options.automatic === true;
+    if (suggestButton.disabled && !automatic) return;
+    if (automatic && (!autoEnabled || !gameState || !isPlayersTurn(gameState))) return;
     let fen;
     let sideToMove;
-    if (suggestButton.disabled) return;
     suggestButton.disabled = true;
     try {
       if (gameState && !pendingRecognition) {
@@ -590,13 +664,20 @@ import {
       return;
     }
 
+    if (gameState && !isPlayersTurn(gameState)) {
+      showWaitingForUserTurn(new Chess(gameState.currentFen).turn());
+      return;
+    }
+
     trackButton.disabled = true;
     popupTitle.textContent = "Next strong move";
     popupMessage.textContent = "Checking the confirmed position with Stockfish…";
     const sequence = ++analysisSequence;
+    analysisInProgress = true;
     try {
       const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 1200 });
       if (sequence !== analysisSequence) return;
+      lastSuggestedFen = fen;
       pendingMode = "message";
       popup.dataset.kind = analysis.bestMove ? "success" : "warning";
       if (!analysis.bestMove) {
@@ -631,6 +712,7 @@ import {
       if (statusMessageTimer) clearTimeout(statusMessageTimer);
       statusMessageTimer = null;
     } finally {
+      analysisInProgress = false;
       suggestButton.disabled = false;
       trackButton.disabled = false;
     }
@@ -641,19 +723,26 @@ import {
     if (statusMessageTimer) clearTimeout(statusMessageTimer);
     statusMessageTimer = null;
     const game = new Chess(gameState.currentFen);
-    pendingMode = "message";
+    const yourTurn = isPlayersTurn(gameState);
+    pendingMode = yourTurn ? "message" : "waiting";
     popupTitle.textContent = "Next strong move";
-    popupMessage.textContent = "Board detected. " + colorName(game.turn()) + " to move. Tap to calculate the strongest move.";
-    popup.dataset.kind = "success";
+    popupMessage.textContent = yourTurn
+      ? (lastSuggestedFen === gameState.currentFen
+        ? "Your turn (" + colorName(game.turn()) + "). Your latest strong move is ready below."
+        : "Your turn (" + colorName(game.turn()) + "). Finding your next strong move…")
+      : colorName(game.turn()) + " to move. I'll calculate your next strong move automatically when it's your turn (" +
+        colorName(gameState.playerColor) + ").";
+    popup.dataset.kind = yourTurn ? "success" : "info";
     turnSelector.hidden = true;
     suggestButton.hidden = false;
-    suggestButton.disabled = false;
+    suggestButton.disabled = !yourTurn || (autoEnabled && lastSuggestedFen !== gameState.currentFen);
     suggestButton.textContent = "Next strong move";
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
     dismissButton.textContent = "Not now";
     popup.hidden = false;
     scheduleDetection(BASE_RETRY_MS);
+    if (yourTurn) queueAutomaticRecommendation();
   }
 
   launch.addEventListener("click", () => setAutoEnabled(!autoEnabled));

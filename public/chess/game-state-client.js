@@ -83,6 +83,17 @@ function checkedObservation(observation) {
   }
 }
 
+/** Return whether the tracked side to move is the person using AskMoina. */
+export function isPlayersTurn(inputState) {
+  if (!inputState || (inputState.playerColor !== "w" && inputState.playerColor !== "b") ||
+      typeof inputState.currentFen !== "string") return false;
+  try {
+    return new Chess(inputState.currentFen).turn() === inputState.playerColor;
+  } catch {
+    return false;
+  }
+}
+
 export function createNewChessGame(options = {}) {
   const playerColor = options.playerColor || "w";
   if (playerColor !== "w" && playerColor !== "b") throw new TypeError("playerColor must be w or b.");
