@@ -193,7 +193,7 @@ function renderSiteInfoPage(pathname: string, appVersion: string): string | null
   const paragraphs = page.paragraphs.map((paragraph) => "<p>" + paragraph + "</p>").join("");
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
-    "<meta name=\"theme-color\" content=\"#090b0f\"><meta name=\"color-scheme\" content=\"dark\">" +
+    "<meta name=\"theme-color\" content=\"#000000\"><meta name=\"color-scheme\" content=\"dark\">" +
     "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
     "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
@@ -332,7 +332,7 @@ function withPwaStandaloneGate(html: string): string {
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
   // askmoina is a deliberately dark-only, camera-first app.
-  const themeColor = "#030406";
+  const themeColor = "#000000";
   const statusBarStyle = "black-translucent";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
   html = html.replace(/<meta\s+name=["']theme-color["'][^>]*>/ig, "");
@@ -343,7 +343,7 @@ function withPwaStandaloneGate(html: string): string {
     '<meta name="apple-mobile-web-app-title" content="askmoina">' +
     '<meta name="apple-mobile-web-app-status-bar-style" content="' + statusBarStyle + '">' +
     '<meta name="color-scheme" content="dark">' +
-    '<link rel="manifest" href="/manifest.webmanifest">' +
+    '<link rel="manifest" href="/manifest.webmanifest?v=20261018">' +
     '<link rel="apple-touch-icon" href="/askmoina-app-icon-180.png?v=0.4.83">' +
     '<link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.83">' +
     '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.83">' +
@@ -3049,8 +3049,8 @@ export default {
                 purpose: "any maskable",
               });
             }
-            manifest.background_color = "#030406";
-            manifest.theme_color = "#030406";
+            manifest.background_color = "#000000";
+            manifest.theme_color = "#000000";
             responseBody = JSON.stringify(manifest);
             headers.delete("Content-Length");
             headers.delete("ETag");

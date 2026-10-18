@@ -53,6 +53,9 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps the Android splash dark and serves the complete AskMoina brand asset family", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
+    expect(workerSource).toContain('const themeColor = "#000000"');
+    expect(workerSource).toContain('manifest.theme_color = "#000000"');
+    expect(workerSource).toContain('href="/manifest.webmanifest?v=20261018"');
     expect(workerSource).toContain('const legacyIcons = new Set(["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"])');
     expect(workerSource).toContain('legacyIcons.has((icon.src || "").split("?")[0])');
     expect(workerSource).toContain('manifest.icons.push({');
@@ -63,7 +66,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-logo.svg"');
     expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
-    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v6"');
+    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v7"');
     for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg", "pwa-icon-512.png"]) {
       expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.83");
     }
@@ -925,7 +928,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(css).toContain(".entry-overlay{background:#090b0f!important");
     expect(nativeAppCss).toContain(":root{color-scheme:dark");
     expect(readFileSync(new URL("../public/install.css", import.meta.url), "utf8")).toContain("color-scheme: dark");
-    expect(workerSource).toContain('const themeColor = "#030406"');
+    expect(workerSource).toContain('const themeColor = "#000000"');
     expect(workerSource).toContain('<meta name="color-scheme" content="dark">');
   });
 

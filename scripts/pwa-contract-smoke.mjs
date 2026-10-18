@@ -12,8 +12,8 @@ const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
 assert.equal(manifest.scope, "/", "manifest scope must cover the app");
 assert.equal(manifest.start_url, "/?source=pwa", "manifest start URL mismatch");
-assert.equal(manifest.theme_color, "#030406", "PWA theme color must match the black launch interface");
-assert.equal(manifest.background_color, "#030406", "PWA launch background must match the dark app shell");
+assert.equal(manifest.theme_color, "#000000", "PWA theme color must blend with the Android navigation divider");
+assert.equal(manifest.background_color, "#000000", "PWA launch background must avoid system-bar seams");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-192.svg" && icon.sizes === "192x192"), "manifest needs a 192x192 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512"), "manifest needs a 512x512 app icon");
 assert.ok(manifest.icons.some((icon) => manifestIconPath(icon) === "/pwa-icon-512.png" && icon.sizes === "512x512" && icon.type === "image/png"), "Android splash requires a real 512x512 PNG icon");
@@ -39,7 +39,9 @@ assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "
 const worker = read("src/index.ts");
 assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
-assert.ok(worker.includes('const themeColor = "#030406"'), "PWA theme must match the dark app shell");
+assert.ok(worker.includes('const themeColor = "#000000"'), "PWA theme must match the dark app shell");
+assert.ok(worker.includes('manifest.theme_color = "#000000"') && worker.includes('manifest.background_color = "#000000"'), "served manifest must force black Android system-bar colors");
+assert.ok(worker.includes('href="/manifest.webmanifest?v=20261018"'), "PWA shell must refresh manifest metadata after color change");
 assert.ok(worker.includes('const statusBarStyle = "black-translucent"') && !worker.includes("lightEntrySurface"), "PWA system bars must use the dark appearance");
 assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
 assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-screen launch interstitial must remain removed");
@@ -104,7 +106,7 @@ assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && re
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v6"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v7"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
