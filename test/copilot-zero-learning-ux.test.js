@@ -53,6 +53,7 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
   it("matches edge pulse intensity to live microphone and assistant playback audio", () => {
     expect(html).toContain('<p id="connectionNoticeMessage">Just a moment</p>');
     expect(script).toContain('showConnectionNotice("Connecting end-to-end", "", "onboarding")');
+    expect(script).toContain('const safeMessage = kind === "onboarding" && !message ? "" : String(message || "Please try again.");');
     expect(script).not.toContain('showConnectionNotice("Connecting securely", "Checking camera access and your network…", "connecting")');
     expect(script).toContain("function applyVoiceEdgeEnergy(level, source)");
     expect(script).toContain("function getPlaybackAnalyser()");
