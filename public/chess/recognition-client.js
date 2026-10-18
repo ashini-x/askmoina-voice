@@ -132,6 +132,13 @@ export function assessChessboardRecognition(recognition) {
  * conservative FEN. Side-to-move is user/session supplied, never guessed from
  * piece placement. A photographed position cannot reveal historical rights.
  */
+/** Infer the user's playing color from the pieces on the near edge of the board. */
+export function inferUserColorFromOrientation(orientation) {
+  if (orientation === "white_at_bottom") return "w";
+  if (orientation === "black_at_bottom") return "b";
+  return null;
+}
+
 /** Require two independent camera reads to agree before using a photographed position. */
 export function verifyStableChessboardRecognition(firstResult, secondResult) {
   const fail = (reason, message) => ({ ok: false, reason, message });
