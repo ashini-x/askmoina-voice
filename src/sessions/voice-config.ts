@@ -47,7 +47,10 @@ export function isPrebuiltLiveVoiceName(value: string | undefined): value is Pre
 export function buildVoiceGenerationConfig(configuredVoiceName?: string, _legacyConfiguredVoiceId?: string) {
   // LIVE_VOICE_ID was a stored TTS/voice-design ID. Gemini Live rejects that value
   // in voiceConfig.voice; do not forward it or let it override the selected Live voice.
-  const voiceName = configuredVoiceName?.trim() || DEFAULT_LIVE_VOICE_NAME;
+  const requestedVoiceName = configuredVoiceName?.trim();
+  const voiceName = requestedVoiceName && isPrebuiltLiveVoiceName(requestedVoiceName)
+    ? requestedVoiceName
+    : DEFAULT_LIVE_VOICE_NAME;
   return {
     responseModalities: ["AUDIO"],
     speechConfig: {
