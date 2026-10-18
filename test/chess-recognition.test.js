@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess, validateFen } from "../public/chess/chess.js";
+import { createNewChessGame, isPlayersTurn, reconcileChessObservation } from "../public/chess/game-state-client.js";
 import {
   assessChessboardRecognition,
   boardRowsToFen,
@@ -75,6 +76,29 @@ function makeRequest(body = requestBody(), overrides = {}) {
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+describe("continuous next-strong-move turn flow", () => {
+  it("waits through the opponent's turn and becomes eligible when it is the player's turn", () => {
+    const blackState = createNewChessGame({ playerColor: "b", now: "2026-10-18T00:00:00.000Z" });
+    expect(isPlayersTurn(blackState)).toBe(false);
+
+    const afterWhiteE4 = [...STARTING_ROWS];
+    afterWhiteE4[6] = "PPPP.PPP";
+    afterWhiteE4[4] = "....P...";
+    const whiteMove = reconcileChessObservation(blackState, {
+      boardRows: afterWhiteE4,
+      orientation: "white_at_bottom",
+      sideToMove: "b",
+      observedAt: "2026-10-18T00:00:02.000Z"
+    });
+    expect(whiteMove).toMatchObject({ ok: true, status: "move-registered" });
+    if (whiteMove.ok) expect(isPlayersTurn(whiteMove.state)).toBe(true);
+
+    const whiteState = createNewChessGame({ playerColor: "w", now: "2026-10-18T00:00:00.000Z" });
+    expect(isPlayersTurn(whiteState)).toBe(true);
+    if (whiteMove.ok) expect(isPlayersTurn({ ...whiteMove.state, playerColor: "w" })).toBe(false);
+  });
+});
 
 describe("board rows and FEN", () => {
   it("defaults the user's color to the color on the near edge", () => {
