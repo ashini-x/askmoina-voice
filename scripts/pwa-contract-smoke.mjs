@@ -81,33 +81,38 @@ const authScript = read("public/auth.js");
 const nativeAppScript = read("public/native-app.js");
 const experienceCss = read("public/experience-selection.css");
 const experienceJs = read("public/experience-selection.js");
+const entryAuthCss = read("public/entry-auth.css");
 assert.ok(
-  authScript.includes('destination === "/" ? "/?startup=1" : destination') &&
+  authScript.includes("window.location.replace(destination);") &&
     authScript.includes("showVerificationTransition") &&
+    !authScript.includes("/?startup=1") &&
     !authScript.includes("/?onboarding=1"),
-  "successful authentication must show a verification overlay and open the existing home with the startup overlay enabled",
+  "successful authentication must keep the verification overlay on the auth screen and navigate directly to the home",
 );
 assert.ok(
-  worker.includes('url.searchParams.get("startup") === "1"') &&
-    worker.includes("moinaOSStartupOverlay") &&
-    worker.includes("Starting MoinaOS"),
-  "startup confirmation must be rendered inside the authenticated experience-selection page",
+  !worker.includes('url.searchParams.get("startup") === "1"') &&
+    !worker.includes("moinaOSStartupOverlay") &&
+    authScript.includes("Starting moinaOS"),
+  "the moinaOS destination must render without another startup overlay and auth branding must use moinaOS casing",
 );
 assert.ok(
-  experienceJs.includes('get("startup") === "1"') &&
-    experienceJs.includes("finishStartupWhenReady") &&
-    experienceJs.includes("10000") &&
-    experienceJs.includes("startupContinue"),
-  "startup overlay must dismiss when ready and provide a recovery action when loading stalls",
+  !experienceJs.includes('get("startup") === "1"') &&
+    !experienceJs.includes("finishStartupWhenReady") &&
+    !experienceJs.includes("startupContinue"),
+  "the experience-selection page must not create or control a second startup overlay",
 );
 assert.ok(
-  experienceCss.includes(".moinaos-startup-card") &&
-    experienceCss.includes(".moinaos-startup-ring") &&
-    experienceCss.includes("prefers-reduced-motion: reduce"),
-  "startup overlay must use the premium glass treatment and honor reduced-motion preferences",
+  !experienceCss.includes(".moinaos-startup-card") &&
+    !experienceCss.includes(".moinaos-startup-ring"),
+  "the destination experience-selection CSS must not include duplicate startup-overlay styles",
 );
 assert.ok(
-  authScript.includes("window.location.replace(next);") &&
+  entryAuthCss.includes("blur(36px) saturate(170%)") &&
+    entryAuthCss.includes("rgba(245, 248, 255, .20)"),
+  "the auth-only verification overlay must use the translucent glass treatment",
+);
+assert.ok(
+  authScript.includes("window.location.replace(destination);") &&
     !authScript.includes("authLaunchScreen") &&
     !authScript.includes("requestAnimationFrame(() => requestAnimationFrame(resolve))") &&
     !worker.includes('class="auth-launch-screen"'),
