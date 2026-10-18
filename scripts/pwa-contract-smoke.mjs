@@ -176,7 +176,7 @@ assert.ok(experienceCss.includes("height: 80%;") && experienceCss.includes("alig
 assert.ok(experienceCss.includes("gap: clamp(14px, 2dvh, 18px)"), "Interface 06 needs balanced vertical spacing between cards");
 assert.ok(!worker.includes("experience-glass-art") && !worker.includes("exp1-left-bloom") && !worker.includes("exp2-left-bloom"), "Interface 06 product cards must not contain decorative product artwork");
 assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes("#experienceMoinaOS2"), "Interface 06 product interactions are missing");
-assert.ok(experienceJs.includes("window.__askmoinaFluidMotion") && experienceJs.includes("engine.profiles.expand") && read("public/fluid-interactivity.js").includes("prefers-reduced-motion: reduce"), "Interface 06 navigation must use the spring runtime and honor reduced-motion preferences");
+assert.ok(experienceJs.includes("window.__askmoinaFluidMotion") && experienceJs.includes("motion.profiles.expand") && read("public/fluid-interactivity.js").includes("prefers-reduced-motion: reduce"), "Interface 06 navigation must use the spring runtime and honor reduced-motion preferences");
 assert.ok(experienceJs.includes('cameraApp.inert = false'), "moinaOS 1 selection must return interaction to the existing camera interface");
 assert.ok(worker.includes('url.searchParams.get("experience-selection") === "1"'), "Interface 06 CSS/JS query routes must be served by the authenticated Worker");
 assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && read("public/copilot.js").includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
