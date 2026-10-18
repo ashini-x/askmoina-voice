@@ -51,15 +51,15 @@ assert.ok(existsSync(resolve(root, "public/askmoina-install-reference.webp")), "
 assert.ok(existsSync(resolve(root, "public/askmoina-install-reference-mobile.webp")), "Approved mobile install artwork is missing");
 const installHtml = read("public/install.html");
 const installCss = read("public/install.css");
-assert.ok(installHtml.includes('class="reference-art"') && installHtml.includes('class="artboard"') && installHtml.includes('media="(orientation: portrait)"') && installHtml.includes("askmoina-install-reference-mobile.webp?v=0.4.127"), "Install landing must use the supplied mobile artwork at phone widths");
+assert.ok(installHtml.includes('class="reference-art"') && installHtml.includes('class="artboard"') && installHtml.includes('src="/askmoina-install-reference-mobile.webp?v=0.4.128"') && !installHtml.includes('<source media=') && !installHtml.includes('src="/askmoina-install-reference.webp'), "Install landing must use the supplied mobile artwork on every device and orientation");
 assert.ok(installHtml.includes("Open as Web App") && installHtml.includes("Add to Home Screen"), "Install landing must preserve iOS Home Screen installation guidance in the static HTML");
 assert.ok(installHtml.includes('id="install-ios-button"') && installHtml.includes('id="install-android-button"'), "Install landing must provide distinct iOS and Android actions");
-assert.ok(installHtml.includes("/askmoina-install-reference.webp?v=0.4.127"), "Install landing must use the approved smoky-core artwork");
+assert.ok(installHtml.includes("/askmoina-install-reference-mobile.webp?v=0.4.128"), "Install landing must use the approved portrait artwork for all devices");
 assert.ok(!installHtml.includes('id="videoPreview"'), "Public install landing must not reveal the live camera UI");
-assert.ok(installCss.includes("height: 100dvh") && installCss.includes("overflow: hidden") && installCss.includes("width: min(100vw, 177.7778dvh)") && installCss.includes("width: min(100vw, 56.25dvh)") && installCss.includes("aspect-ratio: 16 / 9") && installCss.includes(".install-hotspot--ios") && installCss.includes(".install-hotspot--android"), "Install landing must fit both exact aspect ratios with no page scroll and CSS install hit areas");
+assert.ok(installCss.includes("height: 100dvh") && installCss.includes("overflow: hidden") && installCss.includes("width: min(100vw, 56.25dvh)") && installCss.includes("aspect-ratio: 9 / 16") && installCss.includes(".page::before") && installCss.includes(".install-hotspot--ios") && installCss.includes(".install-hotspot--android"), "Install landing must preserve the portrait composition on all devices with full-viewport smoky ambience and CSS hit areas");
 const installRuntime = read("public/pwa-runtime.js");
-assert.ok(!installRuntime.includes("alignInstallHotspots") && installCss.includes("@media (orientation: portrait)") && installCss.includes("aspect-ratio: 9 / 16"), "Install card hit areas must use CSS-only portrait/landscape layout");
-assert.ok(installHtml.includes('src="/pwa-runtime.js?v=0.4.127"'), "Install landing must request the current viewport-aware hotspot runtime");
+assert.ok(!installRuntime.includes("alignInstallHotspots") && !installCss.includes("@media (orientation: portrait)") && installCss.includes("aspect-ratio: 9 / 16"), "Install card hit areas must be CSS-only and keep the portrait composition on every viewport");
+assert.ok(installHtml.includes('src="/pwa-runtime.js?v=0.4.128"'), "Install landing must request the lightweight install runtime");
 
 const gate = read("public/pwa-gate.js");
 assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");
@@ -180,10 +180,10 @@ assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && re
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v12"), "service worker cache must be refreshed for the dark splash icon");
-assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.127"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.127"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v13"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.128"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.128"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
 
-assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.127"'), "service worker must precache the current viewport-aware hotspot runtime");
+assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.128"'), "service worker must precache the current viewport-aware hotspot runtime");
 assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
