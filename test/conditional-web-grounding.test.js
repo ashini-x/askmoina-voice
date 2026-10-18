@@ -7,7 +7,7 @@ describe("Milestone 13 conditional web grounding", () => {
   it("exposes an explicit server-executed grounded search tool to normal voice and Co-Pilot", () => {
     expect(workerSource).toContain("LIVE WEB SEARCH IS AVAILABLE");
     expect(workerSource).toContain("you MUST call search_current_web before answering");
-    expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }]');
+    expect(workerSource).toContain('tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }]');
     expect(workerSource).toContain("tools: [{ googleSearch: {} }]");
   });
 
