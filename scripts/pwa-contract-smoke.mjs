@@ -88,6 +88,9 @@ for (const label of [
 assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261017"'), "Interface 06 CSS must be attached to the authenticated home route");
 assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261017"'), "Interface 06 interactions must be attached to the authenticated home route");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
+assert.ok(experienceCss.includes("minmax(0, 1.28fr) minmax(0, 1fr)"), "Interface 06 must preserve the reference artwork/details split");
+assert.ok(experienceCss.includes("min(100vw, 430px) - 36px"), "Interface 06 cards must scale to the reference proportions");
+assert.ok(worker.includes("exp1-left-bloom") && worker.includes("exp2-left-bloom"), "Interface 06 must ship luminous and muted optical-glass art");
 assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes("#experienceMoinaOS2"), "Interface 06 product interactions are missing");
 assert.ok(experienceJs.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'), "Interface 06 navigation must honor reduced-motion preferences");
 assert.ok(experienceJs.includes('cameraApp.inert = false'), "moinaOS 1 selection must return interaction to the existing camera interface");
