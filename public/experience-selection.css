@@ -47,7 +47,7 @@
 .experience-selection-eyebrow { margin-left: 14px; letter-spacing: .155em; font-size: 11px; font-weight: 400; }
 .experience-card { grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr); column-gap: 8px; }
 .experience-card--available {
-  height: clamp(202px, calc((min(100vw, 430px) - 36px) / 1.74), 260px);
+  height: clamp(202px, calc(57.47vw - 20.7px), 226px);
   min-height: 0; max-height: none;
   border-color: rgba(94, 137, 255, .73);
   background:
@@ -57,7 +57,7 @@
   box-shadow: 0 10px 32px rgba(0,0,0,.20), 0 0 22px rgba(73,119,255,.075), inset 0 1px rgba(226,233,255,.14), inset 0 0 22px rgba(73,119,255,.035);
 }
 .experience-card--preview {
-  height: clamp(176px, calc((min(100vw, 430px) - 36px) / 1.97), 232px);
+  height: clamp(176px, calc(50.76vw - 18.3px), 200px);
   min-height: 0; max-height: none;
 }
 .experience-card-header { margin-top: 0; transform: translateY(8px); }
@@ -68,7 +68,7 @@
   filter: blur(10px);
 }
 .experience-glass-art { width: 104%; height: 100%; filter: drop-shadow(0 7px 12px rgba(72,116,245,.13)); }
-.experience-feature-list { gap: clamp(4px, .7vh, 6px); margin-top: 7px; transform: translateY(-2px); }
+.experience-feature-list { gap: clamp(4px, .7vh, 6px); margin-top: 7px; transform: translateY(2px); }
 .experience-feature-row { font-weight: 400; letter-spacing: -.018em; }
 .experience-feature-check { width: 19px; height: 19px; flex-basis: 19px; border-width: 1.25px; }
 .experience-feature-check svg { width: 10px; height: 10px; }
@@ -76,11 +76,11 @@
 @media (max-width: 380px) {
   .experience-selection-content { padding-right: max(16px,env(safe-area-inset-right,0px)); padding-left: max(16px,env(safe-area-inset-left,0px)); }
   .experience-card { grid-template-columns: minmax(0,1.22fr) minmax(0,1fr); column-gap: 6px; }
-  .experience-card--available { height: clamp(202px, calc((min(100vw,430px) - 32px) / 1.74), 260px); }
-  .experience-card--preview { height: clamp(176px, calc((min(100vw,430px) - 32px) / 1.97), 232px); }
+  .experience-card--available { height: clamp(202px, calc(57.47vw - 18.4px), 226px); }
+  .experience-card--preview { height: clamp(176px, calc(50.76vw - 16.3px), 200px); }
   .experience-card-header { transform: translateY(6px); }
   .experience-glass-art { width: 100%; }
-  .experience-feature-list { gap: 4px; margin-top: 5px; transform: translateY(-1px); }
+  .experience-feature-list { gap: 4px; margin-top: 5px; transform: translateY(1px); }
 }
 @media (max-height: 700px) {
   .experience-selection-content { padding-top: max(calc(env(safe-area-inset-top,0px) + 12px), 6.8dvh); }
