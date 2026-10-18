@@ -73,9 +73,9 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-install-reference.webp": "image/webp"');
     expect(workerSource).toContain('"/askmoina-install-reference-mobile.webp"');
     expect(workerSource).toContain('"/askmoina-install-reference-mobile.webp": "image/webp"');
-    expect(serviceWorkerScript).not.toContain('/askmoina-install-reference.webp?v=0.4.130');
-    expect(serviceWorkerScript).not.toContain('/askmoina-install-reference-mobile.webp?v=0.4.130');
-    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v15"');
+    expect(serviceWorkerScript).not.toContain('/askmoina-install-reference.webp?v=0.4.131');
+    expect(serviceWorkerScript).not.toContain('/askmoina-install-reference-mobile.webp?v=0.4.131');
+    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v16"');
     for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg", "pwa-icon-512.png"]) {
       expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.83");
     }
@@ -939,6 +939,9 @@ describe("Dark-first app shell and brand assets", () => {
     expect(readFileSync(new URL("../public/install.css", import.meta.url), "utf8")).toContain("color-scheme: dark");
     const installCss = readFileSync(new URL("../public/install.css", import.meta.url), "utf8");
     expect(installCss).toContain("background: #000");
+    expect(installCss).toContain("var(--install-viewport-height, 100svh)");
+    expect(installCss).toContain("var(--install-artboard-width, 56.25svh)");
+    expect(installCss).not.toContain(".page::before");
     expect(installCss).not.toContain(".page::before");
     expect(installCss).not.toContain("background-size: cover, cover");
     expect(workerSource).toContain('const themeColor = "#000000"');
