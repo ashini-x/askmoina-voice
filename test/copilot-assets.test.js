@@ -489,14 +489,19 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("Microphone will stay muted when the call starts.");
   });
 
-  it("makes Vision feel responsive and keeps error recovery in place", () => {
-    expect(html).not.toContain('id="intelligenceIntro"');
-    expect(html).not.toContain('class="intelligence-intro"');
-    expect(html).toContain('id="visionSlideHandle"');
-    expect(html).toContain('class="vision-slide-copy"');
-    expect(html).toContain("Slide to start");
-    expect(html).not.toContain("Tap to open camera");
-    expect(script).toContain('showProblemButton.addEventListener("pointermove"');
+  it("removes the launch slider while preserving connection recovery", () => {
+    expect(html).not.toContain('id="showProblemButton"');
+    expect(html).not.toContain("Slide to start");
+    expect(html).not.toContain("vision-slide");
+    expect(script).not.toContain("showProblemButton");
+    expect(script).not.toContain("slidePointerId");
+    expect(script).not.toContain("keyboardSlideActive");
+    expect(script).not.toContain("Slide to start");
+    expect(css).not.toContain("show-problem-button");
+    expect(css).not.toContain("vision-slide");
+    expect(css).not.toContain("--slide-distance");
+    expect(nativeAppCss).not.toContain(".show-problem-button");
+    expect(nativeAppCss).not.toContain(".vision-slide");
     expect(script).toContain('persistentConnectionIssue = { title: safeTitle, message: safeMessage }');
     expect(script).toContain("function hideConnectionNotice(resolved = false)");
     expect(script).toContain("hideConnectionNotice(true)");
@@ -510,11 +515,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain("function playDisconnectSound()");
     expect(script).toContain("airy, glass-like");
     expect(css).toContain("@keyframes intelligence-intro-arrive");
-    expect(css).toContain("@keyframes vision-text-shimmer");
-    expect(css).toContain(".vision-slide-copy{");
     expect(css).toContain("brightness(1.32)");
     expect(css).toContain(".camera-stage.has-notice #videoPreview");
     expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;");
+  });
   });
 
 });
@@ -894,7 +898,7 @@ describe("Live microphone explicit activity detection", () => {
 
 
 describe("Native-first app experience v2", () => {
-  it("uses the success and blurred-slider onboarding instead of separate camera welcome and splash pages", () => {
+  it("uses the experience-selection overlay without a launch slider", () => {
     expect(workerSource).not.toContain("const NATIVE_CAMERA_WELCOME = ");
     expect(workerSource).not.toContain("nativeCameraWelcomeTitle");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
@@ -903,7 +907,8 @@ describe("Native-first app experience v2", () => {
     expect(workerSource).toContain("openLibrary");
     expect(workerSource).toContain('const NATIVE_APP_HEADER_GUEST = "";');
     expect(workerSource).not.toContain("html.replace(welcomeMarker, NATIVE_CAMERA_WELCOME + welcomeMarker)");
-    expect(nativeAppCss).toContain(".post-auth-onboarding-slider-slot .show-problem-button");
+    expect(nativeAppCss).not.toContain(".post-auth-onboarding-slider-slot");
+    expect(nativeAppCss).not.toContain(".show-problem-button");
     expect(nativeAppCss).toContain(".native-app-chrome .native-app-menu-trigger");
     expect(nativeAppCss).toContain("prefers-reduced-motion:reduce");
   });
@@ -916,29 +921,28 @@ describe("Native-first app experience v2", () => {
 });
 
 
-describe("Primary camera entry", () => {
-  it("requires a completed iOS-style slide gesture and never starts from a tap", () => {
-    expect(html).toContain('aria-label="Slide to start askmoina camera guidance"');
-    expect(html).toContain('id="visionSlideLabel">Slide to start</span>');
-    expect(html).toContain('class="vision-slide-arrows"');
-    expect(script).toContain('showProblemButton.addEventListener("pointerup"');
-    expect(script).toContain('showProblemButton.addEventListener("click", (event) => { event.preventDefault(); });');
-    expect(script).toContain("keyboardSlideActive");
-    expect(script).not.toContain("a tap should start the camera too");
-    expect(script).not.toContain("The primary camera entry action works with a simple tap");
-    expect(css).toContain(".camera-stage.pre-start #showProblemButton");
+describe("Camera entry without a launch slider", () => {
+  it("contains no slider markup, handlers, state, or styling", () => {
+    expect(html).not.toContain("showProblemButton");
+    expect(html).not.toContain("Slide to start");
+    expect(html).not.toContain("vision-slide");
+    expect(script).not.toContain("showProblemButton");
+    expect(script).not.toContain("slidePointerId");
+    expect(script).not.toContain("keyboardSlideActive");
+    expect(script).not.toContain("Slide to start");
+    expect(css).not.toContain("show-problem-button");
+    expect(css).not.toContain("vision-slide");
+    expect(css).not.toContain("--slide-distance");
+    expect(nativeAppCss).not.toContain("show-problem-button");
+    expect(nativeAppCss).not.toContain("vision-slide");
+    expect(nativeAppCss).not.toContain("post-auth-onboarding-slider-slot");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
-    expect(css).toContain(".camera-stage.pre-start .camera-controls{\n  display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;");
     expect(css).toContain(".camera-stage.pre-start #toggleCopilot");
     expect(css).toContain("background:#171719;color:#fff");
-    expect(css).not.toContain("background:#34c759;color:#fff");
-    expect(css).not.toContain("rgba(52,199,89");
+    expect(html).toContain('id="toggleCopilot"');
     expect(html).toContain("call-action-button");
-    expect(css).not.toContain('body[data-entry-state] .camera-controls');
-    expect(css).toContain("z-index:95!important");
   });
 });
-
 
 
 describe("Dark-first app shell and brand assets", () => {
