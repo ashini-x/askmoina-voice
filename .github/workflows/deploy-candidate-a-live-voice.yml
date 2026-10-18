@@ -338,7 +338,7 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v17' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v18' /tmp/moina-service-worker.js
           grep -q 'isImmutableVersionedAsset ? fetch(request)' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"

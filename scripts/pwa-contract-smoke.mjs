@@ -8,7 +8,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
 const globalFontCss = read("public/askmoina-global-font.css");
-assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must embed its reference-matched typeface");
+assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must reference its locally bundled typeface");
+assert.ok(globalFontCss.includes("font-display: block;"), "global font must suppress fallback-font flashes");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
 assert.ok(globalFontCss.includes('font-family: var(--askmoina-global-font) !important'), "global font must apply to current and dynamically rendered UI text");
 for (const path of [
@@ -22,6 +23,7 @@ for (const path of [
   assert.ok(read(path).includes("/askmoina-global-font.css"), path + " must load the canonical global font");
 }
 const workerSource = read("src/index.ts");
+assert.ok(workerSource.includes("withAskMoinaFontPreload"), "Worker HTML must preload the global font before first paint");
 assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated shells must load the canonical global font");
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
 assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
@@ -180,10 +182,10 @@ assert.ok(worker.includes('url.searchParams.get("experience-selection") === "1"'
 assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && read("public/copilot.js").includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
 
 const serviceWorker = read("public/service-worker.js");
-assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=0.4.132"'), "global font stylesheet must be cached for the offline shell");
+assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=0.4.133"'), "global font stylesheet must be cached for the offline shell");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.woff2?v=0.4.132"'), "global font binary must be cached for offline typography");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v17"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v18"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.131"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.131"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
 
 assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.131"'), "service worker must precache the current viewport-aware hotspot runtime");
