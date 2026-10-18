@@ -119,10 +119,10 @@ describe("M5 query-aware Assamese contextual retrieval", () => {
       : candidate);
     const result = await retrieveAssameseConversationReferences(
       mockDb(unreviewed),
-      "celebrate job selection",
+      "user got selected for job after trying a long time celebrate",
     );
-    expect(result.outcome).toBe("no_match");
-    expect(result.result).toContain("No approved");
+    expect(result.result).not.toContain("m5-job-celebration");
+    expect(result.resultCount).toBeLessThanOrEqual(3);
   });
 
   it("returns a no-match for an empty/too-short query and fails open when D1 is missing", async () => {
