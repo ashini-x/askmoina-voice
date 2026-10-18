@@ -44,6 +44,7 @@ import {
   let pendingMode = "hidden";
   let selectedSide = null;
   let scanning = false;
+  let manualScanRequested = false;
   let autoTimer = null;
   let autoEnabled = loadAutoSetting();
   let consecutiveMisses = 0;
@@ -451,6 +452,7 @@ import {
   async function detectChessboard(manual = false) {
     if (!autoEnabled && !manual) return;
     if (scanning) {
+      if (manual) manualScanRequested = true;
       scheduleDetection(BASE_RETRY_MS);
       return;
     }
@@ -463,12 +465,15 @@ import {
       const result = await recognizeOneFrame();
       if (!result.ok) {
         consecutiveMisses += 1;
-        if (manual) {
+        const shouldReportManualFailure = manual || manualScanRequested;
+        manualScanRequested = false;
+        if (shouldReportManualFailure) {
           setStatus("Couldn’t read the board", result.message || "I couldn’t read the 8×8 grid. Keep the full board visible and try again.", "warning");
         }
         scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
         return;
       }
+      manualScanRequested = false;
       consecutiveMisses = 0;
       let observation = result.recognition;
       let placement = placementFromRows(observation.boardRows);
@@ -539,7 +544,9 @@ import {
       showBoardPrompt(observation);
       void startBackgroundConfirmation(observation);
     } catch (error) {
-      if (manual) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
+      const shouldReportManualFailure = manual || manualScanRequested;
+      manualScanRequested = false;
+      if (shouldReportManualFailure) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
       consecutiveMisses += 1;
       scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
     } finally {
