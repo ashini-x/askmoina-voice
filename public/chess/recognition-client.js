@@ -210,6 +210,46 @@ export function verifyStableChessboardRecognition(firstResult, secondResult) {
   return { ok: true, recognition: second };
 }
 
+/**
+ * A first valid board read remains only a candidate until an independent
+ * confirmation agrees. Retry one failed or inconsistent confirmation because
+ * a single Vision request can time out or return an incomplete response even
+ * while the board remains unchanged. Never accept a different position.
+ */
+export async function retryStableChessboardRecognition(firstRecognition, readConfirmation, options = {}) {
+  if (typeof readConfirmation !== "function") {
+    return { ok: false, reason: "confirmation_reader_unavailable", message: "The chess camera reader is unavailable." };
+  }
+  const requestedAttempts = Number.isInteger(options.maxAttempts) ? options.maxAttempts : 2;
+  const maxAttempts = Math.max(1, Math.min(3, requestedAttempts));
+  const retryDelayMs = Number.isFinite(options.retryDelayMs) ? Math.max(0, options.retryDelayMs) : 400;
+  let lastResult = { ok: false, reason: "confirmation_scan_unavailable", message: "I couldn't confirm the board. Please try again." };
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0 && retryDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+    let secondResult;
+    try {
+      secondResult = await readConfirmation(attempt);
+    } catch (error) {
+      secondResult = {
+        ok: false,
+        reason: "confirmation_scan_failed",
+        message: error && typeof error.message === "string"
+          ? error.message
+          : "The confirmation scan failed."
+      };
+    }
+    lastResult = verifyStableChessboardRecognition(
+      { ok: true, recognition: firstRecognition },
+      secondResult
+    );
+    if (lastResult.ok) return lastResult;
+  }
+  return lastResult;
+}
+
 export function boardRowsToFen(rows, sideToMove) {
   if (sideToMove !== "w" && sideToMove !== "b") {
     return failure("side_to_move_required", "Confirm whether White or Black moves next.");
