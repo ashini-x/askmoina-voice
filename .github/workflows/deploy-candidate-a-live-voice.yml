@@ -349,10 +349,16 @@ jobs:
           grep -qi 'Cache-Control: public, max-age=31536000, immutable' /tmp/moina-experience-css.headers
           echo "Release-versioned Co-Pilot CSS uses long-lived browser caching: OK"
 
+          status="$(fetch_status "/native-app.css?v=${app_version}" /tmp/moina-native-app.css)"
+          test "$status" = "200"
+          grep -q 'askmoina-screen-fade-up' /tmp/moina-native-app.css
+          grep -q 'prefers-reduced-motion:reduce' /tmp/moina-native-app.css
+          echo "Apple-style entrance fade and reduced-motion fallback are present in production CSS: OK"
+
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
           grep -q 'data-askmoina-pwa-gate="pending"' /tmp/moina-home.html
-          grep -q 'href="/manifest.webmanifest"' /tmp/moina-home.html
+          grep -q 'href="/manifest.webmanifest?v=20261018"' /tmp/moina-home.html
           grep -q 'src="/pwa-gate.js"' /tmp/moina-home.html
           echo "Main app standalone gate: OK"
 
