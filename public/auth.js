@@ -7,6 +7,7 @@
   let pendingPhone = null;
   let currentMode = document.body.dataset.page === "account" ? "account" : "create";
   let busy = false;
+  let verificationInProgress = false;
   let activeCredentialAbort = null;
 
   const SERVER_MESSAGES = {
@@ -53,6 +54,12 @@
 
   function hideSheet() {
     if (sheet) sheet.hidden = true;
+    verificationInProgress = false;
+    const cancelButton = $("#cancelAuth");
+    if (cancelButton) {
+      cancelButton.hidden = false;
+      cancelButton.disabled = false;
+    }
   }
 
   // Fixed vector paths; a single SVG element prevents two biometric marks showing together.
@@ -88,6 +95,23 @@
     stage.hidden = false;
     stage.dataset.kind = isFace ? "face" : "fingerprint";
     overlay.classList.add("is-biometric");
+  }
+
+  function showVerificationTransition(title, message) {
+    // Replace biometric guidance with one in-place verification overlay.
+    showBiometricStage(null);
+    if (!sheet) {
+      say(message || title);
+      return;
+    }
+    verificationInProgress = true;
+    say("");
+    showSheet(title, message);
+    const cancelButton = $("#cancelAuth");
+    if (cancelButton) {
+      cancelButton.hidden = true;
+      cancelButton.disabled = true;
+    }
   }
 
   function encode(value) {
@@ -211,13 +235,12 @@
       // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.create({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled passkey creation.");
-      hideSheet();
-      say("Finishing your secure account…");
+      showVerificationTransition("Creating your account…", "Your device is verified. We're opening askmoina.");
       await post("passkey/register/verify", {
         challengeId: options.challengeId,
         credential: registration(credential)
       });
-      say("Your account is ready. Opening AskMoina…", "success");
+      // Keep the verification overlay visible until the authenticated page replaces this one.
       await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
     } catch (error) {
       hideSheet();
@@ -250,13 +273,12 @@
       // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.get({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled sign-in.");
-      hideSheet();
-      say("Verifying your passkey…");
+      showVerificationTransition("Signing you in…", "Verifying your device and opening askmoina.");
       await post("passkey/login/verify", {
         challengeId: options.challengeId,
         credential: authentication(credential)
       });
-      say("You’re signed in. Welcome back…", "success");
+      // Keep the verification overlay visible until the authenticated page replaces this one.
       await navigateAfterAuth("/");
     } catch (error) {
       hideSheet();
@@ -278,9 +300,8 @@
   }
 
   async function navigateAfterAuth(destination) {
-    // Navigate as soon as authentication succeeds; do not cover the screen with a launch interstitial.
-    const next = destination === "/" ? "/?startup=1" : destination;
-    window.location.replace(next);
+    // Go straight to the authenticated experience; no extra startup interstitial or timed wait.
+    window.location.replace(destination);
   }
 
   function setMode(mode) {
@@ -363,13 +384,18 @@
       return;
     }
     setBusy(true);
-    say("Verifying your phone number…");
+    const accountPage = document.body.dataset.page === "account";
+    showVerificationTransition(
+      accountPage ? "Saving verified number…" : "Verifying your number…",
+      accountPage ? "Finishing the security update." : "Checking your code and opening askmoina."
+    );
     try {
       await post("phone/verify", { challengeId: pendingChallengeId, phone: pendingPhone, code });
       pendingChallengeId = null;
       say("Phone verified. Opening AskMoina…", "success");
       await navigateAfterAuth(document.body.dataset.page === "account" ? "/account" : "/");
     } catch (error) {
+      hideSheet();
       say(explainPasskeyError(error, currentMode), "error");
     } finally {
       setBusy(false);
@@ -466,11 +492,12 @@
     }
   });
   $("#cancelAuth")?.addEventListener("click", () => {
+    if (verificationInProgress) return;
     activeCredentialAbort?.abort();
     hideSheet();
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || verificationInProgress) return;
     const biometricStage = $("#biometricAuthStage");
     if (biometricStage && !biometricStage.hidden) {
       activeCredentialAbort?.abort();
