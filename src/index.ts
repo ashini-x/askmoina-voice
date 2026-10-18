@@ -10,6 +10,7 @@ import { configureCopilotMediaResolution } from "./sessions/media-resolution";
 import { buildLiveWebSocketUrl } from "./sessions/live-endpoint";
 import { RealtimeMediaRateLimiter } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
+import { beginTurnLatencyMeasurement, measureFirstAudioAfterBoundary, type PendingTurnLatencyMeasurement } from "./sessions/turn-latency";
 import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
 import { handleContinuityRequest, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
@@ -1373,6 +1374,7 @@ async function handleVoiceSocket(
 
   let upstreamStartedAt = Date.now();
   let firstAudioFrameLogged = false;
+  let pendingTurnLatencyMeasurement: PendingTurnLatencyMeasurement | null = null;
   let requestToFirstAudioMs: number | null = null;
   let requestToSetupMs: number | null = null;
   let providerUsageFrameCount = 0;
@@ -2277,6 +2279,13 @@ const systemInstruction = buildPersonalizedSystemInstruction(
           closeBoth(1008, "Invalid audio activity boundary");
           return;
         }
+        if (parsed.kind === "activity_start") {
+          // Do not attribute audio from an interrupted prior turn to the next user turn.
+          pendingTurnLatencyMeasurement = null;
+        } else if (parsed.kind === "activity_end") {
+          // Start timing after the client-side silence detector has closed the turn.
+          pendingTurnLatencyMeasurement = beginTurnLatencyMeasurement(Date.now());
+        }
         sendUpstreamMessage(providerInput);
         return;
       }
@@ -2364,18 +2373,36 @@ const systemInstruction = buildPersonalizedSystemInstruction(
       return;
     }
 
-    // Capture first-audio latency without logging audio, transcript text, or parsing base64.
-    if (!firstAudioFrameLogged && isProviderAudioFrame(frameText)) {
-      firstAudioFrameLogged = true;
+    // Measure every spoken turn from the activity-end signal to the first audio frame.
+    // This excludes the client's silence tolerance, which elapsed before activity_end.
+    if (isProviderAudioFrame(frameText)) {
       const firstAudioAt = Date.now();
-      requestToFirstAudioMs = firstAudioAt - analyticsStartedAt;
-      console.info("[askmoina] First assistant audio frame", JSON.stringify({
-        frameNumber,
-        requestToFirstAudioMs,
-        upstreamConnectedToFirstAudioMs: firstAudioAt - upstreamStartedAt,
-        setupComplete: setupCompleteReceived,
-        frameBytes: frameSize,
-      }));
+      if (pendingTurnLatencyMeasurement) {
+        const turnLatency = measureFirstAudioAfterBoundary(pendingTurnLatencyMeasurement, firstAudioAt, true);
+        pendingTurnLatencyMeasurement = null;
+        if (turnLatency) {
+          console.info("[AskMoina] Turn boundary to first assistant audio", JSON.stringify({
+            mode: copilotMode ? "copilot" : "voice",
+            boundaryKind: "activity_end",
+            turnBoundaryToFirstAudioMs: turnLatency.latencyMs,
+            setupComplete: setupCompleteReceived,
+            frameBytes: frameSize,
+          }));
+        }
+      }
+
+      // This legacy metric remains useful for cold-start analysis, but it is not turn latency.
+      if (!firstAudioFrameLogged) {
+        firstAudioFrameLogged = true;
+        requestToFirstAudioMs = firstAudioAt - analyticsStartedAt;
+        console.info("[askmoina] First assistant audio frame", JSON.stringify({
+          frameNumber,
+          requestToFirstAudioMs,
+          upstreamConnectedToFirstAudioMs: firstAudioAt - upstreamStartedAt,
+          setupComplete: setupCompleteReceived,
+          frameBytes: frameSize,
+        }));
+      }
     }
 
     // Parse only explicit usage metadata; never log media or transcript payloads.
