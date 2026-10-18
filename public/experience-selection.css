@@ -315,3 +315,16 @@
     min-height: 225px;
   }
 }
+
+
+/* Keep moinaOS 1 unchanged; shorten only the moinaOS 2 preview so its lower edge is visible. */
+.experience-card--preview {
+  height: 80%;
+  align-self: start;
+}
+@media (max-height: 700px) {
+  .experience-card--preview {
+    height: 80%;
+    min-height: 180px;
+  }
+}

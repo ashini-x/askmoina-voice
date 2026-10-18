@@ -85,14 +85,15 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261020"'), "Interface 06 CSS must be attached to the authenticated home route");
-assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261020"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261021"'), "Interface 06 CSS must be attached to the authenticated home route");
+assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261021"'), "Interface 06 interactions must be attached to the authenticated home route");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
 assert.ok(experienceCss.includes("grid-template-columns: minmax(0, 1fr)"), "Interface 06 text-only cards must use a single-column layout");
 assert.ok(experienceCss.includes("grid-template-rows: repeat(2, minmax(0, 1fr))"), "Interface 06 cards must share the page height symmetrically");
 assert.ok(experienceCss.includes("padding: clamp(22px, 4.8vw, 30px) clamp(22px, 5vw, 30px)"), "Interface 06 cards must use balanced Apple-like internal spacing");
 assert.ok(experienceCss.includes("width: min(100%, 460px)"), "Interface 06 cards must use the full available mobile page width");
 assert.ok(experienceCss.includes("grid-template-rows: repeat(2, minmax(225px, 1fr))"), "Interface 06 cards must remain symmetric on short screens");
+assert.ok(experienceCss.includes("height: 80%;") && experienceCss.includes("align-self: start;"), "moinaOS 2 preview must finish above the bottom safe area without resizing moinaOS 1");
 assert.ok(experienceCss.includes("gap: clamp(14px, 2dvh, 18px)"), "Interface 06 needs balanced vertical spacing between cards");
 assert.ok(!worker.includes("experience-glass-art") && !worker.includes("exp1-left-bloom") && !worker.includes("exp2-left-bloom"), "Interface 06 product cards must not contain decorative product artwork");
 assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes("#experienceMoinaOS2"), "Interface 06 product interactions are missing");
