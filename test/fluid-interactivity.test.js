@@ -45,6 +45,7 @@ describe("AskMoina fluid interactivity", () => {
     expect(worker).toContain("html = withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, \"0.4.80\")");
+    expect(worker).toContain(".experience-card--preview {\n  opacity: 1;\n  animation: none !important;");
   });
 
   it("springs response-card details instead of toggling them abruptly", () => {
