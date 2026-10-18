@@ -1,8 +1,7 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame } from "./recognition-client.js";
+import { recognizeChessboardFrame, boardRowsToFen } from "./recognition-client.js";
 import {
-  boardRowsForFen,
   createNewChessGame,
   reconcileChessObservation,
   restoreChessGameState,
@@ -13,50 +12,174 @@ import {
   "use strict";
   const $ = (selector) => document.querySelector(selector);
   const launch = $("#chessAssistantButton");
-  const overlay = $("#chessAssistantOverlay");
-  const closeButton = $("#chessClose");
+  const popup = $("#chessDetectionPopup");
+  const popupTitle = $("#chessPopupTitle");
+  const popupMessage = $("#chessPopupMessage");
+  const turnSelector = $("#chessTurnSelector");
+  const whiteTurn = $("#chessTurnWhite");
+  const blackTurn = $("#chessTurnBlack");
+  const suggestButton = $("#chessSuggestMove");
+  const trackButton = $("#chessTrackGame");
+  const dismissButton = $("#chessDismiss");
   const video = $("#videoPreview");
-  const statusNode = $("#chessStatus");
-  const resultNode = $("#chessResult");
-  const positionNode = $("#chessPosition");
-  const nextMoveNode = $("#chessNextMove");
-  const moveListNode = $("#chessMoveList");
-  const playerColorNode = $("#chessPlayerColor");
-  const sideToMoveNode = $("#chessSideToMove");
-  const rightsKnownNode = $("#chessRightsKnown");
-  const rightCheckboxes = ["#chessRightK", "#chessRightQ", "#chessRightk", "#chessRightq"].map($);
-  const scanButton = $("#chessScan");
-  const seedButton = $("#chessSeedPosition");
-  const newGameButton = $("#chessNewGame");
-  const busyNodes = [scanButton, seedButton, newGameButton];
+  const stage = $("#cameraStage");
   const STORAGE_KEY = "askmoina.chess.session.v1";
+  const AUTO_KEY = "askmoina.chess.autodetect.v1";
   const MAX_FRAME_BYTES = 512 * 1024;
-  let scanning = false;
+  const INITIAL_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+  const FIRST_SCAN_DELAY_MS = 1800;
+  const BASE_RETRY_MS = 6000;
+  const MAX_RETRY_MS = 14000;
+  const DISMISS_COOLDOWN_MS = 30000;
+
+  if (!launch || !popup || !popupTitle || !popupMessage || !video) return;
+
   let engine = null;
   let gameState = null;
+  let pendingRecognition = null;
+  let pendingMode = "hidden";
+  let selectedSide = null;
+  let scanning = false;
+  let autoTimer = null;
+  let autoEnabled = loadAutoSetting();
+  let consecutiveMisses = 0;
+  let dismissedPlacement = null;
+  let dismissedUntil = 0;
   let analysisSequence = 0;
+  let statusMessageTimer = null;
 
-  if (!launch || !overlay || !video || !statusNode) return;
+  function loadAutoSetting() {
+    try {
+      const saved = localStorage.getItem(AUTO_KEY);
+      return saved === null ? true : saved === "on";
+    } catch {
+      return true;
+    }
+  }
 
-  function setStatus(message, kind = "info") {
-    statusNode.textContent = message;
-    statusNode.dataset.kind = kind;
+  function setStatus(title, message, kind = "info") {
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    popupTitle.textContent = title;
+    popupMessage.textContent = message;
+    popup.dataset.kind = kind;
+    popup.hidden = false;
+    pendingMode = "message";
+    turnSelector.hidden = true;
+    suggestButton.hidden = true;
+    trackButton.hidden = true;
+    dismissButton.textContent = "Done";
+    statusMessageTimer = setTimeout(() => {
+      if (pendingMode === "message") hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS);
+    }, 9000);
+  }
+
+  function updateAutoControl() {
+    launch.classList.toggle("chess-autodetect-active", autoEnabled);
+    launch.classList.toggle("chess-autodetect-paused", !autoEnabled);
+    launch.setAttribute("aria-pressed", String(autoEnabled));
+    launch.setAttribute("aria-label", autoEnabled ? "Pause automatic chess detection" : "Resume automatic chess detection");
+    launch.title = autoEnabled ? "Chess auto-detection is on · tap to pause" : "Chess auto-detection is paused · tap to resume";
+  }
+
+  function hidePopup(nextDelay = DISMISS_COOLDOWN_MS) {
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
+    popup.hidden = true;
+    popup.dataset.kind = "info";
+    pendingMode = "hidden";
+    pendingRecognition = null;
+    selectedSide = null;
+    if (whiteTurn) whiteTurn.setAttribute("aria-pressed", "false");
+    if (blackTurn) blackTurn.setAttribute("aria-pressed", "false");
+    scheduleDetection(nextDelay);
+  }
+
+  function setSide(color) {
+    selectedSide = color;
+    whiteTurn.setAttribute("aria-pressed", String(color === "w"));
+    blackTurn.setAttribute("aria-pressed", String(color === "b"));
+    const enabled = Boolean(selectedSide && pendingRecognition);
+    suggestButton.disabled = !enabled;
+    trackButton.disabled = !enabled;
+  }
+
+  function showBoardPrompt(recognition, options = {}) {
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
+    pendingRecognition = recognition;
+    pendingMode = options.mode || "detected";
+    popup.dataset.kind = "info";
+    popupTitle.textContent = options.title || "Chessboard detected";
+    popupMessage.textContent = options.message || "I can read this board. Choose what you need.";
+    popup.hidden = false;
+    dismissButton.textContent = "Not now";
+    const placement = placementFromRows(recognition.boardRows);
+    const knownStart = placement === INITIAL_POSITION;
+    selectedSide = options.sideToMove || (knownStart ? "w" : null);
+    turnSelector.hidden = Boolean(options.hideTurnChoice || knownStart);
+    if (!turnSelector.hidden) {
+      setSide(selectedSide);
+    } else {
+      whiteTurn.setAttribute("aria-pressed", "false");
+      blackTurn.setAttribute("aria-pressed", "false");
+      suggestButton.disabled = false;
+      trackButton.disabled = false;
+    }
+    suggestButton.hidden = false;
+    trackButton.hidden = false;
+    suggestButton.textContent = options.suggestLabel || "Suggest a move";
+    trackButton.textContent = options.trackLabel || (options.mode === "recover" ? "Resume from here" : "Track game");
+    if (options.mode === "recover") {
+      popupMessage.textContent = options.message || "The board changed, but I couldn't match one legal move. Confirm whose turn it is to resume here.";
+    }
+  }
+
+  function showMoveToast(move, sideToMove) {
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = null;
+    pendingMode = "move";
+    pendingRecognition = null;
+    selectedSide = sideToMove;
+    popup.dataset.kind = "success";
+    popupTitle.textContent = "Move detected · " + move.san;
+    popupMessage.textContent = colorName(sideToMove) + " to move. I’m watching for the next position.";
+    turnSelector.hidden = true;
+    suggestButton.hidden = false;
+    suggestButton.disabled = false;
+    suggestButton.textContent = "Suggest a reply";
+    trackButton.hidden = true;
+    dismissButton.textContent = "Keep watching";
+    popup.hidden = false;
   }
 
   function colorName(color) {
     return color === "w" ? "White" : "Black";
   }
 
-  function readPlayerColor() {
-    return playerColorNode.value === "b" ? "b" : "w";
+  function opposite(color) {
+    return color === "w" ? "b" : "w";
   }
 
-  function readSideToMove() {
-    return sideToMoveNode.value === "b" ? "b" : "w";
+  function placementFromRows(rows) {
+    if (!Array.isArray(rows) || rows.length !== 8) return "";
+    return rows.map((row) => {
+      let out = "";
+      let empty = 0;
+      for (const piece of row) {
+        if (piece === ".") empty += 1;
+        else {
+          if (empty) out += String(empty);
+          empty = 0;
+          out += piece;
+        }
+      }
+      if (empty) out += String(empty);
+      return out;
+    }).join("/");
   }
 
-  function readCastlingRights() {
-    return ["K", "Q", "k", "q"].filter((right, index) => rightCheckboxes[index] && rightCheckboxes[index].checked).join("");
+  function nowIso() {
+    return new Date().toISOString();
   }
 
   function persistGame() {
@@ -64,7 +187,7 @@ import {
       if (gameState) localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
       else localStorage.removeItem(STORAGE_KEY);
     } catch {
-      setStatus("The game is active, but this browser could not save the local recovery copy.", "warning");
+      setStatus("Game is active", "I couldn’t save a local recovery copy in this browser.", "warning");
     }
   }
 
@@ -72,46 +195,11 @@ import {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const result = restoreChessGameState(JSON.parse(raw));
-      if (result.ok) {
-        gameState = result.state;
-        sideToMoveNode.value = new Chess(gameState.currentFen).turn();
-        playerColorNode.value = gameState.playerColor;
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      const restored = restoreChessGameState(JSON.parse(raw));
+      if (restored.ok) gameState = restored.state;
+      else localStorage.removeItem(STORAGE_KEY);
     } catch {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
-    }
-  }
-
-  function renderPosition(position, move) {
-    if (!position) return;
-    resultNode.hidden = false;
-    positionNode.textContent = position.fen;
-    if (move) {
-      nextMoveNode.textContent = colorName(move.color) + " played " + move.san + " (" + move.uci + "). Next to move: " + colorName(position.sideToMove) + ".";
-    } else {
-      nextMoveNode.textContent = "Position loaded. " + colorName(position.sideToMove) + " to move; " + position.legalMoveCount + " legal moves.";
-    }
-    moveListNode.replaceChildren();
-    if (!gameState || !gameState.moveHistory.length) {
-      const item = document.createElement("li");
-      item.textContent = gameState && gameState.gameMode === "new-game" ? "New game · start position confirmed" : "Position seeded · earlier moves not available";
-      moveListNode.appendChild(item);
-    } else {
-      gameState.moveHistory.slice(-12).forEach((entry) => {
-        const item = document.createElement("li");
-        const moveNumber = Math.ceil(entry.ply / 2);
-        item.textContent = String(moveNumber) + (entry.color === "w" ? ". " : "… ") + entry.san;
-        moveListNode.appendChild(item);
-      });
-    }
-    if (gameState && gameState.gameMode === "midgame-seed") {
-      const note = document.createElement("li");
-      note.className = "chess-history-warning";
-      note.textContent = gameState.rightsKnown ? "Earlier moves and en-passant eligibility are unknown; castling rights were confirmed by you." : "Earlier moves, castling rights, and en-passant eligibility are unknown and will not be inferred.";
-      moveListNode.appendChild(note);
     }
   }
 
@@ -120,46 +208,11 @@ import {
     return engine;
   }
 
-  async function analyzeCurrentPosition() {
-    if (!gameState) return;
-    const sequence = ++analysisSequence;
-    const currentFen = gameState.currentFen;
-    setStatus("Position validated. Stockfish is analysing the next move…");
-    try {
-      const analysis = await getEngine().analyzePosition(currentFen, { movetimeMs: 1200 });
-      if (sequence !== analysisSequence || !gameState || gameState.currentFen !== currentFen) return;
-      if (!analysis.bestMove) {
-        nextMoveNode.textContent = analysis.status === "checkmate" ? "Checkmate." : analysis.status === "stalemate" ? "Stalemate." : "The game is drawn.";
-        setStatus("Analysis ready · " + analysis.status + ".", "success");
-        return;
-      }
-      nextMoveNode.textContent = colorName(analysis.sideToMove) + " to move. Best move: " + analysis.bestMove.san + " (" + analysis.bestMove.uci + ").";
-      setStatus("Analysis ready · " + analysis.engine + ".", "success");
-    } catch (error) {
-      if (sequence !== analysisSequence) return;
-      setStatus("The board and game state were saved, but Stockfish analysis failed: " + (error && error.message ? error.message : "engine unavailable") + ". Try again.", "warning");
-    }
-  }
-
-  function openPanel() {
-    overlay.hidden = false;
-    document.body.classList.add("chess-panel-open");
-    launch.setAttribute("aria-expanded", "true");
-    closeButton.focus();
-    if (gameState) {
-      const game = new Chess(gameState.currentFen);
-      renderPosition({ fen: gameState.currentFen, sideToMove: game.turn(), legalMoveCount: game.moves().length }, null);
-      setStatus("Saved chess game restored on this device.");
-    } else {
-      setStatus("Choose New game or Use current position. A scan only runs when you tap a chess action.");
-    }
-  }
-
-  function closePanel() {
-    overlay.hidden = true;
-    document.body.classList.remove("chess-panel-open");
-    launch.setAttribute("aria-expanded", "false");
-    launch.focus();
+  function cameraIsActive() {
+    if (!video.isConnected || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.paused || document.visibilityState === "hidden") return false;
+    const stream = video.srcObject;
+    if (!stream || typeof stream.getVideoTracks !== "function") return false;
+    return stream.getVideoTracks().some((track) => track.readyState === "live" && track.enabled);
   }
 
   function canvasBlob(canvas, quality) {
@@ -169,153 +222,303 @@ import {
   }
 
   async function captureSingleFrame() {
-    if (!video.videoWidth || !video.videoHeight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      throw new Error("The live camera preview is not ready yet. Open moinaOS 1 and allow camera access, then try again.");
+    if (!cameraIsActive() || !video.videoWidth || !video.videoHeight) {
+      throw new Error("The camera preview is not active yet.");
     }
     let width = video.videoWidth;
     let height = video.videoHeight;
-    const maxDimension = 1280;
-    const scale = Math.min(1, maxDimension / Math.max(width, height));
+    const scale = Math.min(1, 1120 / Math.max(width, height));
     width = Math.max(1, Math.round(width * scale));
     height = Math.max(1, Math.round(height * scale));
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { alpha: false });
     if (!context) throw new Error("This browser cannot prepare a chess scan.");
-    for (let resizeAttempt = 0; resizeAttempt < 5; resizeAttempt += 1) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
       canvas.width = width;
       canvas.height = height;
       context.drawImage(video, 0, 0, width, height);
-      for (const quality of [0.76, 0.66, 0.56, 0.46, 0.36, 0.28]) {
+      for (const quality of [0.66, 0.56, 0.46, 0.36, 0.28]) {
         const blob = await canvasBlob(canvas, quality);
         if (blob.type === "image/jpeg" && blob.size >= 4 && blob.size <= MAX_FRAME_BYTES) return blob;
       }
       width = Math.max(1, Math.round(width * 0.82));
       height = Math.max(1, Math.round(height * 0.82));
     }
-    throw new Error("The frame is too large to send safely. Move a little farther back and scan again.");
+    throw new Error("Move a little farther back and try again.");
   }
 
-  function setBusy(value) {
-    scanning = value;
-    busyNodes.forEach((node) => { if (node) node.disabled = value; });
-    launch.disabled = false;
+  async function recognizeOneFrame() {
+    const frame = await captureSingleFrame();
+    return recognizeChessboardFrame(frame);
   }
 
-  async function requestRecognition() {
-    const imageBlob = await captureSingleFrame();
-    return recognizeChessboardFrame(imageBlob, { sideToMove: readSideToMove() });
+  function scheduleDetection(delay = BASE_RETRY_MS) {
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = null;
+    if (!autoEnabled) return;
+    autoTimer = setTimeout(() => { void detectChessboard(); }, delay);
   }
 
-  async function seedCurrentPosition() {
-    if (scanning) return;
-    setBusy(true);
-    setStatus("Capturing one frame and checking whether the full board is visible…");
-    try {
-      const recognized = await requestRecognition();
-      if (!recognized.ok) {
-        setStatus(recognized.message, "warning");
-        return;
-      }
-      const rightsKnown = Boolean(rightsKnownNode.checked);
-      const seeded = seedChessGameFromObservation({
-        boardRows: recognized.recognition.boardRows,
-        orientation: recognized.recognition.orientation,
-        sideToMove: readSideToMove()
-      }, {
-        playerColor: readPlayerColor(),
-        rightsKnown: rightsKnown,
-        castlingRights: rightsKnown ? readCastlingRights() : null
-      });
-      if (!seeded.ok) {
-        setStatus(seeded.message, "warning");
-        return;
-      }
-      gameState = seeded.state;
-      persistGame();
-      sideToMoveNode.value = seeded.state.currentFen.split(" ")[1];
-      renderPosition(seeded.position, null);
-      const rightsMessage = " Earlier moves and en-passant eligibility remain unknown." + (rightsKnown ? " Confirmed castling rights will be tracked." : " Castling rights also remain unknown and will not be guessed.");
-      setStatus("Position seeded successfully." + rightsMessage, "success");
-      await analyzeCurrentPosition();
-    } catch (error) {
-      setStatus(error && error.message ? error.message : "The chess scan did not complete.", "warning");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function scanAndUpdate() {
-    if (scanning) return;
-    if (!gameState) {
-      setStatus("Start a new game or use current position before updating it.", "warning");
+  async function detectChessboard(manual = false) {
+    if (!autoEnabled && !manual) return;
+    if (scanning) {
+      scheduleDetection(BASE_RETRY_MS);
       return;
     }
-    setBusy(true);
-    setStatus("Capturing one frame and comparing it with the last confirmed position…");
+    if (!cameraIsActive()) {
+      scheduleDetection(1800);
+      return;
+    }
+    if (!manual && !popup.hidden) {
+      scheduleDetection(BASE_RETRY_MS);
+      return;
+    }
+    scanning = true;
     try {
-      const recognized = await requestRecognition();
-      if (!recognized.ok) {
-        setStatus(recognized.message, "warning");
-        return;
-      }
-      const result = reconcileChessObservation(gameState, {
-        boardRows: recognized.recognition.boardRows,
-        orientation: recognized.recognition.orientation,
-        sideToMove: readSideToMove()
-      });
+      const result = await recognizeOneFrame();
       if (!result.ok) {
-        setStatus(result.message, "warning");
+        consecutiveMisses += 1;
+        if (manual && result.reason !== "no_board" && result.reason !== "partial_board" && result.reason !== "uncertain_recognition" && result.reason !== "orientation_uncertain") {
+          setStatus("Couldn’t read the board", result.message || "Try again with all four corners visible.", "warning");
+        }
+        scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
         return;
       }
-      gameState = result.state;
-      persistGame();
-      sideToMoveNode.value = result.position.sideToMove;
-      renderPosition(result.position, result.move);
-      if (result.status === "unchanged") {
-        setStatus(result.orientationChanged ? "Same board confirmed after the camera orientation changed. Move history is unchanged." : "Same position confirmed. No duplicate move was added.", "success");
-      } else {
-        setStatus("Legal move recorded · " + result.move.san + ". Move history saved on this device.", "success");
+      consecutiveMisses = 0;
+      const observation = result.recognition;
+      const placement = placementFromRows(observation.boardRows);
+      if (!placement) {
+        scheduleDetection(BASE_RETRY_MS);
+        return;
       }
-      await analyzeCurrentPosition();
+
+      if (gameState) {
+        const currentPlacement = String(gameState.currentFen).split(" ")[0];
+        if (placement === currentPlacement) {
+          dismissedPlacement = null;
+          scheduleDetection(BASE_RETRY_MS + 3000);
+          return;
+        }
+        const nextSide = opposite(new Chess(gameState.currentFen).turn());
+        const reconciled = reconcileChessObservation(gameState, {
+          boardRows: observation.boardRows,
+          orientation: observation.orientation,
+          sideToMove: nextSide,
+          observedAt: nowIso()
+        });
+        if (reconciled.ok && reconciled.status === "move-registered") {
+          gameState = reconciled.state;
+          persistGame();
+          showMoveToast(reconciled.move, reconciled.position.sideToMove);
+          scheduleDetection(BASE_RETRY_MS + 3000);
+          return;
+        }
+        if (reconciled.ok && reconciled.status === "unchanged") {
+          gameState = reconciled.state;
+          persistGame();
+          scheduleDetection(BASE_RETRY_MS + 3000);
+          return;
+        }
+        showBoardPrompt(observation, {
+          mode: "recover",
+          message: "The board changed, but I couldn't match one legal move. Confirm whose turn it is to resume here."
+        });
+        return;
+      }
+
+      if (placement === dismissedPlacement && Date.now() < dismissedUntil) {
+        scheduleDetection(MAX_RETRY_MS);
+        return;
+      }
+      const isStartingPosition = placement === INITIAL_POSITION;
+      showBoardPrompt(observation, {
+        mode: "detected",
+        sideToMove: isStartingPosition ? "w" : null,
+        title: "Chessboard detected",
+        message: isStartingPosition
+          ? "Looks like a new game. White moves first."
+          : "I can read the board. Who moves next?"
+      });
     } catch (error) {
-      setStatus(error && error.message ? error.message : "The chess scan did not complete.", "warning");
+      if (manual) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
+      consecutiveMisses += 1;
+      scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
     } finally {
-      setBusy(false);
+      scanning = false;
     }
   }
 
-  function beginNewGame() {
-    if (scanning) return;
-    gameState = createNewChessGame({ playerColor: readPlayerColor() });
-    persistGame();
-    sideToMoveNode.value = "w";
-    rightCheckboxes.forEach((node) => { if (node) node.checked = false; });
-    rightsKnownNode.checked = false;
-    renderPosition({ fen: gameState.currentFen, sideToMove: "w", legalMoveCount: new Chess(gameState.currentFen).moves().length }, null);
-    setStatus("New game ready. Scan the physical starting position to confirm it before recording moves.", "success");
-    void analyzeCurrentPosition();
+  function setAutoEnabled(value) {
+    autoEnabled = Boolean(value);
+    try { localStorage.setItem(AUTO_KEY, autoEnabled ? "on" : "off"); } catch {}
+    updateAutoControl();
+    if (autoEnabled) scheduleDetection(450);
+    else if (autoTimer) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
   }
 
-  launch.addEventListener("click", () => overlay.hidden ? openPanel() : closePanel());
-  closeButton.addEventListener("click", closePanel);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay || (event.target instanceof Element && event.target.closest("[data-chess-dismiss]"))) closePanel();
+  function createSeed(observation, sideToMove) {
+    return seedChessGameFromObservation({
+      boardRows: observation.boardRows,
+      orientation: observation.orientation,
+      sideToMove: sideToMove,
+      observedAt: nowIso()
+    }, { playerColor: "w", rightsKnown: false });
+  }
+
+  async function trackDetectedPosition() {
+    if (!pendingRecognition || !selectedSide || scanning) return;
+    const observation = pendingRecognition;
+    scanning = true;
+    trackButton.disabled = true;
+    suggestButton.disabled = true;
+    try {
+      const placement = placementFromRows(observation.boardRows);
+      let result;
+      if (placement === INITIAL_POSITION && selectedSide === "w") {
+        gameState = createNewChessGame({ playerColor: "w", now: nowIso() });
+        gameState.lastBoardRows = observation.boardRows.slice();
+        gameState.lastOrientation = observation.orientation;
+        gameState.lastObservationAt = nowIso();
+        gameState.updatedAt = nowIso();
+        result = { ok: true };
+      } else {
+        result = createSeed(observation, selectedSide);
+        if (result.ok) gameState = result.state;
+      }
+      if (!result.ok) {
+        showBoardPrompt(observation, { mode: pendingMode, sideToMove: selectedSide, title: "Check the board", message: result.message || "I couldn't validate this position. Check the view and turn, then try again." });
+        popup.dataset.kind = "warning";
+        return;
+      }
+      persistGame();
+      hidePopup(6000);
+      showTrackedState();
+    } catch (error) {
+      setStatus("Couldn’t start tracking", error && error.message ? error.message : "Try again with the full board in view.", "warning");
+    } finally {
+      scanning = false;
+      trackButton.disabled = false;
+      suggestButton.disabled = false;
+    }
+  }
+
+  async function suggestMove() {
+    let fen;
+    let sideToMove;
+    try {
+      if (pendingMode === "move" && gameState) {
+        fen = gameState.currentFen;
+        sideToMove = new Chess(fen).turn();
+      } else {
+        if (!pendingRecognition || !selectedSide) return;
+        const position = boardRowsToFen(pendingRecognition.boardRows, selectedSide);
+        if (!position.ok) {
+          showBoardPrompt(pendingRecognition, { mode: pendingMode, sideToMove: selectedSide, title: "Need a clearer position", message: position.message });
+          popup.dataset.kind = "warning";
+          return;
+        }
+        fen = position.fen;
+        sideToMove = position.sideToMove;
+      }
+    } catch (error) {
+      setStatus("Position unavailable", error && error.message ? error.message : "Try scanning the board again.", "warning");
+      return;
+    }
+    suggestButton.disabled = true;
+    trackButton.disabled = true;
+    popupTitle.textContent = "Finding a move…";
+    popupMessage.textContent = "Checking the position with Stockfish.";
+    const sequence = ++analysisSequence;
+    try {
+      const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 1200 });
+      if (sequence !== analysisSequence) return;
+      pendingMode = "message";
+      if (!analysis.bestMove) {
+        popupTitle.textContent = analysis.status === "checkmate" ? "Checkmate" : analysis.status === "stalemate" ? "Stalemate" : "Draw";
+        popupMessage.textContent = "There is no legal move to recommend.";
+      } else {
+        popupTitle.textContent = "Suggested move · " + analysis.bestMove.san;
+        popupMessage.textContent = colorName(sideToMove) + " to move. " + analysis.bestMove.san + " (" + analysis.bestMove.uci + ") is Stockfish’s recommendation.";
+      }
+      popup.dataset.kind = "success";
+      turnSelector.hidden = true;
+      suggestButton.hidden = true;
+      trackButton.hidden = true;
+      dismissButton.textContent = gameState ? "Keep watching" : "Done";
+      pendingRecognition = null;
+      if (statusMessageTimer) clearTimeout(statusMessageTimer);
+      statusMessageTimer = setTimeout(() => hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS), 12000);
+    } catch (error) {
+      popupTitle.textContent = "Move suggestion unavailable";
+      popupMessage.textContent = error && error.message ? error.message : "Stockfish couldn't finish this analysis. Try again.";
+      popup.dataset.kind = "warning";
+      suggestButton.hidden = true;
+      trackButton.hidden = true;
+      dismissButton.textContent = "Done";
+      if (statusMessageTimer) clearTimeout(statusMessageTimer);
+      statusMessageTimer = setTimeout(() => hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS), 9000);
+    } finally {
+      suggestButton.disabled = false;
+      trackButton.disabled = false;
+    }
+  }
+
+  function showTrackedState() {
+    if (!gameState) return;
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    const game = new Chess(gameState.currentFen);
+    pendingMode = "message";
+    popupTitle.textContent = "Game tracking is on";
+    popupMessage.textContent = "I’ll watch for the next move while the camera is active. " + colorName(game.turn()) + " to move.";
+    popup.dataset.kind = "success";
+    turnSelector.hidden = true;
+    suggestButton.hidden = false;
+    suggestButton.disabled = false;
+    suggestButton.textContent = "Suggest a move";
+    trackButton.hidden = true;
+    dismissButton.textContent = "Keep watching";
+    popup.hidden = false;
+    statusMessageTimer = setTimeout(() => hidePopup(BASE_RETRY_MS), 6500);
+    scheduleDetection(9000);
+  }
+
+  launch.addEventListener("click", () => setAutoEnabled(!autoEnabled));
+  whiteTurn.addEventListener("click", () => setSide("w"));
+  blackTurn.addEventListener("click", () => setSide("b"));
+  suggestButton.addEventListener("click", () => { void suggestMove(); });
+  trackButton.addEventListener("click", () => { void trackDetectedPosition(); });
+  dismissButton.addEventListener("click", () => {
+    if (pendingRecognition) {
+      dismissedPlacement = placementFromRows(pendingRecognition.boardRows);
+      dismissedUntil = Date.now() + DISMISS_COOLDOWN_MS;
+    }
+    hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS);
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !overlay.hidden) closePanel();
+  video.addEventListener("play", () => scheduleDetection(FIRST_SCAN_DELAY_MS));
+  video.addEventListener("loadeddata", () => scheduleDetection(FIRST_SCAN_DELAY_MS));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleDetection(650);
+    else if (autoTimer) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
   });
-  newGameButton.addEventListener("click", beginNewGame);
-  seedButton.addEventListener("click", () => { void seedCurrentPosition(); });
-  scanButton.addEventListener("click", () => { void scanAndUpdate(); });
-  rightsKnownNode.addEventListener("change", () => {
-    rightCheckboxes.forEach((node) => { if (node) node.disabled = !rightsKnownNode.checked; });
-  });
-  rightCheckboxes.forEach((node) => { if (node) node.disabled = !rightsKnownNode.checked; });
+  if (stage) {
+    const observer = new MutationObserver(() => {
+      if (cameraIsActive()) scheduleDetection(FIRST_SCAN_DELAY_MS);
+    });
+    observer.observe(stage, { attributes: true, attributeFilter: ["class"] });
+  }
 
   restoreGame();
-  launch.setAttribute("aria-expanded", "false");
-  if (gameState) setStatus("Saved chess game available on this device. Open Chess to continue.");
+  updateAutoControl();
+  scheduleDetection(FIRST_SCAN_DELAY_MS);
   window.addEventListener("pagehide", () => {
+    if (autoTimer) clearTimeout(autoTimer);
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
     analysisSequence += 1;
     if (engine) engine.dispose();
   });
