@@ -70,6 +70,7 @@ describe("AskMoina global typography contract", () => {
   it("preserves the typography rule for future UI work", () => {
     expect(brandSystem).toContain("The canonical UI typography name is **`askmoina-global-font`**");
     expect(brandSystem).toContain("All visible UI text must inherit this one family");
-    expect(brandSystem).toContain("Future UI work must load `/askmoina-global-font.css`");
+    expect(brandSystem).toContain("Future UI work must preload `/askmoina-global-font.woff2?v=0.4.132`");
+    expect(brandSystem).toContain("then load `/askmoina-global-font.css`");
   });
 });
