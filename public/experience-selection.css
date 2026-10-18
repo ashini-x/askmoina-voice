@@ -454,11 +454,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .experience-selection-overlay.is-startup-pending .experience-selection-scroll {
-    filter: none;
-    transform: none;
-    transition: none;
-  }
-  .experience-selection-overlay.is-startup-pending .experience-selection-scroll {
     animation: none;
     filter: blur(5px);
     opacity: .5;
