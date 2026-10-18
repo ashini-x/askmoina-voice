@@ -54,27 +54,34 @@ jobs:
           echo "ASKMOINA_SYNTHETIC_COOKIE=$SMOKE_COOKIE" >> "$GITHUB_ENV"
           echo "Synthetic authenticated session: ready"
 
-      - name: Wait for the deployed client/server timeout fix
+      - name: Wait for the deployed second-read retry fix
         shell: bash
         run: |
           set -euo pipefail
           ready=false
           for attempt in $(seq 1 60); do
-            status="$(curl --silent --show-error --max-time 10 --output /tmp/recognition-client.js --write-out '%{http_code}' \
+            client_status="$(curl --silent --show-error --max-time 10 --output /tmp/recognition-client.js --write-out '%{http_code}' \
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
-              "$BASE_URL/chess/recognition-client.js?v=0.4.144" || true)"
-            if [[ "$status" == "200" ]] && grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js; then
+              "$BASE_URL/chess/recognition-client.js?v=0.4.145" || true)"
+            ui_status="$(curl --silent --show-error --max-time 10 --output /tmp/chess-ui.js --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              "$BASE_URL/chess/chess-ui.js?v=0.4.145" || true)"
+            if [[ "$client_status" == "200" && "$ui_status" == "200" ]] &&
+               grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&
+               grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js &&
+               grep -Fq 'retryStableChessboardRecognition' /tmp/chess-ui.js &&
+               grep -Fq 'recognition-client.js?v=0.4.145' /tmp/chess-ui.js; then
               ready=true
               break
             fi
-            echo "Waiting for the 32-second chess client asset (attempt $attempt/60; HTTP ${status:-no-response})."
+            echo "Waiting for the second-read retry fix (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response})."
             sleep 5
           done
           if [[ "$ready" != "true" ]]; then
-            echo "::error::The expected chess client asset was not observed in production."
+            echo "::error::The deployed chess client did not expose the expected confirmation-retry code."
             exit 1
           fi
-          echo "Production chess client asset matches the tested release."
+          echo "Production client and UI both contain the second-read retry fix."
 
       - name: Verify the live digital chessboard end to end
         run: node scripts/live-chess-recognition-smoke.mjs
