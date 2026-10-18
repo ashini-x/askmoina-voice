@@ -500,7 +500,7 @@ describe("Live Co-Pilot browser assets", () => {
     expect(script).toContain('"slow");');
     expect(script).toContain("void prepareCameraPreview();");
     expect(script).not.toContain('window.location.replace("/")');
-    expect(script).toContain('window.setTimeout(() => stage.classList.remove("is-returning"), 570)');
+    expect(script).toContain('stopCopilot(true, "", "normal", false, false, true)');
     expect(script).toContain("function playConnectionChime()");
     expect(script).toContain("function playDisconnectSound()");
     expect(script).toContain("airy, glass-like");
@@ -586,13 +586,18 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(workerSource).not.toContain("data-donation-counter");
   });
 
-  it("keeps the disconnect tone distinct and returns to the camera slider", () => {
+  it("keeps the disconnect tone distinct and returns to moinaOS selection", () => {
     expect(script).toContain("function playDisconnectSound()");
     expect(script).toContain("disconnectToneUntil = performance.now() + 560");
     expect(script).toContain("peak: 0.052");
     expect(script).toContain("peak: 0.058");
-    expect(script).toContain('window.setTimeout(() => stage.classList.remove("is-returning"), 570)');
+    expect(script).toContain('stopCopilot(true, "", "normal", false, false, true)');
     expect(script).not.toContain('window.setTimeout(() => window.location.replace("/"), 570)');
+    expect(script).toContain("returnToExperienceSelection = false");
+    expect(script).toContain('window.dispatchEvent(new Event("askmoina:user-disconnected"))');
+    expect(experienceSelectionScript).toContain('window.addEventListener("askmoina:user-disconnected", showExperienceSelection)');
+    expect(experienceSelectionScript).toContain("overlay.hidden = false;");
+    expect(script).not.toContain('window.setTimeout(() => stage.classList.remove("is-returning"), 570)');
   });
 
   it("keeps the existing Live Co-Pilot browser assets synchronized", () => {
