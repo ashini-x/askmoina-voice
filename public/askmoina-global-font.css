@@ -1,0 +1,31 @@
+/*
+ * AskMoina Global Typography
+ * Canonical font name/token: askmoina-global-font
+ *
+ * Uses the approved native SF Pro look where available, with accessible
+ * platform sans-serif fallbacks elsewhere. No font binary is bundled yet.
+ */
+@font-face {
+  font-family: "askmoina-global-font";
+  src: local("SF Pro Text"), local("SF Pro Display");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --askmoina-global-font: "askmoina-global-font", -apple-system, BlinkMacSystemFont,
+    "SF Pro Display", "SF Pro Text", "Helvetica Neue", Roboto, "Segoe UI", system-ui, sans-serif;
+  font-synthesis: none;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Universal default: current UI and dynamically rendered future content. */
+*, *::before, *::after {
+  font-family: var(--askmoina-global-font) !important;
+}
