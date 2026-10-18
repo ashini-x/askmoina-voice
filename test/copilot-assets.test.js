@@ -69,10 +69,10 @@ describe("Live Co-Pilot browser assets", () => {
     expect(workerSource).toContain('"/askmoina-logo.svg"');
     expect(workerSource).toContain('"/askmoina-social-avatar.svg"');
     expect(workerSource).toContain('"/askmoina-visual-guide.svg"');
-    expect(workerSource).toContain('"/askmoina-liquid-intelligence-orb-v1-smoky-core.webp"');
-    expect(workerSource).toContain('"/askmoina-liquid-intelligence-orb-v1-smoky-core.webp": "image/webp"');
-    expect(serviceWorkerScript).toContain('/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.122');
-    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v9"');
+    expect(workerSource).toContain('"/askmoina-install-reference.webp"');
+    expect(workerSource).toContain('"/askmoina-install-reference.webp": "image/webp"');
+    expect(serviceWorkerScript).toContain('/askmoina-install-reference.webp?v=0.4.125');
+    expect(serviceWorkerScript).toContain('const CACHE_NAME = "askmoina-pwa-shell-v10"');
     for (const filename of ["askmoina-mark.svg", "askmoina-mark-dark.svg", "askmoina-app-icon.svg", "askmoina-logo.svg", "askmoina-social-avatar.svg", "pwa-icon-192.svg", "pwa-icon-512.svg", "pwa-icon-512.png"]) {
       expect(serviceWorkerScript).toContain("/" + filename + "?v=0.4.83");
     }
