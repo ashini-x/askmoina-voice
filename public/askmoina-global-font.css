@@ -1,22 +1,18 @@
 /*
- * AskMoina Global Typography
- * Canonical font name/token: askmoina-global-font
- *
- * Uses the approved native SF Pro look where available, with accessible
- * platform sans-serif fallbacks elsewhere. No font binary is bundled yet.
+ * Canonical AskMoina typography: askmoina-global-font
+ * Self-hosted Comfortaa Light subset: thin geometry and single-storey "a".
  */
 @font-face {
   font-family: "askmoina-global-font";
-  src: local("SF Pro Text"), local("SF Pro Display");
+  src: url("/askmoina-global-font.woff2?v=0.4.132") format("woff2");
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 300;
   font-display: swap;
 }
-
 :root {
-  --askmoina-global-font: "askmoina-global-font", -apple-system, BlinkMacSystemFont,
-    "SF Pro Display", "SF Pro Text", "Helvetica Neue", Roboto, "Segoe UI", system-ui, sans-serif;
-  font-synthesis: none;
+  --askmoina-global-font: "askmoina-global-font", "Comfortaa", "Avenir Next",
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, "Segoe UI", system-ui, sans-serif;
+  font-synthesis: weight;
   font-kerning: normal;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,8 +20,28 @@
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
-
-/* Universal default: current UI and dynamically rendered future content. */
 *, *::before, *::after {
   font-family: var(--askmoina-global-font) !important;
 }
+.askmoina-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  font-family: var(--askmoina-global-font) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.028em !important;
+  line-height: 1;
+  font-synthesis: weight;
+}
+.askmoina-wordmark > span {
+  display: inline;
+  font-family: inherit !important;
+  font-weight: 300 !important;
+}
+.askmoina-wordmark > span:nth-child(5) { -webkit-text-stroke: .012em currentColor; }
+.askmoina-wordmark > span:nth-child(6) { -webkit-text-stroke: .022em currentColor; }
+.askmoina-wordmark > span:nth-child(7) { -webkit-text-stroke: .032em currentColor; }
+.askmoina-wordmark > span:nth-child(8) { -webkit-text-stroke: .042em currentColor; }
+.entry-brand-wordmark { font-size: clamp(2.35rem, 9vw, 2.75rem) !important; }
+.entry-brand-tagline { font-weight: 300; letter-spacing: -.012em; }
+.brand-wordmark, .site-info-wordmark { font-weight: 300 !important; letter-spacing: -.028em !important; }
