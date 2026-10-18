@@ -54,6 +54,7 @@ import {
   let pendingRecognitionConfirmation = null;
   let lastSuggestedFen = null;
   let queuedRecommendationFen = null;
+  let analysisInProgress = false;
   const CONFIRM_SCAN_INTERVAL_MS = 1050;
 
   function loadAutoSetting() {
@@ -208,7 +209,7 @@ import {
         queuedRecommendationFen = null;
         return;
       }
-      if (scanning) {
+      if (scanning || analysisInProgress) {
         window.setTimeout(startWhenReady, 250);
         return;
       }
@@ -672,6 +673,7 @@ import {
     popupTitle.textContent = "Next strong move";
     popupMessage.textContent = "Checking the confirmed position with Stockfish…";
     const sequence = ++analysisSequence;
+    analysisInProgress = true;
     try {
       const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 1200 });
       if (sequence !== analysisSequence) return;
@@ -710,6 +712,7 @@ import {
       if (statusMessageTimer) clearTimeout(statusMessageTimer);
       statusMessageTimer = null;
     } finally {
+      analysisInProgress = false;
       suggestButton.disabled = false;
       trackButton.disabled = false;
     }
