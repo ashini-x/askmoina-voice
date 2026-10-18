@@ -45,8 +45,11 @@ export async function recognizeChessboardFrame(imageBlob, options = {}) {
       }),
       signal: options.signal || AbortSignal.timeout(18_000)
     });
-  } catch {
-    return { ok: false, reason: "recognition_unavailable", message: "Chessboard recognition could not reach the service. Try again when the connection is stable." };
+  } catch (error) {
+    const timedOut = Boolean(error && (error.name === "TimeoutError" || error.name === "AbortError"));
+    return timedOut
+      ? { ok: false, reason: "recognition_timeout", message: "Chessboard recognition timed out before finishing. Keep the full 8×8 grid centred and try again; digital boards on a screen, including Chess.com, are supported." }
+      : { ok: false, reason: "recognition_unavailable", message: "Chessboard recognition could not reach the service. Try again when the connection is stable." };
   }
 
   let payload;
