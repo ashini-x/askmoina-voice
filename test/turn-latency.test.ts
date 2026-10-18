@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   beginTurnLatencyMeasurement,
   measureFirstAudioAfterBoundary,
+  measureTurnInterruptedBeforeFirstAudio,
 } from "../src/sessions/turn-latency";
 
 describe("turn boundary to first-audio measurement", () => {
@@ -35,5 +36,32 @@ describe("turn boundary to first-audio measurement", () => {
     expect(measureFirstAudioAfterBoundary(pending, 10_123.6, true)).toEqual({
       latencyMs: 123,
     });
+  });
+});
+
+
+describe("interruption-aware turn measurement", () => {
+  it("classifies user speech before assistant audio separately from response latency", () => {
+    const pending = beginTurnLatencyMeasurement(10_000);
+    expect(measureTurnInterruptedBeforeFirstAudio(pending, 10_450)).toEqual({
+      outcome: "interrupted_before_first_audio",
+      elapsedMs: 450,
+    });
+    expect(measureFirstAudioAfterBoundary(pending, 10_450, true)).toEqual({ latencyMs: 450 });
+  });
+
+  it("does not count absent, invalid, or out-of-order samples as interruptions", () => {
+    const pending = beginTurnLatencyMeasurement(10_000);
+    expect(measureTurnInterruptedBeforeFirstAudio(null, 10_450)).toBeNull();
+    expect(measureTurnInterruptedBeforeFirstAudio(pending, Number.NaN)).toBeNull();
+    expect(measureTurnInterruptedBeforeFirstAudio(pending, 9_999)).toBeNull();
+    expect(measureTurnInterruptedBeforeFirstAudio(beginTurnLatencyMeasurement(-1), 10_450)).toBeNull();
+  });
+
+  it("does not mutate the pending boundary while classifying an interruption", () => {
+    const pending = beginTurnLatencyMeasurement(10_000);
+    measureTurnInterruptedBeforeFirstAudio(pending, 10_450);
+    expect(pending).toEqual({ boundaryAtMs: 10_000 });
+    expect(measureFirstAudioAfterBoundary(pending, 10_600, true)).toEqual({ latencyMs: 600 });
   });
 });
