@@ -37,6 +37,11 @@
   }
 
   function showExperienceSelection() {
+    const motion = engine();
+    if (motion) {
+      motion.stop(overlay, false);
+      if (cameraApp) motion.stop(cameraApp, true);
+    }
     overlay.hidden = false;
     overlay.classList.remove("is-leaving");
     overlay.style.opacity = "";
@@ -51,7 +56,6 @@
       cameraApp.inert = true;
       cameraApp.style.zIndex = "";
     }
-    const motion = engine();
     if (motion) {
       motion.animate(overlay, { opacity: 1 }, motion.profiles.sheet, { from: { opacity: 0.01 }, persistTarget: true });
       animateSelectionArrival(false);
@@ -80,6 +84,8 @@
     if (leaving) return;
     leaving = true;
     const finishSelection = () => {
+      const currentMotion = engine();
+      if (currentMotion) currentMotion.stop(overlay, false);
       overlay.hidden = true;
       overlay.classList.remove("is-leaving");
       overlay.style.opacity = "";
