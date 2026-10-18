@@ -833,7 +833,7 @@
   function showConnectionNotice(title, message, kind) {
     if (!connectionNotice) return;
     const safeTitle = String(title || "Connection notice");
-    const safeMessage = String(message || "Please try again.");
+    const safeMessage = kind === "onboarding" && !message ? "" : String(message || "Please try again.");
     const isError = kind === "error";
     if (isError) persistentConnectionIssue = { title: safeTitle, message: safeMessage };
     const stillRecovering = !isError && Boolean(persistentConnectionIssue);
