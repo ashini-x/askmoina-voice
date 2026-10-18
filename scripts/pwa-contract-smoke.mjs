@@ -82,15 +82,15 @@ const nativeAppScript = read("public/native-app.js");
 const experienceCss = read("public/experience-selection.css");
 const experienceJs = read("public/experience-selection.js");
 assert.ok(
-  authScript.includes("window.location.replace(destination);") &&
+  authScript.includes('destination === "/" ? "/?startup=1" : destination') &&
     authScript.includes("showVerificationTransition") &&
     !authScript.includes("/?onboarding=1"),
-  "successful authentication must show a verification overlay and open the existing home directly",
+  "successful authentication must show a verification overlay and open the existing home with the startup overlay enabled",
 );
 assert.ok(
   worker.includes('url.searchParams.get("startup") === "1"') &&
     worker.includes("moinaOSStartupOverlay") &&
-    worker.includes("Starting moinaOS"),
+    worker.includes("Starting MoinaOS"),
   "startup confirmation must be rendered inside the authenticated experience-selection page",
 );
 assert.ok(
@@ -107,7 +107,7 @@ assert.ok(
   "startup overlay must use the premium glass treatment and honor reduced-motion preferences",
 );
 assert.ok(
-  authScript.includes("window.location.replace(destination);") &&
+  authScript.includes("window.location.replace(next);") &&
     !authScript.includes("authLaunchScreen") &&
     !authScript.includes("requestAnimationFrame(() => requestAnimationFrame(resolve))") &&
     !worker.includes('class="auth-launch-screen"'),
