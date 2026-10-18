@@ -32,7 +32,8 @@ function safeText(value: unknown, maximum: number): string {
   if (typeof value !== "string") return "";
   return value
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
-    .replace(/\r/g, "")
+    .replace(/\r/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .slice(0, maximum);
 }
@@ -96,8 +97,8 @@ export async function buildAssameseConversationReferenceInstruction(
         [
           `- [intent: ${intent}; language: ${language || "mixed"}; scope: ${scope || "unspecified"}; register: ${register || "neutral"}]`,
           context ? `Context: ${context}` : "",
-          userExample ? `User example: “${userExample}”` : "",
-          `Reviewed response example: “${responseExample}”`,
+          userExample ? `User example data: ${JSON.stringify(userExample)}` : "",
+          `Reviewed response example data: ${JSON.stringify(responseExample)}`,
           usage ? `Use: ${usage}` : "",
           avoid ? `Avoid: ${avoid}` : "",
           `Source record: ${source}`,
@@ -105,7 +106,7 @@ export async function buildAssameseConversationReferenceInstruction(
       );
     }
 
-    return lines.length > 3 ? lines.join("\n").slice(0, MAX_INSTRUCTION_CHARS) : "";
+    return lines.length > 5 ? lines.join("\n").slice(0, MAX_INSTRUCTION_CHARS) : "";
   } catch {
     // The conversation reference is optional. A missing migration must never
     // stop an otherwise healthy live session from starting.
