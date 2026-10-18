@@ -12,11 +12,11 @@ describe("Milestone 34 zero-learning camera-first UX", () => {
     expect(html).not.toContain("Point. Ask. Follow.");
     expect(html).not.toContain("Tap Start, then tell Moina what you want to do.");
     expect(html).not.toContain("presence-orb");
-    expect(html).toContain("id=\\"toggleCopilot\\"");
+    expect(html).toContain('id="toggleCopilot"');
     expect(html).not.toContain("showProblemButton");
     expect(html).not.toContain("Slide to start");
     expect(html).not.toContain("vision-slide");
-    expect(html).toContain("id=\\"backButton\\"");
+    expect(html).toContain('id="backButton"');
     expect(html).not.toContain("Tap to open camera");
     expect(css).toContain(".camera-stage.pre-start .camera-controls");
     expect(css).toContain("display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;");
