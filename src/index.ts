@@ -3159,7 +3159,7 @@ export default {
       const responseCss = url.searchParams.get("experience-selection") === "1" ? EXPERIENCE_SELECTION_CSS : COPILOT_CSS;
       // Long-lived caching is safe only for explicit release-versioned assets.
       // Unversioned callers retain the short revalidation window.
-      const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/.test(url.searchParams.get("v") || "");
+      const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
       const assetCacheControl = isImmutableVersionedAsset
         ? "public, max-age=31536000, immutable"
         : "public, max-age=300, stale-while-revalidate=3600";
@@ -3181,7 +3181,7 @@ export default {
       if (url.pathname === "/copilot.js" && url.searchParams.get("experience-selection") === "1") {
         // The page includes the release version in this URL, so clients can
         // reuse this small controller without a round trip until it changes.
-        const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/.test(url.searchParams.get("v") || "");
+        const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
         const assetCacheControl = isImmutableVersionedAsset
           ? "public, max-age=31536000, immutable"
           : "public, max-age=300, stale-while-revalidate=3600";
