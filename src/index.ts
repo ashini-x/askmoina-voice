@@ -120,7 +120,7 @@ const POST_AUTH_ONBOARDING = `
         <button type='button' class='experience-card experience-card--available' id='experienceMoinaOS1' aria-label='Open moinaOS 1, available now'>
           <span class='experience-card-header'>
             <span class='experience-card-title'>moinaOS 1</span>
-            <span class='experience-status-pill'>Available now</span>
+            <span class='experience-status-pill'>Online</span>
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 1 features'>
@@ -133,7 +133,7 @@ const POST_AUTH_ONBOARDING = `
         <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, coming later' aria-describedby='experiencePreviewNotice'>
           <span class='experience-card-header'>
             <span class='experience-card-title'>moinaOS 2</span>
-            <span class='experience-status-pill'>Coming later</span>
+            <span class='experience-status-pill'>Next Release</span>
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 2 preview features'>
@@ -3137,8 +3137,8 @@ export default {
       html = withNativeAppShell(html, appVersion, authenticated);
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261018"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261018" defer></script></body>');
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=20261019"></head>');
+        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=20261019" defer></script></body>');
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
