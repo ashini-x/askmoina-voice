@@ -6249,7 +6249,11 @@
 
   setCameraState("Camera paused", "idle");
   setControls("Checking voice…", true);
-  void prepareCameraPreview();
+  window.addEventListener("askmoina:experience-selected", () => {
+    if (!document.querySelector("#postAuthOnboarding:not([hidden])")) void prepareCameraPreview();
+  });
+  const experienceSelectionPending = Boolean(document.querySelector("#postAuthOnboarding:not([hidden])"));
+  if (!experienceSelectionPending) void prepareCameraPreview();
   void checkSpatialArSupport();
   void checkBackend();
 
