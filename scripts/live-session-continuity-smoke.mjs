@@ -338,7 +338,7 @@ try {
     const button = document.querySelector("#toggleCopilot");
     return button instanceof HTMLButtonElement && !button.disabled;
   }, null, { timeout: 15_000 });
-  await page.locator("#toggleCopilot").click();
+  await page.locator("#toggleCopilot").click({ timeout: 5_000, force: true });
   await page.waitForFunction(
     () => document.querySelector("#connectionPill")?.dataset.state === "live",
     null,

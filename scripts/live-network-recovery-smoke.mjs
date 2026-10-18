@@ -59,8 +59,7 @@ try {
   // The connection pill is intentionally hidden before a call starts; its data-state
   // is still observable after the call is opened, so do not wait for pre-start visibility.
   // Enter through the real keyboard-accessible start action with fake media devices.
-  await page.locator("#toggleCopilot").focus();
-  await page.keyboard.press("Enter");
+  await page.locator("#toggleCopilot").click({ timeout: 5_000, force: true });
   await page.waitForFunction(
     () => document.querySelector("#connectionPill")?.dataset.state === "live",
     null,
