@@ -56,11 +56,12 @@ self.addEventListener("fetch", (event) => {
 
   if (!isAppCodeOrDocument) return;
 
-  // The installed app always revalidates HTML, JavaScript, CSS and its
-  // manifest against the deployed Worker. Only the install/offline shell is
-  // precached; live app code is never served from a stale service-worker cache.
+  // Unversioned HTML and app code always revalidate against the deployed Worker.
+  // Release-versioned resources can use the browser HTTP cache: APP_VERSION is
+  // part of the URL, so a deployment creates a fresh cache key automatically.
+  const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/.test(url.searchParams.get("v") || "");
   event.respondWith(
-    fetch(request, { cache: "no-store" }).catch(async () => {
+    (isImmutableVersionedAsset ? fetch(request) : fetch(request, { cache: "no-store" })).catch(async () => {
       if (request.mode !== "navigate") return Response.error();
       const offline = await caches.match("/offline");
       return offline || new Response(
