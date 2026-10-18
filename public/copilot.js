@@ -2647,7 +2647,7 @@
     setCameraState(livePreviewTrack ? "Camera preview" : "Camera paused", livePreviewTrack ? "live" : "idle");
   }
 
-  function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false) {
+  function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false, returnToExperienceSelection = false) {
     copilotStartGeneration += 1;
     setProcessingState(false);
     if (userInitiated) forceFreshSessionOnReconnect = false;
@@ -2681,7 +2681,7 @@
     active = false;
     stopping = false;
     stage.classList.add("pre-start");
-    stage.classList.remove("is-listening", "is-speaking", "is-connecting");
+    stage.classList.remove("is-listening", "is-speaking", "is-connecting", "is-onboarding", "is-returning");
     lastMicVoiceAt = 0;
     setControls(statusMessage && (statusKind === "error" || statusKind === "warning") ? "Try again" : "Start Co-Pilot", false);
     setConnectionState("READY", "ready");
@@ -2690,6 +2690,12 @@
     if (statusMessage) setStatus(statusMessage, statusKind);
     else if (userInitiated) setStatus("Co-Pilot paused. Start again whenever you're ready.");
     void refreshAvailabilityAfterRelease();
+    if (returnToExperienceSelection) {
+      // Ending the call returns to moinaOS selection; do not restart the camera
+      // just to expose the obsolete “Slide to start” screen behind the overlay.
+      window.dispatchEvent(new Event("askmoina:user-disconnected"));
+      return;
+    }
     const previewRestart = prepareCameraPreview();
     if (userInitiated) {
       const showProblemAgain = () => window.dispatchEvent(new Event("askmoina:user-disconnected"));
@@ -4413,10 +4419,7 @@
   });
   toggleButton.addEventListener("click", () => {
     if (active || starting) {
-      stopCopilot(true);
-      stage.classList.add("is-returning");
-      // Let the distinct end tone finish, then reveal the camera slider again.
-      window.setTimeout(() => stage.classList.remove("is-returning"), 570);
+      stopCopilot(true, "", "normal", false, false, true);
     } else {
       void startCopilot();
     }
