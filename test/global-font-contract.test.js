@@ -22,6 +22,9 @@ function collectHtmlPages(directory) {
 describe("AskMoina global typography contract", () => {
   it("defines askmoina-global-font as the single universal UI font", () => {
     expect(globalFontCss).toContain('font-family: "askmoina-global-font"');
+    expect(globalFontCss).toContain("/askmoina-global-font.woff2?v=0.4.132");
+    expect(globalFontCss).toContain("font-weight: 300;");
+    expect(globalFontCss).toContain(".askmoina-wordmark > span:nth-child(8)");
     expect(globalFontCss).toContain('--askmoina-global-font: "askmoina-global-font"');
     expect(globalFontCss).toMatch(
       /\*,\s*\*::before,\s*\*::after\s*\{[\s\S]*?font-family:\s*var\(--askmoina-global-font\)\s*!important;/
@@ -44,6 +47,11 @@ describe("AskMoina global typography contract", () => {
         expect(match.index, label + " must load component styles before the global font").toBeLessThan(globalFontIndex);
       }
     }
+  });
+
+  it("uses the reference wordmark treatment in generated app shells", () => {
+    expect(workerSource).toContain("askmoina-wordmark");
+    expect(workerSource).toContain("<span>a</span><span>s</span><span>k</span><span>m</span><span>o</span><span>i</span><span>n</span><span>a</span>");
   });
 
   it("injects the canonical font into Worker-generated application and information shells", () => {
