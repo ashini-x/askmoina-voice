@@ -237,7 +237,7 @@
       if (!credential) throw new Error("The device cancelled passkey creation.");
       const destination = document.body.dataset.page === "account" ? "/account" : "/";
       showVerificationTransition(
-        destination === "/" ? "Starting MoinaOS" : "Saving your secure account…",
+        destination === "/" ? "Starting moinaOS" : "Saving your secure account…",
         destination === "/" ? "Just a moment..." : "Your device is verified. Updating your account."
       );
       await post("passkey/register/verify", {
@@ -277,12 +277,12 @@
       // Let the browser show its native passkey prompt directly; no app modal/flash.
       const credential = await navigator.credentials.get({ publicKey, signal: controller.signal });
       if (!credential) throw new Error("The device cancelled sign-in.");
-      showVerificationTransition("Starting MoinaOS", "Just a moment...");
+      showVerificationTransition("Starting moinaOS", "Just a moment...");
       await post("passkey/login/verify", {
         challengeId: options.challengeId,
         credential: authentication(credential)
       });
-      // The Worker renders MoinaOS immediately beneath the same startup overlay.
+      // Keep the verification overlay on this auth screen only; load the destination cleanly.
       await navigateAfterAuth("/");
     } catch (error) {
       hideSheet();
@@ -304,9 +304,8 @@
   }
 
   async function navigateAfterAuth(destination) {
-    // Keep the experience visible beneath its loading overlay while the page finishes loading.
-    const next = destination === "/" ? "/?startup=1" : destination;
-    window.location.replace(next);
+    // The verification glass belongs only to this auth screen, never to the destination page.
+    window.location.replace(destination);
   }
 
   function setMode(mode) {
@@ -391,7 +390,7 @@
     setBusy(true);
     const accountPage = document.body.dataset.page === "account";
     showVerificationTransition(
-      accountPage ? "Saving verified number…" : "Starting MoinaOS",
+      accountPage ? "Saving verified number…" : "Starting moinaOS",
       accountPage ? "Finishing the security update." : "Just a moment..."
     );
     try {

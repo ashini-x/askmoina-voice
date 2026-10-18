@@ -9,10 +9,26 @@ const copilot = readFileSync(new URL("../public/copilot.js", import.meta.url), "
 const copilotHtml = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const protocol = readFileSync(new URL("../src/sessions/copilot-protocol.ts", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const authClient = readFileSync(new URL("../public/auth.js", import.meta.url), "utf8");
+const authStyles = readFileSync(new URL("../public/entry-auth.css", import.meta.url), "utf8");
+const experienceAssets = readFileSync(new URL("../src/copilot-assets.ts", import.meta.url), "utf8");
 const session = readFileSync(new URL("../scripts/synthetic-passkey-session.mjs", import.meta.url), "utf8");
 const deploy = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
 
 describe("authenticated live synthetic verification", () => {
+  it("shows one glass loader only during auth and never on the moinaOS destination", () => {
+    expect(authClient).toContain('window.location.replace(destination);');
+    expect(authClient).not.toContain('/?startup=1');
+    expect(authClient).toContain('Starting moinaOS');
+    expect(authClient).not.toContain('Starting MoinaOS');
+    expect(authStyles).toContain('blur(36px) saturate(170%)');
+    expect(authStyles).toContain('rgba(245, 248, 255, .20)');
+    expect(workerSource).not.toContain('moinaOSStartupOverlay');
+    expect(workerSource).not.toContain('url.searchParams.get("startup")');
+    expect(experienceAssets).not.toContain('startupRequested');
+    expect(experienceAssets).not.toContain('moinaOSStartupOverlay');
+  });
+
   it("requires a signed-in synthetic session for live voice checks", () => {
     for (const source of [grounding, memory, spokenTurnSmoke, rankedList]) {
       expect(source).toContain("ASKMOINA_SYNTHETIC_COOKIE");

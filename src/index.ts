@@ -146,14 +146,6 @@ const POST_AUTH_ONBOARDING = `
     </div>
   </div>
   <div class='experience-preview-notice' id='experiencePreviewNotice' hidden role='status' aria-live='polite'>moinaOS 2 is planned for the next release.</div>
-  <div class='moinaos-startup-overlay' id='moinaOSStartupOverlay' hidden role='status' aria-live='polite' aria-atomic='true'>
-    <div class='moinaos-startup-card'>
-      <span class='moinaos-startup-ring' aria-hidden='true'></span>
-      <p class='moinaos-startup-title' id='moinaOSStartupTitle'>Starting MoinaOS</p>
-      <p class='moinaos-startup-message' id='moinaOSStartupMessage'>Just a moment...</p>
-      <a class='moinaos-startup-continue' id='moinaOSStartupContinue' href='/'>Continue</a>
-    </div>
-  </div>
 </section>
 `;
 const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
@@ -181,88 +173,6 @@ const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
   }
 }
 
-/* Match the approved frosted startup card while keeping the MoinaOS cards softly blurred behind it. */
-.moinaos-startup-overlay {
-  padding: 22px !important;
-  background: rgba(8, 11, 18, .24) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(118%) !important;
-  backdrop-filter: blur(16px) saturate(118%) !important;
-}
-.moinaos-startup-card {
-  box-sizing: border-box !important;
-  width: min(100%, 486px) !important;
-  max-width: 486px !important;
-  min-height: clamp(300px, 43vw, 438px) !important;
-  padding: 44px 28px 40px !important;
-  border: 1px solid rgba(238, 242, 255, .34) !important;
-  border-radius: 40px !important;
-  background: linear-gradient(145deg, rgba(52, 58, 70, .76), rgba(43, 45, 52, .68)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 30px 80px rgba(0, 0, 0, .4) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(125%) !important;
-  backdrop-filter: blur(30px) saturate(125%) !important;
-}
-.moinaos-startup-ring {
-  width: clamp(86px, 26vw, 132px) !important;
-  height: clamp(86px, 26vw, 132px) !important;
-  margin: 0 0 36px !important;
-  border: 6px solid rgba(236, 240, 250, .20) !important;
-  border-top-color: rgba(255, 255, 255, .98) !important;
-  border-right-color: rgba(255, 255, 255, .80) !important;
-  border-bottom-color: rgba(236, 240, 250, .25) !important;
-  border-left-color: rgba(236, 240, 250, .22) !important;
-  border-radius: 50% !important;
-  box-shadow: none !important;
-  animation: moinaos-startup-spin 900ms linear infinite !important;
-}
-.moinaos-startup-title {
-  margin: 0 !important;
-  color: rgba(248, 249, 255, .98) !important;
-  font-size: clamp(22px, 4vw, 35px) !important;
-  font-weight: 560 !important;
-  line-height: 1.2 !important;
-  letter-spacing: -.035em !important;
-  text-align: center !important;
-}
-.moinaos-startup-message {
-  margin: 14px 0 0 !important;
-  color: rgba(234, 237, 247, .67) !important;
-  font-size: clamp(15px, 2.25vw, 25px) !important;
-  font-weight: 400 !important;
-  line-height: 1.4 !important;
-  letter-spacing: -.012em !important;
-  text-align: center !important;
-}
-@media (max-width: 520px) {
-  .moinaos-startup-overlay { padding: 22px !important; }
-  .moinaos-startup-card {
-    min-height: clamp(290px, 82vw, 340px) !important;
-    padding: 36px 24px !important;
-    border-radius: 32px !important;
-  }
-  .moinaos-startup-ring {
-    width: clamp(82px, 26vw, 102px) !important;
-    height: clamp(82px, 26vw, 102px) !important;
-    margin-bottom: 30px !important;
-  }
-  .moinaos-startup-title { font-size: clamp(22px, 5.6vw, 26px) !important; }
-  .moinaos-startup-message { margin-top: 10px !important; font-size: 15px !important; }
-}
-@media (max-height: 620px) {
-  .moinaos-startup-card {
-    min-height: 270px !important;
-    padding-top: 28px !important;
-    padding-bottom: 26px !important;
-  }
-  .moinaos-startup-ring {
-    width: 76px !important;
-    height: 76px !important;
-    margin-bottom: 22px !important;
-  }
-  .moinaos-startup-title { font-size: 22px !important; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .moinaos-startup-ring { animation: none !important; }
-}
 `;
 
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
@@ -3261,17 +3171,7 @@ export default {
         const experienceAssetVersion = encodeURIComponent(appVersion);
         html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '"></head>');
         html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '" defer></script></body>');
-        if (url.searchParams.get("startup") === "1") {
-          html = html.replace(
-            "<section class='post-auth-onboarding experience-selection-overlay' id='postAuthOnboarding' aria-label='Choose your experience'>",
-            "<section class='post-auth-onboarding experience-selection-overlay is-startup-pending' id='postAuthOnboarding' aria-label='Choose your experience'>",
-          );
-          html = html.replace(
-            "<div class='experience-selection-scroll'>",
-            "<div class='experience-selection-scroll' aria-hidden='true' inert>",
-          );
-          html = html.replace("id='moinaOSStartupOverlay' hidden", "id='moinaOSStartupOverlay'");
-        }
+
       }
       if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
       const headers = new Headers({
