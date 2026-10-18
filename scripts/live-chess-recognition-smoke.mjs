@@ -147,6 +147,7 @@ async function main() {
           attempt,
           elapsedMs: Date.now() - started,
           httpStatus: response.status,
+          providerStatus: payload && payload.providerStatus || null,
           reason: payload && payload.reason || "recognition_failed",
           message: payload && payload.message || "No structured chessboard result was returned."
         };
