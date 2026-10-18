@@ -2960,7 +2960,27 @@
 
   function setResponseCardExpanded(expanded) {
     responseCardExpanded = Boolean(expanded);
-    if (responseCardDetails) responseCardDetails.hidden = !responseCardExpanded;
+    if (responseCardDetails) {
+      const engine = window.__askmoinaFluidMotion;
+      const wasHidden = responseCardDetails.hidden;
+      if (responseCardExpanded) {
+        responseCardDetails.hidden = false;
+        if (engine) engine.animate(
+          responseCardDetails,
+          { y: 0, opacity: 1 },
+          engine.profiles.expand,
+          { ...(wasHidden ? { from: { y: 8, opacity: 0 } } : {}), persistTarget: true }
+        );
+      } else if (engine && !wasHidden) {
+        engine.animate(responseCardDetails, { y: 8, opacity: 0 }, engine.profiles.exit, {
+          onComplete: () => {
+            if (!responseCardExpanded) responseCardDetails.hidden = true;
+          }
+        });
+      } else {
+        responseCardDetails.hidden = true;
+      }
+    }
     if (responseCardCollapseButton) {
       responseCardCollapseButton.setAttribute("aria-expanded", String(responseCardExpanded));
       responseCardCollapseButton.setAttribute("aria-label", responseCardExpanded ? "Collapse card details" : "Expand card details");
@@ -5950,12 +5970,25 @@
     }
   }
 
+  let libraryMotionEpoch = 0;
   async function openLibrary(tab = "history") {
     if (!librarySheet) return;
+    const wasHidden = librarySheet.hidden;
+    libraryMotionEpoch++;
     librarySheet.hidden = false;
     librarySheet.setAttribute("aria-hidden", "false");
     document.body.classList.add("library-is-open");
     stage.classList.add("library-open-active");
+    const engine = window.__askmoinaFluidMotion;
+    const panel = librarySheet.querySelector(".library-panel");
+    const scrim = librarySheet.querySelector(".library-scrim");
+    if (engine && wasHidden) {
+      if (panel) engine.animate(panel, { y: 0, opacity: 1 }, engine.profiles.sheet, { from: { y: 30, opacity: 0.72 }, persistTarget: true });
+      if (scrim) engine.animate(scrim, { opacity: 1 }, engine.profiles.sheet, { from: { opacity: 0.01 }, persistTarget: true });
+    } else if (engine) {
+      if (panel) engine.animate(panel, { y: 0, opacity: 1 }, engine.profiles.sheet, { persistTarget: true });
+      if (scrim) engine.animate(scrim, { opacity: 1 }, engine.profiles.sheet, { persistTarget: true });
+    }
     setLibraryTab(tab);
     if (tab === "history") await refreshConversationList();
     else await refreshAccountMemories();
@@ -5965,11 +5998,25 @@
 
   function closeLibrary() {
     if (!librarySheet || librarySheet.hidden) return;
-    librarySheet.hidden = true;
     librarySheet.setAttribute("aria-hidden", "true");
     document.body.classList.remove("library-is-open");
     stage.classList.remove("library-open-active");
-    if (libraryOpenButton) libraryOpenButton.focus({ preventScroll: true });
+    const epoch = ++libraryMotionEpoch;
+    const engine = window.__askmoinaFluidMotion;
+    const panel = librarySheet.querySelector(".library-panel");
+    const scrim = librarySheet.querySelector(".library-scrim");
+    const finish = () => {
+      if (epoch !== libraryMotionEpoch) return;
+      librarySheet.hidden = true;
+      if (libraryOpenButton) libraryOpenButton.focus({ preventScroll: true });
+    };
+    if (!engine || !panel) { finish(); return; }
+    let remaining = scrim ? 2 : 1;
+    const oneFinished = () => {
+      if (epoch === libraryMotionEpoch && --remaining === 0) finish();
+    };
+    engine.animate(panel, { y: 30, opacity: 0.72 }, engine.profiles.exit, { onComplete: oneFinished });
+    if (scrim) engine.animate(scrim, { opacity: 0 }, engine.profiles.exit, { onComplete: oneFinished });
   }
 
   function setLibraryTab(tab) {

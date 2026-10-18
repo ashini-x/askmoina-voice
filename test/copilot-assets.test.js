@@ -979,8 +979,8 @@ describe("Dark-first app shell and brand assets", () => {
     expect(authScript).toContain("verificationInProgress");
     expect(authScript).toContain('Starting moinaOS');
     expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
-    expect(workerSource).toContain("askmoina-selection-arrive");
-    expect(workerSource).toContain("translate3d(0,16px,0) scale(.992)");
+    expect(workerSource).toContain("Initial values are revealed by the interruptible spring runtime.");
+    expect(workerSource).toContain("animation: none !important");
     expect(workerSource).not.toContain("Starting MoinaOS");
     expect(workerSource).not.toContain("moinaOSStartupOverlay");
     expect(workerSource).not.toContain('url.searchParams.get("startup") === "1"');
@@ -1027,7 +1027,10 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).toContain("id='experienceMoinaOS2'");
     expect(experienceSelectionCss).toContain(".experience-card--preview");
     expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
-    expect(experienceSelectionScript).toContain('window.matchMedia("(prefers-reduced-motion: reduce)")');
+    expect(experienceSelectionScript).toContain("window.__askmoinaFluidMotion");
+    expect(experienceSelectionScript).toContain("motion.profiles.expand");
+    expect(experienceSelectionScript).toContain("motion.profiles.exit");
+    expect(experienceSelectionScript).toContain("motion.flip(cameraApp, sourceRect, motion.profiles.expand");
     expect(nativeAppScript).toContain("nativeMenuSheet");
     expect(nativeAppScript).not.toContain("assistantSelectionStage");
     expect(nativeAppCss).not.toContain(".app-launch-transition");

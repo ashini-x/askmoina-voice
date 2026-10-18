@@ -31,6 +31,20 @@ import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 export { UserState } from "./sessions/user-state";
 
 
+function withFluidInteractivity(html: string, version: string): string {
+  if (html.includes("/fluid-interactivity.js")) return html;
+  const headStart = html.toLowerCase().indexOf("<head");
+  const headEnd = headStart >= 0 ? html.indexOf(">", headStart) : -1;
+  const next = headStart >= 0 ? html.charAt(headStart + 5) : "";
+  if (headStart < 0 || headEnd < 0 ||
+      !(next === ">" || next === " " || next === "\n" || next === "\r" || next === "\t")) return html;
+  const v = encodeURIComponent(version || "dev");
+  const styles = '<link rel="stylesheet" href="/fluid-interactivity.css?v=' + v + '">';
+  const script = '<script defer src="/fluid-interactivity.js?v=' + v + '"></script>';
+  // Deferred shared motion code is inserted first so the existing controllers can bind to it.
+  return html.slice(0, headEnd + 1) + styles + script + html.slice(headEnd + 1);
+}
+
 const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"askmoina navigation\">\n  <a class=\"entry-logo-slot\" href=\"/\" aria-label=\"askmoina home\"><img src=\"/favicon.svg?v=0.4.80\" alt=\"\" width=\"22\" height=\"22\"></a>\n  <details class=\"entry-site-menu\">\n    <summary aria-label=\"Open navigation menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></summary>\n    <nav class=\"entry-site-menu-panel\" aria-label=\"askmoina navigation\"><!-- ASKMOINA_MENU_CONTENT --></nav>\n  </details>\n</header>";
 
 function renderSiteMenu(authenticated: boolean): string {
@@ -149,30 +163,13 @@ const POST_AUTH_ONBOARDING = `
 </section>
 `;
 const EXPERIENCE_SELECTION_ARRIVAL_CSS = `
-/* First authenticated frame: subtle, compositor-friendly entrance. */
+/* Initial values are revealed by the interruptible spring runtime. */
 .experience-selection-eyebrow,
 .experience-card--available,
 .experience-card--preview {
   opacity: 0;
-  animation: askmoina-selection-arrive 420ms cubic-bezier(.2,.78,.2,1) both;
+  animation: none !important;
 }
-.experience-selection-eyebrow { animation-delay: 20ms; }
-.experience-card--available { animation-delay: 70ms; }
-.experience-card--preview { animation-delay: 130ms; }
-@keyframes askmoina-selection-arrive {
-  from { opacity: 0; transform: translate3d(0,16px,0) scale(.992); }
-  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .experience-selection-eyebrow,
-  .experience-card--available,
-  .experience-card--preview {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
-}
-
 `;
 
 const NATIVE_APP_HEADER_AUTH = "<header class=\"floating-top native-app-chrome\" aria-label=\"askmoina controls\"><button type=\"button\" id=\"openLibrary\" class=\"library-open-control\" aria-label=\"History and Key Memories\" title=\"History and Key Memories\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5\"/><path d=\"M3.5 3.5v5h5\"/><path d=\"M12 7v5l3.2 1.9\"/></svg></button><div class=\"top-actions\"><button type=\"button\" id=\"openAppMenu\" class=\"native-app-menu-trigger\" aria-label=\"Open askmoina menu\" title=\"Menu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M4.5 12h15M4.5 17h15\"/></svg></button></div></header>";
@@ -188,6 +185,7 @@ function withAskMoinaFontPreload(html: string): string {
 }
 
 function withNativeAppShell(html: string, appVersion: string, authenticated: boolean): string {
+  html = withFluidInteractivity(html, appVersion);
   html = withAskMoinaFontPreload(html);
   const nativeHeader = authenticated ? NATIVE_APP_HEADER_AUTH : "";
   const headerStart = html.indexOf('<header class="floating-top">');
@@ -247,6 +245,7 @@ function shouldUseSiteChrome(pathname: string): boolean {
     !SITE_INFO_PATHS.has(pathname) && !pathname.startsWith("/admin") && !pathname.startsWith("/api/");
 }
 function withSiteChrome(html: string, authenticated = false): string {
+  html = withFluidInteractivity(html, "0.4.80");
   html = withAskMoinaFontPreload(html);
   if (html.includes('class="camera-app"') || html.includes('class="entry-site-header"')) return html;
   let start = html.indexOf("<body");
@@ -3069,6 +3068,15 @@ export default {
       // manifest so Android chooses the dark launch icon. Keep the 180px asset
       // available for Apple's touch-icon metadata independently.
       let responseBody: BodyInit | null = assetResponse.body;
+      if (assetResponse.status === 200 && request.method === "GET" &&
+          headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
+        responseBody = withFluidInteractivity(
+          await assetResponse.text(),
+          env.APP_VERSION || "0.4.80",
+        );
+        headers.delete("Content-Length");
+        headers.delete("ETag");
+      }
       if (url.pathname === "/manifest.webmanifest" && assetResponse.status === 200 &&
           request.method === "GET") {
         const manifestText = await assetResponse.text();
@@ -3136,6 +3144,7 @@ export default {
           let html = withAskMoinaFontPreload(await authResponse.text());
           html = html.replace("<body>", '<body class="native-account-page" data-page="account">');
           html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"><link rel="stylesheet" href="/askmoina-global-font.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"></head>');
+          html = withFluidInteractivity(html, env.APP_VERSION || "0.4.80");
           const headers = new Headers(authResponse.headers);
           headers.delete("Content-Length");
           headers.delete("ETag");
@@ -3150,7 +3159,7 @@ export default {
       const infoPath = url.pathname === "/" && url.searchParams.has("view") ? "/" + (url.searchParams.get("view") || "") : url.pathname;
       const infoPage = renderSiteInfoPage(infoPath, env.APP_VERSION || "0.4.80");
       if (infoPage) {
-        const pageHtml = withAskMoinaFontPreload(infoPage);
+        const pageHtml = withFluidInteractivity(withAskMoinaFontPreload(infoPage), env.APP_VERSION || "0.4.80");
         return new Response(request.method === "HEAD" ? null : pageHtml, {
           status: 200,
           headers: {
@@ -3168,7 +3177,18 @@ export default {
     }
     if (url.pathname.startsWith("/admin")) {
       const adminResponse = await handleContinuityRequest(request, env, ctx);
-      if (adminResponse) return adminResponse;
+      if (adminResponse) {
+        if (request.method === "GET" && adminResponse.status === 200 &&
+            adminResponse.headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
+          const html = withFluidInteractivity(await adminResponse.text(), env.APP_VERSION || "0.4.80");
+          const headers = new Headers(adminResponse.headers);
+          headers.delete("Content-Length");
+          headers.delete("ETag");
+          headers.set("Cache-Control", "no-store");
+          return new Response(html, { status: adminResponse.status, statusText: adminResponse.statusText, headers });
+        }
+        return adminResponse;
+      }
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
@@ -3293,7 +3313,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
@@ -3373,6 +3393,14 @@ export default {
       let assetHtml = withSiteChrome(await assetResponse.text(), authenticatedForMenu);
       if (isPwaStandaloneAppPath(url.pathname)) assetHtml = withPwaStandaloneGate(assetHtml);
       responseBody = assetHtml;
+      headers.delete("Content-Length");
+      headers.delete("ETag");
+    }
+    if (request.method !== "HEAD" && headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
+      const html = typeof responseBody === "string"
+        ? responseBody
+        : await new Response(responseBody).text();
+      responseBody = withFluidInteractivity(html, env.APP_VERSION || "0.4.80");
       headers.delete("Content-Length");
       headers.delete("ETag");
     }
