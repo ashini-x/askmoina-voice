@@ -278,15 +278,16 @@ async function withSiteChromeResponse(
   authenticated = false,
   appVersion = "0.4.80",
 ): Promise<Response> {
-  if (!shouldUseSiteChrome(pathname) || response.status !== 200 ||
+  if (response.status !== 200 ||
       !response.headers.get("Content-Type")?.toLowerCase().includes("text/html")) return response;
   const html = await response.text();
-  const siteDecorated = withSiteChrome(html, authenticated);
-  const pwaDecorated = isPwaStandaloneAppPath(pathname)
+  const usesSiteChrome = shouldUseSiteChrome(pathname);
+  const siteDecorated = usesSiteChrome ? withSiteChrome(html, authenticated) : html;
+  const pwaDecorated = usesSiteChrome && isPwaStandaloneAppPath(pathname)
     ? withPwaStandaloneGate(siteDecorated)
     : siteDecorated;
-  // Apply shared motion after page chrome is composed, including HTML responses
-  // returned by auth handlers, the voice lab, and continuity/admin handlers.
+  // Shared motion is universal for HTML; site chrome and the PWA gate remain
+  // conditional so pages retain their intended structure while gaining the same motion defaults.
   const decorated = withFluidInteractivity(pwaDecorated, appVersion);
   if (decorated === html) return new Response(html, { status: response.status, statusText: response.statusText, headers: response.headers });
   const headers = new Headers(response.headers);
