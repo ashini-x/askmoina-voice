@@ -1,11 +1,31 @@
 # AskMoina product roadmap
-Last updated: 2026-10-12 (M31–M36 deployed with evidence limits noted below; M37 speech contract and suite implemented with native-speaker acceptance pending; M38 benchmark tooling implemented with real-task runs pending).
+Last updated: 2026-10-18 (M0 Assamese Gen-Z product identity documented as a separate additive track; existing M31–M38 status remains subject to the evidence notes below).
 
 ## Product vision
 
 AskMoina is a general-purpose, real-time visual copilot for solving problems in the physical world. A person points a phone camera at a situation, explains the goal naturally, and gets adaptive help that combines speech with useful visual instructions. The core loop is: see the world, understand the goal and current state, invent the next useful guide, observe the result, verify what changed, and adapt or recover. Repair is one use case, not the product boundary.
 
 The ambition is not simply to add voice to a camera or decorate the view with AR. The long-term differentiator is a reusable system that chooses the right kind of help for an unfamiliar real task, grounds every instruction in current evidence, keeps guidance aligned with the world where technically possible, checks outcomes honestly, and gracefully admits when it cannot know.
+
+
+
+## Additive initiative — Assamese Gen-Z conversational experience (M0–M9)
+
+This initiative strengthens AskMoina's local Assamese-English conversational personality while preserving the general-purpose visual Co-Pilot vision below. It does **not** renumber or replace the existing M1–M40 engineering roadmap or RC1–RC8 response-card track.
+
+- **M0 — Product identity and differentiation (documented):** define the north star, audience, initial competitive landscape, product principles, scope boundaries, and release policy. See [M0 product identity](M0_ASSAMESE_GENZ_PRODUCT_IDENTITY.md). This is a product-definition milestone only; no runtime behavior changed and market exclusivity is not proven.
+- **M1 — Baseline and performance benchmark (next):** measure current live-session latency, natural turn-taking, pronunciation, code-switching, and reliability before changing the experience.
+- **M2 — Assamese Gen-Z language intelligence:** build a permissioned, source-attributed, native-reviewed conversation and phrase reference.
+- **M3 — Native conversational personality:** refine the instructions and contextual examples based on held-out scenarios and listening evaluation.
+- **M4 — Pronunciation and voice identity:** verify word-specific guidance and select voice behavior against native-speaker audio criteria.
+- **M5 — Intelligent contextual retrieval:** evaluate bounded semantic retrieval only if it outperforms simpler D1 lookup without unacceptable latency.
+- **M6 — Real-time performance and reliability:** protect streaming, turn-taking, interruption, and reconnect behavior while measuring changes.
+- **M7 — Personal companion and visual Co-Pilot:** align voice, camera, task context, history, and user-controlled memory in one coherent experience.
+- **M8 — Final acceptance and release candidate:** privately validate the frozen candidate across native-speaker, device, privacy, security, and reliability gates.
+- **M9 — Final launch:** release one complete product and maintain a documented production issue-response process.
+
+The release preference is **no public beta used for basic product discovery**. It does not waive private pre-release acceptance, native-speaker evaluation, security review, production health checks, or post-launch critical-issue monitoring. Do not claim “first of its kind” until a broader dated competitive review supports that exact claim.
+
 
 ## Shipped foundation — Milestones 1–22
 
