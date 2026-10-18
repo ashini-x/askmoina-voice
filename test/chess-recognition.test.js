@@ -157,6 +157,7 @@ describe("provider result assessment", () => {
     expect(prompt).toContain("Do not guess");
     expect(prompt).toContain("Do not assume the starting position");
     expect(prompt).toContain("Do not infer or change that side");
+    expect(buildChessRecognitionPrompt(null)).toContain("The side to move is unknown");
     expect(prompt).toContain("all four corners");
   });
 });
@@ -167,7 +168,7 @@ describe("bounded authenticated chess scan endpoint", () => {
     GCP_SERVICE_ACCOUNT_JSON: "{configured}",
   };
 
-  it("rejects non-POST, missing explicit intent, missing side-to-move, and cross-origin requests before provider access", async () => {
+  it("rejects non-POST, missing explicit intent, and cross-origin requests before provider access", async () => {
     const getAccessToken = vi.fn(async () => "test-token");
     const fetchImpl = vi.fn();
     const get = (body, init = {}) => new Request("https://askmoina.test/api/chess/recognize", {
@@ -179,12 +180,22 @@ describe("bounded authenticated chess scan endpoint", () => {
     expect(wrongMethod.status).toBe(405);
     const missingPurpose = await handleChessRecognitionRequest(get(requestBody({ purpose: "ordinary_chat" })), env, { getAccessToken, fetchImpl });
     expect(missingPurpose.status).toBe(400);
-    const missingTurn = await handleChessRecognitionRequest(get(requestBody({ sideToMove: null })), env, { getAccessToken, fetchImpl });
-    expect(missingTurn.status).toBe(400);
     const crossOrigin = await handleChessRecognitionRequest(get(requestBody(), { origin: "https://attacker.test" }), env, { getAccessToken, fetchImpl });
     expect(crossOrigin.status).toBe(403);
     expect(getAccessToken).not.toHaveBeenCalled();
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("supports automatic board-only recognition when the turn is unknown", async () => {
+    const getAccessToken = vi.fn(async () => "test-token");
+    const fetchImpl = vi.fn(async (_url, init) => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify(strongRecognition()) }] } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const response = await handleChessRecognitionRequest(makeRequest(requestBody({ sideToMove: null })), env, { getAccessToken, fetchImpl });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ ok: true, sideToMove: null });
+    expect(fetchImpl.mock.calls[0][1].body).toContain("The side to move is unknown");
   });
 
   it("rejects fake/non-JPEG and oversized inputs before provider access", async () => {
@@ -235,11 +246,20 @@ describe("bounded authenticated chess scan endpoint", () => {
 });
 
 describe("browser scan client", () => {
-  it("requires a side to move before uploading a camera frame", async () => {
-    const fetchImpl = vi.fn();
-    const result = await recognizeChessboardFrame(new Blob([Uint8Array.from([255, 216, 255, 0])], { type: "image/jpeg" }), { fetchImpl });
-    expect(result).toMatchObject({ ok: false, reason: "side_to_move_required" });
-    expect(fetchImpl).not.toHaveBeenCalled();
+  it("recognizes a board before asking the user whose turn it is", async () => {
+    const fetchImpl = vi.fn(async (_url, init) => new Response(JSON.stringify({
+      ok: true, recognition: strongRecognition(), sideToMove: null
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const blob = new Blob([Uint8Array.from([255, 216, 255, 0])], { type: "image/jpeg" });
+    const result = await recognizeChessboardFrame(blob, { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).not.toHaveProperty("sideToMove");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.sideToMove).toBeNull();
+      expect(result.position).toBeNull();
+      expect(result.recognition.boardRows).toEqual(STARTING_ROWS);
+    }
   });
 
   it("validates returned board data and produces FEN only after confidence checks", async () => {
