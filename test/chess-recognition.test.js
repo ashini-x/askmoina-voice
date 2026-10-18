@@ -191,7 +191,7 @@ describe("bounded authenticated chess scan endpoint", () => {
     const fetchImpl = vi.fn(async (_url, init) => new Response(JSON.stringify({
       candidates: [{ content: { parts: [{ text: JSON.stringify(strongRecognition()) }] } }]
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
-    const response = await handleChessRecognitionRequest(makeRequest(requestBody({ sideToMove: null })), env, { getAccessToken, fetchImpl });
+    const response = await handleChessRecognitionRequest(makeRequest(requestBody({ sideToMove: null })), env, { getAccessToken, fetchImpl, resolveActor: async () => "test-user" });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({ ok: true, sideToMove: null });
