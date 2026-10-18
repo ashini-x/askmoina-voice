@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition } from "./recognition-client.js?v=0.4.137";
+import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition } from "./recognition-client.js?v=0.4.138";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -24,7 +24,8 @@ import {
   const dismissButton = $("#chessDismiss");
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
-  const STORAGE_KEY = "askmoina.chess.session.v1";
+  const STORAGE_KEY = "askmoina.chess.session.v2";
+  const LEGACY_STORAGE_KEY = "askmoina.chess.session.v1";
   const AUTO_KEY = "askmoina.chess.autodetect.v1";
   const MAX_FRAME_BYTES = 512 * 1024;
   const INITIAL_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
@@ -223,6 +224,9 @@ import {
   }
 
   function restoreGame() {
+    // A pre-fix tracked position may have been seeded from a wrong camera read.
+    // Discard it on upgrade so it cannot bypass the two-scan verification guard.
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
