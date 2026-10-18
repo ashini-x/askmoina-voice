@@ -13,7 +13,7 @@ describe("M4 pronunciation and voice identity", () => {
     expect(SYSTEM_INSTRUCTION).toContain("M4 — PRONUNCIATION AND VOICE IDENTITY CONTRACT");
     expect(SYSTEM_INSTRUCTION).toContain("Apply the target to that word only");
     expect(SYSTEM_INSTRUCTION).toContain("Never replace English /s/ with /h/");
-    expect(SYSTEM_INSTRUCTION).toContain("Do not generalize a personal correction");
+    expect(SYSTEM_INSTRUCTION).toContain("never generalize a personal correction");
   });
 
   it("keeps a reported pronunciation preference scoped and marks the limit of prompt guidance", () => {
