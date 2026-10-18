@@ -47,19 +47,13 @@ try {
     } catch { /* Ignore unrelated/non-URL WebSocket events. */ }
   });
 
-  const response = await page.goto(baseUrl + "/copilot", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  const response = await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded", timeout: 30_000 });
   assert.equal(response?.status(), 200, "authenticated Co-Pilot route should load");
-  // The current camera-first UI starts from the call control; do not depend on the retired
-  // "Show me your problem" slider/button from an earlier interface.
-  await page.waitForFunction(() => {
-    const button = document.querySelector("#toggleCopilot");
-    return button instanceof HTMLButtonElement && !button.disabled;
-  }, null, { timeout: 15_000 });
-
-  // The connection pill is intentionally hidden before a call starts; its data-state
-  // is still observable after the call is opened, so do not wait for pre-start visibility.
-  // Enter through the real keyboard-accessible start action with fake media devices.
-  await page.locator("#toggleCopilot").click({ timeout: 5_000, force: true });
+  // Start from the real authenticated entry journey. The live camera controls are
+  // intentionally hidden behind the experience-selection overlay until moinaOS 1 is chosen.
+  // Selecting it triggers the normal Co-Pilot connection flow; do not bypass that UI.
+  await page.waitForSelector("#experienceMoinaOS1", { state: "visible", timeout: 15_000 });
+  await page.locator("#experienceMoinaOS1").click({ timeout: 10_000 });
   await page.waitForFunction(
     () => document.querySelector("#connectionPill")?.dataset.state === "live",
     null,
