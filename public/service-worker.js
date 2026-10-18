@@ -59,7 +59,7 @@ self.addEventListener("fetch", (event) => {
   // Unversioned HTML and app code always revalidate against the deployed Worker.
   // Release-versioned resources can use the browser HTTP cache: APP_VERSION is
   // part of the URL, so a deployment creates a fresh cache key automatically.
-  const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/.test(url.searchParams.get("v") || "");
+  const isImmutableVersionedAsset = /^[0-9]+\.[0-9]+\.[0-9]+$/.test(url.searchParams.get("v") || "");
   event.respondWith(
     (isImmutableVersionedAsset ? fetch(request) : fetch(request, { cache: "no-store" })).catch(async () => {
       if (request.mode !== "navigate") return Response.error();
