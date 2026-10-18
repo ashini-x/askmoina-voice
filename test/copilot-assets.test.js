@@ -53,6 +53,9 @@ describe("Live Co-Pilot browser assets", () => {
 
   it("keeps the Android splash dark and serves the complete AskMoina brand asset family", () => {
     expect(workerSource).toContain('url.pathname === "/manifest.webmanifest"');
+    expect(workerSource).toContain('const themeColor = "#000000"');
+    expect(workerSource).toContain('manifest.theme_color = "#000000"');
+    expect(workerSource).toContain('href="/manifest.webmanifest?v=20261018"');
     expect(workerSource).toContain('const legacyIcons = new Set(["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"])');
     expect(workerSource).toContain('legacyIcons.has((icon.src || "").split("?")[0])');
     expect(workerSource).toContain('manifest.icons.push({');
