@@ -289,6 +289,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/pwa-gate.js",
   "/pwa-runtime.js",
   "/entry-auth.css",
+  "/askmoina-global-font.css",
   "/pwa-icon-192.svg",
   "/pwa-icon-512.svg",
   "/pwa-icon-512.png",
@@ -318,6 +319,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/pwa-gate.js": "text/javascript; charset=utf-8",
   "/pwa-runtime.js": "text/javascript; charset=utf-8",
   "/entry-auth.css": "text/css; charset=utf-8",
+  "/askmoina-global-font.css": "text/css; charset=utf-8",
   "/service-worker.js": "text/javascript; charset=utf-8",
   "/pwa-icon-192.svg": "image/svg+xml; charset=utf-8",
   "/pwa-icon-512.svg": "image/svg+xml; charset=utf-8",
@@ -3278,7 +3280,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
