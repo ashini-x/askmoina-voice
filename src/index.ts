@@ -3201,7 +3201,7 @@ export default {
     }
 
     if (url.pathname === "/copilot.css") {
-      const responseCss = url.searchParams.get("experience-selection") === "1" ? COPILOT_CSS + "\n" + EXPERIENCE_SELECTION_CSS : COPILOT_CSS;
+      const responseCss = url.searchParams.get("experience-selection") === "1" ? EXPERIENCE_SELECTION_CSS : COPILOT_CSS;
       return new Response(responseCss, { headers: {
         "Content-Type": "text/css; charset=utf-8",
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
