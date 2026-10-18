@@ -35,7 +35,6 @@
   let latestVisualGuideElements = [];
   const placeholder = $("#cameraPlaceholder");
   const toggleButton = $("#toggleCopilot");
-  const showProblemButton = $("#showProblemButton");
   const buttonLabel = $("#buttonLabel");
   const flipButton = $("#flipCamera");
   const clearMarkerButton = $("#clearMarker");
@@ -2714,7 +2713,7 @@
     void refreshAvailabilityAfterRelease();
     if (returnToExperienceSelection) {
       // Ending the call returns to moinaOS selection; do not restart the camera
-      // just to expose the obsolete “Slide to start” screen behind the overlay.
+      // just to expose an idle camera screen behind the overlay.
       returnToMoinaOSSelection();
       return;
     }
@@ -4320,80 +4319,7 @@
     }
   }
 
-  if (showProblemButton) {
-    let slidePointerId = null;
-    let slideStartX = 0;
-    let slideStartProgress = 0;
-    let keyboardSlideActive = false;
-    const slideHandle = showProblemButton.querySelector(".vision-slide-handle");
-    const slideLabel = showProblemButton.querySelector("#visionSlideLabel");
-    const slideProgress = () => Math.max(0, Math.min(1, Number(showProblemButton.dataset.progress || 0)));
-    const setSlideProgress = (progress) => {
-      const safeProgress = Math.max(0, Math.min(1, progress));
-      const maxDistance = Math.max(1, showProblemButton.clientWidth - (slideHandle ? slideHandle.offsetWidth : 50) - 10);
-      showProblemButton.dataset.progress = String(safeProgress);
-      showProblemButton.style.setProperty("--slide-distance", (maxDistance * safeProgress) + "px");
-      if (slideLabel) slideLabel.textContent = safeProgress >= 0.82 ? "Release to start" : "Slide to start";
-    };
-    const resetSlide = () => {
-      showProblemButton.dataset.progress = "0";
-      showProblemButton.style.setProperty("--slide-distance", "0px");
-      showProblemButton.classList.remove("is-sliding", "is-complete");
-      if (slideLabel) slideLabel.textContent = "Slide to start";
-    };
-    const completeSlide = () => {
-      showProblemButton.dataset.progress = "1";
-      showProblemButton.classList.add("is-complete");
-      if (slideLabel) slideLabel.textContent = "Connecting…";
-      if (!active && !starting) void startCopilot();
-    };
-    showProblemButton.addEventListener("pointerdown", (event) => {
-      if (active || starting || (event.pointerType === "mouse" && event.button !== 0)) return;
-      slidePointerId = event.pointerId;
-      slideStartX = event.clientX;
-      slideStartProgress = slideProgress();
-      showProblemButton.classList.add("is-sliding");
-      try { showProblemButton.setPointerCapture(event.pointerId); } catch (_) {}
-    });
-    showProblemButton.addEventListener("pointermove", (event) => {
-      if (slidePointerId !== event.pointerId || !slideHandle) return;
-      const maxDistance = Math.max(1, showProblemButton.clientWidth - slideHandle.offsetWidth - 10);
-      const progress = Math.max(0, Math.min(1, slideStartProgress + (event.clientX - slideStartX) / maxDistance));
-      setSlideProgress(progress);
-    });
-    showProblemButton.addEventListener("pointerup", (event) => {
-      if (slidePointerId !== event.pointerId) return;
-      slidePointerId = null;
-      try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
-      showProblemButton.classList.remove("is-sliding");
-      if (slideProgress() >= 0.82) completeSlide();
-      else resetSlide();
-    });
-    showProblemButton.addEventListener("pointercancel", (event) => {
-      if (slidePointerId !== event.pointerId) return;
-      slidePointerId = null;
-      try { showProblemButton.releasePointerCapture(event.pointerId); } catch (_) {}
-      resetSlide();
-    });
-    // Keyboard users can hold the right arrow to perform the same slide gesture.
-    showProblemButton.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowRight" || active || starting) return;
-      event.preventDefault();
-      keyboardSlideActive = true;
-      showProblemButton.classList.add("is-sliding");
-      setSlideProgress(slideProgress() + 0.24);
-    });
-    showProblemButton.addEventListener("keyup", (event) => {
-      if (event.key !== "ArrowRight" || !keyboardSlideActive) return;
-      event.preventDefault();
-      keyboardSlideActive = false;
-      showProblemButton.classList.remove("is-sliding");
-      if (slideProgress() >= 0.82) completeSlide();
-      else resetSlide();
-    });
-    // A click/tap is intentionally not a start gesture; only a completed slide starts the call.
-    showProblemButton.addEventListener("click", (event) => { event.preventDefault(); });
-  }
+  
   if (connectionNoticeAction) {
     connectionNoticeAction.addEventListener("click", () => {
       if (connectionNoticeAction.disabled) return;
