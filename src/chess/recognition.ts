@@ -107,8 +107,8 @@ export async function handleChessRecognitionRequest(
   if (input.purpose !== "chess_board_scan") {
     return json({ ok: false, reason: "explicit_chess_intent_required", message: "A chess-specific scan must be requested explicitly." }, 400);
   }
-  if (input.sideToMove !== "w" && input.sideToMove !== "b") {
-    return json({ ok: false, reason: "side_to_move_required", message: "Confirm whether White or Black moves next before scanning." }, 400);
+  if (input.sideToMove != null && input.sideToMove !== "w" && input.sideToMove !== "b") {
+    return json({ ok: false, reason: "invalid_side_to_move", message: "Side to move must be White, Black, or omitted when unknown." }, 400);
   }
   if (input.imageMimeType !== "image/jpeg" || typeof input.imageData !== "string" ||
       input.imageData.length < 8 || input.imageData.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8 ||
@@ -180,7 +180,7 @@ export async function handleChessRecognitionRequest(
           contents: [{
             role: "user",
             parts: [
-              { text: buildChessRecognitionPrompt(input.sideToMove === "w" ? "White" : "Black") },
+              { text: buildChessRecognitionPrompt(input.sideToMove === "w" ? "White" : input.sideToMove === "b" ? "Black" : null) },
               { inlineData: { mimeType: "image/jpeg", data: input.imageData } }
             ]
           }],
@@ -226,7 +226,7 @@ export async function handleChessRecognitionRequest(
     return json({
       ok: true,
       recognition: assessment.recognition,
-      sideToMove: input.sideToMove,
+      sideToMove: input.sideToMove === "w" || input.sideToMove === "b" ? input.sideToMove : null,
       history: {
         castlingRights: "unknown_from_image",
         enPassantSquare: "unknown_from_image",
@@ -248,10 +248,10 @@ export async function handleChessRecognitionRequest(
   }
 }
 
-export function buildChessRecognitionPrompt(sideToMove: "White" | "Black"): string {
+export function buildChessRecognitionPrompt(sideToMove: "White" | "Black" | null = null): string {
   return [
     "You are a cautious chessboard visual-recognition component, not a chess-playing assistant.",
-    "Analyze only the supplied single image. It is sent because the user explicitly requested a chessboard scan.",
+    "Analyze only the supplied single image. It is sent by AskMoina chess auto-detection or for a user-requested chessboard scan.",
     "Do not guess. If there is no physical chessboard, any corner is cropped, any square is hidden/unclear, perspective prevents reliable square mapping, or any piece identity is uncertain, report low confidence and list affected squares.",
     "The position is a real-world physical board, possibly 3D pieces, tilted, rotated, lit unevenly, or in a mid-game arrangement. Do not assume the starting position or infer a move history.",
     "Return boardRows as exactly eight strings of exactly eight characters, with rank 8 first and rank 1 last; within every row files a through h. Use uppercase P,N,B,R,Q,K for White pieces, lowercase p,n,b,r,q,k for Black pieces, and . for an empty square.",
@@ -260,7 +260,7 @@ export function buildChessRecognitionPrompt(sideToMove: "White" | "Black"): stri
     "Return boardCornersNormalized as exactly four points in clockwise image order, starting from the image's top-left-most board corner: [{x,y}, ...]. Coordinates are normalized from 0 to 1000 across the full image; x increases left to right and y increases top to bottom. Mark allFourCornersVisible false if any corner is outside the frame or uncertain. These are approximate camera-space outer board corners, not chess-square labels.",
     "Return 64 squareConfidences in the same row-major order as boardRows. Each is your estimated certainty from 0 to 1 for the square's occupant. This is a heuristic self-assessment, not a calibrated probability.",
     "ambiguousSquares must list every uncertain algebraic square using standard notation such as e4. An incomplete/confusing/occluded board must not be passed off as complete.",
-    "The user separately confirmed that the side to move is " + sideToMove + ". Do not infer or change that side from the board image.",
+    sideToMove ? "The user separately confirmed that the side to move is " + sideToMove + ". Do not infer or change that side from the board image." : "The side to move is unknown. Do not infer it from the board image; return only the board reading.",
     "Do not return castling rights, en-passant rights, move counters, candidate moves, explanations, or recommendations. A photograph cannot establish those historical fields.",
     "Return JSON matching the supplied schema only. Keep notes brief, specific, and non-instructional."
   ].join("\n");
