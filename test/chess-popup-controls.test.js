@@ -25,6 +25,8 @@ describe("chess assistant popup and main control", () => {
     expect(handler).toContain("void detectChessboard(true)");
     expect(chessUi).toContain("function setPopupOpen(open)");
     expect(chessUi).toContain("persistUntilResult = false");
+    expect(chessUi).toContain("let manualScanRequested = false");
+    expect(chessUi).toContain("if (manual) manualScanRequested = true");
     expect(chessUi).toContain("Scanning the visible camera frame for the 8×8 board");
     expect(chessUi).toContain('popupTitle.textContent = "Next strong move"');
   });
