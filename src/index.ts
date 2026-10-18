@@ -124,24 +124,25 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-product-art' aria-hidden='true'>
-            <svg class='experience-glass-art' viewBox='0 0 320 118' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+            <svg class='experience-glass-art' viewBox='0 0 320 220' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
               <defs>
-                <linearGradient id='exp1-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#a18bff' stop-opacity='.19'/><stop offset='.35' stop-color='#385985' stop-opacity='.47'/><stop offset='.72' stop-color='#132b4b' stop-opacity='.56'/><stop offset='1' stop-color='#8c83ff' stop-opacity='.18'/></linearGradient>
-                <linearGradient id='exp1-upper-fill' x1='0' y1='0' x2='.88' y2='1'><stop offset='0' stop-color='#9dcfff' stop-opacity='.17'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.44'/><stop offset='.70' stop-color='#0e2440' stop-opacity='.64'/><stop offset='1' stop-color='#8f8dfb' stop-opacity='.20'/></linearGradient>
-                <linearGradient id='exp1-rim' x1='0' y1='0' x2='1' y2='.15'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.23' stop-color='#a5c5ff' stop-opacity='.76'/><stop offset='.55' stop-color='#deecff' stop-opacity='.68'/><stop offset='.78' stop-color='#738ee9' stop-opacity='.66'/><stop offset='1' stop-color='#77c7ff' stop-opacity='.96'/></linearGradient>
-                <linearGradient id='exp1-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#d3a1ff' stop-opacity='.64'/><stop offset='.30' stop-color='#e7f2ff' stop-opacity='.50'/><stop offset='.72' stop-color='#9fcaff' stop-opacity='.20'/><stop offset='1' stop-color='#7ec9ff' stop-opacity='.70'/></linearGradient>
+                <linearGradient id='exp1-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#c08aff' stop-opacity='.12'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.37'/><stop offset='.68' stop-color='#0e2440' stop-opacity='.52'/><stop offset='1' stop-color='#c08aff' stop-opacity='.14'/></linearGradient>
+                <linearGradient id='exp1-upper-fill' x1='0' y1='0' x2='.86' y2='1'><stop offset='0' stop-color='#eaf4ff' stop-opacity='.14'/><stop offset='.32' stop-color='#3c669a' stop-opacity='.39'/><stop offset='.69' stop-color='#0e2440' stop-opacity='.59'/><stop offset='1' stop-color='#c08aff' stop-opacity='.16'/></linearGradient>
+                <linearGradient id='exp1-rim' x1='0' y1='0' x2='1' y2='.12'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.28' stop-color='#a5c5ff' stop-opacity='.82'/><stop offset='.57' stop-color='#eaf4ff' stop-opacity='.78'/><stop offset='.81' stop-color='#3c669a' stop-opacity='.72'/><stop offset='1' stop-color='#eaf4ff' stop-opacity='.96'/></linearGradient>
+                <linearGradient id='exp1-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#c08aff' stop-opacity='.74'/><stop offset='.34' stop-color='#eaf4ff' stop-opacity='.61'/><stop offset='.72' stop-color='#a5c5ff' stop-opacity='.32'/><stop offset='1' stop-color='#eaf4ff' stop-opacity='.78'/></linearGradient>
+                <radialGradient id='exp1-reflection' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#c08aff' stop-opacity='.23'/><stop offset='1' stop-color='#c08aff' stop-opacity='0'/></radialGradient>
               </defs>
-              <g transform='rotate(-3 160 77)'>
-                <path d='M20 74 C39 55 94 46 157 48 C218 49 274 60 299 74 C310 82 263 97 191 101 C118 105 47 94 20 74Z' fill='url(#exp1-lower-fill)' stroke='url(#exp1-rim)' stroke-width='1.1'/>
-                <path d='M22 74 C46 87 104 95 169 92 C229 89 278 79 299 74' fill='none' stroke='url(#exp1-glint)' stroke-width='1.05' opacity='.82'/>
-                <path d='M41 66 C78 53 129 52 184 57 C223 60 259 66 279 73' fill='none' stroke='#b7d4ff' stroke-opacity='.23' stroke-width='.8'/>
-                <path d='M64 91 C110 101 185 99 238 87' fill='none' stroke='#8d91ff' stroke-opacity='.32' stroke-width='.8'/>
+              <ellipse cx='145' cy='177' rx='120' ry='13' fill='url(#exp1-reflection)'/>
+              <g transform='rotate(-19 160 134)'>
+                <path d='M18 135 C34 104 92 83 157 82 C220 80 276 100 299 125 C309 137 279 156 222 170 C158 185 76 176 36 151 C23 143 15 139 18 135Z' fill='url(#exp1-lower-fill)' stroke='url(#exp1-rim)' stroke-width='1.05'/>
+                <path d='M22 137 C57 158 123 169 189 160 C235 154 274 139 297 125' fill='none' stroke='url(#exp1-glint)' stroke-width='1.05' opacity='.76'/>
+                <path d='M44 121 C93 95 151 91 207 99 C243 104 275 115 291 127' fill='none' stroke='#a5c5ff' stroke-opacity='.26' stroke-width='.85'/>
               </g>
-              <g transform='rotate(-4 158 42)'>
-                <path d='M16 42 C36 23 94 11 158 13 C222 14 279 28 301 43 C313 53 265 68 191 72 C115 76 43 63 16 42Z' fill='url(#exp1-upper-fill)' stroke='url(#exp1-rim)' stroke-width='1.15'/>
-                <path d='M19 41 C44 23 99 15 157 16 C215 17 272 30 298 43' fill='none' stroke='url(#exp1-glint)' stroke-width='1.2' opacity='.86'/>
-                <path d='M24 46 C54 60 109 68 171 66 C222 64 268 54 300 43' fill='none' stroke='#b4ceff' stroke-opacity='.32' stroke-width='.9'/>
-                <path d='M48 29 C94 16 153 15 200 21' fill='none' stroke='#edf5ff' stroke-opacity='.22' stroke-width='.8'/>
+              <g transform='rotate(-20 160 91)'>
+                <path d='M16 99 C35 69 91 38 153 27 C213 16 273 30 299 54 C313 67 280 92 229 115 C169 141 82 139 35 116 C23 110 15 104 16 99Z' fill='url(#exp1-upper-fill)' stroke='url(#exp1-rim)' stroke-width='1.2'/>
+                <path d='M19 98 C46 71 99 42 154 32 C209 22 266 35 296 56' fill='none' stroke='url(#exp1-glint)' stroke-width='1.25' opacity='.9'/>
+                <path d='M25 104 C64 130 129 136 190 121 C234 111 275 88 299 54' fill='none' stroke='#a5c5ff' stroke-opacity='.33' stroke-width='.9'/>
+                <path d='M65 68 C107 44 157 31 202 34' fill='none' stroke='#eaf4ff' stroke-opacity='.24' stroke-width='.8'/>
               </g>
             </svg>
           </span>
@@ -159,24 +160,25 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-product-art' aria-hidden='true'>
-            <svg class='experience-glass-art' viewBox='0 0 320 118' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
+            <svg class='experience-glass-art' viewBox='0 0 320 220' preserveAspectRatio='xMidYMid meet' focusable='false' xmlns='http://www.w3.org/2000/svg'>
               <defs>
-                <linearGradient id='exp2-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#a18bff' stop-opacity='.19'/><stop offset='.35' stop-color='#385985' stop-opacity='.47'/><stop offset='.72' stop-color='#132b4b' stop-opacity='.56'/><stop offset='1' stop-color='#8c83ff' stop-opacity='.18'/></linearGradient>
-                <linearGradient id='exp2-upper-fill' x1='0' y1='0' x2='.88' y2='1'><stop offset='0' stop-color='#9dcfff' stop-opacity='.17'/><stop offset='.34' stop-color='#3c669a' stop-opacity='.44'/><stop offset='.70' stop-color='#0e2440' stop-opacity='.64'/><stop offset='1' stop-color='#8f8dfb' stop-opacity='.20'/></linearGradient>
-                <linearGradient id='exp2-rim' x1='0' y1='0' x2='1' y2='.15'><stop offset='0' stop-color='#c08aff' stop-opacity='.96'/><stop offset='.23' stop-color='#a5c5ff' stop-opacity='.76'/><stop offset='.55' stop-color='#deecff' stop-opacity='.68'/><stop offset='.78' stop-color='#738ee9' stop-opacity='.66'/><stop offset='1' stop-color='#77c7ff' stop-opacity='.96'/></linearGradient>
-                <linearGradient id='exp2-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#d3a1ff' stop-opacity='.64'/><stop offset='.30' stop-color='#e7f2ff' stop-opacity='.50'/><stop offset='.72' stop-color='#9fcaff' stop-opacity='.20'/><stop offset='1' stop-color='#7ec9ff' stop-opacity='.70'/></linearGradient>
+                <linearGradient id='exp2-lower-fill' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.12'/><stop offset='.34' stop-color='#71839d' stop-opacity='.37'/><stop offset='.68' stop-color='#28364a' stop-opacity='.52'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='.14'/></linearGradient>
+                <linearGradient id='exp2-upper-fill' x1='0' y1='0' x2='.86' y2='1'><stop offset='0' stop-color='#d8e0ee' stop-opacity='.14'/><stop offset='.32' stop-color='#71839d' stop-opacity='.39'/><stop offset='.69' stop-color='#28364a' stop-opacity='.59'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='.16'/></linearGradient>
+                <linearGradient id='exp2-rim' x1='0' y1='0' x2='1' y2='.12'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.6'/><stop offset='.28' stop-color='#aebdd3' stop-opacity='.52'/><stop offset='.57' stop-color='#d8e0ee' stop-opacity='.48'/><stop offset='.81' stop-color='#71839d' stop-opacity='.42'/><stop offset='1' stop-color='#d8e0ee' stop-opacity='.6'/></linearGradient>
+                <linearGradient id='exp2-glint' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.32'/><stop offset='.34' stop-color='#d8e0ee' stop-opacity='.36'/><stop offset='.72' stop-color='#aebdd3' stop-opacity='.18'/><stop offset='1' stop-color='#d8e0ee' stop-opacity='.34'/></linearGradient>
+                <radialGradient id='exp2-reflection' cx='50%' cy='50%' r='50%'><stop offset='0' stop-color='#b8c0d1' stop-opacity='.08'/><stop offset='1' stop-color='#b8c0d1' stop-opacity='0'/></radialGradient>
               </defs>
-              <g transform='rotate(-3 160 77)'>
-                <path d='M20 74 C39 55 94 46 157 48 C218 49 274 60 299 74 C310 82 263 97 191 101 C118 105 47 94 20 74Z' fill='url(#exp2-lower-fill)' stroke='url(#exp2-rim)' stroke-width='1.1'/>
-                <path d='M22 74 C46 87 104 95 169 92 C229 89 278 79 299 74' fill='none' stroke='url(#exp2-glint)' stroke-width='1.05' opacity='.82'/>
-                <path d='M41 66 C78 53 129 52 184 57 C223 60 259 66 279 73' fill='none' stroke='#b7d4ff' stroke-opacity='.23' stroke-width='.8'/>
-                <path d='M64 91 C110 101 185 99 238 87' fill='none' stroke='#8d91ff' stroke-opacity='.32' stroke-width='.8'/>
+              <ellipse cx='145' cy='177' rx='120' ry='13' fill='url(#exp2-reflection)'/>
+              <g transform='rotate(-19 160 134)'>
+                <path d='M18 135 C34 104 92 83 157 82 C220 80 276 100 299 125 C309 137 279 156 222 170 C158 185 76 176 36 151 C23 143 15 139 18 135Z' fill='url(#exp2-lower-fill)' stroke='url(#exp2-rim)' stroke-width='1.05'/>
+                <path d='M22 137 C57 158 123 169 189 160 C235 154 274 139 297 125' fill='none' stroke='url(#exp2-glint)' stroke-width='1.05' opacity='.76'/>
+                <path d='M44 121 C93 95 151 91 207 99 C243 104 275 115 291 127' fill='none' stroke='#aebdd3' stroke-opacity='.16' stroke-width='.85'/>
               </g>
-              <g transform='rotate(-4 158 42)'>
-                <path d='M16 42 C36 23 94 11 158 13 C222 14 279 28 301 43 C313 53 265 68 191 72 C115 76 43 63 16 42Z' fill='url(#exp2-upper-fill)' stroke='url(#exp2-rim)' stroke-width='1.15'/>
-                <path d='M19 41 C44 23 99 15 157 16 C215 17 272 30 298 43' fill='none' stroke='url(#exp2-glint)' stroke-width='1.2' opacity='.86'/>
-                <path d='M24 46 C54 60 109 68 171 66 C222 64 268 54 300 43' fill='none' stroke='#b4ceff' stroke-opacity='.32' stroke-width='.9'/>
-                <path d='M48 29 C94 16 153 15 200 21' fill='none' stroke='#edf5ff' stroke-opacity='.22' stroke-width='.8'/>
+              <g transform='rotate(-20 160 91)'>
+                <path d='M16 99 C35 69 91 38 153 27 C213 16 273 30 299 54 C313 67 280 92 229 115 C169 141 82 139 35 116 C23 110 15 104 16 99Z' fill='url(#exp2-upper-fill)' stroke='url(#exp2-rim)' stroke-width='1.2'/>
+                <path d='M19 98 C46 71 99 42 154 32 C209 22 266 35 296 56' fill='none' stroke='url(#exp2-glint)' stroke-width='1.25' opacity='.9'/>
+                <path d='M25 104 C64 130 129 136 190 121 C234 111 275 88 299 54' fill='none' stroke='#aebdd3' stroke-opacity='.20' stroke-width='.9'/>
+                <path d='M65 68 C107 44 157 31 202 34' fill='none' stroke='#d8e0ee' stroke-opacity='.16' stroke-width='.8'/>
               </g>
             </svg>
           </span>
@@ -207,7 +209,9 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   const version = encodeURIComponent(appVersion || "0.4.80");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + nativeScript + '</head>');
+  const experienceStyles = authenticated ? '<link rel="stylesheet" href="/experience-selection.css?v=20261017">' : "";
+  const experienceScript = authenticated ? '<script src="/experience-selection.js?v=20261017" defer></script>' : "";
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + experienceStyles + nativeScript + experienceScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST);
   return html;
