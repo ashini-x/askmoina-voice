@@ -24,8 +24,8 @@ import {
   const dismissButton = $("#chessDismiss");
   const video = $("#videoPreview");
   const stage = $("#cameraStage");
-  const STORAGE_KEY = "askmoina.chess.session.v2";
-  const LEGACY_STORAGE_KEY = "askmoina.chess.session.v1";
+  const STORAGE_KEY = "askmoina.chess.session.v3";
+  const LEGACY_STORAGE_KEYS = ["askmoina.chess.session.v1", "askmoina.chess.session.v2"];
   const AUTO_KEY = "askmoina.chess.autodetect.v2";
   const MAX_FRAME_BYTES = 512 * 1024;
   const INITIAL_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
@@ -225,7 +225,9 @@ import {
   function restoreGame() {
     // A pre-fix tracked position may have been seeded from a wrong camera read.
     // Discard it on upgrade so it cannot bypass the two-scan verification guard.
-    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+    for (const key of LEGACY_STORAGE_KEYS) {
+      try { localStorage.removeItem(key); } catch {}
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
