@@ -25,9 +25,9 @@ Do not use a permanent neon rainbow, green call colour, or red call badge as par
 
 ## Typography — canonical global font
 
-The canonical UI typography name is **`askmoina-global-font`**. Its shared implementation is `public/askmoina-global-font.css`, loaded by all user-facing application shells and static HTML pages. Use the SF Pro look where available, with native sans-serif fallbacks on platforms that do not provide it. No third-party font binary is bundled by this change, so the visual match should be checked on the target devices.
+The canonical UI typography name is **`askmoina-global-font`**. Its implementation is `public/askmoina-global-font.css`, backed by the self-hosted Comfortaa Light WOFF2 subset at `public/askmoina-global-font.woff2`. Its thin, rounded geometric forms and single-storey lowercase “a” are chosen to match the approved AskMoina wordmark reference consistently across devices, without a remote font request.
 
-All visible UI text must inherit this one family: headings, body copy, navigation, buttons, form controls, dialogs, overlays, captions, response cards, and dynamically rendered content. Do not introduce another font family for ordinary interface text. Component-specific size, weight, line-height, spacing, and typographic hierarchy can still vary.
+All visible UI text must inherit this one family: headings, body copy, navigation, buttons, form controls, dialogs, overlays, captions, response cards, and dynamically rendered content. Do not introduce another font family for ordinary interface text. Component-specific size, weight, line-height, spacing, and typographic hierarchy can still vary. The `askmoina` wordmark uses tight tracking and a subtle progression in stroke weight from the `o` through the final `a`; HTML-rendered wordmarks should use `.askmoina-wordmark` with one inline span per letter, and SVG logos should use vector outlines.
 
 Future UI work must load `/askmoina-global-font.css` after component stylesheets. Worker-generated shells and site-chrome pages inject it automatically; standalone new HTML pages must include it explicitly. The repository contract test verifies the token and key page entry points.
 
