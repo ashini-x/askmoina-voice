@@ -107,7 +107,7 @@ import {
         moveListNode.appendChild(item);
       });
     }
-    if (gameState && !gameState.rightsKnown) {
+    if (gameState && gameState.gameMode === "midgame-seed") {
       const note = document.createElement("li");
       note.className = "chess-history-warning";
       note.textContent = "Historical castling/en-passant rights are unknown for this seeded position; moves requiring unknown rights will not be inferred.";
