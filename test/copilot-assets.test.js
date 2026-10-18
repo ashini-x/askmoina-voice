@@ -979,7 +979,8 @@ describe("Dark-first app shell and brand assets", () => {
     expect(authScript).toContain("verificationInProgress");
     expect(authScript).toContain('Starting moinaOS');
     expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
-    expect(workerSource).toContain("Initial values are revealed by the interruptible spring runtime.");
+    expect(workerSource).toContain("Keep moinaOS visible even if the optional spring runtime fails to load.");
+    expect(workerSource).toContain(".experience-card--preview {\n  opacity: 1;\n  animation: none !important;");
     expect(workerSource).toContain("animation: none !important");
     expect(workerSource).not.toContain("Starting MoinaOS");
     expect(workerSource).not.toContain("moinaOSStartupOverlay");
