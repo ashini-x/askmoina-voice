@@ -272,14 +272,22 @@ function withSiteChrome(html: string, authenticated = false): string {
   return html.slice(0, end + 1) + renderSiteMenu(authenticated) + '<script src="/entry-menu.js" defer></script>' + html.slice(end + 1);
 }
 
-async function withSiteChromeResponse(response: Response, pathname: string, authenticated = false): Promise<Response> {
+async function withSiteChromeResponse(
+  response: Response,
+  pathname: string,
+  authenticated = false,
+  appVersion = "0.4.80",
+): Promise<Response> {
   if (!shouldUseSiteChrome(pathname) || response.status !== 200 ||
       !response.headers.get("Content-Type")?.toLowerCase().includes("text/html")) return response;
   const html = await response.text();
   const siteDecorated = withSiteChrome(html, authenticated);
-  const decorated = isPwaStandaloneAppPath(pathname)
+  const pwaDecorated = isPwaStandaloneAppPath(pathname)
     ? withPwaStandaloneGate(siteDecorated)
     : siteDecorated;
+  // Apply shared motion after page chrome is composed, including HTML responses
+  // returned by auth handlers, the voice lab, and continuity/admin handlers.
+  const decorated = withFluidInteractivity(pwaDecorated, appVersion);
   if (decorated === html) return new Response(html, { status: response.status, statusText: response.statusText, headers: response.headers });
   const headers = new Headers(response.headers);
   headers.delete("Content-Length");
@@ -3178,7 +3186,7 @@ export default {
           headers.set("Cache-Control", "no-store");
           return new Response(request.method === "HEAD" ? null : html, { status: authResponse.status, statusText: authResponse.statusText, headers });
         }
-        return await withSiteChromeResponse(authResponse, url.pathname, authenticated);
+        return await withSiteChromeResponse(authResponse, url.pathname, authenticated, env.APP_VERSION || "0.4.80");
       }
       return authResponse;
     }
@@ -3323,7 +3331,7 @@ export default {
       labUrl.pathname = "/voice-lab";
       const labRequest = new Request(labUrl.toString(), request);
       const labResponse = await env.ASSETS.fetch(labRequest);
-      const decoratedLabResponse = await withSiteChromeResponse(labResponse, labUrl.pathname, true);
+      const decoratedLabResponse = await withSiteChromeResponse(labResponse, labUrl.pathname, true, env.APP_VERSION || "0.4.80");
       const headers = new Headers(decoratedLabResponse.headers);
       headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:");
       headers.set("X-Content-Type-Options", "nosniff");
@@ -3357,7 +3365,7 @@ export default {
     const conversationResponse = await handleConversationRequest(request, env);
     if (conversationResponse) return conversationResponse;
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
-    if (continuityResponse) return await withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu);
+    if (continuityResponse) return await withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu, env.APP_VERSION || "0.4.80");
 
     if (url.pathname === "/api/health") {
       return json({
