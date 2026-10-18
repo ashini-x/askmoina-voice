@@ -330,15 +330,12 @@ try {
     } catch { /* Ignore unrelated WebSockets. */ }
   });
 
-  const response = await page.goto(baseUrl + "/copilot", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  const response = await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded", timeout: 30_000 });
   assert.equal(response?.status(), 200, "authenticated Co-Pilot route should load");
-  // The old "Show me your problem" control was removed from the camera-first UX.
-  // Wait for the actual call button to become available and use the current entry path.
-  await page.waitForFunction(() => {
-    const button = document.querySelector("#toggleCopilot");
-    return button instanceof HTMLButtonElement && !button.disabled;
-  }, null, { timeout: 15_000 });
-  await page.locator("#toggleCopilot").click({ timeout: 5_000, force: true });
+  // Follow the actual experience-selection flow. Directly loading /copilot skips the
+  // selection controller and leaves the pre-start call control deliberately hidden.
+  await page.waitForSelector("#experienceMoinaOS1", { state: "visible", timeout: 15_000 });
+  await page.locator("#experienceMoinaOS1").click({ timeout: 10_000 });
   await page.waitForFunction(
     () => document.querySelector("#connectionPill")?.dataset.state === "live",
     null,
