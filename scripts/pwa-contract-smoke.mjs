@@ -30,7 +30,6 @@ assert.ok(existsSync(resolve(root, "public/askmoina-logo.svg")), "AskMoina wordm
 assert.ok(existsSync(resolve(root, "public/askmoina-social-avatar.svg")), "AskMoina social avatar is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-visual-guide.svg")), "AskMoina visual guide mark is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-install-reference.webp")), "Approved smoky-core brand artwork is missing");
-assert.ok(serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.126"'), "service worker must precache the mobile install reference artwork");
 assert.ok(existsSync(resolve(root, "public/askmoina-install-reference-mobile.webp")), "Approved mobile install artwork is missing");
 const installHtml = read("public/install.html");
 const installCss = read("public/install.css");
@@ -164,6 +163,9 @@ assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && re
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
 assert.ok(serviceWorker.includes("askmoina-pwa-shell-v11"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.126"'), "service worker must precache the canonical desktop install artwork");
+assert.ok(serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.126"'), "service worker must precache the mobile install reference artwork");
+assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.126"'), "service worker must precache the current viewport-aware hotspot runtime");
 assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
