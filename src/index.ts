@@ -190,7 +190,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   const version = encodeURIComponent(appVersion || "0.4.80");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + nativeScript + '</head>');
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + '<link rel="stylesheet" href="/askmoina-global-font.css?v=' + version + '">' + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST);
   return html;
@@ -222,7 +222,7 @@ function renderSiteInfoPage(pathname: string, appVersion: string): string | null
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
     "<meta name=\"theme-color\" content=\"#000000\"><meta name=\"color-scheme\" content=\"dark\">" +
     "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
-    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
+    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><link rel=\"stylesheet\" href=\"/askmoina-global-font.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
     "<a class=\"native-info-back\" href=\"/\" aria-label=\"Back to askmoina\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m14.5 5.5-6.5 6.5 6.5 6.5\"/></svg><span>askmoina</span></a>" +
     "<img src=\"/favicon.svg?v=0.4.80\" width=\"25\" height=\"25\" alt=\"askmoina\"></header>" +
@@ -242,6 +242,7 @@ function withSiteChrome(html: string, authenticated = false): string {
   let end = start >= 0 ? html.indexOf(">", start) : -1;
   if (start < 0 || end < 0) return html;
   if (!html.includes('href="/site-chrome.css"')) html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
+  if (!html.includes('href="/askmoina-global-font.css')) html = html.replace("</head>", '<link rel="stylesheet" href="/askmoina-global-font.css?v=1"></head>');
   start = html.indexOf("<body");
   end = html.indexOf(">", start);
   let bodyTag = html.slice(start, end + 1);
@@ -3119,7 +3120,7 @@ export default {
         if (url.pathname === "/account" || url.pathname === "/account.html") {
           let html = await authResponse.text();
           html = html.replace("<body>", '<body class="native-account-page" data-page="account">');
-          html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"></head>');
+          html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"><link rel="stylesheet" href="/askmoina-global-font.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"></head>');
           const headers = new Headers(authResponse.headers);
           headers.delete("Content-Length");
           headers.delete("ETag");
