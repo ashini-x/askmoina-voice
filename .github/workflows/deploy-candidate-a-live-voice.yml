@@ -321,7 +321,7 @@ jobs:
               !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
               !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-512.png" && icon.sizes === "512x512" && icon.type === "image/png") ||
               manifest.icons.some(icon => ["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"].includes(manifestIconPath(icon))) ||
-              manifest.background_color !== "#030406" || manifest.theme_color !== "#030406") {
+              manifest.background_color !== "#000000" || manifest.theme_color !== "#000000") {
             console.error("Manifest icon entries received:", JSON.stringify(manifest.icons));
             throw new Error("Manifest must use a dark splash background, a true 512x512 PNG, and no legacy light icon.");
           }
@@ -338,9 +338,16 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v6' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v7' /tmp/moina-service-worker.js
+          grep -q 'isImmutableVersionedAsset ? fetch(request)' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"
+
+          app_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')).vars.APP_VERSION")"
+          status="$(curl --silent --show-error --max-time 25 --dump-header /tmp/moina-experience-css.headers --output /tmp/moina-experience-css --write-out "%{http_code}" "$BASE_URL/copilot.css?experience-selection=1&v=${app_version}")"
+          test "$status" = "200"
+          grep -qi 'Cache-Control: public, max-age=31536000, immutable' /tmp/moina-experience-css.headers
+          echo "Release-versioned Co-Pilot CSS uses long-lived browser caching: OK"
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
