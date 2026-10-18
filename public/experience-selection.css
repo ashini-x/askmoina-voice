@@ -40,3 +40,48 @@
 @media(max-width:380px){.experience-selection-content{padding-right:max(16px,env(safe-area-inset-right,0px));padding-left:max(16px,env(safe-area-inset-left,0px))}.experience-selection-eyebrow{font-size:10px;letter-spacing:.13em;margin-left:3px;margin-bottom:16px}.experience-card{grid-template-columns:minmax(0,.84fr) minmax(0,1.16fr);column-gap:6px;padding:12px 10px;border-radius:21px}.experience-card--available{min-height:202px}.experience-card--preview{min-height:176px}.experience-card-title{font-size:18px}.experience-status-pill{padding:4px 7px;font-size:10px}.experience-feature-row{font-size:10.2px;grid-template-columns:17px minmax(0,1fr);gap:6px}.experience-feature-check{width:17px;height:17px;flex-basis:17px}.experience-glass-art{width:123%}}
 @media(max-height:700px){.experience-selection-content{padding-top:max(calc(env(safe-area-inset-top,0px) + 14px),6dvh);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 13px)}.experience-selection-eyebrow{margin-bottom:12px}.experience-card--available{min-height:188px}.experience-card--preview{min-height:164px}.experience-card-header{margin-top:4px;gap:5px}.experience-product-art{margin-top:0;margin-bottom:0}.experience-feature-list{gap:5px;margin-top:7px}}
 @media(prefers-reduced-motion:reduce){.experience-selection-overlay,.experience-card{transition:none!important}.experience-card:active{transform:none}}
+
+
+/* Interface 06 reference pass — correct split, proportions, and optical-glass artwork. */
+.experience-selection-content { padding-top: max(calc(env(safe-area-inset-top,0px) + 12px), 7.5dvh); }
+.experience-selection-eyebrow { margin-left: 14px; letter-spacing: .155em; font-size: 11px; font-weight: 400; }
+.experience-card { grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr); column-gap: 8px; }
+.experience-card--available {
+  height: clamp(202px, calc((min(100vw, 430px) - 36px) / 1.74), 260px);
+  min-height: 0; max-height: none;
+  border-color: rgba(94, 137, 255, .73);
+  background:
+    radial-gradient(ellipse 70% 26% at 61% 0%, rgba(42,111,255,.20), transparent 100%),
+    radial-gradient(ellipse 58% 46% at 7% 62%, rgba(75,94,228,.12), transparent 100%),
+    linear-gradient(145deg, rgba(17,29,58,.93), rgba(7,13,29,.96) 66%, rgba(5,9,20,.97));
+  box-shadow: 0 10px 32px rgba(0,0,0,.20), 0 0 22px rgba(73,119,255,.075), inset 0 1px rgba(226,233,255,.14), inset 0 0 22px rgba(73,119,255,.035);
+}
+.experience-card--preview {
+  height: clamp(176px, calc((min(100vw, 430px) - 36px) / 1.97), 232px);
+  min-height: 0; max-height: none;
+}
+.experience-card-header { margin-top: 0; transform: translateY(8px); }
+.experience-product-art { min-height: 0; }
+.experience-product-art::after {
+  left: -4%; right: -10%; bottom: 7%; height: 19%;
+  background: radial-gradient(ellipse at 32% 52%, rgba(184,133,255,.22), rgba(72,128,255,.16) 38%, transparent 76%);
+  filter: blur(10px);
+}
+.experience-glass-art { width: 104%; height: 100%; filter: drop-shadow(0 7px 12px rgba(72,116,245,.13)); }
+.experience-feature-list { gap: clamp(4px, .7vh, 6px); margin-top: 7px; transform: translateY(-2px); }
+.experience-feature-row { font-weight: 400; letter-spacing: -.018em; }
+.experience-feature-check { width: 19px; height: 19px; flex-basis: 19px; border-width: 1.25px; }
+.experience-feature-check svg { width: 10px; height: 10px; }
+.experience-card--preview .experience-product-art::after { background: radial-gradient(ellipse at 42% 52%, rgba(178,194,224,.11), transparent 74%); }
+@media (max-width: 380px) {
+  .experience-selection-content { padding-right: max(16px,env(safe-area-inset-right,0px)); padding-left: max(16px,env(safe-area-inset-left,0px)); }
+  .experience-card { grid-template-columns: minmax(0,1.22fr) minmax(0,1fr); column-gap: 6px; }
+  .experience-card--available { height: clamp(202px, calc((min(100vw,430px) - 32px) / 1.74), 260px); }
+  .experience-card--preview { height: clamp(176px, calc((min(100vw,430px) - 32px) / 1.97), 232px); }
+  .experience-card-header { transform: translateY(6px); }
+  .experience-glass-art { width: 100%; }
+  .experience-feature-list { gap: 4px; margin-top: 5px; transform: translateY(-1px); }
+}
+@media (max-height: 700px) {
+  .experience-selection-content { padding-top: max(calc(env(safe-area-inset-top,0px) + 12px), 6.8dvh); }
+}
