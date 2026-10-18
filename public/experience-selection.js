@@ -41,15 +41,8 @@
 
   function finishStartupWhenReady() {
     if (!startupOverlay || startupOverlay.hidden) return;
-    // performance.now() is measured from navigation start, so a genuinely fast
-    // load can dismiss before the CSS reveal delay and never flash the overlay.
-    const elapsedSinceNavigation = performance.now();
-    if (elapsedSinceNavigation < 260) {
-      startupDismissTimer = window.setTimeout(dismissStartupOverlay, 0);
-      return;
-    }
-    const minimumVisibleMs = Math.max(0, 480 - elapsedSinceNavigation);
-    startupDismissTimer = window.setTimeout(dismissStartupOverlay, minimumVisibleMs);
+    // Dismiss as soon as the browser finishes loading; do not impose a minimum wait.
+    startupDismissTimer = window.setTimeout(dismissStartupOverlay, 0);
   }
 
   const startupRequested = new URLSearchParams(window.location.search).get("startup") === "1";

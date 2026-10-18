@@ -12,6 +12,7 @@ const entryMenuScript = readFileSync(new URL("../public/entry-menu.js", import.m
 const siteChromeCss = readFileSync(new URL("../public/site-chrome.css", import.meta.url), "utf8");
 const nativeAppCss = readFileSync(new URL("../public/native-app.css", import.meta.url), "utf8");
 const nativeAppScript = readFileSync(new URL("../public/native-app.js", import.meta.url), "utf8");
+const entryAuthCss = readFileSync(new URL("../public/entry-auth.css", import.meta.url), "utf8");
 const experienceSelectionCss = readFileSync(new URL("../public/experience-selection.css", import.meta.url), "utf8");
 const experienceSelectionScript = readFileSync(new URL("../public/experience-selection.js", import.meta.url), "utf8");
 const logo = readFileSync(new URL("../public/askmoina-bird-final.png", import.meta.url));
@@ -941,18 +942,23 @@ describe("Dark-first app shell and brand assets", () => {
 
   it("routes successful signup/sign-in directly to Interface 06", () => {
     expect(authScript).not.toContain('"/?onboarding=1"');
-    expect(authScript).not.toContain('destination === "/" ? "/?startup=1" : destination');
-    expect(authScript).toContain("window.location.replace(destination)");
+    expect(authScript).toContain('destination === "/" ? "/?startup=1" : destination');
+    expect(authScript).toContain("window.location.replace(next)");
     expect(authScript).toContain("showVerificationTransition");
     expect(authScript).toContain("verificationInProgress");
     expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
     expect(workerSource).toContain("askmoina-selection-arrive");
     expect(workerSource).toContain("translate3d(0,16px,0) scale(.992)");
-    expect(workerSource).toContain("Starting moinaOS");
+    expect(workerSource).toContain("Starting MoinaOS");
     expect(workerSource).toContain("id='moinaOSStartupOverlay' hidden");
     expect(workerSource).toContain('url.searchParams.get("startup") === "1"');
     expect(experienceSelectionCss).toContain(".moinaos-startup-card");
     expect(experienceSelectionCss).toContain(".moinaos-startup-ring");
+    expect(entryAuthCss).toContain(".entry-auth-sheet .sheet-card {");
+    expect(entryAuthCss).toContain("min-height: clamp(300px, 43vw, 438px)");
+    expect(entryAuthCss).toContain("askmoina-auth-spinner");
+    expect(workerSource).toContain("min-height: clamp(300px, 43vw, 438px)");
+    expect(experienceSelectionScript).not.toContain("minimumVisibleMs");
     expect(experienceSelectionScript).toContain("finishStartupWhenReady");
     expect(experienceSelectionScript).toContain("Taking a little longer");
     expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
