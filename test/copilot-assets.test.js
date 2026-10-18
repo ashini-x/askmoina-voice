@@ -519,7 +519,6 @@ describe("Live Co-Pilot browser assets", () => {
     expect(css).toContain(".camera-stage.has-notice #videoPreview");
     expect(css).toContain(".edge-glow{display:block!important;position:absolute;z-index:80;inset:0;");
   });
-  });
 
 });
 
