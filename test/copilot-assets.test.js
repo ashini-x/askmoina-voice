@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS } from "../src/copilot-assets";
+import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERIENCE_SELECTION_JS } from "../src/copilot-assets";
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
@@ -26,6 +26,8 @@ describe("Worker-embedded Co-Pilot assets", () => {
     expect(COPILOT_HTML).toBe(html);
     expect(COPILOT_JS).toBe(script);
     expect(COPILOT_CSS).toBe(css);
+    expect(EXPERIENCE_SELECTION_CSS).toBe(experienceSelectionCss);
+    expect(EXPERIENCE_SELECTION_JS).toBe(experienceSelectionScript);
   });
 });
 
