@@ -1,5 +1,5 @@
 # AskMoina product roadmap
-Last updated: 2026-10-18 (M0 documented; M1 evidence gates pending; M2 native review pending; M3 deployed with live synthetic issues and native-listener acceptance pending; M4 pronunciation/voice audition tooling implemented, listener acceptance pending).
+Last updated: 2026-10-18 (M0 documented; M1 evidence gates pending; M2 native review pending; M3/M4 deployed but live synthetic issues remain and native-listener acceptance is pending; M5 query-aware D1 retrieval implemented, corpus/latency evaluation pending).
 
 ## Product vision
 
@@ -18,7 +18,7 @@ This initiative strengthens AskMoina's local Assamese-English conversational per
 - **M2 — Assamese Gen-Z language intelligence (review-gated reference implemented; native-speaker acceptance pending):** add a provenance/rights-aware D1 dialogue reference and load only approved examples with two distinct native-speaker approvals. Twelve starter entries are disabled pending review; they do not affect live prompts. See [M2 conversation reference and review procedure](ASSAMESE_GENZ_LANGUAGE_REFERENCE.md).
 - **M3 — Native conversational personality (prompt contract and 12-case held-out suite implemented; live native-listener acceptance pending):** adapt social intent, emotional intensity, turn length, correction handling, interruptions, language/register, and intimacy boundaries without forcing stock phrases or slang. See [M3 personality acceptance](ASSAMESE_GENZ_M3_NATIVE_PERSONALITY.md).
 - **M4 — Pronunciation and voice identity (contracts, safe voice allowlist, 12-case pronunciation suite, and 8-case audition suite implemented; native-listener acceptance pending):** scope corrections to exact words, preserve English negative controls, compare supported Live voices using identical prompts, and keep production voice selection review-gated. See [M4 pronunciation and voice identity](ASSAMESE_GENZ_M4_PRONUNCIATION_VOICE_IDENTITY.md).
-- **M5 — Intelligent contextual retrieval:** evaluate bounded semantic retrieval only if it outperforms simpler D1 lookup without unacceptable latency.
+- **M5 — Intelligent contextual retrieval (bounded query-aware D1 retrieval and synthetic priority-baseline comparison implemented; real reviewed-corpus quality and production latency pending):** return up to three relevant, source-attributed examples only when the Live tool requests them, and preserve rights/native-review gates. No embeddings/vector database is added unless it beats this baseline in a representative benchmark. See [M5 contextual retrieval](ASSAMESE_GENZ_M5_CONTEXTUAL_RETRIEVAL.md).
 - **M6 — Real-time performance and reliability:** protect streaming, turn-taking, interruption, and reconnect behavior while measuring changes.
 - **M7 — Personal companion and visual Co-Pilot:** align voice, camera, task context, history, and user-controlled memory in one coherent experience.
 - **M8 — Final acceptance and release candidate:** privately validate the frozen candidate across native-speaker, device, privacy, security, and reliability gates.

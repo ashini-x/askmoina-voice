@@ -16,7 +16,7 @@ import { handleContinuityRequest, isAdmin, recordSessionStart, recordSessionFini
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
 import { buildAssamesePronunciationInstruction } from "./sessions/assamese-pronunciation";
-import { buildAssameseConversationReferenceInstruction } from "./sessions/assamese-conversation-reference";
+import { retrieveAssameseConversationReferences } from "./sessions/assamese-contextual-retrieval";
 import { ASSAMESE_SPEECH_EVALUATION_INSTRUCTION } from "./sessions/assamese-speech-evaluation";
 import { runRetentionMaintenance } from "./maintenance/retention";
 import { buildVoiceGenerationConfig, DEFAULT_LIVE_VOICE_NAME, isPrebuiltLiveVoiceName } from "./sessions/voice-config";
@@ -604,6 +604,19 @@ const HISTORY_SEARCH_FUNCTION = {
   }
 };
 
+const ASSAMESE_REFERENCE_SEARCH_FUNCTION = {
+  name: "retrieve_assamese_conversation_reference",
+  behavior: "NON_BLOCKING",
+  description: "Retrieve up to three approved, source-cleared and native-reviewed Assamese-English conversational examples when a local phrasing, register or conversational response could benefit from a reviewed example. Do not use for current factual questions or every turn. The result may contain no match.",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      query: { type: "STRING", description: "Short description of the user's conversational intent, distinctive wording, or requested register. Maximum 180 characters." }
+    },
+    required: ["query"]
+  }
+};
+
 const COPILOT_TOOL = {
   functionDeclarations: [{
     name: "display_screen_overlay",
@@ -779,7 +792,7 @@ const COPILOT_TOOL = {
       },
       required: ["text_to_display", "instruction", "target_hint", "screen_region"]
     }
-  }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION]
+  }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION]
 };
 
 const SEARCH_GROUNDING_INSTRUCTION = [
@@ -2160,13 +2173,9 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const [pronunciationGuidance, conversationReferenceGuidance] = await Promise.all([
-          buildAssamesePronunciationInstruction(env.DB),
-          buildAssameseConversationReferenceInstruction(env.DB),
-        ]);
-        const referenceGuidance = [pronunciationGuidance, conversationReferenceGuidance].filter(Boolean).join("\n\n");
-        const baseInstruction = referenceGuidance
-          ? `${SYSTEM_INSTRUCTION}\n\n${referenceGuidance}`
+        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
+        const baseInstruction = pronunciationGuidance
+          ? `${SYSTEM_INSTRUCTION}\\n\\n${pronunciationGuidance}`
           : SYSTEM_INSTRUCTION;
         const enableCopilotForSetup = message.copilot_mode === true;
         const systemInstruction = buildPersonalizedSystemInstruction(
@@ -2186,7 +2195,7 @@ async function handleVoiceSocket(
           generationConfig: configureCopilotMediaResolution(generationConfig, enableCopilotForSetup),
           // Route both modes through the same server-executed grounded search function.
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
-          tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION] }],
+          tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
           // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
@@ -2645,6 +2654,9 @@ async function handleVoiceSocket(
           const searchCallsPresent = calls.some((call) =>
             call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
           );
+          const contextualReferenceCallsPresent = calls.some((call) =>
+            call?.name === "retrieve_assamese_conversation_reference" && typeof call.id === "string" && Boolean(call.id)
+          );
           let forwardedToolFrameEarly = false;
           let forcedRankedTriggerText: string | null = null;
           if (searchCallsPresent) latestUserRequestNeedsGrounding = false;
@@ -2652,17 +2664,17 @@ async function handleVoiceSocket(
           // Forward the search event immediately, so the browser can show its loader
           // before retrieval begins. Withhold any card from the same frame until the
           // source results arrive; a pre-search card would be premature/unverifiable.
-          if (searchCallsPresent && clientFrameText && !closed) {
-            if (copilotMode) {
+          if ((searchCallsPresent || contextualReferenceCallsPresent) && clientFrameText && !closed) {
+            if (searchCallsPresent && copilotMode) {
               try { sendClientFrame(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
             }
             const immediateToolFrame = JSON.parse(JSON.stringify(toolFrame)) as typeof toolFrame;
             if (immediateToolFrame.toolCall && Array.isArray(immediateToolFrame.toolCall.functionCalls)) {
               immediateToolFrame.toolCall.functionCalls = immediateToolFrame.toolCall.functionCalls
-                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations");
+                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference");
             } else if (immediateToolFrame.tool_call && Array.isArray(immediateToolFrame.tool_call.function_calls)) {
               immediateToolFrame.tool_call.function_calls = immediateToolFrame.tool_call.function_calls
-                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations");
+                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference");
             }
             const immediateCalls = immediateToolFrame.toolCall?.functionCalls || immediateToolFrame.tool_call?.function_calls || [];
             if (immediateCalls.length) {
@@ -2673,7 +2685,7 @@ async function handleVoiceSocket(
               } catch { /* the socket close handler owns cleanup */ }
             }
 
-            if (copilotMode && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
+            if (searchCallsPresent && copilotMode && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
               pendingGroundedSearches += calls.filter((call) =>
                 call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
               ).length;
@@ -2685,6 +2697,18 @@ async function handleVoiceSocket(
           }
 
           for (const call of calls) {
+            if (call?.name === "retrieve_assamese_conversation_reference" && typeof call.id === "string" && call.id) {
+              const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
+              const query = typeof args.query === "string" ? args.query.trim().slice(0, 180) : "";
+              const retrieval = await retrieveAssameseConversationReferences(env.DB, query);
+              responses.push({
+                id: call.id,
+                name: "retrieve_assamese_conversation_reference",
+                response: { result: retrieval.result },
+                scheduling: "WHEN_IDLE",
+              });
+              continue;
+            }
             if (call?.name === "search_past_conversations" && typeof call.id === "string" && call.id) {
               const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
               const query = typeof args.query === "string" ? args.query.trim().slice(0, 300) : "";
@@ -2780,11 +2804,12 @@ async function handleVoiceSocket(
           }
           const historySearchPresent = calls.some((call) => call?.name === "search_past_conversations");
           const cardCallShouldBeWithheld = calls.some((call) => call?.name === "display_response_card") &&
-            (Boolean(forcedRankedTriggerText) || searchCallsPresent || historySearchPresent);
-          if ((cardCallShouldBeWithheld || historySearchPresent) && !forwardedToolFrameEarly) {
+            (Boolean(forcedRankedTriggerText) || searchCallsPresent || historySearchPresent || contextualReferenceCallsPresent);
+          if ((cardCallShouldBeWithheld || historySearchPresent || contextualReferenceCallsPresent) && !forwardedToolFrameEarly) {
             const remainingCalls = calls.filter((call) =>
               !(cardCallShouldBeWithheld && call?.name === "display_response_card") &&
-              call?.name !== "search_past_conversations"
+              call?.name !== "search_past_conversations" &&
+              call?.name !== "retrieve_assamese_conversation_reference"
             );
             if (toolFrame.toolCall && Array.isArray(toolFrame.toolCall.functionCalls)) {
               toolFrame.toolCall.functionCalls = remainingCalls;
