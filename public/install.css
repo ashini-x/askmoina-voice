@@ -33,7 +33,13 @@ button { font: inherit; }
   padding: 0;
   overflow: hidden;
   isolation: isolate;
-  background: #050608;
+  background-color: #050608;
+  background-image:
+    linear-gradient(180deg, rgba(5, 6, 8, .40), rgba(5, 6, 8, .56)),
+    url("/askmoina-install-reference-mobile.webp?v=0.4.129");
+  background-position: center, center;
+  background-size: cover, cover;
+  background-repeat: no-repeat, no-repeat;
 }
 .page::before {
   content: "";
@@ -44,7 +50,7 @@ button { font: inherit; }
   background:
     radial-gradient(ellipse at 50% 18%, rgba(157, 160, 174, .16), transparent 54%),
     linear-gradient(180deg, rgba(5, 6, 8, .50), rgba(5, 6, 8, .68)),
-    url("/askmoina-install-reference-mobile.webp?v=0.4.128") center / cover no-repeat;
+    url("/askmoina-install-reference-mobile.webp?v=0.4.129") center / cover no-repeat;
 }
 .artboard {
   position: absolute;
