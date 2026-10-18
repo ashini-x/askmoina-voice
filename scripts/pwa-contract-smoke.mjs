@@ -40,6 +40,8 @@ const worker = read("src/index.ts");
 assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
 assert.ok(worker.includes('const themeColor = "#000000"'), "PWA theme must match the dark app shell");
+assert.ok(worker.includes('manifest.theme_color = "#000000"') && worker.includes('manifest.background_color = "#000000"'), "served manifest must force black Android system-bar colors");
+assert.ok(worker.includes('href="/manifest.webmanifest?v=20261018"'), "PWA shell must refresh manifest metadata after color change");
 assert.ok(worker.includes('const statusBarStyle = "black-translucent"') && !worker.includes("lightEntrySurface"), "PWA system bars must use the dark appearance");
 assert.ok(worker.includes('<meta name="color-scheme" content="dark">'), "PWA shell must declare dark color scheme");
 assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-screen launch interstitial must remain removed");
