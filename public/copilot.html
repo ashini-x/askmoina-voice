@@ -3,7 +3,7 @@
 <meta charset="utf-8"><link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin fetchpriority="high"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b0f"><meta name="color-scheme" content="dark"><meta name="description" content="askmoina sees, understands, and helps with real-world problems."><link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.80"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.80">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
-<title>askmoina · Real-world co-pilot</title><link rel="stylesheet" href="/copilot.css?v=0.4.94&ambient=20261017"><link rel="stylesheet" href="/chess/chess-ui.css?v=0.4.138"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><script type="module" src="/chess/chess-ui.js?v=0.4.138"></script><script src="/transcript-merge.js" defer></script><script src="/copilot.js?v=0.4.93" defer></script><script src="/session-ui.js" defer></script></head>
+<title>askmoina · Real-world co-pilot</title><link rel="stylesheet" href="/copilot.css?v=0.4.94&ambient=20261017"><link rel="stylesheet" href="/chess/chess-ui.css?v=0.4.139"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><script type="module" src="/chess/chess-ui.js?v=0.4.139"></script><script src="/transcript-merge.js" defer></script><script src="/copilot.js?v=0.4.93" defer></script><script src="/session-ui.js" defer></script></head>
 <body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage pre-start initial-intro" id="cameraStage" aria-label="Live camera view">
 <div class="ambient-edge-light" aria-hidden="true"></div>
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
@@ -111,7 +111,7 @@
 <button type="button" id="muteMic" class="control-icon" disabled aria-label="Mute microphone" title="Mute microphone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span class="sr-only">Mute microphone</span></button>
 <button type="button" id="toggleCopilot" class="control-icon call-action-button" disabled aria-pressed="false" aria-label="Start askmoina call" title="Start askmoina call"><svg class="icon-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.8 5.7 4.4c-.9.3-1.4 1.2-1.2 2.1 1.1 6.3 6 11.2 12.3 12.3.9.2 1.8-.4 2.1-1.2l.6-1.5-3.5-1.7-1.1 1.4a12.4 12.4 0 0 1-5.2-5.2l1.4-1.1-1.7-3.5Z"/></svg><svg class="icon-end" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.8 5.7 4.4c-.9.3-1.4 1.2-1.2 2.1 1.1 6.3 6 11.2 12.3 12.3.9.2 1.8-.4 2.1-1.2l.6-1.5-3.5-1.7-1.1 1.4a12.4 12.4 0 0 1-5.2-5.2l1.4-1.1-1.7-3.5Z"/><path d="M4 20 20 4"/></svg><span id="buttonLabel" class="sr-only">Checking voice</span></button>
 <button type="button" id="flipCamera" class="control-icon" disabled aria-label="Switch camera" title="Switch camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 7.1A7.2 7.2 0 0 1 18 6l1.5 1.5"/><path d="M19.5 4.4v3.1h-3.1"/><path d="M16.8 16.9A7.2 7.2 0 0 1 6 18l-1.5-1.5"/><path d="M4.5 19.6v-3.1h3.1"/><rect x="8.5" y="8.7" width="7" height="6.6" rx="1.2"/><circle cx="12" cy="12" r="2"/></svg></button>
-<button type="button" id="chessAssistantButton" class="control-icon chess-launch-button chess-autodetect-active" aria-label="Pause automatic chess detection" title="Chess auto-detection is on · tap to pause" aria-pressed="true"><span aria-hidden="true">♞</span><span class="sr-only">Pause automatic chess detection</span></button>
+<button type="button" id="chessAssistantButton" class="control-icon chess-launch-button chess-autodetect-active" aria-label="Pause automatic chess detection" title="Chess auto-detection is on · tap to pause" aria-pressed="true"><span aria-hidden="true">♞</span><span class="chess-launch-visible-label">Chess</span><span class="sr-only">Chess assistant: automatic board detection on; tap to pause</span></button>
 </div></nav>
 <section id="chessDetectionPopup" class="chess-detection-popup" hidden role="dialog" aria-modal="false" aria-labelledby="chessPopupTitle" aria-describedby="chessPopupMessage">
   <div class="chess-popup-heading">
@@ -119,7 +119,7 @@
     <div class="chess-popup-copy">
       <span class="chess-popup-eyebrow">ASKMOINA CHESS</span>
       <h2 id="chessPopupTitle" class="chess-popup-title">Chessboard detected</h2>
-      <p id="chessPopupMessage" class="chess-popup-message">I can read this board. Choose what you need.</p>
+      <p id="chessPopupMessage" class="chess-popup-message">I’ll use the near side as your default color and find the next strong move.</p>
     </div>
   </div>
   <div id="chessTurnSelector" class="chess-turn-selector" hidden>
@@ -132,7 +132,7 @@
     <button type="button" id="chessTrackGame" class="chess-popup-action chess-popup-action-primary">Track game</button>
   </div>
   <div class="chess-popup-footer">
-    <p class="chess-popup-privacy">Uses occasional camera frames for chess only. Images aren’t saved. Tap ♞ to pause auto-detection.</p>
+    <p class="chess-popup-privacy">Chess assistant is watching the board. Tap ♞ to pause or resume automatic detection. Images aren’t saved.</p>
     <button type="button" id="chessDismiss" class="chess-popup-dismiss">Not now</button>
   </div>
 </section>
