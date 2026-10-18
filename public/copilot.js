@@ -2647,6 +2647,28 @@
     setCameraState(livePreviewTrack ? "Camera preview" : "Camera paused", livePreviewTrack ? "live" : "idle");
   }
 
+  function returnToMoinaOSSelection() {
+    const overlay = $("#postAuthOnboarding");
+    const cameraApp = $(".camera-app");
+    const firstExperience = $("#experienceMoinaOS1");
+    const previewNotice = $("#experiencePreviewNotice");
+
+    // Open the real selection screen directly. Do not depend only on a custom
+    // event listener from a secondary script to restore the previous page.
+    if (overlay) {
+      overlay.hidden = false;
+      overlay.classList.remove("is-leaving");
+      document.body.classList.add("experience-selection-open");
+    }
+    if (cameraApp) {
+      cameraApp.setAttribute("aria-hidden", "true");
+      cameraApp.inert = true;
+    }
+    if (previewNotice) previewNotice.hidden = true;
+    if (firstExperience instanceof HTMLElement) firstExperience.focus({ preventScroll: true });
+    window.dispatchEvent(new Event("askmoina:user-disconnected"));
+  }
+
   function stopCopilot(userInitiated, statusMessage, statusKind, silentDisconnect = false, replaceProviderSession = false, returnToExperienceSelection = false) {
     copilotStartGeneration += 1;
     setProcessingState(false);
@@ -2693,7 +2715,7 @@
     if (returnToExperienceSelection) {
       // Ending the call returns to moinaOS selection; do not restart the camera
       // just to expose the obsolete “Slide to start” screen behind the overlay.
-      window.dispatchEvent(new Event("askmoina:user-disconnected"));
+      returnToMoinaOSSelection();
       return;
     }
     const previewRestart = prepareCameraPreview();
