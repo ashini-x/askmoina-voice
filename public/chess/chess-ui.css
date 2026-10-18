@@ -3,7 +3,7 @@
 .chess-launch-button[aria-expanded="true"]{background:rgba(245,245,242,.95);color:#161719;border-color:#fff}
 .chess-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:end center;padding:12px;background:rgba(1,2,5,.52);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);overscroll-behavior:contain}
 .chess-overlay[hidden]{display:none!important}
-.chess-sheet{position:relative;display:flex;flex-direction:column;gap:14px;width:min(100%,560px);max-height:min(90dvh,820px);overflow:auto;padding:20px 18px max(20px,env(safe-area-inset-bottom));border:1px solid var(--chess-border);border-radius:25px;background:var(--chess-sheet-bg);color:var(--chess-white);box-shadow:0 22px 90px rgba(0,0,0,.42);scrollbar-width:thin}
+.chess-backdrop{position:absolute;inset:0}.chess-sheet{z-index:1;position:relative;display:flex;flex-direction:column;gap:14px;width:min(100%,560px);max-height:min(90dvh,820px);overflow:auto;padding:20px 18px max(20px,env(safe-area-inset-bottom));border:1px solid var(--chess-border);border-radius:25px;background:var(--chess-sheet-bg);color:var(--chess-white);box-shadow:0 22px 90px rgba(0,0,0,.42);scrollbar-width:thin}
 .chess-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .chess-eyebrow{display:block;margin-bottom:7px;color:var(--chess-muted);font-size:.63rem;font-weight:650;letter-spacing:.13em;text-transform:uppercase}
 .chess-heading{margin:0;font-size:1.48rem;font-weight:520;letter-spacing:-.045em}
