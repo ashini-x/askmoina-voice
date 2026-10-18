@@ -64,9 +64,99 @@ function buildFixtureHtml() {
   </style></head><body><main id="screen"><div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">chess.com  ·  Play Chess Online</div></div><div class="player"><div>Player <span class="rating">(1200)</span></div><div>Opponent <span class="rating">(1250)</span></div></div><div id="board" aria-label="8 by 8 digital chessboard">${cells}</div><div class="status">Live game · Standard chess · White at bottom</div></main></body></html>`;
 }
 
+async function verifyStockfishEngine(browser) {
+  const page = await browser.newPage({ viewport: { width: 1024, height: 900 }, deviceScaleFactor: 1 });
+  try {
+    // Use a same-origin page so the real production worker response CSP and
+    // its WASM initialization are exercised in Chromium, not a fake worker.
+    await page.goto(baseUrl + "/chess/NOTICE.md", { waitUntil: "domcontentloaded" });
+    const result = await page.evaluate(async () => {
+      const { Chess } = await import("/chess/chess.js");
+      const startedAt = performance.now();
+      return await new Promise((resolve, reject) => {
+        let settled = false;
+        let sawUci = false;
+        let sawReady = false;
+        let worker;
+        const finish = (error, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          try { worker && worker.terminate(); } catch (_) {}
+          if (error) reject(error);
+          else resolve(value);
+        };
+        const timer = setTimeout(() => {
+          finish(new Error("Stockfish browser worker did not complete UCI startup and search within 45 seconds."));
+        }, 45_000);
+        try {
+          worker = new Worker("/chess/stockfish-19-lite-single.js");
+          worker.onerror = event => finish(new Error(
+            "Stockfish browser worker failed: " + String(event && event.message || "unknown worker error")
+          ));
+          worker.onmessage = event => {
+            const line = String(event && event.data != null ? event.data : "").trim();
+            if (line === "uciok" && !sawUci) {
+              sawUci = true;
+              worker.postMessage("isready");
+              return;
+            }
+            if (line === "readyok" && !sawReady) {
+              sawReady = true;
+              worker.postMessage("position startpos");
+              worker.postMessage("go depth 8");
+              return;
+            }
+            if (!line.startsWith("bestmove ")) return;
+            const uci = line.split(/\s+/)[1] || "";
+            const match = uci.match(/^([a-h][1-8])([a-h][1-8])([qrbn])?$/);
+            if (!match) {
+              finish(new Error("Stockfish browser worker returned no usable UCI move: " + line));
+              return;
+            }
+            const game = new Chess();
+            let move = null;
+            try {
+              move = game.move({ from: match[1], to: match[2], promotion: match[3] });
+            } catch (_) {}
+            if (!move) {
+              finish(new Error("Stockfish browser worker returned an illegal starting-position move: " + uci));
+              return;
+            }
+            finish(null, {
+              uci,
+              san: move.san,
+              elapsedMs: Math.round(performance.now() - startedAt),
+              uciReady: sawUci,
+              engineReady: sawReady
+            });
+          };
+          worker.postMessage("uci");
+        } catch (error) {
+          finish(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    });
+    assert.equal(result.uciReady, true, "Stockfish must complete the UCI handshake");
+    assert.equal(result.engineReady, true, "Stockfish must pass the WASM readiness check");
+    assert.ok(result.san, "Stockfish must return a legal move validated by chess.js");
+    const policy = await page.evaluate(async () => (
+      await fetch("/chess/stockfish-19-lite-single.js", { cache: "no-store" })
+    ).headers.get("Content-Security-Policy"));
+    assert.match(policy || "", /script-src[^;]*'wasm-unsafe-eval'/,
+      "Stockfish worker response CSP must explicitly allow WASM compilation");
+    assert.doesNotMatch(policy || "", /(^|[^-])'unsafe-eval'/,
+      "The policy must not permit general JavaScript eval");
+    console.log("LIVE STOCKFISH WASM ENGINE PASS " + JSON.stringify(result));
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
+    await verifyStockfishEngine(browser);
     const page = await browser.newPage({ viewport: { width: 1024, height: 1040 }, deviceScaleFactor: 1 });
     await page.setContent(buildFixtureHtml(), { waitUntil: "domcontentloaded" });
     await page.locator("#screen").waitFor({ state: "visible" });
