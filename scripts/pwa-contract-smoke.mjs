@@ -33,8 +33,9 @@ assert.ok(existsSync(resolve(root, "public/askmoina-liquid-intelligence-orb-v1-s
 const installHtml = read("public/install.html");
 const installCss = read("public/install.css");
 assert.ok(installHtml.includes('class="brand-wordmark"') && installHtml.includes("Real-time visual intelligence."), "Install landing must use the locked askmoina wordmark and tagline");
+assert.ok(installHtml.includes("Open as Web App") && installHtml.includes("Add to Home Screen"), "Install landing must preserve iOS Home Screen installation guidance in the static HTML");
 assert.ok(installHtml.includes('id="install-ios-button"') && installHtml.includes('id="install-android-button"'), "Install landing must provide distinct iOS and Android actions");
-assert.ok(installHtml.includes("/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.121"), "Install landing must use the approved smoky-core artwork");
+assert.ok(installHtml.includes("/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.122"), "Install landing must use the approved smoky-core artwork");
 assert.ok(!installHtml.includes('id="videoPreview"'), "Public install landing must not reveal the live camera UI");
 assert.ok(installCss.includes("@media (max-width: 820px)") && installCss.includes("grid-template-columns: minmax(0, 1fr)"), "Install landing must stack responsively on narrow screens");
 
@@ -147,7 +148,7 @@ assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && re
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v8"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v9"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
