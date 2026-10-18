@@ -1294,7 +1294,7 @@ button{touch-action:manipulation}
 
 
 
-/* The slider is the sole control on the welcome surface. The camera controls appear after sliding into the live camera screen. */
+
 .camera-stage.pre-start .camera-controls{
   display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;
 }
