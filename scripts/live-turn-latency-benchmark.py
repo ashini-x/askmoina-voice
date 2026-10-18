@@ -7,7 +7,6 @@ stores or prints input audio, model audio, transcripts, prompts, or credentials.
 import base64
 import json
 import os
-import statistics
 import struct
 import subprocess
 import tempfile
