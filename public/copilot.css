@@ -1694,3 +1694,71 @@ h3,h4,h5,h6{letter-spacing:-.02em}
     animation: none !important;
   }
 }
+
+/* Interface 06 — onboarding connection: camera-only backdrop, quiet one-line status. */
+.camera-stage.is-onboarding .floating-top,
+.camera-stage.is-onboarding .camera-controls,
+.camera-stage.is-onboarding .show-problem-button,
+.camera-stage.is-onboarding .privacy-hint {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.camera-stage.is-onboarding .connection-notice[data-kind="onboarding"] {
+  width: max-content !important;
+  max-width: calc(100vw - 32px) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+  overflow: visible !important;
+}
+.connection-notice[data-kind="onboarding"] .connection-notice-symbol,
+.connection-notice[data-kind="onboarding"] .connection-notice-copy p {
+  display: none !important;
+}
+.connection-notice[data-kind="onboarding"] .connection-notice-copy {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: visible;
+}
+.connection-notice[data-kind="onboarding"] .connection-notice-copy strong {
+  display: block;
+  max-width: calc(100vw - 32px);
+  color: rgba(255,255,255,.98);
+  font-size: clamp(14px, 4.25vw, 18px);
+  font-weight: 430;
+  line-height: 1.35;
+  letter-spacing: -.025em;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.connection-notice[data-kind="onboarding"] .connection-notice-progress {
+  width: 116px;
+  height: 3px;
+  margin-top: 27px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.26);
+}
+.connection-notice[data-kind="onboarding"] .connection-notice-progress span {
+  width: 36%;
+  background: rgba(255,255,255,.96);
+  animation: notice-travel 1.15s ease-in-out infinite alternate;
+}
+@media (max-width: 350px) {
+  .connection-notice[data-kind="onboarding"] .connection-notice-copy strong {
+    font-size: 13.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connection-notice[data-kind="onboarding"] .connection-notice-progress span {
+    animation: none !important;
+  }
+}
