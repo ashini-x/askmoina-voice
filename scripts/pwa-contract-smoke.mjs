@@ -85,8 +85,8 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261018"'), "Interface 06 CSS must be attached to the authenticated home route");
-assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261018"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261019"'), "Interface 06 CSS must be attached to the authenticated home route");
+assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261019"'), "Interface 06 interactions must be attached to the authenticated home route");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
 assert.ok(experienceCss.includes("grid-template-columns: minmax(0, 1fr)"), "Interface 06 text-only cards must use a single-column layout");
 assert.ok(experienceCss.includes("grid-template-rows: repeat(2, minmax(0, 1fr))"), "Interface 06 cards must share the page height symmetrically");
