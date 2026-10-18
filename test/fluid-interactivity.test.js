@@ -54,7 +54,7 @@ describe("AskMoina fluid interactivity", () => {
   it("uses spring profiles for moinaOS card entry and exit and native menu sheets", () => {
     expect(selectionAssets).toContain("engine.profiles.expand");
     expect(selectionAssets).toContain("engine.profiles.exit");
-    expect(selectionAssets).toContain("engine.flip(cameraApp, sourceRect, engine.profiles.expand");
+    expect(selectionAssets).toContain("motion.flip(cameraApp, sourceRect, motion.profiles.expand");
     expect(selectionAssets).toContain("persistTarget: true");
     expect(selectionAssets).not.toContain("window.setTimeout(finishSelection, 160)");
     expect(nativeMenu).toContain("engine.profiles.sheet");
