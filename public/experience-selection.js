@@ -15,7 +15,6 @@
 
   document.body.classList.add("experience-selection-open");
 
-  let startupStartedAt = 0;
   let startupFallbackTimer = 0;
   let startupDismissTimer = 0;
 
@@ -42,13 +41,19 @@
 
   function finishStartupWhenReady() {
     if (!startupOverlay || startupOverlay.hidden) return;
-    const minimumVisibleMs = Math.max(0, 480 - (performance.now() - startupStartedAt));
+    // performance.now() is measured from navigation start, so a genuinely fast
+    // load can dismiss before the CSS reveal delay and never flash the overlay.
+    const elapsedSinceNavigation = performance.now();
+    if (elapsedSinceNavigation < 260) {
+      startupDismissTimer = window.setTimeout(dismissStartupOverlay, 0);
+      return;
+    }
+    const minimumVisibleMs = Math.max(0, 480 - elapsedSinceNavigation);
     startupDismissTimer = window.setTimeout(dismissStartupOverlay, minimumVisibleMs);
   }
 
   const startupRequested = new URLSearchParams(window.location.search).get("startup") === "1";
   if (startupRequested && startupOverlay) {
-    startupStartedAt = performance.now();
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete("startup");
     window.history.replaceState(window.history.state, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
