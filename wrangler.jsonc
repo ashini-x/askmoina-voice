@@ -58,14 +58,15 @@
       "/askmoina-logo.svg",
       "/askmoina-logo-dark.svg",
       "/askmoina-social-avatar.svg",
-      "/askmoina-visual-guide.svg"
+      "/askmoina-visual-guide.svg",
+      "/askmoina-liquid-intelligence-orb-v1-smoky-core.webp"
     ]
   },
   "observability": {
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.120",
+    "APP_VERSION": "0.4.121",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",

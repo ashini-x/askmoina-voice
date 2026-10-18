@@ -29,6 +29,14 @@ assert.ok(existsSync(resolve(root, "public/favicon-32.png")), "32px AskMoina fav
 assert.ok(existsSync(resolve(root, "public/askmoina-logo.svg")), "AskMoina wordmark is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-social-avatar.svg")), "AskMoina social avatar is missing");
 assert.ok(existsSync(resolve(root, "public/askmoina-visual-guide.svg")), "AskMoina visual guide mark is missing");
+assert.ok(existsSync(resolve(root, "public/askmoina-liquid-intelligence-orb-v1-smoky-core.webp")), "Approved smoky-core brand artwork is missing");
+const installHtml = read("public/install.html");
+const installCss = read("public/install.css");
+assert.ok(installHtml.includes('class="brand-wordmark"') && installHtml.includes("Real-time visual intelligence."), "Install landing must use the locked askmoina wordmark and tagline");
+assert.ok(installHtml.includes('id="install-ios-button"') && installHtml.includes('id="install-android-button"'), "Install landing must provide distinct iOS and Android actions");
+assert.ok(installHtml.includes("/askmoina-liquid-intelligence-orb-v1-smoky-core.webp?v=0.4.121"), "Install landing must use the approved smoky-core artwork");
+assert.ok(!installHtml.includes('id="videoPreview"'), "Public install landing must not reveal the live camera UI");
+assert.ok(installCss.includes("@media (max-width: 820px)") && installCss.includes("grid-template-columns: minmax(0, 1fr)"), "Install landing must stack responsively on narrow screens");
 
 const gate = read("public/pwa-gate.js");
 assert.ok(gate.includes('window.matchMedia("(display-mode: standalone)")'), "gate must inspect actual standalone display mode");
@@ -64,6 +72,7 @@ assert.ok(worker.includes("assetHtml = withPwaStandaloneGate(assetHtml)"), "sign
 assert.ok(worker.includes("PWA_PUBLIC_STATIC_PATHS.has(url.pathname)"), "public PWA static assets must bypass the auth redirect");
 assert.ok(worker.includes('"/manifest.webmanifest": "application/manifest+json; charset=utf-8"'), "manifest needs an explicit content type");
 assert.ok(worker.includes('"/pwa-icon-512.png": "image/png"'), "512 PNG launch icon needs an explicit content type");
+assert.ok(worker.includes('"/askmoina-liquid-intelligence-orb-v1-smoky-core.webp": "image/webp"'), "Smoky-core image must be served with the WebP content type");
 assert.ok(worker.includes('legacyIcons.has((icon.src || "").split("?")[0])'), "Worker must filter stale legacy splash icons");
 assert.ok(worker.includes("? withPwaStandaloneGate(siteDecorated)"), "auth-served sign-in HTML must also pass through the standalone gate");
 
@@ -138,7 +147,7 @@ assert.ok(read("public/copilot.js").includes("experienceSelectionPending") && re
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v7"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v8"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(serviceWorker.includes('"/favicon.svg?v=0.4.83"'), "service worker must precache the circular favicon");
 assert.ok(serviceWorker.includes('"/favicon-32.png?v=0.4.83"'), "service worker must precache the 32px favicon");
 assert.ok(serviceWorker.includes('"/pwa-icon-512.png?v=0.4.83"'), "service worker must precache the new 512px launch icon");
