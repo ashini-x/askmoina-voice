@@ -520,3 +520,31 @@ body.post-auth-onboarding-active{overflow:hidden}
 @media(prefers-reduced-motion:reduce){
   .assistant-option,.moinaos1-start-button,.post-auth-onboarding-stage{animation:none!important;transition:none!important}
 }
+
+
+/* Fast, restrained first-paint transitions. Animate only opacity/transform so
+   the browser can composite the entrance without blurring large surfaces. */
+@media(prefers-reduced-motion:no-preference){
+  @keyframes askmoina-screen-fade-up{
+    from{opacity:0;transform:translate3d(0,4px,0)}
+    to{opacity:1;transform:translate3d(0,0,0)}
+  }
+  .entry-overlay:not([hidden]) .entry-auth-panel{
+    animation:askmoina-screen-fade-up 170ms cubic-bezier(.22,1,.36,1) both;
+  }
+  .experience-selection-overlay:not([hidden]) .experience-selection-content{
+    animation:askmoina-screen-fade-up 175ms cubic-bezier(.22,1,.36,1) both;
+  }
+  .native-info-main{
+    animation:askmoina-screen-fade-up 155ms cubic-bezier(.22,1,.36,1) both;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .entry-overlay:not([hidden]) .entry-auth-panel,
+  .experience-selection-overlay:not([hidden]) .experience-selection-content,
+  .native-info-main{
+    animation:none!important;
+    transition:none!important;
+    transform:none!important;
+  }
+}
