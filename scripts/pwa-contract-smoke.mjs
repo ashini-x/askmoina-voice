@@ -85,12 +85,14 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes('href="/experience-selection.css?v=20261017"'), "Interface 06 CSS must be attached to the authenticated home route");
-assert.ok(worker.includes('src="/experience-selection.js?v=20261017"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261017"'), "Interface 06 CSS must be attached to the authenticated home route");
+assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261017"'), "Interface 06 interactions must be attached to the authenticated home route");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
 assert.ok(experienceJs.includes("#experienceMoinaOS1") && experienceJs.includes("#experienceMoinaOS2"), "Interface 06 product interactions are missing");
 assert.ok(experienceJs.includes('window.matchMedia("(prefers-reduced-motion: reduce)")'), "Interface 06 navigation must honor reduced-motion preferences");
 assert.ok(experienceJs.includes('cameraApp.inert = false'), "moinaOS 1 selection must return interaction to the existing camera interface");
+assert.ok(worker.includes('url.searchParams.get("experience-selection") === "1"'), "Interface 06 CSS/JS query routes must be served by the authenticated Worker");
+assert.ok(worker.includes("experienceSelectionPending") && worker.includes("askmoina:experience-selected"), "Camera initialization must wait until experience selection");
 
 const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
