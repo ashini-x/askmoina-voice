@@ -87,8 +87,12 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes('href="/copilot.css?experience-selection=1&v=20261021"'), "Interface 06 CSS must be attached to the authenticated home route");
-assert.ok(worker.includes('src="/copilot.js?experience-selection=1&v=20261021"'), "Interface 06 interactions must be attached to the authenticated home route");
+assert.ok(worker.includes("const experienceAssetVersion = encodeURIComponent(appVersion)"), "Interface 06 assets must use the current release version for cache busting");
+assert.ok(worker.includes("copilot.css?experience-selection=1&v=' + experienceAssetVersion") && worker.includes("copilot.js?experience-selection=1&v=' + experienceAssetVersion"), "Interface 06 CSS and JavaScript URLs must be release-versioned");
+assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned Co-Pilot assets should use long-lived immutable caching while unversioned URLs remain revalidated");
+const nativeAppCss = read("public/native-app.css");
+assert.ok(nativeAppCss.includes("@keyframes askmoina-screen-fade-up") && nativeAppCss.includes("170ms cubic-bezier(.22,1,.36,1)"), "native app screens must use the lightweight premium fade-in");
+assert.ok(nativeAppCss.includes("@media(prefers-reduced-motion:reduce)") && nativeAppCss.includes(".experience-selection-overlay:not([hidden]) .experience-selection-content"), "fade-in must respect reduced-motion preferences");
 assert.ok(experienceCss.includes(".experience-card--preview") && experienceCss.includes("prefers-reduced-motion:reduce"), "Interface 06 needs a subdued preview card and reduced-motion support");
 assert.ok(experienceCss.includes("grid-template-columns: minmax(0, 1fr)"), "Interface 06 text-only cards must use a single-column layout");
 assert.ok(experienceCss.includes("grid-template-rows: repeat(2, minmax(0, 1fr))"), "Interface 06 cards must share the page height symmetrically");
