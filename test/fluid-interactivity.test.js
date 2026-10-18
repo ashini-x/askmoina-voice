@@ -45,6 +45,10 @@ describe("AskMoina fluid interactivity", () => {
     expect(worker).toContain("html = withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, appVersion)");
     expect(worker).toContain("withFluidInteractivity(html, \"0.4.80\")");
+    expect(worker).toContain("const decorated = withFluidInteractivity(pwaDecorated, appVersion);");
+    expect(worker).toContain("withSiteChromeResponse(authResponse, url.pathname, authenticated, env.APP_VERSION || \"0.4.80\")");
+    expect(worker).toContain("withSiteChromeResponse(labResponse, labUrl.pathname, true, env.APP_VERSION || \"0.4.80\")");
+    expect(worker).toContain("withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu, env.APP_VERSION || \"0.4.80\")");
   });
 
   it("springs response-card details instead of toggling them abruptly", () => {
