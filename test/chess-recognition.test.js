@@ -234,6 +234,9 @@ describe("provider result assessment", () => {
     expect(prompt).toContain("Do not infer or change that side");
     expect(buildChessRecognitionPrompt(null)).toContain("The side to move is unknown");
     expect(prompt).toContain("all four corners");
+    expect(prompt).toContain("Chess.com");
+    expect(prompt).toContain("monitor, laptop, tablet, or phone");
+    expect(prompt).toContain("ignore everything outside its grid");
   });
 });
 
@@ -335,6 +338,15 @@ describe("browser scan client", () => {
       expect(result.position).toBeNull();
       expect(result.recognition.boardRows).toEqual(STARTING_ROWS);
     }
+  });
+
+  it("gives a timeout-specific message instead of blaming camera framing", async () => {
+    const fetchImpl = vi.fn(async () => { throw Object.assign(new Error("request timed out"), { name: "TimeoutError" }); });
+    const blob = new Blob([Uint8Array.from([255, 216, 255, 0])], { type: "image/jpeg" });
+    const result = await recognizeChessboardFrame(blob, { fetchImpl });
+    expect(result).toMatchObject({ ok: false, reason: "recognition_timeout" });
+    expect(result.message).toContain("Chess.com");
+    expect(result.message).toContain("timed out");
   });
 
   it("validates returned board data and produces FEN only after confidence checks", async () => {
