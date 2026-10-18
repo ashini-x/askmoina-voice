@@ -1,6 +1,37 @@
 (() => {
   "use strict";
 
+  // Track the browser's actually visible viewport. On Android, 100dvh can
+  // briefly include area behind a transitioning browser toolbar; using
+  // VisualViewport avoids the black strip and keeps the portrait artwork flush.
+  const syncInstallViewport = () => {
+    const visual = window.visualViewport;
+    const width = Math.max(1, visual?.width || document.documentElement.clientWidth || window.innerWidth);
+    const height = Math.max(1, visual?.height || document.documentElement.clientHeight || window.innerHeight);
+    const left = visual?.offsetLeft || 0;
+    const top = visual?.offsetTop || 0;
+    document.documentElement.style.setProperty("--install-viewport-width", width + "px");
+    document.documentElement.style.setProperty("--install-viewport-height", height + "px");
+    document.documentElement.style.setProperty("--install-viewport-left", left + "px");
+    document.documentElement.style.setProperty("--install-viewport-top", top + "px");
+    document.documentElement.style.setProperty("--install-artboard-width", (height * 9 / 16) + "px");
+  };
+  let viewportSyncScheduled = false;
+  const scheduleInstallViewportSync = () => {
+    if (viewportSyncScheduled) return;
+    viewportSyncScheduled = true;
+    window.requestAnimationFrame(() => {
+      viewportSyncScheduled = false;
+      syncInstallViewport();
+    });
+  };
+  syncInstallViewport();
+  window.addEventListener("resize", scheduleInstallViewportSync, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", scheduleInstallViewportSync, { passive: true });
+    window.visualViewport.addEventListener("scroll", scheduleInstallViewportSync, { passive: true });
+  }
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker

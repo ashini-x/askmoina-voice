@@ -16,19 +16,19 @@ html, body {
   min-height: 0;
   margin: 0;
   overflow: hidden;
-  background: #050608;
+  background: #000;
 }
-body { height: 100vh; height: 100dvh; min-height: 0; }
+body { height: 100svh; min-height: 0; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
 [hidden] { display: none !important; }
 
 .page {
   position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  left: var(--install-viewport-left, 0px);
+  top: var(--install-viewport-top, 0px);
+  width: var(--install-viewport-width, 100vw);
+  height: var(--install-viewport-height, 100svh);
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -40,9 +40,8 @@ button { font: inherit; }
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(100vw, 56.25vh);
-  width: min(100vw, 56.25dvh);
-  aspect-ratio: 9 / 16;
+  width: var(--install-artboard-width, 56.25svh);
+  height: var(--install-viewport-height, 100svh);
   margin: 0;
   padding: 0;
   line-height: 0;
@@ -68,6 +67,9 @@ button { font: inherit; }
 .install-hotspot:focus-visible { outline: 2px solid rgba(255, 255, 255, .96); outline-offset: 1px; }
 .install-hotspot--ios { left: 9.25%; top: 70.8%; width: 81.5%; height: 10.2%; }
 .install-hotspot--android { left: 9.25%; top: 81.9%; width: 81.5%; height: 10.3%; }
+@media (max-aspect-ratio: 9 / 16) {
+  .install-hotspot--ios, .install-hotspot--android { left: 0; width: 100%; }
+}
 
 .install-status {
   position: fixed;
