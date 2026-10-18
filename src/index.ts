@@ -3491,9 +3491,15 @@ export default {
       headers.delete("Content-Length");
       headers.delete("ETag");
     }
+    // Stockfish compiles WebAssembly inside this dedicated worker. Allow
+    // WebAssembly evaluation only on the engine script response, not on app
+    // documents or other assets; never enable general 'unsafe-eval'.
+    const workerScriptPolicy = url.pathname === "/chess/stockfish-19-lite-single.js"
+      ? "script-src 'self' 'wasm-unsafe-eval'"
+      : "script-src 'self'";
     headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; " + workerScriptPolicy + "; media-src 'self' blob:",
     );
     headers.set("X-Content-Type-Options", "nosniff");
     headers.set("X-Frame-Options", "DENY");
