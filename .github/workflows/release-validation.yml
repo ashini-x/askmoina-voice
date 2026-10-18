@@ -28,6 +28,7 @@ jobs:
       - run: node --check public/fluid-interactivity.js
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
+      - run: node --check scripts/live-chess-recognition-smoke.mjs
       - name: Validate synthetic speech script syntax
         run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py
       - name: Validate required production secrets
