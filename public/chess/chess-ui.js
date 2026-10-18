@@ -409,7 +409,7 @@ import {
     let fen;
     let sideToMove;
     try {
-      if (pendingMode === "move" && gameState) {
+      if (gameState && !pendingRecognition) {
         fen = gameState.currentFen;
         sideToMove = new Chess(fen).turn();
       } else {
