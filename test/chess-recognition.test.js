@@ -323,7 +323,10 @@ describe("bounded authenticated chess scan endpoint", () => {
       expect(init.headers.Authorization).toBe("Bearer test-token");
       const requestJson = JSON.parse(init.body);
       expect(requestJson.generationConfig.maxOutputTokens).toBe(900);
-      expect(requestJson.generationConfig.temperature).toBe(0);
+      expect(requestJson.generationConfig).not.toHaveProperty("temperature");
+      expect(requestJson.generationConfig).not.toHaveProperty("topP");
+      expect(requestJson.generationConfig).not.toHaveProperty("candidateCount");
+      expect(requestJson.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
       expect(requestJson.generationConfig.responseMimeType).toBe("application/json");
       return new Response(JSON.stringify(providerResult), { status: 200, headers: { "Content-Type": "application/json" } });
     });
@@ -337,6 +340,22 @@ describe("bounded authenticated chess scan endpoint", () => {
     expect(json.sideToMove).toBe("w");
     expect(json.history.castlingRights).toBe("unknown_from_image");
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the upstream provider status without exposing its response body", async () => {
+    const getAccessToken = vi.fn(async () => "test-token");
+    const fetchImpl = vi.fn(async () => new Response("private provider detail that must not escape", { status: 400 }));
+    const response = await handleChessRecognitionRequest(makeRequest(), env, {
+      getAccessToken,
+      fetchImpl,
+      resolveActor: async () => "chess-provider-status-test",
+      now: (() => { let now = 500_000; return () => now; })()
+    });
+    expect(response.status).toBe(502);
+    const body = await response.json();
+    expect(body).toMatchObject({ ok: false, reason: "provider_error", providerStatus: 400 });
+    expect(body.message).toBe("Chessboard recognition is temporarily unavailable.");
+    expect(JSON.stringify(body)).not.toContain("private provider detail");
   });
 
   it("returns 422 for a cropped or uncertain board rather than forwarding it", async () => {
