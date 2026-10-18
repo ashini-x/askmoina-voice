@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation } from "./recognition-client.js?v=0.4.142";
+import { recognizeChessboardFrame, boardRowsToFen, verifyStableChessboardRecognition, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.143";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -44,6 +44,7 @@ import {
   let pendingMode = "hidden";
   let selectedSide = null;
   let scanning = false;
+  let manualScanRequested = false;
   let autoTimer = null;
   let autoEnabled = loadAutoSetting();
   let consecutiveMisses = 0;
@@ -67,7 +68,7 @@ import {
     }
   }
 
-  function setStatus(title, message, kind = "info") {
+  function setStatus(title, message, kind = "info", persistUntilResult = false) {
     if (statusMessageTimer) clearTimeout(statusMessageTimer);
     popupTitle.textContent = title;
     popupMessage.textContent = message;
@@ -78,7 +79,7 @@ import {
     suggestButton.hidden = true;
     trackButton.hidden = true;
     dismissButton.textContent = "Done";
-    statusMessageTimer = setTimeout(() => {
+    statusMessageTimer = persistUntilResult ? null : setTimeout(() => {
       if (pendingMode === "message") hidePopup(gameState ? BASE_RETRY_MS : DISMISS_COOLDOWN_MS);
     }, 9000);
   }
@@ -339,8 +340,28 @@ import {
     if (!cameraIsActive() || !video.videoWidth || !video.videoHeight) {
       throw new Error("The camera preview is not active yet.");
     }
-    let width = video.videoWidth;
-    let height = video.videoHeight;
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+    const style = window.getComputedStyle(video);
+    let crop = { sx: 0, sy: 0, sw: sourceWidth, sh: sourceHeight };
+    if (style.objectFit === "cover") {
+      const boxWidth = video.clientWidth || video.offsetWidth || sourceWidth;
+      const boxHeight = video.clientHeight || video.offsetHeight || sourceHeight;
+      let zoomX = 1;
+      let zoomY = 1;
+      if (style.transform && style.transform !== "none" && typeof DOMMatrixReadOnly !== "undefined") {
+        try {
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          zoomX = Math.hypot(matrix.a, matrix.b) || 1;
+          zoomY = Math.hypot(matrix.c, matrix.d) || 1;
+        } catch {}
+      }
+      crop = computeCoverCrop(sourceWidth, sourceHeight, boxWidth, boxHeight, style.objectPosition, zoomX, zoomY);
+    }
+    // Match the actual visible preview rather than uploading the uncropped camera
+    // sensor frame. This is crucial when a portrait UI crops a landscape sensor.
+    let width = Math.max(1, Math.round(crop.sw));
+    let height = Math.max(1, Math.round(crop.sh));
     const scale = Math.min(1, 1120 / Math.max(width, height));
     width = Math.max(1, Math.round(width * scale));
     height = Math.max(1, Math.round(height * scale));
@@ -350,7 +371,7 @@ import {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       canvas.width = width;
       canvas.height = height;
-      context.drawImage(video, 0, 0, width, height);
+      context.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height);
       for (const quality of [0.66, 0.56, 0.46, 0.36, 0.28]) {
         const blob = await canvasBlob(canvas, quality);
         if (blob.type === "image/jpeg" && blob.size >= 4 && blob.size <= MAX_FRAME_BYTES) return blob;
@@ -431,6 +452,7 @@ import {
   async function detectChessboard(manual = false) {
     if (!autoEnabled && !manual) return;
     if (scanning) {
+      if (manual) manualScanRequested = true;
       scheduleDetection(BASE_RETRY_MS);
       return;
     }
@@ -443,12 +465,15 @@ import {
       const result = await recognizeOneFrame();
       if (!result.ok) {
         consecutiveMisses += 1;
-        if (manual && result.reason !== "no_board" && result.reason !== "partial_board" && result.reason !== "uncertain_recognition" && result.reason !== "orientation_uncertain") {
-          setStatus("Couldn’t read the board", result.message || "Try again with all four corners visible.", "warning");
+        const shouldReportManualFailure = manual || manualScanRequested;
+        manualScanRequested = false;
+        if (shouldReportManualFailure) {
+          setStatus("Couldn’t read the board", result.message || "I couldn’t read the 8×8 grid. Keep the full board visible and try again.", "warning");
         }
         scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
         return;
       }
+      manualScanRequested = false;
       consecutiveMisses = 0;
       let observation = result.recognition;
       let placement = placementFromRows(observation.boardRows);
@@ -519,7 +544,9 @@ import {
       showBoardPrompt(observation);
       void startBackgroundConfirmation(observation);
     } catch (error) {
-      if (manual) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
+      const shouldReportManualFailure = manual || manualScanRequested;
+      manualScanRequested = false;
+      if (shouldReportManualFailure) setStatus("Chess detection unavailable", error && error.message ? error.message : "Try again when the camera is clear.", "warning");
       consecutiveMisses += 1;
       scheduleDetection(Math.min(MAX_RETRY_MS, BASE_RETRY_MS + consecutiveMisses * 1500));
     } finally {
@@ -780,8 +807,8 @@ import {
     }
     const cameraReady = cameraIsActive();
     setStatus("Next strong move", cameraReady
-      ? "Looking for a chessboard. Keep the full board and all four corners in view. I'll use the side nearest the bottom of the screen as your default color."
-      : "Chess assistant is ready. Start the camera, then point it at the full chessboard. I'll use the side nearest the bottom of the screen as your default color.");
+      ? "Scanning the visible camera frame for the 8×8 board. Digital boards such as Chess.com are supported; your default side is the edge nearest the bottom of the preview."
+      : "Chess assistant is ready. Start the camera, then point it at the full chessboard. Your default side is the edge nearest the bottom of the preview.", "info", cameraReady);
     void detectChessboard(true);
   });
   pauseButton.addEventListener("click", () => {

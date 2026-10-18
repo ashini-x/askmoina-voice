@@ -8,6 +8,47 @@ const PIECES = new Set("pnbrqkPNBRQK");
 const SQUARE_PATTERN = /^[a-h][1-8]$/;
 
 /**
+ * Map the visible object-fit:cover viewport back into the camera's native frame.
+ * The preview can be portrait-cropped from a landscape sensor; scanning the full
+ * native frame makes the board needlessly tiny and includes off-screen clutter.
+ */
+export function computeCoverCrop(sourceWidth, sourceHeight, boxWidth, boxHeight, objectPosition = "50% 50%", transformScaleX = 1, transformScaleY = 1) {
+  for (const value of [sourceWidth, sourceHeight, boxWidth, boxHeight]) {
+    if (!Number.isFinite(value) || value <= 0) throw new RangeError("Video crop dimensions must be positive finite numbers.");
+  }
+  const tokens = String(objectPosition || "50% 50%").trim().split(/\s+/);
+  const fraction = (token, axis) => {
+    const value = String(token || "center").toLowerCase();
+    if (value.endsWith("%")) {
+      const parsed = Number.parseFloat(value) / 100;
+      return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : 0.5;
+    }
+    if (value === "center") return 0.5;
+    if (axis === "x" && value === "left") return 0;
+    if (axis === "x" && value === "right") return 1;
+    if (axis === "y" && value === "top") return 0;
+    if (axis === "y" && value === "bottom") return 1;
+    return 0.5;
+  };
+  const scale = Math.max(boxWidth / sourceWidth, boxHeight / sourceHeight);
+  let sw = Math.min(sourceWidth, boxWidth / scale);
+  let sh = Math.min(sourceHeight, boxHeight / scale);
+  let sx = (sourceWidth - sw) * fraction(tokens[0], "x");
+  let sy = (sourceHeight - sh) * fraction(tokens[1] || "center", "y");
+  const zoomX = Number.isFinite(transformScaleX) ? Math.max(1, transformScaleX) : 1;
+  const zoomY = Number.isFinite(transformScaleY) ? Math.max(1, transformScaleY) : 1;
+  if (zoomX > 1 || zoomY > 1) {
+    const nextWidth = sw / zoomX;
+    const nextHeight = sh / zoomY;
+    sx += (sw - nextWidth) / 2;
+    sy += (sh - nextHeight) / 2;
+    sw = nextWidth;
+    sh = nextHeight;
+  }
+  return { sx, sy, sw, sh };
+}
+
+/**
  * This client is intentionally opt-in: it never watches the camera or uploads
  * frames itself. The caller must invoke it only after explicit chess intent
  * and supply a single, already-captured JPEG frame.

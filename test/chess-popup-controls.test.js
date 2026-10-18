@@ -24,6 +24,10 @@ describe("chess assistant popup and main control", () => {
     expect(handler).toContain('setStatus("Next strong move"');
     expect(handler).toContain("void detectChessboard(true)");
     expect(chessUi).toContain("function setPopupOpen(open)");
+    expect(chessUi).toContain("persistUntilResult = false");
+    expect(chessUi).toContain("let manualScanRequested = false");
+    expect(chessUi).toContain("if (manual) manualScanRequested = true");
+    expect(chessUi).toContain("Scanning the visible camera frame for the 8×8 board");
     expect(chessUi).toContain('popupTitle.textContent = "Next strong move"');
   });
 
@@ -38,7 +42,7 @@ describe("chess assistant popup and main control", () => {
   });
 
   it("cache-busts the changed chess UI and popup stylesheet", () => {
-    expect(html).toContain('/chess/chess-ui.js?v=0.4.142');
+    expect(html).toContain('/chess/chess-ui.js?v=0.4.143');
     expect(html).toContain('/chess/chess-ui.css?v=0.4.140');
   });
 });

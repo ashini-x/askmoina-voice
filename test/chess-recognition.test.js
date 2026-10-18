@@ -7,7 +7,8 @@ import {
   recognizeChessboardFrame,
   verifyStableChessboardRecognition,
   inferUserColorFromOrientation,
-  validateBoardRows
+  validateBoardRows,
+  computeCoverCrop
 } from "../public/chess/recognition-client.js";
 import { assessRecognition, buildChessRecognitionPrompt, handleChessRecognitionRequest } from "../src/chess/recognition.ts";
 
@@ -97,6 +98,30 @@ describe("continuous next-strong-move turn flow", () => {
     const whiteState = createNewChessGame({ playerColor: "w", now: "2026-10-18T00:00:00.000Z" });
     expect(isPlayersTurn(whiteState)).toBe(true);
     if (whiteMove.ok) expect(isPlayersTurn({ ...whiteMove.state, playerColor: "w" })).toBe(false);
+  });
+});
+
+describe("camera preview crop geometry", () => {
+  it("crops a landscape camera sensor to the portrait object-fit cover viewport", () => {
+    const crop = computeCoverCrop(1920, 1080, 691, 1376);
+    expect(crop.sx).toBeGreaterThan(600);
+    expect(crop.sy).toBe(0);
+    expect(crop.sw).toBeCloseTo(542.6, 0);
+    expect(crop.sh).toBeCloseTo(1080, 0);
+    expect(crop.sw / crop.sh).toBeCloseTo(691 / 1376, 2);
+  });
+
+  it("honours the visible side of object-position and preview zoom", () => {
+    const right = computeCoverCrop(1920, 1080, 691, 1376, "right center");
+    expect(right.sx).toBeCloseTo(1920 - right.sw, 0);
+    const zoomed = computeCoverCrop(1920, 1080, 691, 1376, "50% 50%", 1.055, 1.055);
+    expect(zoomed.sw).toBeLessThan(right.sw);
+    expect(zoomed.sh).toBeLessThan(right.sh);
+    expect(zoomed.sx).toBeGreaterThan(right.sx / 2);
+  });
+
+  it("rejects invalid source geometry rather than silently scanning a wrong crop", () => {
+    expect(() => computeCoverCrop(0, 1080, 691, 1376)).toThrow(RangeError);
   });
 });
 

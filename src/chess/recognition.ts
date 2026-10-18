@@ -5,8 +5,8 @@ import { isAdmin } from "../continuity";
 
 const MAX_IMAGE_BYTES = 512 * 1024;
 const MAX_BODY_BYTES = 720 * 1024;
-const REQUEST_BUDGET_MS = 18_000;
-const PROVIDER_TIMEOUT_MS = 14_000;
+const REQUEST_BUDGET_MS = 30_000;
+const PROVIDER_TIMEOUT_MS = 24_000;
 const MIN_CONFIDENCE = 0.82;
 const MIN_SQUARE_CONFIDENCE = 0.75;
 const MODEL = "gemini-3.8-flash";
