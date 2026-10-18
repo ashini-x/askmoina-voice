@@ -9,15 +9,7 @@
   color: #f5f5f7;
 }
 * { box-sizing: border-box; }
-html, body {
-  width: 100%;
-  min-width: 320px;
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  overflow: hidden;
-  background: #050608;
-}
+html, body { width: 100%; min-width: 320px; height: 100%; min-height: 0; margin: 0; overflow: hidden; background: #050608; }
 body { height: 100vh; height: 100dvh; min-height: 0; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
@@ -33,37 +25,35 @@ button { font: inherit; }
   padding: 0;
   overflow: hidden;
   isolation: isolate;
-  background-color: #050608;
-  background-image:
-    radial-gradient(ellipse at 50% 14%, rgba(109, 111, 124, .22), transparent 52%),
-    radial-gradient(ellipse at 84% 77%, rgba(157, 132, 109, .16), transparent 45%),
-    radial-gradient(ellipse at 15% 80%, rgba(80, 108, 139, .11), transparent 42%);
+  background: #050608;
+}
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(157, 160, 174, .16), transparent 54%),
+    linear-gradient(180deg, rgba(5, 6, 8, .50), rgba(5, 6, 8, .68)),
+    url("/askmoina-install-reference-mobile.webp?v=0.4.128") center / cover no-repeat;
 }
 .artboard {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(100vw, 177.7778dvh);
-  aspect-ratio: 16 / 9;
+  width: min(100vw, 56.25vh);
+  width: min(100vw, 56.25dvh);
+  aspect-ratio: 9 / 16;
   margin: 0;
   padding: 0;
   line-height: 0;
   overflow: hidden;
   isolation: isolate;
 }
-.reference-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.reference-art {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-}
+.reference-picture { display: block; width: 100%; height: 100%; }
+.reference-art { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .install-hotspot {
   position: absolute;
   display: block;
@@ -78,120 +68,41 @@ button { font: inherit; }
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.install-hotspot:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, .96);
-  outline-offset: 1px;
-}
-.install-hotspot--ios {
-  left: 8.2%;
-  top: 56.1%;
-  width: 18.8%;
-  height: 15%;
-}
-.install-hotspot--android {
-  left: 27.9%;
-  top: 56.1%;
-  width: 20.1%;
-  height: 15%;
-}
+.install-hotspot:focus-visible { outline: 2px solid rgba(255, 255, 255, .96); outline-offset: 1px; }
+.install-hotspot--ios { left: 9.25%; top: 70.8%; width: 81.5%; height: 10.2%; }
+.install-hotspot--android { left: 9.25%; top: 81.9%; width: 81.5%; height: 10.3%; }
 
 .install-status {
-  position: fixed;
-  z-index: 5;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(calc(100vw - 32px), 420px);
-  margin: 0;
-  color: #c9cad0;
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
+  position: fixed; z-index: 5; left: 50%; bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(calc(100vw - 32px), 420px); margin: 0;
+  color: #c9cad0; font-size: 13px; line-height: 1.5; text-align: center;
 }
 .install-help {
-  position: fixed;
-  z-index: 5;
-  left: 50%;
-  bottom: max(14px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(calc(100vw - 32px), 420px);
-  max-height: calc(100dvh - 28px);
-  margin: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  position: fixed; z-index: 5; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(calc(100vw - 32px), 420px);
+  max-height: calc(100dvh - 28px); margin: 0; overflow-y: auto; overscroll-behavior: contain;
 }
 .install-help-panel {
-  position: relative;
-  padding: 22px 24px 24px;
-  border: 1px solid rgba(231, 233, 240, .17);
-  border-radius: 22px;
-  background: rgba(19, 21, 27, .96);
-  box-shadow: 0 16px 50px rgba(0, 0, 0, .28);
+  position: relative; padding: 22px 24px 24px;
+  border: 1px solid rgba(231, 233, 240, .17); border-radius: 22px;
+  background: rgba(19, 21, 27, .96); box-shadow: 0 16px 50px rgba(0, 0, 0, .28);
 }
 .install-help-close {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .08);
-  color: #f5f5f7;
-  font-size: 23px;
-  line-height: 1;
-  cursor: pointer;
+  position: absolute; top: 12px; right: 14px; width: 34px; height: 34px;
+  border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08);
+  color: #f5f5f7; font-size: 23px; line-height: 1; cursor: pointer;
 }
-.help-eyebrow {
-  margin: 0 40px 9px 0;
-  color: #a7a8b0;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .15em;
-}
-.install-help-panel h2 {
-  margin: 0;
-  color: #f5f5f7;
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -.035em;
-}
-.install-help-panel p:not(.help-eyebrow) {
-  margin: 10px 0 0;
-  color: #b4b5bd;
-  font-size: 13px;
-  line-height: 1.55;
-}
+.help-eyebrow { margin: 0 40px 9px 0; color: #a7a8b0; font-size: 10px; font-weight: 600; letter-spacing: .15em; }
+.install-help-panel h2 { margin: 0; color: #f5f5f7; font-size: 22px; font-weight: 400; letter-spacing: -.035em; }
+.install-help-panel p:not(.help-eyebrow) { margin: 10px 0 0; color: #b4b5bd; font-size: 13px; line-height: 1.55; }
 .install-help-panel .install-help-steps { color: #f0f0f3; }
 
-@media (orientation: portrait) {
-  .artboard {
-    width: min(100vw, 56.25dvh);
-    aspect-ratio: 9 / 16;
-  }
-  .install-hotspot--ios {
-    left: 9.25%;
-    top: 70.8%;
-    width: 81.5%;
-    height: 10.2%;
-  }
-  .install-hotspot--android {
-    left: 9.25%;
-    top: 81.9%;
-    width: 81.5%;
-    height: 10.3%;
-  }
-}
 @media (max-height: 420px) {
+  .install-hotspot { min-height: 34px; }
   .install-help { max-height: calc(100dvh - 16px); bottom: 8px; }
   .install-help-panel { padding: 16px 18px 18px; }
   .install-help-panel h2 { font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    transition-duration: .01ms !important;
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-  }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
