@@ -24,6 +24,8 @@
       "/pwa-icon-512.svg",
       "/pwa-icon-512.png",
       "/api/*",
+      "/veda/*",
+      "/veda",
       "/voice-lab",
       "/voice-lab.html",
       "/copilot",
@@ -68,14 +70,15 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.140",
+    "APP_VERSION": "0.4.141",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
     "LIVE_VOICE_NAME": "Leda",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
-    "ANALYTICS_RAW_RETENTION_DAYS": "30"
+    "ANALYTICS_RAW_RETENTION_DAYS": "30",
+    "VEDA_ENABLED": "false"
   },
   "secrets": {
     "required": [
@@ -146,7 +149,8 @@
       "LIVE_VOICE_NAME": "Leda",
       "GEMINI_LOCATION": "us-central1",
       "GCP_PROJECT_ID": "askmoina-preview",
-      "ANALYTICS_RAW_RETENTION_DAYS": "30"
+      "ANALYTICS_RAW_RETENTION_DAYS": "30",
+      "VEDA_ENABLED": "false"
     },
     "durable_objects": {
       "bindings": [

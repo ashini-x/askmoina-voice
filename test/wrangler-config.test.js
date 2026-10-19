@@ -41,4 +41,15 @@ describe("production Worker configuration", () => {
       ]),
     );
   });
+  it("keeps Veda disabled in production and preview until its private installation and runtime are implemented", () => {
+    expect(config.vars.VEDA_ENABLED).toBe("false");
+    expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
+  });
+
+  it("routes reserved Veda paths through the Worker rather than allowing static-asset bypasses", () => {
+    expect(config.assets?.run_worker_first).toEqual(
+      expect.arrayContaining(["/veda", "/veda/*", "/api/*"]),
+    );
+  });
+
 });

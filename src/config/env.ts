@@ -6,6 +6,8 @@ export interface Env {
   BACKGROUND_QUEUE: Queue;
 
   APP_VERSION: string;
+  // Explicit opt-in; Veda remains unavailable until its private app and runtime exist.
+  VEDA_ENABLED?: string;
   ENVIRONMENT: string;
   GEMINI_MODEL: string;
   GEMINI_LOCATION: string;

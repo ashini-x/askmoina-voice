@@ -1,4 +1,5 @@
 import type { Env } from "./config/env";
+import { handleVedaBoundaryRequest, isVedaEnabled, isVedaRoutePath } from "./veda/feature-boundary";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
 import { handleUserMemoryRequest } from "./user-memory";
@@ -3133,6 +3134,18 @@ export class LiveSessionRelay {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Veda is an isolated, disabled-by-default feature boundary. It is handled
+    // before generic asset/auth routing so future Veda routes cannot bypass the
+    // admin gate through static-asset serving.
+    if (isVedaRoutePath(url.pathname)) {
+      const vedaResponse = handleVedaBoundaryRequest(
+        request,
+        env,
+        isVedaEnabled(env) ? await isAdmin(request, env) : false,
+      );
+      if (vedaResponse) return vedaResponse;
+    }
 
     // PWA shell resources are public static assets, not authenticated app pages.
     // Route them before the global login guard so the browser can load the
