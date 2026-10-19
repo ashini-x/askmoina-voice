@@ -5,11 +5,11 @@ import { isAdmin } from "../continuity";
 
 const MAX_IMAGE_BYTES = 512 * 1024;
 const MAX_BODY_BYTES = 720 * 1024;
-const REQUEST_BUDGET_MS = 30_000;
-const PROVIDER_TIMEOUT_MS = 24_000;
+const REQUEST_BUDGET_MS = 20_000;
+const PROVIDER_TIMEOUT_MS = 16_000;
 const MIN_CONFIDENCE = 0.74;
 const MIN_SQUARE_CONFIDENCE = 0.60;
-const MODEL = "gemini-3.8-flash";
+const MODEL = "gemini-3.5-flash-lite";
 const LOCATION = "global";
 const HOST = "aiplatform.googleapis.com";
 
@@ -188,7 +188,7 @@ export async function handleChessRecognitionRequest(
               maxOutputTokens: 900,
             responseMimeType: "application/json",
             responseSchema: RESPONSE_SCHEMA,
-            thinkingConfig: { thinkingLevel: "LOW" }
+            thinkingConfig: { thinkingLevel: "MINIMAL" }
           }
         })
       });
