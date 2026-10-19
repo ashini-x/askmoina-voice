@@ -1,0 +1,534 @@
+/*
+ * AskMoina Liquid Glass System
+ * Visual source: the smoky-core hero with champagne and titanium reflections.
+ * Glass is reserved for controls, navigation and transient surfaces so content stays clear.
+ */
+:root {
+  color-scheme: dark;
+  --askmoina-obsidian: #090A0D;
+  --askmoina-graphite: #151619;
+  --askmoina-elevated: #202126;
+  --askmoina-porcelain: #F5EFE9;
+  --askmoina-champagne: #D7C0AD;
+  --askmoina-titanium: #98A8BB;
+  --askmoina-secondary: rgba(245, 239, 233, .68);
+  --askmoina-tertiary: rgba(245, 239, 233, .46);
+  --askmoina-glass: rgba(21, 22, 25, .72);
+  --askmoina-glass-heavy: rgba(12, 13, 16, .90);
+  --askmoina-glass-border: rgba(245, 239, 233, .14);
+  --askmoina-glass-border-strong: rgba(245, 239, 233, .24);
+  --askmoina-glass-highlight: rgba(255, 255, 255, .075);
+  --askmoina-shadow: 0 20px 64px rgba(0, 0, 0, .34);
+  --askmoina-focus: rgba(215, 192, 173, .88);
+  accent-color: #D7C0AD;
+  background: var(--askmoina-obsidian);
+  color: var(--askmoina-porcelain);
+}
+
+html {
+  color-scheme: dark;
+  background: var(--askmoina-obsidian);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body,
+html:has(.camera-app),
+body:has(.camera-app),
+body.site-chrome-page,
+body.native-info-page,
+body.native-account-page {
+  background-color: var(--askmoina-obsidian) !important;
+  color: var(--askmoina-porcelain);
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--askmoina-focus);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgba(215, 192, 173, .28);
+  color: #fffaf5;
+}
+
+/* Camera / real-world copilot: the live view stays unobstructed; only UI chrome is glass. */
+.camera-app,
+.camera-stage,
+html:has(.camera-app),
+body:has(.camera-app) {
+  background: var(--askmoina-obsidian) !important;
+}
+
+.camera-placeholder {
+  background:
+    radial-gradient(ellipse at 70% 14%, rgba(215, 192, 173, .10), transparent 32%),
+    radial-gradient(ellipse at 20% 72%, rgba(152, 168, 187, .09), transparent 34%),
+    radial-gradient(ellipse at 50% 42%, #202126 0%, #101115 47%, #090A0D 78%) !important;
+}
+
+.floating-top .back-control,
+.floating-top .library-open-control,
+.floating-top .logout-control,
+.native-app-chrome button,
+.app-toolbar .app-nav a,
+.app-toolbar .app-nav button,
+.control-icon,
+.zoom-dock,
+.camera-top-badge,
+.camera-state,
+.vision-pill,
+.vault-link,
+.approx-tag {
+  border-color: var(--askmoina-glass-border) !important;
+  background-color: rgba(21, 22, 25, .68) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .20), inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+.control-icon:active,
+.floating-top button:active,
+.native-app-chrome button:active {
+  transform: scale(.965);
+}
+
+.camera-controls .call-action-button,
+.voice-button,
+.chess-launch-button.chess-autodetect-active {
+  border: 1px solid rgba(245, 239, 233, .86) !important;
+  background: linear-gradient(145deg, #fffaf4 0%, #F5EFE9 48%, #D7C0AD 150%) !important;
+  color: #111216 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+
+.camera-controls .call-action-button.is-live,
+.voice-button.is-live {
+  border-color: rgba(152, 168, 187, .58) !important;
+  background: linear-gradient(145deg, #252a31, #151619) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: 0 0 0 1px rgba(152, 168, 187, .13), 0 10px 34px rgba(0, 0, 0, .30) !important;
+}
+
+.camera-controls .control-icon:not(.call-action-button):not(.chess-launch-button) {
+  background: rgba(21, 22, 25, .68) !important;
+}
+
+.caption-dock,
+.conversation,
+.connection-notice,
+.focus-card,
+.response-card,
+.response-card-tray,
+.spatial-card,
+.spatial-guidance,
+.camera-hint,
+.camera-toast,
+.camera-sheet,
+.library-panel,
+.chess-detection-popup {
+  color: var(--askmoina-porcelain);
+  border-color: var(--askmoina-glass-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .045), transparent 48%),
+    var(--askmoina-glass-heavy) !important;
+  box-shadow: var(--askmoina-shadow), inset 0 1px 0 var(--askmoina-glass-highlight) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  backdrop-filter: blur(30px) saturate(140%);
+}
+
+.caption-dock,
+.conversation,
+.connection-notice,
+.library-panel,
+.spatial-card,
+.chess-detection-popup {
+  border-radius: 24px;
+}
+
+.library-header,
+.library-tabs,
+.library-detail-footer,
+.memory-list-heading,
+.response-card-header,
+.spatial-topbar {
+  border-color: rgba(245, 239, 233, .11) !important;
+}
+
+.library-tabs,
+.library-tab,
+.library-search,
+.memory-add-form input,
+.library-search input,
+.library-view input,
+.library-view textarea {
+  color: var(--askmoina-porcelain);
+}
+
+.library-tab {
+  background: rgba(245, 239, 233, .045) !important;
+  border-color: rgba(245, 239, 233, .09) !important;
+}
+
+.library-tab.is-selected,
+.library-tab[aria-selected="true"] {
+  background: linear-gradient(140deg, #F5EFE9, #D7C0AD) !important;
+  border-color: transparent !important;
+  color: #151619 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+
+.library-search,
+.memory-add-form,
+.library-summary,
+.library-task,
+.detail-transcript,
+.library-list > *,
+.memory-list > * {
+  border-color: rgba(245, 239, 233, .11) !important;
+}
+
+.library-search,
+.library-search input,
+.memory-add-form input,
+.library-view input,
+.library-view textarea,
+input,
+select,
+textarea {
+  background-color: rgba(245, 239, 233, .055);
+  border-color: var(--askmoina-glass-border);
+  color: var(--askmoina-porcelain);
+}
+
+input::placeholder,
+textarea::placeholder,
+.library-search input::placeholder {
+  color: var(--askmoina-tertiary) !important;
+}
+
+.library-primary,
+.chess-popup-action-primary,
+.chess-turn-button[aria-pressed="true"],
+.experience-card--available .experience-card-chevron,
+.post-auth-get-started,
+.entry-next,
+.entry-auth-option.entry-passkey {
+  background: linear-gradient(145deg, #FFFAF5 0%, #F5EFE9 53%, #E7D6C7 125%) !important;
+  color: #151619 !important;
+  border-color: rgba(245, 239, 233, .88) !important;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .20), inset 0 1px 0 rgba(255,255,255,.86) !important;
+}
+
+.library-close,
+.clear-captions,
+.spatial-close,
+.chess-popup-dismiss,
+.entry-auth-sheet .cancel-button {
+  border-color: var(--askmoina-glass-border) !important;
+  background: rgba(245, 239, 233, .07) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.chess-detection-popup {
+  --chess-popover-bg: rgba(15, 16, 19, .84);
+  --chess-popover-border: rgba(245, 239, 233, .20);
+  --chess-popover-muted: rgba(245, 239, 233, .65);
+}
+
+.chess-popup-symbol,
+.chess-popup-action,
+.chess-turn-button,
+.chess-popup-pause {
+  border-color: var(--askmoina-glass-border) !important;
+  background: rgba(245, 239, 233, .055) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.chess-popup-action-primary,
+.chess-turn-button[aria-pressed="true"] {
+  background: linear-gradient(145deg, #FFFAF5, #D7C0AD) !important;
+  color: #151619 !important;
+}
+
+.chess-detection-popup[data-kind="success"] .chess-popup-symbol,
+.chess-detection-popup[data-kind="warning"] .chess-popup-symbol {
+  border-color: rgba(152, 168, 187, .30) !important;
+  background: rgba(152, 168, 187, .11) !important;
+}
+
+/* Authentication and first-run selection use one dark, quiet material system. */
+.entry-overlay,
+.experience-selection-overlay {
+  color: var(--askmoina-porcelain) !important;
+  background:
+    radial-gradient(ellipse at 88% 7%, rgba(215, 192, 173, .12), transparent 31%),
+    radial-gradient(ellipse at 7% 65%, rgba(152, 168, 187, .11), transparent 35%),
+    linear-gradient(150deg, #090A0D 0%, #111216 53%, #090A0D 100%) !important;
+}
+
+.entry-auth-panel,
+.entry-product-panel,
+.entry-product-card,
+.experience-card,
+.sheet-card,
+.entry-auth-sheet .sheet-card,
+.post-auth-slide-stage {
+  border-color: var(--askmoina-glass-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.055), transparent 55%),
+    rgba(21, 22, 25, .72) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.055) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(135%);
+  backdrop-filter: blur(26px) saturate(135%);
+}
+
+.entry-auth-panel {
+  border: 1px solid rgba(245, 239, 233, .10) !important;
+  border-radius: 26px !important;
+  padding-inline: clamp(18px, 5vw, 25px) !important;
+}
+
+.entry-brand-mark,
+.entry-auth-option-icon,
+.passkey-symbol,
+.sheet-symbol,
+.native-menu-symbol {
+  border-color: rgba(245, 239, 233, .12) !important;
+  background: rgba(245, 239, 233, .065) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.entry-auth-option,
+.passkey-action,
+.entry-phone-row,
+.entry-otp-row,
+.entry-country,
+.entry-phone-input,
+.entry-otp-input,
+.phone-entry input,
+.otp-entry input {
+  border-color: var(--askmoina-glass-border) !important;
+  background: rgba(245, 239, 233, .055) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.entry-auth-option:hover,
+.passkey-action:hover:not(:disabled) {
+  border-color: var(--askmoina-glass-border-strong) !important;
+  background: rgba(245, 239, 233, .085) !important;
+}
+
+.entry-auth-option.entry-passkey,
+.passkey-action.primary,
+button.primary {
+  background: linear-gradient(145deg, #FFFAF5 0%, #F5EFE9 52%, #D7C0AD 145%) !important;
+  color: #151619 !important;
+  border-color: rgba(245, 239, 233, .86) !important;
+}
+
+.entry-auth-option.entry-passkey *,
+.passkey-action.primary * {
+  color: #151619 !important;
+}
+
+.entry-divider:before,
+.entry-divider:after,
+.divider:before,
+.divider:after {
+  background: rgba(245, 239, 233, .13) !important;
+}
+
+.entry-status,
+.status,
+.device-hint,
+.entry-legal-note,
+.entry-phone-hint,
+.native-info-lead,
+.native-info-main > p:not(.native-info-kicker),
+.muted,
+p.muted {
+  color: var(--askmoina-secondary);
+}
+
+/* Shared navigation, account, support and information pages. */
+.entry-site-header {
+  background: rgba(15, 16, 19, .76) !important;
+  border-bottom-color: rgba(245, 239, 233, .10) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: 0 9px 32px rgba(0,0,0,.22) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(145%);
+  backdrop-filter: blur(28px) saturate(145%);
+}
+
+.entry-site-menu-panel,
+.native-menu-panel,
+.site-info-card,
+body.native-account-page .panel,
+.native-info-main,
+body.native-account-page .id {
+  border-color: var(--askmoina-glass-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.045), transparent 55%),
+    rgba(18, 19, 22, .91) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: var(--askmoina-shadow), inset 0 1px 0 rgba(255,255,255,.045) !important;
+}
+
+.entry-site-menu-panel a,
+.entry-site-menu-panel .entry-menu-logout,
+.native-menu-links a,
+.native-menu-signout,
+.native-info-back,
+.native-info-return,
+body.native-account-page .top-actions a,
+body.native-account-page .top-actions button {
+  color: var(--askmoina-porcelain) !important;
+}
+
+.entry-site-menu-panel a span,
+.entry-site-menu-panel .entry-menu-logout,
+.native-menu-chevron,
+.native-menu-coming {
+  color: var(--askmoina-secondary) !important;
+}
+
+.entry-site-menu-panel a:hover,
+.entry-site-menu-panel a:focus-visible,
+.entry-site-menu-panel .entry-menu-logout:hover,
+.native-menu-links a:active,
+.native-menu-close {
+  background: rgba(245, 239, 233, .075) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.native-menu-symbol {
+  background: rgba(245, 239, 233, .075) !important;
+}
+
+body.native-account-page,
+body.native-info-page,
+body.native-account-page .shell,
+body.native-info-page .native-info-main {
+  background: var(--askmoina-obsidian) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+body.native-account-page h1,
+body.native-account-page h2,
+body.native-info-page h1,
+body.native-info-page h2 {
+  color: var(--askmoina-porcelain) !important;
+}
+
+body.native-account-page .top,
+body.native-account-page .panel,
+body.native-account-page .id,
+body.native-account-page input,
+body.native-account-page button:not(.primary) {
+  border-color: var(--askmoina-glass-border) !important;
+}
+
+body.native-account-page .id {
+  background: rgba(245, 239, 233, .055) !important;
+}
+
+body.native-account-page .top {
+  border-bottom-color: var(--askmoina-glass-border) !important;
+}
+
+.entry-footer {
+  color: rgba(245, 239, 233, .48) !important;
+}
+
+body.native-info-page .native-info-kicker {
+  color: var(--askmoina-champagne) !important;
+}
+
+body.native-info-page .native-info-return,
+body.native-account-page button.primary {
+  background: linear-gradient(145deg, #FFFAF5, #D7C0AD) !important;
+  color: #151619 !important;
+  border-color: transparent !important;
+}
+
+/* Legacy light surfaces are brought into the same visual family, not left as a second brand. */
+.glass-card,
+.panel,
+.card,
+.dialog,
+.modal,
+.popover,
+.install-help-panel {
+  border-color: var(--askmoina-glass-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.045), transparent 55%),
+    rgba(21, 22, 25, .90) !important;
+  color: var(--askmoina-porcelain) !important;
+}
+
+.install-status {
+  color: var(--askmoina-secondary) !important;
+}
+
+.help-eyebrow,
+.install-help-panel p:not(.help-eyebrow) {
+  color: var(--askmoina-secondary) !important;
+}
+
+.install-help-panel h2 {
+  color: var(--askmoina-porcelain) !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .floating-top .back-control,
+  .floating-top .library-open-control,
+  .floating-top .logout-control,
+  .native-app-chrome button,
+  .control-icon,
+  .caption-dock,
+  .conversation,
+  .connection-notice,
+  .library-panel,
+  .spatial-card,
+  .chess-detection-popup,
+  .entry-site-header,
+  .entry-site-menu-panel,
+  .native-menu-panel,
+  .entry-auth-panel,
+  .experience-card,
+  .sheet-card {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: #151619 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-icon,
+  .floating-top button,
+  .native-app-chrome button,
+  .library-primary,
+  .entry-auth-option,
+  .passkey-action {
+    transition: none !important;
+    animation: none !important;
+  }
+}
