@@ -161,8 +161,13 @@ Exit gate: Veda consistently improves real conversational participation without 
 - No claim of deployed/working capability without evidence from CI, health tests, or the target device.
 - Preserve an independently reviewable phase history and update this roadmap when scope changes.
 
-## Immediate next step
+## Current checkpoint and next step
 
-Phase 0 is the repository audit documented in docs/veda/PHASE_0_AUDIT.md. Phase 1 is to create Veda's isolated module and route boundary. Phase 2 provisions the separate Veda databases/resources automatically. Do not start the social-reasoning feature before isolation, pairing, and session controls exist.
+- Phase 0 audit is documented in `docs/veda/PHASE_0_AUDIT.md`.
+- Phase 1 route isolation is implemented on `main` and keeps Veda disabled by default.
+- Phase 2 resource isolation is being added in `docs/veda/PHASE_2_RESOURCES.md`: dedicated production/preview D1 bindings, a Veda-only migration directory, and an independent SQLite-backed session-state namespace.
+- The current GitHub Actions Cloudflare deployment token is documented as lacking D1 API permission (Cloudflare error 7403). The already-provisioned databases can be bound and verified, but missing-database auto-creation through that token remains blocked until its role permits D1 API access.
 
-This roadmap defines intended behavior and acceptance criteria; it does not claim any of the Veda phases beyond Phase 0 have been implemented.
+Next: complete Phase 2 CI/deployment verification, then Phase 3 builds the admin-only installation portal. Do not start social-reasoning features before isolation, pairing, and session controls exist.
+
+This roadmap defines intended behavior and acceptance criteria. Completed phases are recorded in their individual phase documents and verified against CI/deployment evidence; a source change alone is not proof of production behavior.
