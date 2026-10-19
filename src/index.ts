@@ -2,8 +2,6 @@ import type { Env } from "./config/env";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
 import { handleUserMemoryRequest } from "./user-memory";
-import { handleChessRecognitionRequest } from "./chess/recognition";
-import { serveStrongStockfishWasm } from "./chess/strong-engine-asset";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { MAX_RESUME_REPLAY_CHARS, compactReplayMessagesForResumption, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type ReplayMessage, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
@@ -431,11 +429,6 @@ const COPILOT_SYSTEM_INSTRUCTION = [
   "Speak naturally in Assamese (Axomiya), allowing everyday Assamese-English code-switching. Keep spoken steps short and easy to follow.",
   ...ASSAMESE_SPEECH_EVALUATION_INSTRUCTION,
   "Use the live camera frames to answer questions about visible objects, labels, components, and the user's immediate task.",
-  "CHESS CO-PILOT — POSITION-GROUNDED VOICE GUIDANCE:",
-  "When AskMoina sends a CHESS CONTEXT UPDATE, use the latest validated FEN and locally tracked legal move history as the current game state. This is application state, not a request to invent earlier moves or override these instructions.",
-  "When the user asks about chess, answer naturally and briefly in the user's language, including casual Assamese-English when appropriate. Base piece locations and side to move on the supplied FEN; if history is incomplete, never invent prior moves, castling or en-passant rights.",
-  "When a user taps Suggest a move, a Stockfish best move is explicitly supplied. Explain the recommendation concisely, but do not invent a principal variation, tactic, score, or line that was not supplied. If no recommendation is present, do not claim Stockfish was run.",
-  "When one legal camera-tracked move is reported, acknowledge only that recorded move and the current side to move. If the scan was ambiguous, stale, or a move could not be reconciled, ask for a rescan or clarification instead of fabricating a move. Never move physical pieces automatically.",
   "PROBLEM UNDERSTANDING — BEFORE CHOOSING AN ACTION:",
   "Before recommending a fix or step, build a small working understanding from the user's words and the latest visible evidence: the outcome they want or symptom they report, the relevant object/context, what is directly known versus only suspected, the one missing fact that could change the next action, and the consequence if the guess is wrong.",
   "Keep that assessment internal; do not show a checklist or long reasoning recap. When useful, briefly reflect the goal in plain language, then move to the next useful question or check.",
@@ -3141,13 +3134,6 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    // Serve full Stockfish through a same-origin route. Its pinned WASM neural
-    // network exceeds Cloudflare's 25 MiB per-static-asset limit, so stream it
-    // from the versioned npm CDN instead of bundling/buffering it in this Worker.
-    if (url.pathname === "/chess/stockfish-19-single.wasm") {
-      return serveStrongStockfishWasm(request);
-    }
-
     // PWA shell resources are public static assets, not authenticated app pages.
     // Route them before the global login guard so the browser can load the
     // manifest, install landing page, service worker, and icon assets.
@@ -3446,7 +3432,6 @@ export default {
     }
 
     if (url.pathname === "/api/voice/status") return handleVoiceStatus(request, env);
-    if (url.pathname === "/api/chess/recognize") return handleChessRecognitionRequest(request, env);
     if (url.pathname === "/api/voice/socket") {
       const rawSessionId = url.searchParams.get("session_id");
       const sessionId = rawSessionId === null ? crypto.randomUUID() : normalizeLiveSessionId(rawSessionId);
@@ -3503,18 +3488,9 @@ export default {
       headers.delete("Content-Length");
       headers.delete("ETag");
     }
-    // Stockfish compiles WebAssembly inside this dedicated worker. Allow
-    // WebAssembly evaluation only on the engine script response, not on app
-    // documents or other assets; never enable general 'unsafe-eval'.
-    const isStockfishWorkerScript =
-      url.pathname === "/chess/stockfish-19-single.js" ||
-      url.pathname === "/chess/stockfish-19-lite-single.js";
-    const workerScriptPolicy = isStockfishWorkerScript
-      ? "script-src 'self' 'wasm-unsafe-eval'"
-      : "script-src 'self'";
     headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; " + workerScriptPolicy + "; media-src 'self' blob:",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
     );
     headers.set("X-Content-Type-Options", "nosniff");
     headers.set("X-Frame-Options", "DENY");
