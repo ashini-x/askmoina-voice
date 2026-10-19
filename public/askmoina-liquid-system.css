@@ -1,7 +1,7 @@
 /*
  * AskMoina Liquid Glass System
  * Visual source: the smoky-core hero with champagne and titanium reflections.
- * Glass is reserved for controls, navigation and transient surfaces so content stays clear.
+ * Glass is reserved for controls, sheets, menus, dialogs, and other transient surfaces so content stays clear.
  */
 :root {
   color-scheme: dark;
