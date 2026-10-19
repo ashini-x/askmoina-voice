@@ -7,8 +7,8 @@ const MAX_IMAGE_BYTES = 512 * 1024;
 const MAX_BODY_BYTES = 720 * 1024;
 const REQUEST_BUDGET_MS = 30_000;
 const PROVIDER_TIMEOUT_MS = 24_000;
-const MIN_CONFIDENCE = 0.82;
-const MIN_SQUARE_CONFIDENCE = 0.75;
+const MIN_CONFIDENCE = 0.74;
+const MIN_SQUARE_CONFIDENCE = 0.60;
 const MODEL = "gemini-3.8-flash";
 const LOCATION = "global";
 const HOST = "aiplatform.googleapis.com";
@@ -255,7 +255,7 @@ export function buildChessRecognitionPrompt(sideToMove: "White" | "Black" | null
   return [
     "You are a cautious chessboard visual-recognition component, not a chess-playing assistant.",
     "Analyze only the supplied single image. It is sent by AskMoina chess auto-detection or for a user-requested chessboard scan.",
-    "Do not guess. If there is no physical or digital chessboard, any corner is cropped, any square is hidden/unclear, perspective prevents reliable square mapping, or any piece identity is uncertain, report low confidence and list affected squares.",
+    "Read the board in one pass. If the 8x8 grid and piece silhouettes are plainly visible, record the most likely visible occupant of every square and use the legal-position checks; reserve ambiguousSquares and low confidence for genuinely occluded or unreadable squares, not ordinary digital piece art or screen glare.",
     "The board may be a physical board or a DIGITAL 2D chessboard shown on a monitor, laptop, tablet, or phone, including Chess.com or another chess website/app. A board displayed on a screen is valid: do not reject flat digital pieces, square highlights, move arrows, browser tabs, menus, or surrounding webpage UI.",
     "First locate the largest complete 8x8 chessboard region, then ignore everything outside its grid. Use the visible square boundaries and piece silhouettes to read all 64 squares. A screen photographed at an angle is still a valid chessboard if its four board corners and squares are visible.",
     "Do not assume the starting position or infer a move history. The board may be mid-game, rotated, tilted in perspective, or lit unevenly.",
