@@ -201,7 +201,7 @@ function withNativeAppShell(html: string, appVersion: string, authenticated: boo
   const version = encodeURIComponent(appVersion || "0.4.80");
   const nativeScript = authenticated ? '<script src="/native-app.js?v=' + version + '" defer></script>' : "";
   const entryAuthStyles = authenticated ? "" : '<link rel="stylesheet" href="/entry-auth.css?v=' + version + '">';
-  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + '<link rel="stylesheet" href="/askmoina-global-font.css?v=' + version + '">' + nativeScript + '</head>');
+  html = html.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + version + '">' + entryAuthStyles + '<link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"><link rel="stylesheet" href="/askmoina-global-font.css?v=' + version + '">' + nativeScript + '</head>');
   if (authenticated) html = html.replace("</main>", NATIVE_APP_MENU_SHEET + "</main>");
   else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST);
   return html;
@@ -233,7 +233,7 @@ function renderSiteInfoPage(pathname: string, appVersion: string): string | null
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
     "<meta name=\"theme-color\" content=\"#000000\"><meta name=\"color-scheme\" content=\"dark\">" +
     "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
-    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><link rel=\"stylesheet\" href=\"/askmoina-global-font.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
+    "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><link rel=\"stylesheet\" href=\"/askmoina-liquid-system.css?v=20261019-1\"><link rel=\"stylesheet\" href=\"/askmoina-global-font.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
     "<a class=\"native-info-back\" href=\"/\" aria-label=\"Back to askmoina\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m14.5 5.5-6.5 6.5 6.5 6.5\"/></svg><span class=\"askmoina-wordmark\"><span>a</span><span>s</span><span>k</span><span>m</span><span>o</span><span>i</span><span>n</span><span>a</span></span></a>" +
     "<img src=\"/favicon.svg?v=0.4.80\" width=\"25\" height=\"25\" alt=\"askmoina\"></header>" +
@@ -255,6 +255,7 @@ function withSiteChrome(html: string, authenticated = false): string {
   let end = start >= 0 ? html.indexOf(">", start) : -1;
   if (start < 0 || end < 0) return html;
   if (!html.includes('href="/site-chrome.css"')) html = html.replace("</head>", '<link rel="stylesheet" href="/site-chrome.css"></head>');
+  if (!html.includes('href="/askmoina-liquid-system.css')) html = html.replace("</head>", '<link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"></head>');
   if (!html.includes('href="/askmoina-global-font.css')) html = html.replace("</head>", '<link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"></head>');
   start = html.indexOf("<body");
   end = html.indexOf(">", start);
@@ -304,6 +305,7 @@ const PWA_PUBLIC_STATIC_PATHS = new Set([
   "/install",
   "/install.html",
   "/install.css",
+  "/askmoina-liquid-system.css",
   "/offline",
   "/offline.html",
   "/service-worker.js",
@@ -338,6 +340,7 @@ const PWA_PUBLIC_STATIC_CONTENT_TYPES: Record<string, string> = {
   "/offline": "text/html; charset=utf-8",
   "/offline.html": "text/html; charset=utf-8",
   "/install.css": "text/css; charset=utf-8",
+  "/askmoina-liquid-system.css": "text/css; charset=utf-8",
   "/pwa-gate.css": "text/css; charset=utf-8",
   "/pwa-gate.js": "text/javascript; charset=utf-8",
   "/pwa-runtime.js": "text/javascript; charset=utf-8",
@@ -3479,7 +3482,8 @@ export default {
         headers.get("Content-Type")?.toLowerCase().includes("text/html")) {
       let assetHtml = await assetResponse.text();
       assetHtml = assetHtml.replace("<body>", '<body class="native-account-page" data-page="account">');
-      assetHtml = assetHtml.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"></head>');
+      assetHtml = assetHtml.replace('<link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1">', "");
+      assetHtml = assetHtml.replace("</head>", '<link rel="stylesheet" href="/native-app.css?v=' + encodeURIComponent(env.APP_VERSION || "0.4.80") + '"><link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"></head>');
       responseBody = assetHtml;
       headers.delete("Content-Length");
       headers.delete("ETag");
