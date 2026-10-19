@@ -99,6 +99,20 @@ describe("M5 query-aware Assamese contextual retrieval", () => {
     expect(isEligibleAssameseConversationReference({ ...overridden, admin_override: 0 })).toBe(false);
   });
 
+  it("passes the override flag from the eligible view into the runtime eligibility check", async () => {
+    let sql = "";
+    const overridden = candidates.map((candidate, index) => index === 0
+      ? { ...candidate, review_status: "approved", enabled: 1, rights_confirmed: 1, native_verified: 1, approved_native_review_count: 0, admin_override: 1, admin_override_reason: "Owner override" }
+      : { ...candidate, review_status: "native_review_pending", enabled: 0, rights_confirmed: 1, native_verified: 0, approved_native_review_count: 0, admin_override: 0 });
+    const result = await retrieveAssameseConversationReferences(
+      mockDb(overridden, query => { sql = query; }),
+      "user selected for job after trying for long time",
+    );
+    expect(sql).toContain("admin_override");
+    expect(result.outcome).toBe("matched");
+    expect(result.result).toContain('"admin_override":1');
+  });
+
   it("returns at most three source-attributed examples through the eligible D1 view", async () => {
     let sql = "";
     const result = await retrieveAssameseConversationReferences(
