@@ -84,8 +84,8 @@ function renderRefs(entries) {
     }
     const rightsLabel = make("label", "", "attest");
     const rights = document.createElement("input"); rights.type = "checkbox";
-    rights.checked = Number(e.rightsConfirmed) === 1;
-    rightsLabel.append(rights, document.createTextNode("I checked the displayed source/license/permission basis and confirm it is accurate for AskMoina use."));
+    rights.checked = false;
+    rightsLabel.append(rights, document.createTextNode("I personally checked the displayed source/license/permission basis and confirm it is accurate for AskMoina use. Stored flag: " + (Number(e.rightsConfirmed) === 1 ? "previously marked confirmed; please reconfirm" : "not confirmed") + "."));
     card.append(rightsLabel);
     const decisionLabel = make("label", "Your native-language decision");
     const decision = document.createElement("select");
