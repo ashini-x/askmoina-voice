@@ -198,4 +198,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except Exception as exc:
         print("Generated voice listen-back samples: WARN (" + type(exc).__name__ + ": " + str(exc)[:160] + ")")
-        raise SystemExit(0)
+        raise SystemExit(1)
