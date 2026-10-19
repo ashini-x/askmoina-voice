@@ -1,9 +1,6 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
-const read = (path) => readFileSync(new URL(path, `file://${root}/`), "utf8");
 const theme = readFileSync(new URL("../public/askmoina-liquid-system.css", import.meta.url), "utf8");
 const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const copilotAssets = readFileSync(new URL("../src/copilot-assets.ts", import.meta.url), "utf8");
