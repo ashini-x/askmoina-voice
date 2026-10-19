@@ -70,7 +70,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.145",
+    "APP_VERSION": "0.4.146",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -78,7 +78,8 @@
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "ANALYTICS_RAW_RETENTION_DAYS": "30",
-    "VEDA_ENABLED": "false"
+    "VEDA_ENABLED": "false",
+    "VEDA_PORTAL_ENABLED": "true"
   },
   "secrets": {
     "required": [
@@ -156,7 +157,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.145-preview",
+      "APP_VERSION": "0.4.146-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",
@@ -164,7 +165,8 @@
       "GEMINI_LOCATION": "us-central1",
       "GCP_PROJECT_ID": "askmoina-preview",
       "ANALYTICS_RAW_RETENTION_DAYS": "30",
-      "VEDA_ENABLED": "false"
+      "VEDA_ENABLED": "false",
+      "VEDA_PORTAL_ENABLED": "true"
     },
     "durable_objects": {
       "bindings": [

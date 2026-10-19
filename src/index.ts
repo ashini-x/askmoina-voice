@@ -1,5 +1,5 @@
 import type { Env } from "./config/env";
-import { handleVedaBoundaryRequest, isVedaEnabled, isVedaRoutePath } from "./veda/feature-boundary";
+import { handleVedaBoundaryRequest, isVedaRoutePath } from "./veda/feature-boundary";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
 import { handleUserMemoryRequest } from "./user-memory";
@@ -3145,7 +3145,7 @@ export default {
       const vedaResponse = handleVedaBoundaryRequest(
         request,
         env,
-        isVedaEnabled(env) ? await isAdmin(request, env) : false,
+        await isAdmin(request, env),
       );
       if (vedaResponse) return vedaResponse;
     }
