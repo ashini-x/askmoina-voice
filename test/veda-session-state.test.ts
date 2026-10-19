@@ -3,7 +3,7 @@ import type { Env } from "../src/config/env";
 import { VedaSessionState } from "../src/veda/session-state";
 
 const makeState = () => new VedaSessionState(
-  {} as DurableObjectState,
+  {} as unknown as DurableObjectState,
   { VEDA_ENABLED: "false" } as Env,
 );
 
