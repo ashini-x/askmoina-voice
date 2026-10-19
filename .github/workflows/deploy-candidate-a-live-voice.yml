@@ -466,10 +466,11 @@ jobs:
           NETWORK_RECOVERY_STATUS=$?
           node scripts/live-session-continuity-smoke.mjs
           LIVE_CONTINUITY_STATUS=$?
-          node scripts/live-conversation-history-smoke.mjs
-          CONVERSATION_HISTORY_STATUS=$?
+          # Capture user-requested listen-back audio before the history test revokes the synthetic cookie.
           python scripts/live-voice-sample-capture.py
           VOICE_SAMPLE_STATUS=$?
+          node scripts/live-conversation-history-smoke.mjs
+          CONVERSATION_HISTORY_STATUS=$?
           set -e
 
           cleanup
