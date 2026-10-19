@@ -321,14 +321,14 @@ jobs:
               !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-512.svg" && icon.sizes === "512x512") ||
               !manifest.icons.some(icon => manifestIconPath(icon) === "/pwa-icon-512.png" && icon.sizes === "512x512" && icon.type === "image/png") ||
               manifest.icons.some(icon => ["/askmoina-bird-final.png", "/askmoina-app-icon-180.png"].includes(manifestIconPath(icon))) ||
-              manifest.background_color !== "#000000" || manifest.theme_color !== "#000000") {
+              manifest.background_color !== "#090A0D" || manifest.theme_color !== "#090A0D") {
             console.error("Manifest icon entries received:", JSON.stringify(manifest.icons));
             throw new Error("Manifest must use a dark splash background, a true 512x512 PNG, and no legacy light icon.");
           }
           console.log("PWA manifest contract: OK");
           NODE
 
-          for asset in /favicon.svg /favicon-32.png /install.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg /pwa-icon-512.png /askmoina-app-icon-180.png /askmoina-mark.svg /askmoina-mark-dark.svg /askmoina-app-icon.svg /askmoina-app-icon-light.svg /askmoina-logo.svg /askmoina-logo-dark.svg /askmoina-social-avatar.svg /askmoina-visual-guide.svg /askmoina-install-reference.webp /askmoina-install-reference-mobile.webp; do
+          for asset in /favicon.svg /favicon-32.png /install.css /askmoina-liquid-system.css /offline /service-worker.js /pwa-gate.css /pwa-gate.js /pwa-runtime.js /askmoina-bird-final.png /pwa-icon-192.svg /pwa-icon-512.svg /pwa-icon-512.png /askmoina-app-icon-180.png /askmoina-mark.svg /askmoina-mark-dark.svg /askmoina-app-icon.svg /askmoina-app-icon-light.svg /askmoina-logo.svg /askmoina-logo-dark.svg /askmoina-social-avatar.svg /askmoina-visual-guide.svg /askmoina-install-reference.webp /askmoina-install-reference-mobile.webp; do
             status="$(fetch_status "$asset" "/tmp/moina-pwa-asset")"
             if [[ "$status" != "200" ]]; then
               echo "::error::PWA asset $asset returned HTTP $status"
@@ -338,7 +338,7 @@ jobs:
           done
           status="$(fetch_status /service-worker.js /tmp/moina-service-worker.js)"
           test "$status" = "200"
-          grep -q 'askmoina-pwa-shell-v18' /tmp/moina-service-worker.js
+          grep -q 'askmoina-pwa-shell-v19' /tmp/moina-service-worker.js
           grep -q 'isImmutableVersionedAsset ? fetch(request)' /tmp/moina-service-worker.js
           grep -q 'fetch(request, { cache: "no-store" })' /tmp/moina-service-worker.js
           echo "PWA install/offline shell assets and update-safe service worker: OK"

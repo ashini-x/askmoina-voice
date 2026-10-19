@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const theme = readFileSync(new URL("../public/askmoina-liquid-system.css", import.meta.url), "utf8");
 const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const copilotAssets = readFileSync(new URL("../src/copilot-assets.ts", import.meta.url), "utf8");
+const deploymentWorkflow = readFileSync(new URL("../.github/workflows/deploy-candidate-a-live-voice.yml", import.meta.url), "utf8");
 
 describe("AskMoina Liquid Glass design system", () => {
   it("defines the approved smoky-core palette and keeps glass restrained", () => {
@@ -39,6 +40,13 @@ describe("AskMoina Liquid Glass design system", () => {
       const html = readFileSync(new URL(path, import.meta.url), "utf8");
       expect(html, path).toContain("/askmoina-liquid-system.css?v=20261019-1");
     }
+  });
+
+  it("keeps production deployment smoke aligned with the live Liquid Glass shell", () => {
+    expect(deploymentWorkflow).toContain('manifest.background_color !== "#090A0D"');
+    expect(deploymentWorkflow).toContain('manifest.theme_color !== "#090A0D"');
+    expect(deploymentWorkflow).toContain("/askmoina-liquid-system.css");
+    expect(deploymentWorkflow).toContain("askmoina-pwa-shell-v19");
   });
 
   it("keeps the PWA theme current for installed and offline launches", () => {
