@@ -55,7 +55,7 @@ jobs:
           echo "ASKMOINA_SYNTHETIC_COOKIE=$SMOKE_COOKIE" >> "$GITHUB_ENV"
           echo "Synthetic authenticated session: ready"
 
-      - name: Wait for the deployed second-read retry fix
+      - name: Wait for the deployed fast single-pass chess detection
         shell: bash
         run: |
           set -euo pipefail
@@ -77,7 +77,8 @@ jobs:
                grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/copilot-page.headers &&
                grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&
                grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js &&
-               grep -Fq 'retryStableChessboardRecognition' /tmp/chess-ui.js &&
+               grep -Fq 'function validateRecognitionCandidate(recognition)' /tmp/chess-ui.js &&
+               grep -Fq 'Only take one fresh-frame retry if the first provider read was unusable.' /tmp/chess-ui.js &&
                grep -Fq 'recognition-client.js?v=0.4.145' /tmp/chess-ui.js &&
                grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/stockfish.headers; then
               ready=true
@@ -87,10 +88,10 @@ jobs:
             sleep 5
           done
           if [[ "$ready" != "true" ]]; then
-            echo "::error::The deployed chess client/Stockfish worker did not expose the expected confirmation-retry and WASM CSP fixes."
+            echo "::error::The deployed chess client/Stockfish worker did not expose the expected single-pass recognition and WASM CSP fixes."
             exit 1
           fi
-          echo "Production recognition retry is ready and Stockfish worker CSP allows WebAssembly compilation."
+          echo "Production single-pass recognition is ready and Stockfish worker CSP allows WebAssembly compilation."
 
       - name: Verify Stockfish starts and returns a legal move in the real browser
         run: node scripts/live-stockfish-browser-smoke.mjs
