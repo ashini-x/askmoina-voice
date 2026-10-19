@@ -67,6 +67,7 @@ jobs:
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
               "$BASE_URL/chess/chess-ui.js?v=0.4.145" || true)"
             engine_status="$(curl --silent --show-error --max-time 10 --dump-header /tmp/stockfish.headers --output /dev/null --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
               "$BASE_URL/chess/stockfish-19-lite-single.js" || true)"
             if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" ]] &&
                grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&

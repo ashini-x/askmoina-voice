@@ -69,7 +69,12 @@ async function verifyStockfishEngine(browser) {
   try {
     // Use a same-origin page so the real production worker response CSP and
     // its WASM initialization are exercised in Chromium, not a fake worker.
-    await page.goto(baseUrl + "/chess/NOTICE.md", { waitUntil: "domcontentloaded" });
+    await page.context().addCookies([{
+      name: "moina_session",
+      value: cookie.slice("moina_session=".length),
+      url: baseUrl
+    }]);
+    await page.goto(baseUrl + "/copilot", { waitUntil: "domcontentloaded" });
     const result = await page.evaluate(async () => {
       const { Chess } = await import("/chess/chess.js");
       const startedAt = performance.now();
