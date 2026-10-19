@@ -44,7 +44,7 @@ export class StockfishChessEngine {
     this.workerUrl = options.workerUrl || DEFAULT_WORKER_URL;
     this.workerFactory = options.workerFactory || ((url) => new Worker(url));
     this.defaultMoveTimeMs = options.defaultMoveTimeMs ?? 4500;
-    this.startupTimeoutMs = options.startupTimeoutMs || 15000;
+    this.startupTimeoutMs = options.startupTimeoutMs ?? 90000;
     this.searchTimeoutMs = options.searchTimeoutMs ?? 18000;
     this.worker = null;
     this.readyPromise = null;
