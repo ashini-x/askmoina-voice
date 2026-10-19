@@ -51,7 +51,7 @@ const wasmSize = await copyRequired(engineWasm, resolve(publicChessDir, "stockfi
 // Deploy the full engine's JavaScript loader as a normal static asset, but never
 // copy the full neural-network WASM into Workers Static Assets: individual
 // static files are limited to 25 MiB. The Worker streams the pinned WASM
-// binary from the versioned CDN through /chess/stockfish-19-single.wasm.
+// binary from the versioned official GitHub release asset through /chess/stockfish-19-single.wasm.
 const fullJsSize = await copyRequired(fullEngineJs, resolve(publicChessDir, "stockfish-19-single.js"), 1000);
 if (fullJsSize > 25 * 1024 * 1024) {
   throw new Error("The full Stockfish JS loader exceeds Cloudflare's 25 MiB static-asset limit.");
@@ -72,7 +72,7 @@ const notices = [
   "Third-party chess components bundled with AskMoina Voice",
   "",
   "Stockfish.js 19.0.1 (full, single-threaded WebAssembly engine; primary chess-analysis engine).",
-  "The full WASM file is streamed from the pinned stockfish@19.0.1 npm CDN via /chess/stockfish-19-single.wasm because Cloudflare static assets have a 25 MiB per-file limit.",
+  "The full WASM file is streamed from the pinned Stockfish.js v19.0.1 GitHub release asset via /chess/stockfish-19-single.wasm because Cloudflare static assets have a 25 MiB per-file limit.",
   "A lite single-threaded build remains bundled as a small compatibility asset but is not the engine selected by AskMoina Chess.",
   "License: GNU General Public License version 3.0; see COPYING-Stockfish-GPL-3.0.txt.",
   "Source: https://github.com/nmrugg/stockfish.js",
