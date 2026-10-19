@@ -70,7 +70,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.141",
+    "APP_VERSION": "0.4.142",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -101,6 +101,10 @@
       {
         "name": "LIVE_SESSION_RELAY",
         "class_name": "LiveSessionRelay"
+      },
+      {
+        "name": "VEDA_SESSION_STATE",
+        "class_name": "VedaSessionState"
       }
     ]
   },
@@ -112,6 +116,10 @@
     "LiveSessionRelay": {
       "type": "durable-object",
       "storage": "sqlite"
+    },
+    "VedaSessionState": {
+      "type": "durable-object",
+      "storage": "sqlite"
     }
   },
   "d1_databases": [
@@ -119,6 +127,12 @@
       "binding": "DB",
       "database_name": "askmoina-prod",
       "database_id": "21b82a94-ce17-4a57-8741-3b9d46aef33f"
+    },
+    {
+      "binding": "VEDA_DB",
+      "database_name": "veda-prod",
+      "database_id": "d63f471f-3a66-4a7f-9cfb-9087d00f9dcc",
+      "migrations_dir": "migrations/veda"
     }
   ],
   "queues": {
@@ -142,7 +156,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.64-preview",
+      "APP_VERSION": "0.4.142-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",
@@ -161,6 +175,10 @@
         {
           "name": "LIVE_SESSION_RELAY",
           "class_name": "LiveSessionRelay"
+        },
+        {
+          "name": "VEDA_SESSION_STATE",
+          "class_name": "VedaSessionState"
         }
       ]
     },
@@ -169,6 +187,12 @@
         "binding": "DB",
         "database_name": "askmoina-preview",
         "database_id": "43673f49-e099-46a5-b35b-e975a6f4984c"
+      },
+      {
+        "binding": "VEDA_DB",
+        "database_name": "veda-preview",
+        "database_id": "0ef1c504-6a71-499f-b27c-a3d72b77be0b",
+        "migrations_dir": "migrations/veda"
       }
     ],
     "queues": {
