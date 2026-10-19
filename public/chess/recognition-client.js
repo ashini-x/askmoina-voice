@@ -2,8 +2,8 @@ import { Chess, validateFen } from "./chess.js";
 
 const DEFAULT_ENDPOINT = "/api/chess/recognize";
 const MAX_FRAME_BYTES = 512 * 1024;
-const MIN_OVERALL_CONFIDENCE = 0.82;
-const MIN_SQUARE_CONFIDENCE = 0.75;
+const MIN_OVERALL_CONFIDENCE = 0.74;
+const MIN_SQUARE_CONFIDENCE = 0.60;
 const PIECES = new Set("pnbrqkPNBRQK");
 const SQUARE_PATTERN = /^[a-h][1-8]$/;
 
