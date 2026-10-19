@@ -137,17 +137,17 @@ import {
     const placement = placementFromRows(recognition.boardRows);
     const knownStart = placement === INITIAL_POSITION;
     const userColor = inferUserColorFromOrientation(recognition.orientation) || "w";
-    selectedSide = options.sideToMove || (knownStart ? "w" : userColor);
+    selectedSide = pendingMode === "recover" ? null : (options.sideToMove || (knownStart ? "w" : userColor));
     popupMessage.textContent = options.message || (knownStart
       ? "Chess detected. " + colorName(userColor) + " is your side; White moves first."
       : "Chess detected. Near side is " + colorName(userColor) + ". I’ll use that as your default color.");
     setPopupOpen(true);
     dismissButton.textContent = "Not now";
-    turnSelector.hidden = true;
+    turnSelector.hidden = pendingMode !== "recover";
     whiteTurn.setAttribute("aria-pressed", String(selectedSide === "w"));
     blackTurn.setAttribute("aria-pressed", String(selectedSide === "b"));
     suggestButton.hidden = false;
-    suggestButton.disabled = false;
+    suggestButton.disabled = pendingMode === "recover";
     suggestButton.textContent = "Next strong move";
     suggestButton.classList.add("chess-popup-action-primary");
     trackButton.hidden = true;
@@ -452,6 +452,74 @@ import {
     autoTimer = setTimeout(() => { void detectChessboard(); }, delay);
   }
 
+  function reconcileObservationAgainstTrackedState(observation) {
+    if (!gameState) return { ok: false, reason: "game_state_unavailable", message: "The tracked game is no longer available." };
+    const currentGame = new Chess(gameState.currentFen);
+    const currentPlacement = currentGame.fen().split(" ")[0];
+    const placement = placementFromRows(observation && observation.boardRows);
+    const payload = {
+      boardRows: observation.boardRows,
+      orientation: observation.orientation,
+      sideToMove: placement === currentPlacement ? currentGame.turn() : opposite(currentGame.turn()),
+      observedAt: nowIso()
+    };
+    let reconciled = reconcileChessObservation(gameState, payload);
+    if (!reconciled.ok && placement !== currentPlacement &&
+        reconciled.reason === "transition_not_one_or_two_legal_moves") {
+      // The user's move and the opponent's reply may both happen between scans.
+      reconciled = reconcileChessObservation(gameState, { ...payload, sideToMove: currentGame.turn() });
+    }
+    return reconciled;
+  }
+
+  async function refreshTrackedPositionFromCamera() {
+    if (!gameState) return null;
+    const idleDeadline = Date.now() + 15000;
+    while (scanning && Date.now() < idleDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    if (scanning) throw new Error("The camera is still checking the board. Wait a moment and tap Next move again.");
+    if (!cameraIsActive()) throw new Error("Keep the full chessboard visible in the camera. I need a fresh board reading before suggesting another move.");
+    if (autoTimer) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
+
+    scanning = true;
+    try {
+      const firstRead = await recognizeOneFrame();
+      if (!firstRead.ok) throw new Error(firstRead.message || "I couldn't read the current board. Keep all 64 squares visible and try again.");
+      const confirmation = await confirmStableRecognition(firstRead.recognition);
+      if (!confirmation.ok) throw new Error(confirmation.message || "I couldn't confirm the current board. Keep it still and try again.");
+
+      const observation = confirmation.recognition;
+      const reconciled = reconcileObservationAgainstTrackedState(observation);
+      if (!reconciled.ok) {
+        if (["transition_not_one_or_two_legal_moves", "ambiguous_transition"].includes(reconciled.reason)) {
+          const placement = placementFromRows(observation.boardRows);
+          pendingRecognition = observation;
+          const confirmed = { ok: true, recognition: observation };
+          pendingRecognitionConfirmation = { placement, result: confirmed, promise: Promise.resolve(confirmed) };
+          showBoardPrompt(observation, {
+            mode: "recover",
+            message: "The board has moved beyond the last confirmed position. To avoid repeating a stale move, confirm whose turn it is now, then tap Next strong move."
+          });
+          return { recoveryRequired: true };
+        }
+        throw new Error(reconciled.message || "I couldn't reconcile the current board.");
+      }
+
+      gameState = reconciled.state;
+      persistGame();
+      pendingRecognition = null;
+      pendingRecognitionConfirmation = null;
+      return reconciled;
+    } finally {
+      scanning = false;
+      scheduleDetection(BASE_RETRY_MS);
+    }
+  }
+
   async function detectChessboard(manual = false) {
     if (!autoEnabled && !manual) return;
     if (scanning) {
@@ -508,14 +576,8 @@ import {
           setStatus("Couldn’t confirm the position", "The second board reading was incomplete. Keep all four corners visible and scan again.", "warning");
           return;
         }
-        const nextSide = opposite(new Chess(gameState.currentFen).turn());
-        const reconciled = reconcileChessObservation(gameState, {
-          boardRows: observation.boardRows,
-          orientation: observation.orientation,
-          sideToMove: nextSide,
-          observedAt: nowIso()
-        });
-        if (reconciled.ok && reconciled.status === "move-registered") {
+        const reconciled = reconcileObservationAgainstTrackedState(observation);
+        if (reconciled.ok && ["move-registered", "moves-registered"].includes(reconciled.status)) {
           gameState = reconciled.state;
           persistGame();
           showMoveToast(reconciled.move, reconciled.position.sideToMove);
@@ -531,7 +593,7 @@ import {
         }
         showBoardPrompt(observation, {
           mode: "recover",
-          message: "The board changed by more than one tracked move. Near side is your default color; confirm the board reading with Next strong move."
+          message: "The board has moved beyond the last confirmed position. Confirm whose turn it is, then tap Next strong move."
         });
         void startBackgroundConfirmation(observation);
         return;
@@ -639,6 +701,24 @@ import {
     let sideToMove;
     suggestButton.disabled = true;
     try {
+      if (gameState && !pendingRecognition && !automatic) {
+        const refreshed = await refreshTrackedPositionFromCamera();
+        if (refreshed && refreshed.recoveryRequired) return;
+        if (!gameState) throw new Error("The tracked chess position is no longer available.");
+        if (!isPlayersTurn(gameState)) {
+          showWaitingForUserTurn(new Chess(gameState.currentFen).turn());
+          return;
+        }
+        if (lastSuggestedFen === gameState.currentFen) {
+          popup.dataset.kind = "warning";
+          popupTitle.textContent = "Next strong move";
+          popupMessage.textContent = "I still see the same board position as the last suggestion. Make sure your move is visible on the camera, then tap Next strong move again.";
+          suggestButton.textContent = "Try again";
+          suggestButton.disabled = false;
+          return;
+        }
+      }
+
       if (gameState && !pendingRecognition) {
         fen = gameState.currentFen;
         sideToMove = new Chess(fen).turn();
@@ -802,7 +882,24 @@ import {
     }
     if (gameState) {
       showTrackedState();
-      if (isPlayersTurn(gameState)) queueAutomaticRecommendation();
+      popupMessage.textContent = "Checking the live board before calculating your next strong move…";
+      void refreshTrackedPositionFromCamera().then((refreshed) => {
+        if (refreshed && refreshed.recoveryRequired) return;
+        if (!gameState) return;
+        const sideToMove = new Chess(gameState.currentFen).turn();
+        if (!isPlayersTurn(gameState)) {
+          showWaitingForUserTurn(sideToMove);
+          return;
+        }
+        if (lastSuggestedFen === gameState.currentFen) {
+          popup.dataset.kind = "warning";
+          popupMessage.textContent = "I still see the previous board position. Make sure your move is visible in the camera, then tap Next move again.";
+          return;
+        }
+        queueAutomaticRecommendation();
+      }).catch((error) => {
+        setStatus("Couldn't refresh the board", error && error.message ? error.message : "Keep the full board visible and try again.", "warning");
+      });
       return;
     }
     if (pendingRecognition) {
