@@ -62,12 +62,33 @@ describe("AskMoina chess phase 3 game state", () => {
     expect(start.moveHistory).toHaveLength(0);
   });
 
-  it("does not invent history when multiple moves were missed", () => {
+  it("reconciles the user's move and opponent reply when the two-ply path is unique", () => {
     const start = createNewChessGame({ gameId: "missed-ply-test" });
     const afterE4 = applyMove(start.currentFen, "e4").game;
     const afterC5 = applyMove(afterE4.fen(), "c5");
     const result = reconcileChessObservation(start, afterC5.observation);
-    expect(result).toMatchObject({ ok: false, reason: "transition_not_one_legal_move" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "moves-registered",
+      moves: [
+        { san: "e4", uci: "e2e4", color: "w" },
+        { san: "c5", uci: "c7c5", color: "b" }
+      ],
+      state: { moveHistory: [{ san: "e4" }, { san: "c5" }] }
+    });
+    expect(result.state.currentFen).toBe(afterC5.game.fen());
+    expect(restoreChessGameState(result.state).ok).toBe(true);
+  });
+
+  it("does not invent history when more than two plies were missed", () => {
+    const start = createNewChessGame({ gameId: "missed-three-ply-test" });
+    const afterE4 = applyMove(start.currentFen, "e4").game;
+    const afterC5 = applyMove(afterE4.fen(), "c5").game;
+    const afterNf3 = applyMove(afterC5.fen(), "Nf3");
+    const result = reconcileChessObservation(start, afterNf3.observation);
+
+    expect(result).toMatchObject({ ok: false, reason: "transition_not_one_or_two_legal_moves" });
     expect(start.moveHistory).toHaveLength(0);
   });
 
