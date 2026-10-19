@@ -373,12 +373,13 @@ describe("bounded authenticated chess scan endpoint", () => {
     const providerResult = { candidates: [{ content: { parts: [{ text: JSON.stringify(strongRecognition()) }] } }] };
     const fetchImpl = vi.fn(async (_url, init) => {
       expect(init.headers.Authorization).toBe("Bearer test-token");
+      expect(_url).toContain("/models/gemini-3.5-flash-lite:generateContent");
       const requestJson = JSON.parse(init.body);
       expect(requestJson.generationConfig.maxOutputTokens).toBe(900);
       expect(requestJson.generationConfig).not.toHaveProperty("temperature");
       expect(requestJson.generationConfig).not.toHaveProperty("topP");
       expect(requestJson.generationConfig).not.toHaveProperty("candidateCount");
-      expect(requestJson.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
+      expect(requestJson.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "MINIMAL" });
       expect(requestJson.generationConfig.responseMimeType).toBe("application/json");
       return new Response(JSON.stringify(providerResult), { status: 200, headers: { "Content-Type": "application/json" } });
     });
@@ -457,7 +458,7 @@ describe("browser scan client", () => {
     }), { status: 504, headers: { "Content-Type": "application/json" } }));
     const blob = new Blob([Uint8Array.from([255, 216, 255, 0])], { type: "image/jpeg" });
     const result = await recognizeChessboardFrame(blob, { fetchImpl });
-    expect(timeoutSpy).toHaveBeenCalledWith(32_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(22_000);
     expect(result).toMatchObject({ ok: false, reason: "recognition_timeout" });
   });
 
