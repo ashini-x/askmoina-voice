@@ -286,7 +286,7 @@ describe("board rows and FEN", () => {
 
 describe("provider result assessment", () => {
   it("accepts a complete clear position at the fast single-pass confidence floor", () => {
-    expect(assessRecognition(strongRecognition({
+    expect(assessRecognition(strongRecognition(STARTING_ROWS, {
       confidence: 0.74,
       squareConfidences: Array(64).fill(0.60)
     })).ok).toBe(true);
