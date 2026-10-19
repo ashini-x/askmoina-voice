@@ -106,7 +106,7 @@ describe("M5 query-aware Assamese contextual retrieval", () => {
       : { ...candidate, review_status: "native_review_pending", enabled: 0, rights_confirmed: 1, native_verified: 0, approved_native_review_count: 0, admin_override: 0 });
     const result = await retrieveAssameseConversationReferences(
       mockDb(overridden, query => { sql = query; }),
-      "user selected for job after trying for long time",
+      "mood low empathy",
     );
     expect(sql).toContain("admin_override");
     expect(result.outcome).toBe("matched");
