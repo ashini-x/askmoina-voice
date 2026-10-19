@@ -22,6 +22,7 @@ jobs:
       - run: node --check public/session-ui.js
       - run: node --check public/native-app.js
       - run: node --check public/fluid-interactivity.js
+      - run: node --check public/admin-review.js
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate synthetic speech script syntax

@@ -66,6 +66,12 @@ The existing `docs/benchmarks/assamese-speech-v1.json` is the baseline evaluatio
 
 Have consenting Upper Assam speakers rate the actual generated audio in a private evaluation. Do not save audio or transcripts by default; store only evaluator codes, ratings, critical-failure flags, and brief non-identifying notes. Keep disputed regional variants marked as variants. One reviewer's preference must not be presented as a universal dialect rule.
 
+### Protected admin review centre
+
+The protected `/admin` page includes an M1 score-only native speech review workflow. Open the review centre, use a stable pseudonymous reviewer code, attest that you are reviewing as a native Assamese-English speaker, copy each of the 15 prompts into Live Co-Pilot, and rate what you actually hear across the six dimensions. Record only 0/1/2 ratings, critical-failure flags and brief non-identifying notes; never upload or store audio, transcripts, screenshots, or personal details. The dashboard calculates the configured score gate and shows prior score-only runs. A passing score is evidence from that reviewer and run, not a universal dialect claim or a substitute for technical production benchmark evidence.
+
+The production timing workflow remains separate. The dashboard links to GitHub Actions so the run URL and requested/completed turn counts with p50/p90/p95/min/max can be inspected. The current implementation does not invent benchmark output or promote M1 automatically when either evaluation is missing.
+
 ### M1 status and acceptance
 
 **Deployed:** turn-latency instrumentation, its unit tests, an existing 20-turn synthetic runner, the 15-case speech suite, and score-only evaluation tooling are already in the repository and in the production release path.

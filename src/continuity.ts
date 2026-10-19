@@ -121,12 +121,12 @@ if(!response.ok)throw new Error(result.error||"Sign in failed.");location.href="
 function adminPage(): string {
   return [
     '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1222"><title>AskMoina Admin</title>',
-    '<style>*{box-sizing:border-box}body{margin:0;background:#0c1222;color:#eef3ff;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:1200px;margin:auto;padding:25px 18px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}h1{font-size:2rem;margin:16px 0 4px}h2{margin-top:0}.muted{color:#98a8c2}.btn{display:inline-block;text-decoration:none;border:1px solid #3a4b68;background:#14243c;color:#fff;border-radius:9px;padding:9px 12px;font:inherit;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:22px 0}.card,.section{background:#111c31;border:1px solid #293753;border-radius:15px;padding:17px}.value{font-size:2rem;font-weight:750;letter-spacing:-.03em}.label{font-size:.85rem;color:#9aacc6}.layout{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left;border-bottom:1px solid #293753;padding:10px 8px;white-space:nowrap}th{color:#a8bad4;font-weight:600}.alert{padding:12px;background:#162a3c;border-radius:10px;margin:12px 0;color:#bdd7e9}@media(max-width:800px){.layout{grid-template-columns:1fr}}button:focus{outline:2px solid #9edbe3;outline-offset:2px}</style></head><body><main class="wrap">',
-    '<header class="top"><div><strong>◉ AskMoina / Operations</strong><div class="muted">Operational analytics only · no transcript or memory access</div></div><div><a class="btn" href="/voice-lab">Voice audition lab</a> <button class="btn" id="refresh">Refresh</button> <button class="btn" id="logout">Sign out</button></div></header>',
+    '<style>*{box-sizing:border-box}body{margin:0;background:#0c1222;color:#eef3ff;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:1200px;margin:auto;padding:25px 18px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}h1{font-size:2rem;margin:16px 0 4px}h2{margin-top:0}.muted{color:#98a8c2}.btn{display:inline-block;text-decoration:none;border:1px solid #3a4b68;background:#14243c;color:#fff;border-radius:9px;padding:9px 12px;font:inherit;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:22px 0}.card,.section{background:#111c31;border:1px solid #293753;border-radius:15px;padding:17px}.value{font-size:2rem;font-weight:750;letter-spacing:-.03em}.label{font-size:.85rem;color:#9aacc6}.layout{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}.table-wrap{overflow:auto}.review-panel{margin-top:16px}.review-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.review-toolbar label{display:grid;gap:5px;min-width:220px;flex:1}.review-toolbar input:not([type=checkbox]),.review-card select,.review-card textarea{width:100%;min-width:0;border:1px solid #3a4b68;border-radius:9px;background:#091221;color:#eef3ff;padding:10px;font:inherit}.review-toolbar .attest,.review-card .attest{display:flex;align-items:flex-start;gap:8px;min-width:min(100%,300px)}.review-toolbar .attest input,.review-card .attest input{margin-top:6px}.review-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px;margin:14px 0}.review-card{background:#0d1728;border:1px solid #293753;border-radius:13px;padding:15px;min-width:0}.review-card h3{margin:0 0 8px;font-size:1.03rem}.review-card p{overflow-wrap:anywhere}.review-meta{color:#a8bad4;font-size:.85rem}.review-card .btn{margin-top:10px}.review-card textarea{min-height:76px;resize:vertical}.review-card label{display:block;margin:10px 0 5px}.review-card .attest{display:flex;gap:8px;align-items:flex-start}.review-status{padding:7px 9px;border-radius:8px;background:#162a3c;color:#c4e0e8;font-size:.85rem}.score-grid{display:grid;grid-template-columns:1fr;gap:7px;margin-top:12px}.score-row{display:grid;grid-template-columns:minmax(0,1fr) 132px;align-items:center;gap:10px;font-size:.88rem}.score-row select{width:100%;padding:7px;border-radius:8px;background:#091221;color:#eef3ff;border:1px solid #3a4b68}.success{border-color:#286b52}.failure{border-color:#82454e}table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left;border-bottom:1px solid #293753;padding:10px 8px;white-space:nowrap}th{color:#a8bad4;font-weight:600}.alert{padding:12px;background:#162a3c;border-radius:10px;margin:12px 0;color:#bdd7e9}@media(max-width:800px){.layout{grid-template-columns:1fr}}button:focus{outline:2px solid #9edbe3;outline-offset:2px}</style></head><body><main class="wrap">',
+    '<header class="top"><div><strong>◉ AskMoina / Operations</strong><div class="muted">Operational analytics only · no transcript or memory access</div></div><div><a class="btn" href="/voice-lab">Voice audition lab</a> <a class="btn" href="#assamese-review">Assamese review</a> <button class="btn" id="refresh">Refresh</button> <button class="btn" id="logout">Sign out</button></div></header>',
     '<h1>System overview</h1><p class="muted">Session and privacy-safe usage data. Costs are not inferred from duration; Google Cloud billing is the source for actual spend.</p><div class="cards" id="cards"><div class="card">Loading…</div></div>',
     '<div class="layout"><section class="section"><h2>Recent voice sessions</h2><div class="table-wrap"><table><thead><tr><th>Session</th><th>Visitor</th><th>Started</th><th>Duration</th><th>Outcome</th></tr></thead><tbody id="sessions"></tbody></table></div></section>',
     '<section class="section"><h2>Privacy & health</h2><div id="health" class="alert">Loading system status…</div><p class="muted">Microphone audio and transcript text are not written to the app analytics database. Admin access is audited.</p><p><a href="/">Open voice app</a></p></section></div>',
-    '<p id="message" class="muted" role="status" aria-live="polite"></p><script src="/admin.js" defer></script></main></body></html>',
+    '<section id="assamese-review" class="section review-panel"><h2>Assamese-English review centre</h2><p class="muted">Human acceptance gate for M1 speech quality and M2 conversational examples. Admin access is required. Save scores and brief non-identifying notes only; never paste private conversations or transcripts.</p><div class="review-toolbar"><label>Stable reviewer code (pseudonym)<input id="as-reviewer-code" minlength="3" maxlength="80" pattern="[A-Za-z0-9_-]{3,80}" placeholder="e.g. native-reviewer-1" required></label><label>Broad locality or dialect scope (optional)<input id="as-reviewer-locality" maxlength="120" placeholder="e.g. Assamese-English; regional scope if applicable"></label><label class="attest"><input id="as-native-attest" type="checkbox"> I confirm I am reviewing as a native Assamese-English speaker and will judge only the dialect/register I know.</label></div><div class="review-toolbar"><button class="btn" id="as-refresh-refs">Refresh M2 phrases</button><button class="btn" id="as-refresh-scores">Refresh M1 score history</button><a class="btn" href="/copilot" target="_blank" rel="noopener">Open Live Co-Pilot</a><a class="btn" href="https://github.com/ashini-x/askmoina-voice/actions" target="_blank" rel="noopener">Production workflow results</a></div><p id="as-review-status" class="alert" role="status" aria-live="polite">Loading review items…</p><div id="as-references" class="review-list"></div><hr><h2>M1 · Assamese speech baseline</h2><p class="muted">Play/test each prompt in Live Co-Pilot, then score what you actually heard: 0 = fail, 1 = partly right, 2 = pass. At least 12 of 15 complete cases, at least 85% overall, configured dimension thresholds, and zero critical failures are required. The English synthetic latency benchmark is separate; see the linked production workflow.</p><div id="as-speech-cases" class="review-list"></div><div class="review-toolbar"><button class="btn" id="as-submit-speech">Save score-only evaluation</button><span id="as-speech-status" class="muted" role="status" aria-live="polite"></span></div><div id="as-speech-history" class="review-list"></div></section><p id="message" class="muted" role="status" aria-live="polite"></p><script src="/admin.js" defer></script><script src="/admin-review.js" defer></script></main></body></html>',
   ].join("");
 }
 
@@ -248,6 +248,160 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   }
   if (url.pathname.startsWith("/admin/api/")) {
     if (!await isAdmin(request,env)) return json({error:"unauthorized"},401);
+
+    if (url.pathname === "/admin/api/assamese/references" && request.method === "GET") {
+      try {
+        const result = await env.DB.prepare(
+          "SELECT e.entry_id AS entryId, e.entry_kind AS entryKind, e.interaction_intent AS interactionIntent, " +
+          "e.language_mode AS languageMode, e.dialect_scope AS dialectScope, e.register AS register, " +
+          "e.context_summary AS contextSummary, e.user_example AS userExample, e.response_example AS responseExample, " +
+          "e.usage_notes AS usageNotes, e.avoid_when AS avoidWhen, e.source_kind AS sourceKind, " +
+          "e.source_title AS sourceTitle, e.source_url AS sourceUrl, e.source_license AS sourceLicense, " +
+          "e.permission_basis AS permissionBasis, e.attribution_required AS attributionRequired, " +
+          "e.rights_confirmed AS rightsConfirmed, e.native_verified AS nativeVerified, " +
+          "e.review_status AS reviewStatus, e.enabled AS enabled, e.priority AS priority, e.version AS version, " +
+          "(SELECT COUNT(DISTINCT r.reviewer_code) FROM assamese_conversation_reference_reviews r " +
+          "WHERE r.entry_id=e.entry_id AND r.reviewer_type='native_speaker' AND r.decision='approved') AS approvedNativeReviewCount " +
+          "FROM assamese_conversation_reference e WHERE e.review_status <> 'retired' ORDER BY e.priority ASC, e.entry_id ASC",
+        ).all<Record<string, unknown>>();
+        const entries = Array.isArray(result.results) ? result.results : [];
+        const reviews = await env.DB.prepare(
+          "SELECT entry_id AS entryId, reviewer_code AS reviewerCode, reviewer_type AS reviewerType, " +
+          "locality_scope AS localityScope, decision, notes, reviewed_at AS reviewedAt " +
+          "FROM assamese_conversation_reference_reviews ORDER BY reviewed_at DESC LIMIT 150",
+        ).all<Record<string, unknown>>();
+        const byEntry = new Map<string, Record<string, unknown>[]>();
+        for (const review of reviews.results || []) {
+          const id = String(review.entryId || "");
+          const list = byEntry.get(id) || [];
+          list.push(review);
+          byEntry.set(id, list);
+        }
+        return json({ entries: entries.map((entry) => ({ ...entry, reviews: byEntry.get(String(entry.entryId)) || [] })) });
+      } catch {
+        return json({ error: "assamese_review_storage_not_ready", message: "The M2 reference tables are not available in this environment. Apply the existing M2 migration before reviewing entries." }, 503);
+      }
+    }
+    if (url.pathname === "/admin/api/assamese/reference-review" && request.method === "POST") {
+      if (!sameOrigin(request)) return json({ error: "forbidden_origin" }, 403);
+      let input: { entryId?: unknown; reviewerCode?: unknown; localityScope?: unknown; decision?: unknown; notes?: unknown; rightsConfirmed?: unknown; nativeSpeakerAttestation?: unknown };
+      try { input = await request.json() as typeof input; } catch { return json({ error: "invalid_json" }, 400); }
+      const entryId = typeof input.entryId === "string" ? input.entryId.trim().slice(0, 80) : "";
+      const reviewerCode = typeof input.reviewerCode === "string" ? input.reviewerCode.trim() : "";
+      const localityScope = typeof input.localityScope === "string" ? input.localityScope.trim().slice(0, 120) : "not_recorded";
+      const decision = typeof input.decision === "string" ? input.decision : "";
+      const notes = typeof input.notes === "string" ? input.notes.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim().slice(0, 280) : "";
+      if (!/^[a-zA-Z0-9_-]{3,80}$/.test(reviewerCode)) return json({ error: "invalid_reviewer_code", message: "Use a stable pseudonymous reviewer code (3–80 letters, numbers, underscores or hyphens), not a personal name." }, 400);
+      if (!/^[a-zA-Z0-9_-]{3,80}$/.test(entryId) || !["approved", "needs_revision", "rejected"].includes(decision)) return json({ error: "invalid_review" }, 400);
+      if (input.nativeSpeakerAttestation !== true) return json({ error: "native_speaker_attestation_required" }, 400);
+      if (typeof input.rightsConfirmed !== "boolean") return json({ error: "rights_decision_required" }, 400);
+      const entry = await env.DB.prepare(
+        "SELECT entry_id, source_title, source_license, permission_basis FROM assamese_conversation_reference WHERE entry_id = ?",
+      ).bind(entryId).first<{ entry_id: string; source_title: string; source_license: string; permission_basis: string }>();
+      if (!entry) return json({ error: "reference_not_found" }, 404);
+      if (input.rightsConfirmed && ![entry.source_title, entry.source_license, entry.permission_basis].every((value) => typeof value === "string" && value.trim().length > 1)) {
+        return json({ error: "rights_metadata_incomplete", message: "Source title, permission/license basis and source details must be complete before confirming rights." }, 400);
+      }
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        "INSERT INTO assamese_conversation_reference_reviews (review_id, entry_id, reviewer_code, reviewer_type, locality_scope, decision, notes, reviewed_at) " +
+        "VALUES (?, ?, ?, 'native_speaker', ?, ?, ?, ?) " +
+        "ON CONFLICT(entry_id, reviewer_code) DO UPDATE SET reviewer_type='native_speaker', locality_scope=excluded.locality_scope, " +
+        "decision=excluded.decision, notes=excluded.notes, reviewed_at=excluded.reviewed_at",
+      ).bind(crypto.randomUUID(), entryId, reviewerCode, localityScope || "not_recorded", decision, notes, now).run();
+      const rightsConfirmed = input.rightsConfirmed ? 1 : 0;
+      if (decision !== "approved") {
+        await env.DB.prepare(
+          "UPDATE assamese_conversation_reference SET rights_confirmed=?, native_verified=0, enabled=0, review_status=?, updated_at=?, version=version+1 WHERE entry_id=?",
+        ).bind(rightsConfirmed, decision, now, entryId).run();
+      } else {
+        const count = await env.DB.prepare(
+          "SELECT COUNT(DISTINCT reviewer_code) AS total FROM assamese_conversation_reference_reviews WHERE entry_id=? AND reviewer_type='native_speaker' AND decision='approved'",
+        ).bind(entryId).first<{ total: number }>();
+        const approvedByTwo = Number(count?.total || 0) >= 2;
+        const reviewStatus = !rightsConfirmed ? "rights_pending" : (approvedByTwo ? "approved" : "native_review_pending");
+        await env.DB.prepare(
+          "UPDATE assamese_conversation_reference SET rights_confirmed=?, native_verified=?, enabled=?, review_status=?, updated_at=?, version=version+1 WHERE entry_id=?",
+        ).bind(rightsConfirmed, approvedByTwo && rightsConfirmed ? 1 : 0, approvedByTwo && rightsConfirmed ? 1 : 0, reviewStatus, now, entryId).run();
+      }
+      await audit(env, "assamese_reference_" + String(decision)).catch(() => undefined);
+      const updated = await env.DB.prepare(
+        "SELECT review_status AS reviewStatus, enabled, rights_confirmed AS rightsConfirmed, " +
+        "(SELECT COUNT(DISTINCT r.reviewer_code) FROM assamese_conversation_reference_reviews r WHERE r.entry_id=assamese_conversation_reference.entry_id AND r.reviewer_type='native_speaker' AND r.decision='approved') AS approvedNativeReviewCount " +
+        "FROM assamese_conversation_reference WHERE entry_id=?",
+      ).bind(entryId).first<Record<string, unknown>>();
+      const active = Number(updated?.approvedNativeReviewCount || 0) >= 2 && Number(updated?.rightsConfirmed) === 1 && Number(updated?.enabled) === 1;
+      return json({ ok: true, entryId, result: updated, message: active ? "Second distinct native-speaker approval and rights gate passed. Entry is now eligible for retrieval." : "Review saved. This entry stays disabled until rights are confirmed and two distinct native speakers approve it." });
+    }
+    if (url.pathname === "/admin/api/assamese/speech-runs" && request.method === "GET") {
+      try {
+        const result = await env.DB.prepare(
+          "SELECT review_id AS reviewId, evaluation_date AS evaluationDate, evaluator_code AS evaluatorCode, " +
+          "completed_cases AS completedCases, total_cases AS totalCases, overall_percent AS overallPercent, " +
+          "dimensions_json AS dimensionsJson, critical_failure_count AS criticalFailureCount, passed, created_at AS createdAt " +
+          "FROM assamese_speech_review_runs ORDER BY created_at DESC LIMIT 20",
+        ).all<Record<string, unknown>>();
+        return json({ runs: result.results || [] });
+      } catch {
+        return json({ error: "speech_review_storage_not_ready", message: "Apply the M1 score-only review migration before saving speech scores." }, 503);
+      }
+    }
+    if (url.pathname === "/admin/api/assamese/speech-runs" && request.method === "POST") {
+      if (!sameOrigin(request)) return json({ error: "forbidden_origin" }, 403);
+      let input: { evaluatorCode?: unknown; nativeSpeakerAttestation?: unknown; suiteVersion?: unknown; results?: unknown };
+      try { input = await request.json() as typeof input; } catch { return json({ error: "invalid_json" }, 400); }
+      const evaluatorCode = typeof input.evaluatorCode === "string" ? input.evaluatorCode.trim() : "";
+      if (!/^[a-zA-Z0-9_-]{3,80}$/.test(evaluatorCode)) return json({ error: "invalid_reviewer_code" }, 400);
+      if (input.nativeSpeakerAttestation !== true) return json({ error: "native_speaker_attestation_required" }, 400);
+      if (input.suiteVersion !== "1.0.0" || !Array.isArray(input.results) || input.results.length !== 15) return json({ error: "invalid_speech_run" }, 400);
+      const dimensions = ["language_match", "conversational_naturalness", "pronunciation_clarity", "code_switching", "turn_taking", "uncertainty_honesty"];
+      const caseIds = Array.from({length:15}, (_, i) => "AS" + String(i + 1).padStart(2, "0"));
+      const results = input.results as Array<{case_id?: unknown; ratings?: unknown; critical_failures?: unknown; notes?: unknown}>;
+      const seen = new Set<string>();
+      const safeResults: Array<{case_id:string;ratings:Record<string,number|null>;critical_failures:string[];notes:string}> = [];
+      for (const row of results) {
+        const id = typeof row?.case_id === "string" ? row.case_id : "";
+        if (!caseIds.includes(id) || seen.has(id) || !row.ratings || typeof row.ratings !== "object" || Array.isArray(row.ratings)) return json({ error: "invalid_speech_result_row" }, 400);
+        seen.add(id);
+        const ratings = row.ratings as Record<string, unknown>;
+        const safeRatings: Record<string, number | null> = {};
+        for (const dim of dimensions) {
+          const value = ratings[dim];
+          if (value !== null && value !== 0 && value !== 1 && value !== 2) return json({ error: "invalid_speech_rating" }, 400);
+          safeRatings[dim] = value as number | null;
+        }
+        if (Object.keys(ratings).some((key) => !dimensions.includes(key))) return json({ error: "unknown_speech_dimension" }, 400);
+        if (!Array.isArray(row.critical_failures) || row.critical_failures.some((value) => typeof value !== "string" || value.length > 80)) return json({ error: "invalid_critical_failure" }, 400);
+        if (typeof row.notes !== "string" || row.notes.length > 280) return json({ error: "invalid_speech_note" }, 400);
+        safeResults.push({ case_id: id, ratings: safeRatings, critical_failures: [...new Set(row.critical_failures as string[])].slice(0, 5), notes: row.notes.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim() });
+      }
+      if (seen.size !== caseIds.length) return json({ error: "missing_speech_cases" }, 400);
+      const ordered = caseIds.map((id) => safeResults.find((row) => row.case_id === id)!);
+      const complete = ordered.filter((row) => dimensions.every((dim) => row.ratings[dim] !== null)).length;
+      const dimScores = Object.fromEntries(dimensions.map((dim) => {
+        const scores = ordered.map((row) => row.ratings[dim]).filter((value): value is number => value !== null);
+        return [dim, { percent: scores.length ? Math.round(scores.reduce((sum, value) => sum + value * 50, 0) / scores.length) : null, rated: scores.length }];
+      })) as Record<string, { percent: number | null; rated: number }>;
+      const allScores = ordered.flatMap((row) => dimensions.map((dim) => row.ratings[dim]).filter((value): value is number => value !== null));
+      const overall = allScores.length ? Math.round(allScores.reduce((sum, value) => sum + value * 50, 0) / allScores.length) : null;
+      const criticalFailures = ordered.reduce((sum, row) => sum + row.critical_failures.length, 0);
+      const thresholds: Record<string, number> = { language_match: 85, conversational_naturalness: 85, pronunciation_clarity: 80, code_switching: 85 };
+      const dimensionsPassed = Object.entries(thresholds).every(([dim, threshold]) => dimScores[dim].percent !== null && Number(dimScores[dim].percent) >= threshold);
+      const passed = complete >= 12 && overall !== null && overall >= 85 && criticalFailures === 0 && dimensionsPassed;
+      const summary = { suiteVersion: "1.0.0", completedCases: complete, totalCases: 15, overallPercent: overall, dimensions: dimScores, criticalFailureCount: criticalFailures, passed };
+      const now = new Date().toISOString(), reviewId = crypto.randomUUID();
+      try {
+        await env.DB.prepare(
+          "INSERT INTO assamese_speech_review_runs (review_id, evaluation_date, evaluator_code, suite_version, completed_cases, total_cases, overall_percent, dimensions_json, critical_failure_count, passed, results_json, created_at) " +
+          "VALUES (?, ?, ?, '1.0.0', ?, 15, ?, ?, ?, ?, ?, ?)",
+        ).bind(reviewId, now.slice(0, 10), evaluatorCode, complete, overall, JSON.stringify(dimScores), criticalFailures, passed ? 1 : 0, JSON.stringify(ordered), now).run();
+      } catch {
+        return json({ error: "speech_review_storage_not_ready", message: "The M1 score-only review table is not available. Apply the M1 review migration before submitting." }, 503);
+      }
+      await audit(env, passed ? "assamese_speech_review_passed" : "assamese_speech_review_submitted").catch(() => undefined);
+      return json({ ok: true, reviewId, ...summary }, 201);
+    }
+
     if (request.method !== "GET") return json({error:"method_not_allowed"},405);
     if (url.pathname === "/admin/api/overview") {
       const metrics = await env.DB.prepare(
