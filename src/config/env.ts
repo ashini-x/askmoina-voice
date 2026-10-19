@@ -19,6 +19,7 @@ export interface Env {
   LIVE_VOICE_NAME?: string;
   // Temporary, authenticated per-session native voice comparison; false outside the audition.
   VOICE_AUDITION_ENABLED?: string;
+  VOICE_AUDITION_EXPIRES_AT?: string;
   GCP_PROJECT_ID: string;
   ANALYTICS_RAW_RETENTION_DAYS: string;
 
