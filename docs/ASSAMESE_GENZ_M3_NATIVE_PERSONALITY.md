@@ -18,6 +18,10 @@ The default Live voice remains **Leda** (Google's voice descriptor is “Youthfu
 
 The Live API lets the app select a supported prebuilt voice and guide vocal tone through system instructions; it does not expose a direct numeric pitch/fundamental-frequency lock in the documented voice configuration. Therefore this change can strengthen consistency but cannot guarantee an exact age impression or identical pitch on every utterance. Confirm the actual sound by listening to the deployed audio at normal volume across short replies, longer replies, Assamese, English, and code-switching. Do not claim this target has passed until that listening check is complete.
 
+## Owner listen-back samples
+
+The separate `Production voice listen-back samples` GitHub Actions workflow captures three short, synthetic-text replies from the deployed Gemini Live voice: an English greeting, a gentle Assamese-English response, and an Assamese-English celebration. It verifies production reports v0.4.147 with Leda before capture, saves only the generated assistant WAV files, and uploads them as a one-day artifact. It does not save input audio, prompts, transcripts, or session cookies. These samples are for hearing the actual vocal sound and do not replace the held-out native-listener M3 acceptance evaluation.
+
 ## Held-out evaluation
 
 `docs/benchmarks/assamese-personality-v1.json` contains 12 held-out prompts covering six dimensions. It uses the existing score-only benchmark workflow:
