@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const worklet = readFileSync(new URL("../public/pitch-shift-worklet.js", import.meta.url), "utf8");
 const client = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+const copilot = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 
 function makeProcessor(semitones = 6) {
   let RegisteredProcessor = null;
@@ -66,6 +67,11 @@ describe("AskMoina high-register playback", () => {
     expect(client).toContain('audioContext.audioWorklet.addModule("/pitch-shift-worklet.js")');
     expect(client).toContain('processorOptions: { pitchSemitones: 6 }');
     expect(client).toContain("source.connect(pitchShifterNode || audioContext.destination)");
+    expect(copilot).toContain('startingAudioContext.audioWorklet.addModule("/pitch-shift-worklet.js")');
+    expect(copilot).toContain('processorOptions: { pitchSemitones: 6 }');
+    expect(copilot).toContain("source.connect(pitchShifterNode || getPlaybackAnalyser())");
+    expect(copilot).toContain("pitchShifterNode.connect(getPlaybackAnalyser())");
     expect(client).toContain("if (pitchShifterNode) {");
+    expect(copilot).toContain("if (pitchShifterNode) {");
   });
 });
