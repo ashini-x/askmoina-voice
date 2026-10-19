@@ -12,6 +12,7 @@ import { RealtimeMediaRateLimiter } from "./sessions/audio-rate-limit";
 import { estimateProviderCostUsd, inspectProviderControlFrame, inspectProviderUsageMetrics, isProviderAudioFrame, type ProviderUsageMetrics } from "./sessions/provider-frame";
 import { beginTurnLatencyMeasurement, measureFirstAudioAfterBoundary, measureTurnInterruptedBeforeFirstAudio, type PendingTurnLatencyMeasurement } from "./sessions/turn-latency";
 import { decideSilentTurnRecovery } from "./sessions/silent-turn-recovery";
+import { addPendingGroundedSearches, completePendingGroundedSearch } from "./sessions/grounded-search-pending";
 import { handleContinuityRequest, isAdmin, recordSessionStart, recordSessionFinish } from "./continuity";
 import { buildPersonalizedSystemInstruction } from "./sessions/memory-context";
 import { SYSTEM_INSTRUCTION } from "./sessions/assistant-instruction";
@@ -1924,7 +1925,7 @@ async function handleVoiceSocket(
         result = "The live ranked-list lookup could not complete. No ranking has been verified, so do not guess names, teams, or statistics. Tell the user the lookup failed and offer a retry.";
         console.warn("[askmoina] Mandatory ranked-list grounding failed", error instanceof Error ? error.message.slice(0, 240) : "unknown error");
       } finally {
-        pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
+        pendingGroundedSearches = completePendingGroundedSearch(pendingGroundedSearches);
         // liveSearchProgressCuePending tracks the active assistant turn, not the lookup.
         // Keep it set until that progress sentence reaches turnComplete.
       }
@@ -2672,6 +2673,9 @@ async function handleVoiceSocket(
           const contextualReferenceCallsPresent = calls.some((call) =>
             call?.name === "retrieve_assamese_conversation_reference" && typeof call.id === "string" && Boolean(call.id)
           );
+          // Mark every valid lookup pending before awaiting any external retrieval, in both voice modes.
+          // Otherwise silent-turn recovery can mistake the tool-only turn for a dead spoken reply.
+          pendingGroundedSearches = addPendingGroundedSearches(pendingGroundedSearches, calls);
           let forwardedToolFrameEarly = false;
           let forcedRankedTriggerText: string | null = null;
           if (searchCallsPresent) latestUserRequestNeedsGrounding = false;
@@ -2701,9 +2705,7 @@ async function handleVoiceSocket(
             }
 
             if (searchCallsPresent && copilotMode && upstreamSocket.readyState === WebSocket.OPEN && upstreamSetupReady && !resumptionInProgress) {
-              pendingGroundedSearches += calls.filter((call) =>
-                call?.name === "search_current_web" && typeof call.id === "string" && Boolean(call.id)
-              ).length;
+              // Search counts were recorded above before the network lookup starts.
               liveSearchProgressCueCount = 1;
               liveSearchProgressCuePending = pendingGroundedSearches > 0;
               // Use the Live model's voice—not browser TTS—to narrate a contextual status.
@@ -2802,7 +2804,7 @@ async function handleVoiceSocket(
                   : "The live web lookup could not complete. Be transparent about this and do not present current or device-specific claims as verified.";
               }
             }
-            pendingGroundedSearches = Math.max(0, pendingGroundedSearches - 1);
+            pendingGroundedSearches = completePendingGroundedSearch(pendingGroundedSearches);
             if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
 
             if (copilotMode && !closed) {
