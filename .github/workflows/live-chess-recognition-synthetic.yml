@@ -38,6 +38,7 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
           node --check scripts/live-chess-recognition-smoke.mjs
+          node --check scripts/live-stockfish-browser-smoke.mjs
           node --check scripts/synthetic-passkey-session.mjs
 
       - name: Create temporary authenticated synthetic session
@@ -66,10 +67,14 @@ jobs:
             ui_status="$(curl --silent --show-error --max-time 10 --output /tmp/chess-ui.js --write-out '%{http_code}' \
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
               "$BASE_URL/chess/chess-ui.js?v=0.4.145" || true)"
+            page_status="$(curl --silent --show-error --max-time 10 --dump-header /tmp/copilot-page.headers --output /tmp/copilot-page.html --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" "$BASE_URL/copilot" || true)"
             engine_status="$(curl --silent --show-error --max-time 10 --dump-header /tmp/stockfish.headers --output /dev/null --write-out '%{http_code}' \
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
               "$BASE_URL/chess/stockfish-19-lite-single.js" || true)"
-            if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" ]] &&
+            if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" && "$page_status" == "200" ]] &&
+               grep -Fq "script-src 'self' 'wasm-unsafe-eval'" /tmp/copilot-page.html &&
+               grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/copilot-page.headers &&
                grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&
                grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js &&
                grep -Fq 'retryStableChessboardRecognition' /tmp/chess-ui.js &&
@@ -78,7 +83,7 @@ jobs:
               ready=true
               break
             fi
-            echo "Waiting for the deployed chess fixes (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response}, engine HTTP ${engine_status:-no-response}, WASM CSP pending)."
+            echo "Waiting for the deployed chess fixes (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response}, page HTTP ${page_status:-no-response}, engine HTTP ${engine_status:-no-response}, page/worker WASM CSP pending)."
             sleep 5
           done
           if [[ "$ready" != "true" ]]; then
@@ -86,6 +91,9 @@ jobs:
             exit 1
           fi
           echo "Production recognition retry is ready and Stockfish worker CSP allows WebAssembly compilation."
+
+      - name: Verify Stockfish starts and returns a legal move in the real browser
+        run: node scripts/live-stockfish-browser-smoke.mjs
 
       - name: Verify the live digital chessboard end to end
         run: node scripts/live-chess-recognition-smoke.mjs
