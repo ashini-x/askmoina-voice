@@ -278,6 +278,49 @@ jobs:
           test "$status" = "401"
           echo "Unauthenticated admin API denied: OK"
 
+          # Veda's private install portal is served by the Worker, not public assets.
+          # Verify anonymous access against production after every deploy.
+          status="$(fetch_status /veda/ /tmp/veda-page.html)"
+          test "$status" = "302"
+          echo "Anonymous Veda portal redirects to admin login: OK"
+
+          for asset in /veda/manifest.webmanifest /veda/icon.svg /veda/app.css /veda/app.js /veda/service-worker.js; do
+            status="$(fetch_status "$asset" /tmp/veda-protected-asset)"
+            if [[ "$status" != "401" ]]; then
+              echo "::error::Anonymous Veda asset $asset should return 401; received HTTP $status"
+              head -c 500 /tmp/veda-protected-asset || true
+              exit 1
+            fi
+          done
+          echo "Anonymous Veda manifest, icon, CSS, JS and service worker denied: OK"
+
+          for route in /api/veda/status /api/veda/unknown; do
+            status="$(fetch_status "$route" /tmp/veda-protected-api.json)"
+            if [[ "$status" != "401" ]]; then
+              echo "::error::Anonymous Veda API $route should return 401; received HTTP $status"
+              cat /tmp/veda-protected-api.json || true
+              exit 1
+            fi
+          done
+          echo "Anonymous Veda status and unknown API routes denied: OK"
+
+          # Ensure the release config cannot accidentally activate listening.
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const config = JSON.parse(fs.readFileSync("wrangler.jsonc", "utf8"));
+          if (config.vars.VEDA_ENABLED !== "false") {
+            throw new Error("Veda listening runtime must stay disabled in production.");
+          }
+          if (config.vars.VEDA_PORTAL_ENABLED !== "true") {
+            throw new Error("Production Veda portal must remain independently enabled.");
+          }
+          if (config.previews?.vars?.VEDA_ENABLED !== "false" ||
+              config.previews?.vars?.VEDA_PORTAL_ENABLED !== "true") {
+            throw new Error("Preview Veda flags do not preserve portal/runtime isolation.");
+          }
+          console.log("Veda portal/runtime flags remain isolated: OK");
+          NODE
+
       - name: Verify standalone PWA installation and browser gate
         env:
           BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
