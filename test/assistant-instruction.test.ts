@@ -28,7 +28,7 @@ describe("AskMoina live voice behavior guidance", () => {
   it("targets naturally sweet youthful warmth without forced or robotic pitch", () => {
     expect(SYSTEM_INSTRUCTION).toContain("DEFAULT VOICE SOUND PROFILE");
     expect(SYSTEM_INSTRUCTION).toContain("naturally sweet, softly bright, light, clear, and very youthful");
-    expect(SYSTEM_INSTRUCTION).toContain("Prioritize sweetness over forcing pitch");
+    expect(SYSTEM_INSTRUCTION).toContain("prioritize sweetness over forcing pitch");
     expect(SYSTEM_INSTRUCTION).toContain("childlike lightness roughly around age 10 as a vocal impression");
     expect(SYSTEM_INSTRUCTION).toContain("metallic/robotic timbre");
     expect(SYSTEM_INSTRUCTION).toContain("never claim to be a child");
