@@ -21,7 +21,7 @@ describe("natural sweet live voice", () => {
   it("asks for naturally sweet, youthful warmth instead of forced pitch or robotic timbre", () => {
     expect(instruction).toContain("naturally sweet, softly bright, light, clear, and very youthful");
     expect(instruction).toContain("childlike lightness roughly around age 10 as a vocal impression");
-    expect(instruction).toContain("Prioritize the native voice's natural texture");
+    expect(instruction).toContain("Preserve the native voice's natural texture and intelligibility");
     expect(instruction).toContain("metallic/robotic timbre");
   });
 });
