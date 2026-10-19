@@ -30,6 +30,7 @@ import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionO
 import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
+import { canAccessVoicePreview } from "./sessions/voice-preview-access";
 
 export { UserState } from "./sessions/user-state";
 export { VedaSessionState } from "./veda/session-state";
@@ -1324,16 +1325,29 @@ async function handleVoiceSocket(
   if (requestUrl.searchParams.has("voice_name") && !voicePreviewRequested) {
     return json({ error: "invalid_voice_preview_request" }, 400);
   }
-  if (voicePreviewRequested) {
-    if (!await isAdmin(request, env)) return json({ error: "admin_required" }, 401);
-    if (!isPrebuiltLiveVoiceName(requestedPreviewVoice)) {
-      return json({ error: "unsupported_prebuilt_voice" }, 400);
-    }
+  if (voicePreviewRequested && !isPrebuiltLiveVoiceName(requestedPreviewVoice)) {
+    return json({ error: "unsupported_prebuilt_voice" }, 400);
   }
   if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
 
   const sessionUserId = await getAuthenticatedUserId(request, env);
-  if (!sessionUserId && !await isAdmin(request, env)) return json({ error: "authentication_required" }, 401);
+  // A short-lived production audition flag lets authenticated users compare native
+  // prebuilt voices in their own session. Administrative preview access remains supported.
+  const adminAccess = voicePreviewRequested || !sessionUserId ? await isAdmin(request, env) : false;
+  const auditionExpiresAt = Date.parse(env.VOICE_AUDITION_EXPIRES_AT || "");
+  const auditionWindowOpen =
+    env.VOICE_AUDITION_ENABLED === "true" &&
+    Number.isFinite(auditionExpiresAt) &&
+    Date.now() < auditionExpiresAt;
+  const voiceAuditionAccess = canAccessVoicePreview(
+    adminAccess,
+    Boolean(sessionUserId),
+    auditionWindowOpen,
+  );
+  if (voicePreviewRequested && !voiceAuditionAccess) {
+    return json({ error: "admin_required" }, 401);
+  }
+  if (!sessionUserId && !adminAccess) return json({ error: "authentication_required" }, 401);
   const reservation = await reserveVoiceSession(request, env);
   if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
 

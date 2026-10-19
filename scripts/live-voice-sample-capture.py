@@ -20,14 +20,16 @@ AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 OUTPUT_DIR = Path("artifacts/live-voice-samples")
 SETUP_WAIT_SECONDS = 18
 TURN_WAIT_SECONDS = 38
+# Compare the same prompts across native prebuilt voices. Never use DSP pitch-shifting.
+VOICE_CANDIDATES = ("Leda", "Aoede", "Achernar", "Zephyr")
 SAMPLES = [
     (
-        "01-english-greeting",
-        "Please say one short, friendly greeting in English. Sound naturally sweet, softly bright, youthful and warm, with clear gentle melody. Keep your voice authentic and unprocessed, never robotic or exaggerated.",
+        "01-reference-phrase",
+        "Say exactly these words, and no other words: I love you. Say them once in a naturally sweet, soft, youthful feminine voice, gently affectionate and bright, with relaxed human timing. Do not sing, whisper, exaggerate the pitch, or sound cartoonish or robotic.",
     ),
     (
         "02-assamese-english-gentle",
-        "Aji mood tu bhal nai yaar. Reply gently in a natural Upper Assam Assamese-English mix, in one or two short sentences, without giving advice. Use a sweet, caring, soft-bright tone, with natural rhythm and no forced high pitch.",
+        "Aji mood tu bhal nai yaar. Reply gently in a natural Upper Assam Assamese-English mix, in one or two short sentences, without giving advice. Keep the same soft, sweet, caring vocal quality, with natural rhythm, clear words, and no forced high pitch.",
     ),
     (
         "03-assamese-english-celebration",
@@ -95,8 +97,9 @@ def audio_from_message(message):
     return chunks, sample_rate
 
 
-def capture_sample(sample_id, prompt):
-    ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
+def capture_sample(voice_name, sample_id, prompt):
+    ws_url = (BASE_URL.replace("https://", "wss://", 1) +
+              "/api/voice/socket?voice_preview=1&voice_name=" + voice_name)
     ws = websocket.create_connection(
         ws_url,
         origin=BASE_URL,
@@ -178,13 +181,17 @@ def main():
         raise RuntimeError("Authenticated production synthetic session is required.")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     results = []
-    for sample_id, prompt in SAMPLES:
-        results.append(capture_sample(sample_id, prompt))
-        print("Voice sample captured: " + sample_id)
+    for voice_name in VOICE_CANDIDATES:
+        for sample_id, prompt in SAMPLES:
+            candidate_id = voice_name.lower() + "-" + sample_id
+            results.append(capture_sample(voice_name, candidate_id, prompt))
+            print("Voice sample captured: " + candidate_id)
     manifest = {
-        "source": "AskMoina production Gemini Live",
-        "voice": "Zephyr",
-        "purpose": "Disposable owner listen-back samples for natural, sweet, youthful Zephyr voice behavior",
+        "source": "AskMoina production Gemini Live voice preview",
+        "voice_candidates": list(VOICE_CANDIDATES),
+        "default_voice_unchanged": "Zephyr",
+        "purpose": "Side-by-side native-voice audition against the owner's uploaded reference clip",
+        "sample_count": len(results),
         "samples": results,
         "privacy": "Synthetic text input only. No input audio, transcripts, or prompt text saved.",
     }

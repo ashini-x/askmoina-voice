@@ -8,6 +8,9 @@ on:
       - "scripts/live-voice-sample-capture.py"
       - "src/sessions/assistant-instruction.ts"
       - "src/sessions/voice-config.ts"
+      - "src/index.ts"
+      - "src/config/env.ts"
+      - "wrangler.jsonc"
       - "docs/ASSAMESE_GENZ_M3_NATIVE_PERSONALITY.md"
   workflow_dispatch:
 
@@ -17,7 +20,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
     steps:
@@ -48,7 +51,7 @@ jobs:
           . .venv-voice-samples/bin/activate
           python -m pip install --quiet --disable-pip-version-check websocket-client
 
-      - name: Capture live samples from the deployed youthful voice
+      - name: Capture matched prompts across four native Live voices
         shell: bash
         run: |
           set -euo pipefail
@@ -61,8 +64,8 @@ jobs:
           import fs from "node:fs";
           try {
             const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-            if (body.ok === true && body.app === "askmoina-voice" && body.version === "0.4.150" && body.liveVoice === "Zephyr") {
-              console.log(JSON.stringify({productionHealth:"PASS",version:body.version,liveVoice:body.liveVoice,model:body.model,location:body.location}));
+            if (body.ok === true && body.app === "askmoina-voice" && body.version === "0.4.151" && body.liveVoice === "Zephyr") {
+              console.log(JSON.stringify({productionHealth:"PASS",version:body.version,defaultLiveVoice:body.liveVoice,model:body.model,location:body.location,voiceAudition:"enabled for this temporary experiment"}));
               process.exit(0);
             }
           } catch {}
@@ -73,12 +76,12 @@ jobs:
                 break
               fi
             fi
-            echo "Waiting for production v0.4.150 with Zephyr (attempt $attempt/90)."
+            echo "Waiting for production v0.4.151 with Zephyr (attempt $attempt/90)."
             sleep 10
           done
           rm -f "$health_file"
           if [[ "$ready" != "true" ]]; then
-            echo "::error::Timed out waiting for production v0.4.150 with the natural-sweet Zephyr default."
+            echo "::error::Timed out waiting for production v0.4.151 with the Zephyr default and voice audition enabled."
             exit 1
           fi
 
@@ -100,11 +103,11 @@ jobs:
           . .venv-voice-samples/bin/activate
           python scripts/live-voice-sample-capture.py
 
-      - name: Upload listen-back WAVs for owner review
+      - name: Upload native voice comparison WAVs for owner review
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: askmoina-live-voice-samples
           path: artifacts/live-voice-samples/*.wav
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 3
