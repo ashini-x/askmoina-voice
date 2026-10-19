@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "../public/chess/chess.js";
 import { inspectChessPosition, StockfishChessEngine } from "../public/chess/engine-client.js";
 
+function createWorkerMessage(data) {
+  // Browser MessageEvent.data is exposed via the prototype, not as an own property.
+  const prototype = Object.create(null);
+  Object.defineProperty(prototype, "data", { get: () => data });
+  return Object.create(prototype);
+}
+
 function createFakeWorker(bestMove) {
   const worker = {
     commands: [],
@@ -11,13 +18,13 @@ function createFakeWorker(bestMove) {
     postMessage(command) {
       this.commands.push(command);
       if (command === "uci") {
-        queueMicrotask(() => this.onmessage && this.onmessage({ data: "uciok" }));
+        queueMicrotask(() => this.onmessage && this.onmessage(createWorkerMessage("uciok")));
       } else if (command === "isready") {
-        queueMicrotask(() => this.onmessage && this.onmessage({ data: "readyok" }));
+        queueMicrotask(() => this.onmessage && this.onmessage(createWorkerMessage("readyok")));
       } else if (command.startsWith("go ")) {
         queueMicrotask(() => {
-          this.onmessage && this.onmessage({ data: "info depth 8 score cp 24 pv " + bestMove });
-          this.onmessage && this.onmessage({ data: "bestmove " + bestMove });
+          this.onmessage && this.onmessage(createWorkerMessage("info depth 8 score cp 24 pv " + bestMove));
+          this.onmessage && this.onmessage(createWorkerMessage("bestmove " + bestMove));
         });
       }
     },
@@ -60,6 +67,19 @@ describe("chess position validation", () => {
 });
 
 describe("Stockfish UCI browser client", () => {
+  it("reads inherited MessageEvent.data during the UCI startup handshake", async () => {
+    const event = createWorkerMessage("uciok");
+    expect(Object.prototype.hasOwnProperty.call(event, "data")).toBe(false);
+    expect("data" in event).toBe(true);
+
+    const worker = createFakeWorker("e2e4");
+    const engine = new StockfishChessEngine({ workerFactory: () => worker, startupTimeoutMs: 100 });
+    engines.push(engine);
+    const result = await engine.analyzePosition(new Chess().fen());
+    expect(result.bestMove.uci).toBe("e2e4");
+    expect(worker.commands).toContain("isready");
+  });
+
   it("starts the worker, requests a bounded analysis, and returns a legal move in SAN and UCI", async () => {
     const worker = createFakeWorker("e2e4");
     const factory = vi.fn(() => worker);
@@ -139,8 +159,8 @@ describe("Stockfish UCI browser client", () => {
       onerror: null,
       terminated: false,
       postMessage(command) {
-        if (command === "uci") queueMicrotask(() => this.onmessage && this.onmessage({ data: "uciok" }));
-        if (command === "isready") queueMicrotask(() => this.onmessage && this.onmessage({ data: "readyok" }));
+        if (command === "uci") queueMicrotask(() => this.onmessage && this.onmessage(createWorkerMessage("uciok")));
+        if (command === "isready") queueMicrotask(() => this.onmessage && this.onmessage(createWorkerMessage("readyok")));
         // Deliberately no bestmove reply to a go command.
       },
       terminate() { this.terminated = true; }

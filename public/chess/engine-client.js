@@ -70,7 +70,7 @@ export class StockfishChessEngine {
       this.startupTimer = setTimeout(() => {
         this.failEngine(new Error("Stockfish did not become ready before the startup deadline."));
       }, this.startupTimeoutMs);
-      this.worker.onmessage = (event) => this.handleEngineLine(event && Object.prototype.hasOwnProperty.call(event, "data") ? event.data : event);
+      this.worker.onmessage = (event) => this.handleEngineLine(event && typeof event === "object" && "data" in event ? event.data : event);
       this.worker.onerror = (event) => {
         const message = event && event.message ? event.message : "Stockfish worker failed.";
         this.failEngine(new Error(String(message)));

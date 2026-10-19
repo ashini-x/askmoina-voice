@@ -67,8 +67,8 @@ function buildFixtureHtml() {
 async function verifyStockfishEngine(browser) {
   const page = await browser.newPage({ viewport: { width: 1024, height: 900 }, deviceScaleFactor: 1 });
   try {
-    // Use a same-origin page so the real production worker response CSP and
-    // its WASM initialization are exercised in Chromium, not a fake worker.
+    // Use an authenticated same-origin app page and the exact engine client
+    // module used by the UI. This tests MessageEvent handling as well as WASM.
     await page.context().addCookies([{
       name: "moina_session",
       value: cookie.slice("moina_session=".length),
@@ -76,75 +76,35 @@ async function verifyStockfishEngine(browser) {
     }]);
     await page.goto(baseUrl + "/copilot", { waitUntil: "domcontentloaded" });
     const result = await page.evaluate(async () => {
-      const { Chess } = await import("/chess/chess.js");
+      const [{ Chess }, { StockfishChessEngine }] = await Promise.all([
+        import("/chess/chess.js"),
+        import("/chess/engine-client.js")
+      ]);
       const startedAt = performance.now();
-      return await new Promise((resolve, reject) => {
-        let settled = false;
-        let sawUci = false;
-        let sawReady = false;
-        let worker;
-        const finish = (error, value) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          try { worker && worker.terminate(); } catch (_) {}
-          if (error) reject(error);
-          else resolve(value);
-        };
-        const timer = setTimeout(() => {
-          finish(new Error("Stockfish browser worker did not complete UCI startup and search within 45 seconds."));
-        }, 45_000);
-        try {
-          worker = new Worker("/chess/stockfish-19-lite-single.js");
-          worker.onerror = event => finish(new Error(
-            "Stockfish browser worker failed: " + String(event && event.message || "unknown worker error")
-          ));
-          worker.onmessage = event => {
-            const line = String(event && event.data != null ? event.data : "").trim();
-            if (line === "uciok" && !sawUci) {
-              sawUci = true;
-              worker.postMessage("isready");
-              return;
-            }
-            if (line === "readyok" && !sawReady) {
-              sawReady = true;
-              worker.postMessage("position startpos");
-              worker.postMessage("go depth 8");
-              return;
-            }
-            if (!line.startsWith("bestmove ")) return;
-            const uci = line.split(/\s+/)[1] || "";
-            const match = uci.match(/^([a-h][1-8])([a-h][1-8])([qrbn])?$/);
-            if (!match) {
-              finish(new Error("Stockfish browser worker returned no usable UCI move: " + line));
-              return;
-            }
-            const game = new Chess();
-            let move = null;
-            try {
-              move = game.move({ from: match[1], to: match[2], promotion: match[3] });
-            } catch (_) {}
-            if (!move) {
-              finish(new Error("Stockfish browser worker returned an illegal starting-position move: " + uci));
-              return;
-            }
-            finish(null, {
-              uci,
-              san: move.san,
-              elapsedMs: Math.round(performance.now() - startedAt),
-              uciReady: sawUci,
-              engineReady: sawReady
-            });
-          };
-          worker.postMessage("uci");
-        } catch (error) {
-          finish(error instanceof Error ? error : new Error(String(error)));
-        }
+      const engine = new StockfishChessEngine({
+        defaultMoveTimeMs: 800,
+        startupTimeoutMs: 15_000,
+        searchTimeoutMs: 15_000
       });
+      try {
+        const analysis = await engine.analyzePosition(new Chess().fen(), { movetimeMs: 800 });
+        if (analysis.status !== "move_found" || !analysis.bestMove || !analysis.bestMove.san) {
+          throw new Error("Stockfish client did not return a legal starting-position move.");
+        }
+        return {
+          uci: analysis.bestMove.uci,
+          san: analysis.bestMove.san,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          status: analysis.status,
+          engine: analysis.engine
+        };
+      } finally {
+        engine.dispose();
+      }
     });
-    assert.equal(result.uciReady, true, "Stockfish must complete the UCI handshake");
-    assert.equal(result.engineReady, true, "Stockfish must pass the WASM readiness check");
-    assert.ok(result.san, "Stockfish must return a legal move validated by chess.js");
+    assert.equal(result.status, "move_found", "The app engine client must complete startup and search");
+    assert.match(result.uci, /^[a-h][1-8][a-h][1-8][qrbn]?$/);
+    assert.ok(result.san, "The app engine client must return a legal move validated by chess.js");
     const policy = await page.evaluate(async () => (
       await fetch("/chess/stockfish-19-lite-single.js", { cache: "no-store" })
     ).headers.get("Content-Security-Policy"));
@@ -152,7 +112,7 @@ async function verifyStockfishEngine(browser) {
       "Stockfish worker response CSP must explicitly allow WASM compilation");
     assert.doesNotMatch(policy || "", /(^|[^-])'unsafe-eval'/,
       "The policy must not permit general JavaScript eval");
-    console.log("LIVE STOCKFISH WASM ENGINE PASS " + JSON.stringify(result));
+    console.log("LIVE STOCKFISH APP CLIENT PASS " + JSON.stringify(result));
   } finally {
     await page.close().catch(() => {});
   }
