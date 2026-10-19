@@ -1,4 +1,4 @@
-const FULL_STOCKFISH_WASM_URL = "https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/stockfish-19-single.wasm";
+const FULL_STOCKFISH_WASM_URL = "https://github.com/nmrugg/stockfish.js/releases/download/v19.0.1/stockfish-19-single.wasm";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
