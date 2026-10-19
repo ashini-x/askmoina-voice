@@ -73,6 +73,7 @@
     relayKeepaliveTimer = null;
   }
   let audioContext = null;
+  let pitchShifterNode = null;
   let microphoneStream = null;
   let microphoneSource = null;
   let processor = null;
@@ -288,6 +289,9 @@
       try { node.disconnect(); } catch (_) { /* already disconnected */ }
     }
     playbackNodes.clear();
+    if (pitchShifterNode) {
+      try { pitchShifterNode.port.postMessage({ type: "reset" }); } catch (_) { /* node may already be closing */ }
+    }
     nextPlaybackTime = audioContext ? audioContext.currentTime : 0;
   }
 
@@ -313,7 +317,7 @@
     buffer.copyToChannel(samples, 0);
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioContext.destination);
+    source.connect(pitchShifterNode || audioContext.destination);
 
     const scheduledStart = Math.max(audioContext.currentTime + 0.015, nextPlaybackTime);
     source.start(scheduledStart);
@@ -457,6 +461,10 @@
     }
     stopPlayback();
 
+    if (pitchShifterNode) {
+      try { pitchShifterNode.disconnect(); } catch (_) { /* already disconnected */ }
+      pitchShifterNode = null;
+    }
     if (processor) {
       processor.onaudioprocess = null;
       try { processor.disconnect(); } catch (_) { /* already disconnected */ }
@@ -547,6 +555,29 @@
 
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       await audioContext.resume();
+
+      // Raise the generated voice's pitch and formants in the outgoing playback
+      // path. If AudioWorklet is unavailable, keep the native audio path working.
+      pitchShifterNode = null;
+      try {
+        if (audioContext.audioWorklet && typeof window.AudioWorkletNode === "function") {
+          await audioContext.audioWorklet.addModule("/pitch-shift-worklet.js");
+          pitchShifterNode = new window.AudioWorkletNode(
+            audioContext,
+            "askmoina-youthful-pitch-shifter",
+            {
+              numberOfInputs: 1,
+              numberOfOutputs: 1,
+              outputChannelCount: [1],
+              processorOptions: { pitchSemitones: 6 }
+            }
+          );
+          pitchShifterNode.connect(audioContext.destination);
+        }
+      } catch (pitchError) {
+        pitchShifterNode = null;
+        console.warn("AskMoina high-register playback processing unavailable; using the native voice.", pitchError);
+      }
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
