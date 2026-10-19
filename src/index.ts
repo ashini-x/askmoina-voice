@@ -3305,7 +3305,7 @@ export default {
       if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
       if (authenticated) {
         const experienceAssetVersion = encodeURIComponent(appVersion);
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1"></head>');
+        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1"><link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"></head>');
         html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1" defer></script></body>');
 
       }
