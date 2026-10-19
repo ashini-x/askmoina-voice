@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { serveStrongStockfishWasm, STRONG_STOCKFISH_WASM_SOURCE } from "../src/chess/strong-engine-asset";
 
 describe("full Stockfish WASM asset relay", () => {
+  it("uses the pinned official Stockfish.js 19.0.1 release asset", () => {
+    expect(STRONG_STOCKFISH_WASM_SOURCE).toBe(
+      "https://github.com/nmrugg/stockfish.js/releases/download/v19.0.1/stockfish-19-single.wasm"
+    );
+  });
+
   it("streams the pinned full engine binary through a same-origin WASM response", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       expect(String(input)).toBe(STRONG_STOCKFISH_WASM_SOURCE);
