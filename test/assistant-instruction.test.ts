@@ -25,12 +25,13 @@ describe("AskMoina live voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("These examples show rhythm and code-switching only");
   });
 
-  it("sets a stable youthful high-register voice target without changing assistant identity", () => {
+  it("targets naturally sweet youthful warmth without forced or robotic pitch", () => {
     expect(SYSTEM_INSTRUCTION).toContain("DEFAULT VOICE SOUND PROFILE");
-    expect(SYSTEM_INSTRUCTION).toContain("childlike vocal impression around the age of 10");
-    expect(SYSTEM_INSTRUCTION).toContain("do not fall back into a mature or deep register");
+    expect(SYSTEM_INSTRUCTION).toContain("naturally sweet, softly bright, light, clear, and very youthful");
+    expect(SYSTEM_INSTRUCTION).toContain("prioritize sweetness over forcing pitch");
+    expect(SYSTEM_INSTRUCTION).toContain("childlike lightness roughly around age 10 as a vocal impression");
+    expect(SYSTEM_INSTRUCTION).toContain("metallic/robotic timbre");
     expect(SYSTEM_INSTRUCTION).toContain("never claim to be a child");
-    expect(SYSTEM_INSTRUCTION).toContain("no cartoon squeak, baby talk, shrillness");
   });
 
   it("encourages spoken turn-taking rather than verbose scripted replies", () => {

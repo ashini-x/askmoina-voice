@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/production-voice-listen-back-samples.yml"
       - "scripts/live-voice-sample-capture.py"
+      - "src/sessions/assistant-instruction.ts"
+      - "src/sessions/voice-config.ts"
       - "docs/ASSAMESE_GENZ_M3_NATIVE_PERSONALITY.md"
   workflow_dispatch:
 
@@ -15,7 +17,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 25
     env:
       BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
     steps:
@@ -51,22 +53,34 @@ jobs:
         run: |
           set -euo pipefail
           health_file="$(mktemp)"
-          code="$(curl --silent --show-error --max-time 12 --output "$health_file" --write-out '%{http_code}' "$BASE_URL/api/health" || true)"
-          if [[ "$code" != "200" ]]; then
-            echo "::error::Production health endpoint returned HTTP $code."
-            cat "$health_file"
-            rm -f "$health_file"
+          ready=false
+          for attempt in $(seq 1 90); do
+            code="$(curl --silent --show-error --max-time 12 --output "$health_file" --write-out '%{http_code}' "$BASE_URL/api/health" || true)"
+            if [[ "$code" == "200" ]]; then
+              if node --input-type=module - "$health_file" <<'NODE'
+          import fs from "node:fs";
+          try {
+            const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            if (body.ok === true && body.app === "askmoina-voice" && body.version === "0.4.150" && body.liveVoice === "Zephyr") {
+              console.log(JSON.stringify({productionHealth:"PASS",version:body.version,liveVoice:body.liveVoice,model:body.model,location:body.location}));
+              process.exit(0);
+            }
+          } catch {}
+          process.exit(1);
+          NODE
+              then
+                ready=true
+                break
+              fi
+            fi
+            echo "Waiting for production v0.4.150 with Zephyr (attempt $attempt/90)."
+            sleep 10
+          done
+          rm -f "$health_file"
+          if [[ "$ready" != "true" ]]; then
+            echo "::error::Timed out waiting for production v0.4.150 with the natural-sweet Zephyr default."
             exit 1
           fi
-          node --input-type=module - "$health_file" <<'NODE'
-          import fs from "node:fs";
-          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          if (body.ok !== true || body.app !== "askmoina-voice" || body.version !== "0.4.147" || body.liveVoice !== "Leda") {
-            throw new Error("Listen-back samples require verified v0.4.147 production with Leda.");
-          }
-          console.log(JSON.stringify({productionHealth:"PASS",version:body.version,liveVoice:body.liveVoice,model:body.model,location:body.location}));
-          NODE
-          rm -f "$health_file"
 
           SMOKE_COOKIE="$(node scripts/synthetic-passkey-session.mjs)"
           if [[ ! "$SMOKE_COOKIE" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
