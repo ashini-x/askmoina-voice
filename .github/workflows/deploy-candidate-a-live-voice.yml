@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep production deployments serial. Use the v2 group to retire a stale legacy run
-  # that is stuck after deployment in synthetic verification; never cancel an active v2 deploy.
-  group: askmoina-candidate-a-production-deploy-v2
+  # Keep production deployments serial. Use the v3 group because the current v2 run
+  # remains stuck after deployment in synthetic verification; deploys within v3 remain serialized.
+  group: askmoina-candidate-a-production-deploy-v3
   cancel-in-progress: false
 
 jobs:
