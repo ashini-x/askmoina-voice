@@ -26,6 +26,20 @@ Veda remains disabled in both production and preview. The new Durable Object rep
 - CI checks the isolation configuration and applies the Veda migration to separate local D1 instances.
 - The preview migration config explicitly targets the preview database ID.
 
+## Deployment verification (2026-10-19)
+
+- Main commit: `a4105c553200ac9b4b6fc8686ce3af961345aca8`.
+- Successful Cloudflare Workers Build: `648ea478-d193-40e5-8cc0-2ce759fad291` (main branch).
+- Production Worker version: `0.4.142`, version ID `71245a2a-47b9-413e-8263-efda5dacb2ca`, 100% traffic.
+- Production bindings verified from the deployed version: `VEDA_DB` → `veda-prod`; `VEDA_SESSION_STATE` → `VedaSessionState`; `VEDA_ENABLED=false`. AskMoina's `DB` binding remains separately pointed at `askmoina-prod`.
+- The production health smoke returned `ok:true` and `version:0.4.142` after the new version became active.
+- The Cloudflare main-branch build reported 543 tests passing across 73 files and a passing PWA contract smoke.
+- Remote queries confirmed the Veda-only schema and `0001_initial.sql` migration marker in both production and preview databases.
+
+### First-deployment ordering issue
+
+The separate GitHub Actions deployment job ran its Wrangler preflight before the new Durable Object class had been reconciled, and failed with the "VedaSessionState ... not yet provisioned" binding error. The Cloudflare Workers Build for the same main commit then successfully deployed and provisioned the class; the live health smoke subsequently observed version 0.4.142. Avoid declaring release workflows completely green on this evidence: the production build and health response succeeded, but the parallel deployment path should be reconciled before the next release to avoid this first-class provisioning race.
+
 ## Provisioning credential limitation
 
 The existing GitHub Actions deployment secret `CLOUDFLARE_API_TOKEN` is scoped for Worker deployment. The production deploy workflow already records that this token lacks D1 API permission (Cloudflare error code 7403). It therefore cannot safely discover/create missing D1 databases or apply remote D1 migrations from GitHub Actions. The two databases were provisioned through the authorized Cloudflare control plane available for this run, and the IDs are now pinned in source.

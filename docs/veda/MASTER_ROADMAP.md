@@ -164,10 +164,11 @@ Exit gate: Veda consistently improves real conversational participation without 
 ## Current checkpoint and next step
 
 - Phase 0 audit is documented in `docs/veda/PHASE_0_AUDIT.md`.
-- Phase 1 route isolation is implemented on `main` and keeps Veda disabled by default.
-- Phase 2 resource isolation is being added in `docs/veda/PHASE_2_RESOURCES.md`: dedicated production/preview D1 bindings, a Veda-only migration directory, and an independent SQLite-backed session-state namespace.
-- The current GitHub Actions Cloudflare deployment token is documented as lacking D1 API permission (Cloudflare error 7403). The already-provisioned databases can be bound and verified, but missing-database auto-creation through that token remains blocked until its role permits D1 API access.
+- Phase 1 route isolation is deployed and keeps Veda disabled by default.
+- Phase 2's core infrastructure is deployed in production release `0.4.142`: isolated `veda-prod` and `veda-preview` D1 databases, Veda-only schema migrations, and the independent SQLite `VedaSessionState` namespace. See `docs/veda/PHASE_2_RESOURCES.md` for resource IDs and deployment evidence.
+- Full database create/recovery automation is not complete. The existing GitHub Actions `CLOUDFLARE_API_TOKEN` lacks D1 API permission (Cloudflare error 7403), so the token cannot recreate deleted/missing D1 databases. Do not assume secret values or broaden token scope without explicit authorization.
+- The production health response reported version `0.4.142` and Cloudflare's main-branch build passed. A parallel GitHub deployment preflight hit a one-time first-provision race for the newly exported Durable Object; reconcile the overlapping production deployment paths before the next release.
 
-Next: complete Phase 2 CI/deployment verification, then Phase 3 builds the admin-only installation portal. Do not start social-reasoning features before isolation, pairing, and session controls exist.
+Next: finish the deployment-path reliability cleanup, then Phase 3 builds the admin-only installation portal. Veda's portal, pairing, microphone runtime, and Live assistant remain unimplemented; do not enable Veda until later phases' authorization, device, and privacy gates exist.
 
 This roadmap defines intended behavior and acceptance criteria. Completed phases are recorded in their individual phase documents and verified against CI/deployment evidence; a source change alone is not proof of production behavior.
