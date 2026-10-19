@@ -1,7 +1,8 @@
-const CACHE_NAME = "askmoina-pwa-shell-v18";
+const CACHE_NAME = "askmoina-pwa-shell-v19";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",
+  "/askmoina-liquid-system.css?v=20261019-1",
   "/offline",
   "/manifest.webmanifest?v=20261018",
   "/favicon.svg?v=0.4.83",
