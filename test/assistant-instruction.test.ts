@@ -6,7 +6,7 @@ describe("AskMoina live voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("answer in spoken, everyday Assamese");
     expect(SYSTEM_INSTRUCTION).toContain("answer in the same kind of Assamese-English mix");
     expect(SYSTEM_INSTRUCTION).toContain("Keep natural English phrases in English");
-    expect(SYSTEM_INSTRUCTION).toContain("not a schoolteacher, newsreader, audiobook narrator");
+    expect(SYSTEM_INSTRUCTION).toContain("not like a schoolteacher, newsreader, audiobook narrator");
     expect(SYSTEM_INSTRUCTION).toContain("Mirror the user's level of code-switching");
   });
 
@@ -23,6 +23,14 @@ describe("AskMoina live voice behavior guidance", () => {
     expect(SYSTEM_INSTRUCTION).toContain("Kalir exam loi bohut tension hoi ase.");
     expect(SYSTEM_INSTRUCTION).toContain("I got the job!");
     expect(SYSTEM_INSTRUCTION).toContain("These examples show rhythm and code-switching only");
+  });
+
+  it("sets a stable youthful high-register voice target without changing assistant identity", () => {
+    expect(SYSTEM_INSTRUCTION).toContain("DEFAULT VOICE SOUND PROFILE");
+    expect(SYSTEM_INSTRUCTION).toContain("childlike vocal impression around the age of 10");
+    expect(SYSTEM_INSTRUCTION).toContain("do not fall back into a mature or deep register");
+    expect(SYSTEM_INSTRUCTION).toContain("never claim to be a child");
+    expect(SYSTEM_INSTRUCTION).toContain("no cartoon squeak, baby talk, shrillness");
   });
 
   it("encourages spoken turn-taking rather than verbose scripted replies", () => {
