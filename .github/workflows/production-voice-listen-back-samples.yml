@@ -64,7 +64,7 @@ jobs:
           import fs from "node:fs";
           try {
             const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-            if (body.ok === true && body.app === "askmoina-voice" && body.version === "0.4.151" && body.liveVoice === "Zephyr") {
+            if (body.ok === true && body.app === "askmoina-voice" && body.version === "0.4.152" && body.liveVoice === "Zephyr") {
               console.log(JSON.stringify({productionHealth:"PASS",version:body.version,defaultLiveVoice:body.liveVoice,model:body.model,location:body.location,voiceAudition:"enabled for this temporary experiment"}));
               process.exit(0);
             }
@@ -76,12 +76,12 @@ jobs:
                 break
               fi
             fi
-            echo "Waiting for production v0.4.151 with Zephyr (attempt $attempt/90)."
+            echo "Waiting for production v0.4.152 with Zephyr (attempt $attempt/90)."
             sleep 10
           done
           rm -f "$health_file"
           if [[ "$ready" != "true" ]]; then
-            echo "::error::Timed out waiting for production v0.4.151 with the Zephyr default and voice audition enabled."
+            echo "::error::Timed out waiting for production v0.4.152 with the Zephyr default and voice audition enabled."
             exit 1
           fi
 
