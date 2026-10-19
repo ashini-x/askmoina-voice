@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 
 const require = createRequire(import.meta.url);
 const findEngine = require("stockfish").findEngine;
-const enginePath = findEngine("lite-single");
+const enginePath = findEngine("single");
 const timeoutMs = 30000;
 const child = spawn(process.execPath, [enginePath], {
   stdio: ["pipe", "pipe", "pipe"],
@@ -33,7 +33,7 @@ function finish(error, value) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   } else {
-    console.log("Stockfish UCI smoke test PASS: start position -> " + value.uci + " (" + value.san + ").");
+    console.log("Stockfish Full UCI smoke test PASS: start position -> " + value.uci + " (" + value.san + ").");
   }
 }
 
@@ -54,7 +54,7 @@ function handleLine(rawLine) {
   if (line === "readyok" && !sawReady) {
     sawReady = true;
     send("position startpos");
-    send("go depth 8");
+    send("go depth 12");
     return;
   }
 

@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
-import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, validateBoardRows, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.145";
+import { StockfishChessEngine } from "./engine-client.js?v=0.4.146";
+import { recognizeChessboardFrame, boardRowsToFen, validateBoardRows, verifyStableChessboardRecognition, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.145";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -44,6 +44,7 @@ import {
   let pendingMode = "hidden";
   let selectedSide = null;
   let scanning = false;
+  let confirmationInProgress = false;
   let manualScanRequested = false;
   let autoTimer = null;
   let autoEnabled = loadAutoSetting();
@@ -318,7 +319,7 @@ import {
   }
 
   function getEngine() {
-    if (!engine) engine = new StockfishChessEngine({ defaultMoveTimeMs: 1200, searchTimeoutMs: 18000 });
+    if (!engine) engine = new StockfishChessEngine({ defaultMoveTimeMs: 4500, searchTimeoutMs: 18000 });
     return engine;
   }
 
@@ -420,20 +421,47 @@ import {
   }
 
   function startBackgroundConfirmation(recognition) {
-    const placement = placementFromRows(recognition.boardRows);
-    if (!placement) return null;
+    const placement = placementFromRows(recognition && recognition.boardRows);
+    if (!placement) return Promise.resolve({
+      ok: false,
+      reason: "invalid_recognition_candidate",
+      message: "The board reading is incomplete. Show the whole 8×8 grid and try again."
+    });
     if (pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement) {
       return pendingRecognitionConfirmation.promise;
     }
+
     const entry = { placement, promise: null, result: null };
-    entry.promise = Promise.resolve(validateRecognitionCandidate(recognition)).catch((error) => ({
-      ok: false,
-      reason: "confirmation_scan_failed",
-      message: error && error.message ? error.message : "Couldn't confirm the board. Keep it still and try again."
-    })).then((result) => {
+    entry.promise = (async () => {
+      const first = validateRecognitionCandidate(recognition);
+      if (!first.ok) return first;
+
+      // New/untracked positions get an independent second camera read. Tracked
+      // turns stay on the fast path and must reconcile to legal move history.
+      confirmationInProgress = true;
+      try {
+        const second = await recognizeOneFrame();
+        const stable = verifyStableChessboardRecognition(first, second);
+        if (!stable.ok) return stable;
+        return validateRecognitionCandidate(stable.recognition);
+      } catch (error) {
+        return {
+          ok: false,
+          reason: "confirmation_scan_failed",
+          message: error && error.message
+            ? error.message
+            : "I couldn't independently confirm this board. Keep it steady and try again."
+        };
+      } finally {
+        confirmationInProgress = false;
+      }
+    })().then((result) => {
       entry.result = result;
       if (result.ok && pendingRecognition && placementFromRows(pendingRecognition.boardRows) === placement) {
         pendingRecognition = result.recognition;
+      }
+      if (!result.ok && pendingRecognition && placementFromRows(pendingRecognition.boardRows) === placement) {
+        popup.dataset.kind = "warning";
       }
       return result;
     });
@@ -442,10 +470,23 @@ import {
   }
 
   async function getConfirmedRecognition(recognition) {
-    // Recognition has already passed the model response, geometry, confidence,
-    // piece-count, and board-shape checks. Validate locally; don't call vision again.
-    return validateRecognitionCandidate(recognition);
+    const placement = placementFromRows(recognition && recognition.boardRows);
+    const entry = pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement
+      ? pendingRecognitionConfirmation
+      : null;
+    if (entry) {
+      const result = await entry.promise;
+      if (result.ok) return result;
+      // After disagreement, refresh the candidate before trying a new pair.
+      if (pendingRecognitionConfirmation === entry) pendingRecognitionConfirmation = null;
+      const fresh = await recognizeOneFrame({ retryOnFailure: true });
+      if (!fresh.ok) return fresh;
+      pendingRecognition = fresh.recognition;
+      return startBackgroundConfirmation(fresh.recognition);
+    }
+    return startBackgroundConfirmation(recognition);
   }
+
 
   function scheduleDetection(delay = BASE_RETRY_MS) {
     if (autoTimer) clearTimeout(autoTimer);
@@ -477,10 +518,10 @@ import {
   async function refreshTrackedPositionFromCamera() {
     if (!gameState) return null;
     const idleDeadline = Date.now() + 15000;
-    while (scanning && Date.now() < idleDeadline) {
+    while ((scanning || confirmationInProgress) && Date.now() < idleDeadline) {
       await new Promise((resolve) => setTimeout(resolve, 80));
     }
-    if (scanning) throw new Error("The camera is still checking the board. Wait a moment and tap Next move again.");
+    if (scanning || confirmationInProgress) throw new Error("The camera is still checking the board. Wait a moment and tap Next move again.");
     if (!cameraIsActive()) throw new Error("Keep the full chessboard visible in the camera. I need a fresh board reading before suggesting another move.");
     if (autoTimer) {
       clearTimeout(autoTimer);
@@ -524,6 +565,11 @@ import {
 
   async function detectChessboard(manual = false) {
     if (!autoEnabled && !manual) return;
+    if (confirmationInProgress) {
+      if (manual) manualScanRequested = true;
+      scheduleDetection(BASE_RETRY_MS);
+      return;
+    }
     if (!manual && !gameState && pendingRecognition && !popup.hidden) {
       scheduleDetection(MAX_RETRY_MS);
       return;
@@ -601,7 +647,8 @@ import {
           mode: "recover",
           message: "The board has moved beyond the last confirmed position. Confirm whose turn it is, then tap Next strong move."
         });
-          return;
+        void startBackgroundConfirmation(observation);
+        return;
       }
 
       if (placement === dismissedPlacement && Date.now() < dismissedUntil) {
@@ -613,6 +660,7 @@ import {
         return;
       }
       showBoardPrompt(observation);
+      void startBackgroundConfirmation(observation);
     } catch (error) {
       const shouldReportManualFailure = manual || manualScanRequested;
       manualScanRequested = false;
@@ -659,7 +707,7 @@ import {
     trackButton.disabled = true;
     suggestButton.disabled = true;
     try {
-      const confirmation = await validateRecognitionCandidate(observation);
+      const confirmation = await getConfirmedRecognition(observation);
       if (!confirmation.ok) {
         setStatus("Position not confirmed", confirmation.message, "warning");
         return;
@@ -800,11 +848,14 @@ import {
 
     trackButton.disabled = true;
     popupTitle.textContent = "Next strong move";
-    popupMessage.textContent = "Checking the confirmed position with Stockfish…";
+    const chessEngine = getEngine();
+    popupMessage.textContent = chessEngine.enginePhase === "ready"
+      ? "Searching the confirmed position with Stockfish 19 Full…"
+      : "First use downloads the full-strength Stockfish 19 engine (~90 MB, cached for future moves), then searches the confirmed position…";
     const sequence = ++analysisSequence;
     analysisInProgress = true;
     try {
-      const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 1200 });
+      const analysis = await chessEngine.analyzePosition(fen, { movetimeMs: 4500 });
       if (sequence !== analysisSequence) return;
       lastSuggestedFen = fen;
       pendingMode = "message";
@@ -813,7 +864,7 @@ import {
         popupMessage.textContent = analysis.status === "checkmate" ? "This position is checkmate. There is no legal move." : analysis.status === "stalemate" ? "This position is stalemate. There is no legal move." : "There is no legal move to recommend.";
       } else {
         emitChessVoiceContext("analysis", { analysis, fen });
-        popupMessage.textContent = colorName(sideToMove) + " to move: " + analysis.bestMove.san + " (" + analysis.bestMove.uci + "). Stockfish’s strongest move for this position.";
+        popupMessage.textContent = colorName(sideToMove) + " to move: " + analysis.bestMove.san + " (" + analysis.bestMove.uci + "). Stockfish 19 Full · depth " + (analysis.analysis && analysis.analysis.depth || "—") + ".";
       }
       turnSelector.hidden = true;
       suggestButton.hidden = false;

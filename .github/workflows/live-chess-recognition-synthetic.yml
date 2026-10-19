@@ -71,27 +71,36 @@ jobs:
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" "$BASE_URL/copilot" || true)"
             engine_status="$(curl --silent --show-error --max-time 10 --dump-header /tmp/stockfish.headers --output /dev/null --write-out '%{http_code}' \
               --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
-              "$BASE_URL/chess/stockfish-19-lite-single.js" || true)"
-            if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" && "$page_status" == "200" ]] &&
+              "$BASE_URL/chess/stockfish-19-single.js?v=19.0.1" || true)"
+            engine_client_status="$(curl --silent --show-error --max-time 10 --output /tmp/engine-client.js --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              "$BASE_URL/chess/engine-client.js?v=0.4.146" || true)"
+            wasm_status="$(curl --silent --show-error --max-time 15 --head --dump-header /tmp/stockfish-wasm.headers --output /dev/null --write-out '%{http_code}' \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              "$BASE_URL/chess/stockfish-19-single.wasm?v=19.0.1" || true)"
+            if [[ "$client_status" == "200" && "$ui_status" == "200" && "$engine_status" == "200" && "$engine_client_status" == "200" && "$wasm_status" == "200" && "$page_status" == "200" ]] &&
                grep -Fq "script-src 'self' 'wasm-unsafe-eval'" /tmp/copilot-page.html &&
                grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/copilot-page.headers &&
                grep -Fq 'export async function retryStableChessboardRecognition' /tmp/recognition-client.js &&
                grep -Fq 'AbortSignal.timeout(32_000)' /tmp/recognition-client.js &&
                grep -Fq 'function validateRecognitionCandidate(recognition)' /tmp/chess-ui.js &&
                grep -Fq 'Only take one fresh-frame retry if the first provider read was unusable.' /tmp/chess-ui.js &&
-               grep -Fq 'recognition-client.js?v=0.4.145' /tmp/chess-ui.js &&
-               grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/stockfish.headers; then
+               grep -Fq 'engine-client.js?v=0.4.146' /tmp/chess-ui.js &&
+               grep -Fq 'Stockfish 19.0.1 full single-threaded' /tmp/engine-client.js &&
+               grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/stockfish.headers &&
+               grep -Eiq '^content-type: *application/wasm' /tmp/stockfish-wasm.headers &&
+               grep -Eiq '^content-length: *[1-9][0-9]{7,}' /tmp/stockfish-wasm.headers; then
               ready=true
               break
             fi
-            echo "Waiting for the deployed chess fixes (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response}, page HTTP ${page_status:-no-response}, engine HTTP ${engine_status:-no-response}, page/worker WASM CSP pending)."
+            echo "Waiting for the deployed chess fixes (attempt $attempt/60; client HTTP ${client_status:-no-response}, UI HTTP ${ui_status:-no-response}, page HTTP ${page_status:-no-response}, engine HTTP ${engine_status:-no-response}, engine client HTTP ${engine_client_status:-no-response}, full WASM HTTP ${wasm_status:-no-response}, full-engine headers pending)."
             sleep 5
           done
           if [[ "$ready" != "true" ]]; then
-            echo "::error::The deployed chess client/Stockfish worker did not expose the expected single-pass recognition and WASM CSP fixes."
+            echo "::error::The deployed chess client/Stockfish full-engine script/WASM route did not expose the expected strong-engine and recognition fixes."
             exit 1
           fi
-          echo "Production single-pass recognition is ready and Stockfish worker CSP allows WebAssembly compilation."
+          echo "Production full Stockfish engine, streaming WASM route, and single-pass recognition are ready."
 
       - name: Verify Stockfish starts and returns a legal move in the real browser
         run: node scripts/live-stockfish-browser-smoke.mjs

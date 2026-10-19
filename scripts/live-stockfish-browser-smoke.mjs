@@ -39,7 +39,7 @@ async function main() {
       }
     });
     context.on("response", response => {
-      if (/stockfish-19-lite-single\.(?:js|wasm)/.test(response.url())) {
+      if (/stockfish-19-single\.(?:js|wasm)/.test(response.url())) {
         assetResponses.push({
           path: new URL(response.url()).pathname,
           status: response.status(),
@@ -77,7 +77,7 @@ async function main() {
       "do not relax the CSP to general JavaScript eval");
 
     const result = await page.evaluate(async () => {
-      const worker = new Worker("/chess/stockfish-19-lite-single.js");
+      const worker = new Worker("/chess/stockfish-19-single.js?v=19.0.1");
       const lines = [];
       const waiters = [];
       let fatal = null;
@@ -128,31 +128,39 @@ async function main() {
 
       try {
         const handshakeStart = performance.now();
-        const uciPromise = waitFor(line => line.trim() === "uciok", 12000, "uciok");
+        const uciPromise = waitFor(line => line.trim() === "uciok", 180000, "uciok after full Stockfish WASM load");
         worker.postMessage("uci");
         await uciPromise;
         const uciMs = performance.now() - handshakeStart;
 
         const readyStart = performance.now();
-        const readyPromise = waitFor(line => line.trim() === "readyok", 8000, "readyok");
+        const readyPromise = waitFor(line => line.trim() === "readyok", 12000, "readyok");
+        worker.postMessage("setoption name Hash value 32");
+        worker.postMessage("setoption name MultiPV value 1");
         worker.postMessage("isready");
         await readyPromise;
         const readyMs = performance.now() - readyStart;
 
         const searchStart = performance.now();
-        const bestMovePromise = waitFor(line => line.startsWith("bestmove "), 5000, "bestmove");
+        const bestMovePromise = waitFor(line => line.startsWith("bestmove "), 15000, "bestmove after strong search");
         worker.postMessage("position startpos");
-        worker.postMessage("go movetime 700");
+        worker.postMessage("go movetime 4500");
         const bestmoveLine = await bestMovePromise;
+        const infoLines = lines.filter(line => line.startsWith("info "));
+        const depths = infoLines.map(line => {
+          const match = line.match(/(?:^|\s)depth\s+(\d+)/);
+          return match ? Number(match[1]) : 0;
+        });
         return {
           ok: true,
-          engine: "Stockfish 19 lite single-threaded WASM",
+          engine: "Stockfish 19.0.1 full single-threaded WASM",
           uciMs: Math.round(uciMs),
           readyMs: Math.round(readyMs),
           searchMs: Math.round(performance.now() - searchStart),
           bestmoveLine,
+          deepestDepth: Math.max(0, ...depths),
           messagesSeen: lines.length,
-          lastInfo: lines.filter(line => line.startsWith("info ")).slice(-2)
+          lastInfo: infoLines.slice(-2)
         };
       } catch (error) {
         return {
@@ -182,12 +190,14 @@ async function main() {
     const chess = new Chess();
     const move = chess.move({ from: moveMatch[1], to: moveMatch[2], promotion: moveMatch[3] });
     assert.ok(move, "Stockfish returned a legal move in the starting position");
-    assert.ok(result.uciMs < 12000, "UCI startup should finish within the bound");
+    assert.ok(result.uciMs < 180000, "Full Stockfish initialization should finish within the bound");
+    assert.ok(result.deepestDepth >= 8, "Full Stockfish should complete a meaningful search, not just return the first legal move");
     assert.equal(policyViolations.length, 0, "the production page should have no CSP violations during the engine test");
     const jsResponse = assetResponses.find(item => item.path.endsWith(".js"));
     const wasmResponse = assetResponses.find(item => item.path.endsWith(".wasm"));
     assert.ok(jsResponse && jsResponse.status === 200, "Stockfish JavaScript worker must load");
-    assert.ok(wasmResponse && wasmResponse.status === 200, "Stockfish WebAssembly binary must load");
+    assert.ok(wasmResponse && wasmResponse.status === 200, "Full Stockfish WebAssembly binary must load through the same-origin streaming route");
+    assert.match(wasmResponse.contentType || "", /application\/wasm/, "full Stockfish WASM must be served with the correct MIME type");
     assert.match(jsResponse.csp || "", /wasm-unsafe-eval/,
       "Stockfish worker response CSP must permit WebAssembly compilation");
     console.log("LIVE STOCKFISH BROWSER PASS " + JSON.stringify({

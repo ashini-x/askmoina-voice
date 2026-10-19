@@ -87,9 +87,11 @@ describe("Stockfish UCI browser client", () => {
     engines.push(engine);
 
     const result = await engine.analyzePosition(new Chess().fen());
-    expect(factory).toHaveBeenCalledWith("/chess/stockfish-19-lite-single.js");
+    expect(factory).toHaveBeenCalledWith("/chess/stockfish-19-single.js?v=19.0.1");
     expect(worker.commands).toContain("uci");
     expect(worker.commands).toContain("isready");
+    expect(worker.commands).toContain("setoption name Hash value 32");
+    expect(worker.commands).toContain("setoption name MultiPV value 1");
     expect(worker.commands).toContain("position fen " + new Chess().fen());
     expect(worker.commands).toContain("go movetime 900");
     expect(result.status).toBe("move_found");
@@ -97,6 +99,33 @@ describe("Stockfish UCI browser client", () => {
     expect(result.bestMove.san).toBe("e4");
     expect(result.analysis.depth).toBe(8);
     expect(result.analysis.score).toEqual({ unit: "cp", value: 24, perspective: "w" });
+  });
+
+  it("allows enough first-use time for the full Stockfish WASM download", () => {
+    const engine = new StockfishChessEngine({ workerFactory: () => createFakeWorker("e2e4") });
+    engines.push(engine);
+    expect(engine.startupTimeoutMs).toBe(180000);
+  });
+
+  it("uses the full Stockfish build with a deeper 4.5-second default search", async () => {
+    const fen = new Chess().fen();
+    const worker = createFakeWorker("e2e4");
+    const engine = new StockfishChessEngine({ workerFactory: () => worker });
+    engines.push(engine);
+
+    const result = await engine.analyzePosition(fen);
+    expect(worker.commands).toContain("position fen " + fen);
+    expect(worker.commands).toContain("go movetime 4500");
+    expect(result.engine).toBe("Stockfish 19.0.1 full single-threaded");
+    expect(result.bestMove).toMatchObject({ uci: "e2e4", san: "e4" });
+  });
+
+  it("never returns a UCI move that is illegal in the supplied board position", async () => {
+    const worker = createFakeWorker("e2e5");
+    const engine = new StockfishChessEngine({ workerFactory: () => worker });
+    engines.push(engine);
+
+    await expect(engine.analyzePosition(new Chess().fen())).rejects.toThrow(/illegal in the validated position/);
   });
 
   it("rejects invalid FEN before creating an engine worker", async () => {

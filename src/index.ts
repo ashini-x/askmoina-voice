@@ -3,6 +3,7 @@ import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
 import { handleUserMemoryRequest } from "./user-memory";
 import { handleChessRecognitionRequest } from "./chess/recognition";
+import { serveStrongStockfishWasm } from "./chess/strong-engine-asset";
 import { getGoogleAccessToken } from "./auth/google";
 import { getUserFacingDisconnectNotice, safeWebSocketCloseCode } from "./sessions/disconnect-message";
 import { MAX_RESUME_REPLAY_CHARS, compactReplayMessagesForResumption, parseSessionResumptionCheckpoint, canAdvanceSessionResumptionCheckpoint, isCheckpointWithinSentMessageWindow, isReplayWindowComplete, trimPendingMessagesToLimit, trimReplayBufferToLimit, type ReplayMessage, type SessionResumptionCheckpoint } from "./sessions/session-resumption";
@@ -3137,6 +3138,13 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Serve full Stockfish through a same-origin route. Its pinned WASM neural
+    // network exceeds Cloudflare's 25 MiB per-static-asset limit, so stream it
+    // from the versioned npm CDN instead of bundling/buffering it in this Worker.
+    if (url.pathname === "/chess/stockfish-19-single.wasm") {
+      return serveStrongStockfishWasm(request);
+    }
+
     // PWA shell resources are public static assets, not authenticated app pages.
     // Route them before the global login guard so the browser can load the
     // manifest, install landing page, service worker, and icon assets.
@@ -3494,7 +3502,10 @@ export default {
     // Stockfish compiles WebAssembly inside this dedicated worker. Allow
     // WebAssembly evaluation only on the engine script response, not on app
     // documents or other assets; never enable general 'unsafe-eval'.
-    const workerScriptPolicy = url.pathname === "/chess/stockfish-19-lite-single.js"
+    const isStockfishWorkerScript =
+      url.pathname === "/chess/stockfish-19-single.js" ||
+      url.pathname === "/chess/stockfish-19-lite-single.js";
+    const workerScriptPolicy = isStockfishWorkerScript
       ? "script-src 'self' 'wasm-unsafe-eval'"
       : "script-src 'self'";
     headers.set(
