@@ -26,7 +26,7 @@ jobs:
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate synthetic speech script syntax
-        run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py
+        run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py scripts/live-memory-voice-smoke.py
       - name: Validate required production secrets
         run: |
           node --input-type=module <<'NODE'

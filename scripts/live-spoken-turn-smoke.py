@@ -271,7 +271,9 @@ def main() -> int:
                 transcript_parts.append(spoken_text)
             total_audio_bytes += get_audio_payload_bytes(message)
             turn_complete_now = is_turn_complete(message)
-            if turn_complete_now and spoken_text and total_audio_bytes > 0 and not calls:
+            # Live can deliver transcript/audio frames separately from turnComplete.
+            # Judge the whole completed turn, not only payload fields in its final frame.
+            if turn_complete_now and transcript_parts and total_audio_bytes > 0 and not calls:
                 final_complete = True
                 break
             if not turn_complete_now and time.monotonic() - last_keepalive_at >= 10:

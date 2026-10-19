@@ -73,6 +73,33 @@ def get_text(message: dict) -> str:
     return " ".join(texts)
 
 
+def recv_json_message(ws):
+    """Read JSON control frames and safely skip unrelated binary media frames."""
+    frame = ws.recv()
+    if frame in ("", None):
+        return None
+    was_binary = isinstance(frame, bytes)
+    if was_binary:
+        try:
+            frame = frame.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    try:
+        message = json.loads(frame)
+    except (TypeError, json.JSONDecodeError):
+        if was_binary:
+            return None
+        raise RuntimeError("Live WebSocket sent an invalid JSON text frame.") from None
+    if not isinstance(message, dict):
+        raise RuntimeError("Live WebSocket JSON message was not an object.")
+    return message
+
+
+def send_relay_keepalive(ws) -> None:
+    """Keep the Worker relay alive while the assistant completes its spoken turn."""
+    ws.send(json.dumps({"keepalive": True}))
+
+
 def main() -> int:
     base_origin = BASE_URL
     ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
@@ -83,11 +110,14 @@ def main() -> int:
         raise RuntimeError("Authenticated synthetic session missing; refusing anonymous voice access.")
     ws = websocket.create_connection(ws_url, origin=base_origin, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
     try:
+        ws.settimeout(0.5)
         ws.send(json.dumps({"setup": {}, "memory_context": MEMORY}))
         setup_deadline = time.time() + 18
         while time.time() < setup_deadline:
             try:
-                msg = json.loads(ws.recv())
+                msg = recv_json_message(ws)
+                if msg is None:
+                    continue
             except websocket.WebSocketTimeoutException:
                 continue
             if msg.get("error"):
@@ -97,8 +127,11 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for Vertex AI setup completion.")
 
-        # Stream 100 ms chunks, matching the browser's 16 kHz mono PCM protocol.
-        chunk_bytes = 1600 * 2
+        # Match the browser's manual-VAD protocol and send PCM at real-time cadence.
+        # The previous test sent 100 ms chunks every 70 ms and omitted activity boundaries,
+        # which could overrun the audio rate limiter or leave the provider turn unclosed.
+        ws.send(json.dumps({"realtime_input": {"activity_start": True}}))
+        chunk_bytes = 1600 * 2  # 100 ms of 16 kHz mono PCM16
         for offset in range(0, len(pcm), chunk_bytes):
             chunk = pcm[offset:offset + chunk_bytes]
             ws.send(json.dumps({
@@ -109,17 +142,29 @@ def main() -> int:
                     }
                 }
             }))
-            time.sleep(0.07)
-        ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
+            time.sleep(len(chunk) / (16000 * 2))
+        ws.send(json.dumps({"realtime_input": {"activity_end": True}}))
 
         transcript = ""
         turn_complete = False
-        deadline = time.time() + MAX_WAIT_SECONDS
-        while time.time() < deadline:
+        deadline = time.monotonic() + MAX_WAIT_SECONDS
+        last_keepalive_at = time.monotonic()
+        while time.monotonic() < deadline:
             try:
-                msg = json.loads(ws.recv())
+                msg = recv_json_message(ws)
+                if msg is None:
+                    if time.monotonic() - last_keepalive_at >= 10:
+                        send_relay_keepalive(ws)
+                        last_keepalive_at = time.monotonic()
+                    continue
             except websocket.WebSocketTimeoutException:
+                if time.monotonic() - last_keepalive_at >= 10:
+                    send_relay_keepalive(ws)
+                    last_keepalive_at = time.monotonic()
                 continue
+            if time.monotonic() - last_keepalive_at >= 10:
+                send_relay_keepalive(ws)
+                last_keepalive_at = time.monotonic()
             if msg.get("error"):
                 raise RuntimeError("The live voice session returned an error.")
             transcript += " " + get_text(msg)
