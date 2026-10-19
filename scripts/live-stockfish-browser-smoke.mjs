@@ -148,7 +148,7 @@ async function main() {
         const bestmoveLine = await bestMovePromise;
         const infoLines = lines.filter(line => line.startsWith("info "));
         const depths = infoLines.map(line => {
-          const match = line.match(/(?:^|\\s)depth\\s+(\\d+)/);
+          const match = line.match(/(?:^|\s)depth\s+(\d+)/);
           return match ? Number(match[1]) : 0;
         });
         return {
@@ -197,7 +197,7 @@ async function main() {
     const wasmResponse = assetResponses.find(item => item.path.endsWith(".wasm"));
     assert.ok(jsResponse && jsResponse.status === 200, "Stockfish JavaScript worker must load");
     assert.ok(wasmResponse && wasmResponse.status === 200, "Full Stockfish WebAssembly binary must load through the same-origin streaming route");
-    assert.match(wasmResponse.contentType || "", /application\\/wasm/, "full Stockfish WASM must be served with the correct MIME type");
+    assert.match(wasmResponse.contentType || "", /application\/wasm/, "full Stockfish WASM must be served with the correct MIME type");
     assert.match(jsResponse.csp || "", /wasm-unsafe-eval/,
       "Stockfish worker response CSP must permit WebAssembly compilation");
     console.log("LIVE STOCKFISH BROWSER PASS " + JSON.stringify({
