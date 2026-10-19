@@ -1,6 +1,6 @@
 import { Chess } from "./chess.js";
 import { StockfishChessEngine } from "./engine-client.js";
-import { recognizeChessboardFrame, boardRowsToFen, retryStableChessboardRecognition, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.145";
+import { recognizeChessboardFrame, boardRowsToFen, validateBoardRows, inferUserColorFromOrientation, computeCoverCrop } from "./recognition-client.js?v=0.4.145";
 import { buildChessVoiceContext } from "./voice-context.js";
 import {
   createNewChessGame,
@@ -57,7 +57,6 @@ import {
   let lastSuggestedFen = null;
   let queuedRecommendationFen = null;
   let analysisInProgress = false;
-  const CONFIRM_SCAN_INTERVAL_MS = 1050;
 
   function loadAutoSetting() {
     try {
@@ -382,23 +381,42 @@ import {
     throw new Error("Move a little farther back and try again.");
   }
 
-  async function recognizeOneFrame() {
-    const frame = await captureSingleFrame();
-    const result = await recognizeChessboardFrame(frame);
-    lastRecognitionCompletedAt = Date.now();
-    return result;
+  async function recognizeOneFrame(options = {}) {
+    const readOnce = async () => {
+      const frame = await captureSingleFrame();
+      const result = await recognizeChessboardFrame(frame);
+      lastRecognitionCompletedAt = Date.now();
+      return result;
+    };
+
+    let result = await readOnce();
+    if (result.ok || options.retryOnFailure !== true) return result;
+
+    // Fast path: never spend a second model request confirming a valid board.
+    // Only take one fresh-frame retry if the first provider read was unusable.
+    await new Promise((resolve) => setTimeout(resolve, 950));
+    result = await readOnce();
+    if (result.ok) return result;
+    return {
+      ...result,
+      message: "I couldn't read the board after two quick attempts. Keep the full 8×8 board and all four corners visible, then tap Try again. " +
+        String(result.message || "Make sure the pieces are clearly visible.")
+    };
   }
 
-  async function confirmStableRecognition(firstRecognition) {
-    // Start a confirmation while the glass prompt is already visible.
-    const elapsed = Date.now() - lastRecognitionCompletedAt;
-    const waitMs = Math.max(0, CONFIRM_SCAN_INTERVAL_MS - elapsed);
-    if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
-    return retryStableChessboardRecognition(
-      firstRecognition,
-      () => recognizeOneFrame(),
-      { maxAttempts: 2, retryDelayMs: 450 }
-    );
+  function validateRecognitionCandidate(recognition) {
+    if (!recognition || !Array.isArray(recognition.boardRows) ||
+        !Array.isArray(recognition.boardCornersNormalized) ||
+        recognition.boardCornersNormalized.length !== 4 ||
+        !["white_at_bottom", "black_at_bottom"].includes(recognition.orientation)) {
+      return {
+        ok: false,
+        reason: "invalid_recognition_candidate",
+        message: "The board reading is incomplete. Keep all four corners visible and scan again."
+      };
+    }
+    const board = validateBoardRows(recognition.boardRows);
+    return board.ok ? { ok: true, recognition } : board;
   }
 
   function startBackgroundConfirmation(recognition) {
@@ -408,7 +426,7 @@ import {
       return pendingRecognitionConfirmation.promise;
     }
     const entry = { placement, promise: null, result: null };
-    entry.promise = confirmStableRecognition(recognition).catch((error) => ({
+    entry.promise = Promise.resolve(validateRecognitionCandidate(recognition)).catch((error) => ({
       ok: false,
       reason: "confirmation_scan_failed",
       message: error && error.message ? error.message : "Couldn't confirm the board. Keep it still and try again."
@@ -424,25 +442,9 @@ import {
   }
 
   async function getConfirmedRecognition(recognition) {
-    const placement = placementFromRows(recognition && recognition.boardRows);
-    if (!placement) return { ok: false, message: "The board reading is incomplete. Scan again." };
-    let result;
-    if (pendingRecognitionConfirmation && pendingRecognitionConfirmation.placement === placement) {
-      result = await pendingRecognitionConfirmation.promise;
-      if (result && result.ok) return result;
-      // A cached background failure is stale, not a verdict about the current
-      // frame. Clear it and perform a fresh bounded confirmation sequence.
-      pendingRecognitionConfirmation = null;
-      result = null;
-    }
-    if (!result) {
-      result = await confirmStableRecognition(recognition).catch((error) => ({
-        ok: false,
-        reason: "confirmation_scan_failed",
-        message: error && error.message ? error.message : "Couldn't confirm the board. Keep it still and try again."
-      }));
-    }
-    return result;
+    // Recognition has already passed the model response, geometry, confidence,
+    // piece-count, and board-shape checks. Validate locally; don't call vision again.
+    return validateRecognitionCandidate(recognition);
   }
 
   function scheduleDetection(delay = BASE_RETRY_MS) {
@@ -487,9 +489,9 @@ import {
 
     scanning = true;
     try {
-      const firstRead = await recognizeOneFrame();
+      const firstRead = await recognizeOneFrame({ retryOnFailure: true });
       if (!firstRead.ok) throw new Error(firstRead.message || "I couldn't read the current board. Keep all 64 squares visible and try again.");
-      const confirmation = await confirmStableRecognition(firstRead.recognition);
+      const confirmation = await validateRecognitionCandidate(firstRead.recognition);
       if (!confirmation.ok) throw new Error(confirmation.message || "I couldn't confirm the current board. Keep it still and try again.");
 
       const observation = confirmation.recognition;
@@ -522,6 +524,10 @@ import {
 
   async function detectChessboard(manual = false) {
     if (!autoEnabled && !manual) return;
+    if (!manual && !gameState && pendingRecognition && !popup.hidden) {
+      scheduleDetection(MAX_RETRY_MS);
+      return;
+    }
     if (scanning) {
       if (manual) manualScanRequested = true;
       scheduleDetection(BASE_RETRY_MS);
@@ -533,7 +539,7 @@ import {
     }
     scanning = true;
     try {
-      const result = await recognizeOneFrame();
+      const result = await recognizeOneFrame({ retryOnFailure: manual });
       if (!result.ok) {
         consecutiveMisses += 1;
         const shouldReportManualFailure = manual || manualScanRequested;
@@ -564,7 +570,7 @@ import {
           scheduleDetection(BASE_RETRY_MS);
           return;
         }
-        const confirmation = await confirmStableRecognition(observation);
+        const confirmation = await validateRecognitionCandidate(observation);
         if (!confirmation.ok) {
           setStatus("Couldn’t confirm the position", confirmation.message, "warning");
           scheduleDetection(BASE_RETRY_MS);
@@ -595,8 +601,7 @@ import {
           mode: "recover",
           message: "The board has moved beyond the last confirmed position. Confirm whose turn it is, then tap Next strong move."
         });
-        void startBackgroundConfirmation(observation);
-        return;
+          return;
       }
 
       if (placement === dismissedPlacement && Date.now() < dismissedUntil) {
@@ -608,7 +613,6 @@ import {
         return;
       }
       showBoardPrompt(observation);
-      void startBackgroundConfirmation(observation);
     } catch (error) {
       const shouldReportManualFailure = manual || manualScanRequested;
       manualScanRequested = false;
@@ -655,7 +659,7 @@ import {
     trackButton.disabled = true;
     suggestButton.disabled = true;
     try {
-      const confirmation = await confirmStableRecognition(observation);
+      const confirmation = await validateRecognitionCandidate(observation);
       if (!confirmation.ok) {
         setStatus("Position not confirmed", confirmation.message, "warning");
         return;
