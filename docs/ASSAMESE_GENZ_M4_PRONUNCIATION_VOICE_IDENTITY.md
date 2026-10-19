@@ -9,7 +9,7 @@
 - Add explicit guidance for exact-word pronunciation corrections, preserving conventional English pronunciation during code-switching, repeat/slow requests, Romanized Assamese ambiguity, and uncertainty.
 - A listener's correction is scoped to the identified word. The existing listener-reported target for Assamese সৰু (“small”) closer to “horu” must not be generalized to other words or claimed as a universal Upper Assam rule.
 - Treat the D1 pronunciation reference as attributed candidate data. Unverified rules are not community-wide facts, and prompt text is not evidence that the voice actually produced the target sound.
-- Validate configured Gemini Live voice names against the repository's supported prebuilt-voice allowlist. Unsupported or malformed configured names fall back to Leda rather than being sent as a provider voice name.
+- Validate configured Gemini Live voice names against the repository's supported prebuilt-voice allowlist. Unsupported or malformed configured names fall back to the currently configured default (provisionally Zephyr for the natural-sweet voice review) rather than being sent as a provider voice name.
 - Expand the admin-only Voice Audition Lab with one consistent eight-prompt script. Candidate selection in the lab remains temporary and does not modify the public production voice.
 
 ## Reproducible evaluation
@@ -41,7 +41,7 @@ The voice suite contains all 30 prebuilt Live voice names currently listed in sr
 - Voice identity suite: all 8 cases scored for a candidate, at least 85% overall, configured dimension thresholds met, and zero critical failures.
 - Keep the same test phrases, output volume, device, and approximate network conditions across candidates where practical. If one voice wins on English but fails on Assamese or code-switching, do not select it based on its English performance alone.
 - Store only candidate voice name, non-identifying evaluator codes, ratings, critical-failure flags, and short non-identifying notes. Do not store or upload audio/transcripts by default.
-- Leave the default production voice as Leda until the listening evidence is reviewed. No automated test or synthetic score template chooses the final voice.
+- The default is provisionally Zephyr based on the owner's request for a sweet, bright, natural native voice after rejecting synthetic pitch-shifting. This is not an M4 acceptance result; compare real production samples and complete the voice-identity listening protocol before treating the selection as final.
 
 ## Release status and outstanding issues
 
