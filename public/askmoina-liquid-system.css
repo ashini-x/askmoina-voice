@@ -532,3 +532,100 @@ body.native-account-page button.primary {
     animation: none !important;
   }
 }
+
+/* Let the existing edge-light geometry reflect the reference image's champagne and titanium. */
+.voice-glow span {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(152, 168, 187, .62) 22%,
+    rgba(245, 239, 233, .72) 46%,
+    rgba(215, 192, 173, .70) 66%,
+    rgba(152, 168, 187, .42) 82%,
+    transparent 100%
+  ) !important;
+}
+
+.camera-stage .edge-glow > .glow-crisp {
+  background: linear-gradient(90deg, rgba(215, 192, 173, .30) 0%, rgba(215, 192, 173, .16) 34%, rgba(215, 192, 173, .045) 70%, transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-crisp::before {
+  background: radial-gradient(ellipse at 5% 50%, rgba(245, 239, 233, .60) 0%, rgba(215, 192, 173, .32) 32%, rgba(215, 192, 173, .08) 58%, transparent 84%) !important;
+}
+.camera-stage .edge-glow > .glow-crisp::after {
+  background: radial-gradient(ellipse at 4% 50%, rgba(245, 239, 233, .42) 0%, rgba(215, 192, 173, .18) 42%, transparent 82%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-4 {
+  background: linear-gradient(270deg, rgba(152, 168, 187, .29) 0%, rgba(152, 168, 187, .15) 34%, rgba(152, 168, 187, .04) 70%, transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-4::before {
+  background: radial-gradient(ellipse at 95% 50%, rgba(245, 239, 233, .60) 0%, rgba(152, 168, 187, .31) 32%, rgba(152, 168, 187, .08) 58%, transparent 84%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-4::after {
+  background: radial-gradient(ellipse at 96% 50%, rgba(245, 239, 233, .40) 0%, rgba(152, 168, 187, .18) 42%, transparent 82%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-12 {
+  background: radial-gradient(ellipse 20% 150% at 0% 0%, rgba(215, 192, 173, .22), transparent 100%), radial-gradient(ellipse 20% 150% at 100% 0%, rgba(152, 168, 187, .19), transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-12::before {
+  background: radial-gradient(ellipse at 0% 0%, rgba(245, 239, 233, .38) 0%, rgba(215, 192, 173, .16) 52%, transparent 86%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-12::after {
+  background: radial-gradient(ellipse at 0% 0%, rgba(215, 192, 173, .26) 0%, transparent 82%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-15 {
+  background: radial-gradient(ellipse 20% 150% at 0% 100%, rgba(215, 192, 173, .23), transparent 100%), radial-gradient(ellipse 20% 150% at 100% 100%, rgba(152, 168, 187, .19), transparent 100%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-15::before {
+  background: radial-gradient(ellipse at 100% 100%, rgba(245, 239, 233, .36) 0%, rgba(152, 168, 187, .15) 52%, transparent 86%) !important;
+}
+.camera-stage .edge-glow > .glow-halo-15::after {
+  background: radial-gradient(ellipse at 100% 100%, rgba(152, 168, 187, .25) 0%, transparent 82%) !important;
+}
+
+@supports not ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .camera-stage .edge-glow > span {
+    border-color: rgba(215, 192, 173, .78) !important;
+  }
+}
+
+/* Keep the live-session control in the same quiet metallic system (no permanent red call badge). */
+#toggleCopilot.is-live {
+  border-color: rgba(152, 168, 187, .58) !important;
+  background: linear-gradient(145deg, #252A31, #151619) !important;
+  color: var(--askmoina-porcelain) !important;
+  box-shadow: 0 0 0 1px rgba(152, 168, 187, .13), 0 10px 34px rgba(0, 0, 0, .30) !important;
+}
+#toggleCopilot.is-live .icon-end {
+  color: var(--askmoina-porcelain) !important;
+}
+.camera-controls .control-icon:not(.call-action-button):not(.chess-launch-button) {
+  color: var(--askmoina-porcelain) !important;
+}
+.assistant-card-copy,
+.assistant-card-title,
+.assistant-card-description,
+.assistant-card-release,
+.moinaos1-feature-panel {
+  color: var(--askmoina-porcelain) !important;
+}
+.assistant-card-copy-locked,
+.experience-preview-notice {
+  color: var(--askmoina-secondary) !important;
+}
+.moinaos1-feature-panel,
+.post-auth-onboarding-stage,
+.post-auth-slide-stage,
+.post-auth-account-created {
+  border-color: var(--askmoina-glass-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.045), transparent 55%),
+    rgba(21,22,25,.88) !important;
+}
+.moinaos1-start-button,
+.post-auth-get-started {
+  background: linear-gradient(145deg, #FFFAF5, #D7C0AD) !important;
+  color: #151619 !important;
+  border-color: rgba(245,239,233,.84) !important;
+}
+
