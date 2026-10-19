@@ -29,13 +29,14 @@ describe("full Stockfish WASM asset relay", () => {
   });
 
   it("supports HEAD without returning a binary body", async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }));
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 200, headers: { "Content-Length": "90000000" } }));
     const response = await serveStrongStockfishWasm(
       new Request("https://askmoina.test/chess/stockfish-19-single.wasm", { method: "HEAD" }),
       fetchImpl as typeof fetch
     );
     expect(response.status).toBe(200);
     expect(response.body).toBeNull();
+    expect(response.headers.get("Content-Length")).toBe("90000000");
     expect(fetchImpl).toHaveBeenCalledWith(STRONG_STOCKFISH_WASM_SOURCE, expect.objectContaining({ method: "HEAD" }));
   });
 
