@@ -516,7 +516,6 @@
   let greetingTurnPending = false;
   let greetingTimer = null;
   let audioContext = null;
-  let pitchShifterNode = null;
   let microphoneSource = null;
   let processor = null;
   let silentGain = null;
@@ -2237,9 +2236,6 @@
       try { node.disconnect(); } catch (_) {}
     }
     playbackNodes.clear();
-    if (pitchShifterNode) {
-      try { pitchShifterNode.port.postMessage({ type: "reset" }); } catch (_) { /* node may already be closing */ }
-    }
     if (playbackPulseFrame) window.cancelAnimationFrame(playbackPulseFrame);
     playbackPulseFrame = 0;
     assistantVoiceEnergy = 0;
@@ -2323,7 +2319,7 @@
     buffer.copyToChannel(samples, 0);
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(pitchShifterNode || getPlaybackAnalyser());
+    source.connect(getPlaybackAnalyser());
     const startAt = Math.max(audioContext.currentTime + 0.015, nextPlaybackTime);
     source.start(startAt);
     nextPlaybackTime = startAt + buffer.duration;
@@ -2592,10 +2588,6 @@
     microphoneVoiceEnergy = 0;
     assistantVoiceEnergy = 0;
     applyVoiceEdgeEnergy(0, "microphone");
-    if (pitchShifterNode) {
-      try { pitchShifterNode.disconnect(); } catch (_) { /* already disconnected */ }
-      pitchShifterNode = null;
-    }
     if (playbackAnalyser) {
       try { playbackAnalyser.disconnect(); } catch (_) {}
       playbackAnalyser = null;
@@ -3679,30 +3671,6 @@
       audioContext = new AudioContextConstructor();
       const startingAudioContext = audioContext;
       await startingAudioContext.resume();
-      if (!isCurrentStart()) return;
-
-      // Shift only Moina's generated playback upward; microphone capture stays dry.
-      pitchShifterNode = null;
-      try {
-        if (startingAudioContext.audioWorklet && typeof window.AudioWorkletNode === "function") {
-          await startingAudioContext.audioWorklet.addModule("/pitch-shift-worklet.js");
-          if (!isCurrentStart() || audioContext !== startingAudioContext) return;
-          pitchShifterNode = new window.AudioWorkletNode(
-            startingAudioContext,
-            "askmoina-youthful-pitch-shifter",
-            {
-              numberOfInputs: 1,
-              numberOfOutputs: 1,
-              outputChannelCount: [1],
-              processorOptions: { pitchSemitones: 6 }
-            }
-          );
-          pitchShifterNode.connect(getPlaybackAnalyser());
-        }
-      } catch (pitchError) {
-        pitchShifterNode = null;
-        console.warn("AskMoina high-register playback processing unavailable; using the native voice.", pitchError);
-      }
       if (!isCurrentStart()) return;
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
