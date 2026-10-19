@@ -50,6 +50,13 @@ export async function serveStrongStockfishWasm(request: Request, fetchImpl: type
       const value = upstream.headers.get(name);
       if (value) headers.set(name, value);
     }
+    // HEAD should preserve the upstream entity size when it is provided.
+    // For streamed GET responses, leave Content-Length unset rather than
+    // asserting a length over a relayed response body.
+    if (request.method === "HEAD") {
+      const contentLength = upstream.headers.get("Content-Length");
+      if (contentLength) headers.set("Content-Length", contentLength);
+    }
 
     // Keep the upstream stream intact; do not call arrayBuffer() on this large
     // neural-network binary inside the Worker.
