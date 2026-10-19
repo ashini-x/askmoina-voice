@@ -41,6 +41,13 @@ describe("production Worker configuration", () => {
       ]),
     );
   });
+  it("enables only the private Veda portal while keeping the listening runtime disabled", () => {
+    expect(config.vars.VEDA_PORTAL_ENABLED).toBe("true");
+    expect(config.previews?.vars?.VEDA_PORTAL_ENABLED).toBe("true");
+    expect(config.vars.VEDA_ENABLED).toBe("false");
+    expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
+  });
+
   it("keeps Veda disabled in production and preview until its private installation and runtime are implemented", () => {
     expect(config.vars.VEDA_ENABLED).toBe("false");
     expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
