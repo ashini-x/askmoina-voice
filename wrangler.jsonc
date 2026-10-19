@@ -70,11 +70,11 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.149",
+    "APP_VERSION": "0.4.150",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
-    "LIVE_VOICE_NAME": "Leda",
+    "LIVE_VOICE_NAME": "Zephyr",
     "GEMINI_LOCATION": "us-central1",
     "GCP_PROJECT_ID": "project-90db7be4-619f-4ed7-89b",
     "ANALYTICS_RAW_RETENTION_DAYS": "30",
@@ -157,7 +157,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.149-preview",
+      "APP_VERSION": "0.4.150-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",
