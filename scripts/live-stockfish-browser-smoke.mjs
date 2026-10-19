@@ -21,6 +21,11 @@ async function main() {
       sameSite: "Lax"
     }]);
     const page = await context.newPage();
+    // Production deliberately redirects browser tabs to /install. The test must
+    // emulate an installed PWA before the HTML gate runs, like the passkey smoke.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+    });
     const errors = [];
     const assetResponses = [];
     const policyViolations = [];
@@ -61,9 +66,11 @@ async function main() {
     const shell = await page.evaluate(() => ({
       title: document.title,
       chessButtonPresent: Boolean(document.querySelector("#chessAssistantButton")),
+      chessModulePresent: Boolean(document.querySelector('script[src*="/chess/chess-ui.js"]')),
       cspMeta: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || ""
     }));
-    assert.equal(shell.chessButtonPresent, true, "must test the real Co-Pilot page, not a blank fixture");
+    assert.equal(shell.chessButtonPresent, true, "must test the real Co-Pilot page, not a PWA install redirect; page=" + page.url() + "; title=" + shell.title);
+    assert.equal(shell.chessModulePresent, true, "the real chess UI module must be present; page=" + page.url());
     assert.match(shell.cspMeta, /script-src 'self' 'wasm-unsafe-eval'/,
       "the Co-Pilot HTML CSP must allow WebAssembly without allowing general unsafe-eval");
     assert.doesNotMatch(shell.cspMeta, /(?:^|\s)'unsafe-eval'(?:\s|;|$)/,
