@@ -83,7 +83,8 @@ function raw(body: string, type: string, headOnly = false, extra: Record<string,
   return new Response(headOnly ? null : body, { status: 200, headers: headers({ "Content-Type": type, ...extra }) });
 }
 function notFound(path: string): Response {
-  return isVedaApiPath(path) ? json({ error: "not_found" }, 404) : raw("Not found", "text/plain; charset=utf-8");
+  if (isVedaApiPath(path)) return json({ error: "not_found" }, 404);
+  return new Response("Not found", { status: 404, headers: headers({ "Content-Type": "text/plain; charset=utf-8" }) });
 }
 
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#08090b"/><path d="M130 145h52l74 207 74-207h52L278 382h-44z" fill="#f4f4f5"/><circle cx="386" cy="126" r="16" fill="#96979b"/></svg>`;
