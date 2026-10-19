@@ -42,7 +42,7 @@ export function handleVedaBoundaryRequest(request: Request, env: VedaEnvironment
       description: "Private, admin-controlled social-intelligence co-pilot",
       start_url: "/veda/?source=pwa", scope: "/veda/", display: "standalone",
       background_color: "#08090b", theme_color: "#08090b",
-      icons: [{ src: "/veda/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+      icons: [{ src: "/veda/icon.svg", sizes: "192x192 512x512", type: "image/svg+xml", purpose: "any maskable" }],
     }, 200, { "Content-Type": "application/manifest+json; charset=utf-8" }, request.method === "HEAD");
     if (path === "/veda/icon.svg") return raw(ICON, "image/svg+xml; charset=utf-8", request.method === "HEAD");
     if (path === "/veda/app.css") return raw(CSS, "text/css; charset=utf-8", request.method === "HEAD");
@@ -65,7 +65,7 @@ export function handleVedaBoundaryRequest(request: Request, env: VedaEnvironment
   return notFound(path);
 }
 function deny(request: Request, isApiOrAsset: boolean): Response {
-  if (!isApiOrAsset && (request.method === "GET" || request.method === "HEAD")) return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
+  if (!isApiOrAsset && (request.method === "GET" || request.method === "HEAD")) return new Response(null, { status: 302, headers: headers({ Location: new URL("/admin/login", request.url).toString() }) });
   return json({ error: "admin_required" }, 401);
 }
 function headers(extra: Record<string, string> = {}): Headers {
