@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, feat/chess-stockfish-phase-1-engine]
+    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -18,18 +18,12 @@ jobs:
       - run: npm run check
       - run: node --check public/app.js
       - run: node --check public/copilot.js
-      - run: node --check public/chess/engine-client.js
-      - run: node --check public/chess/recognition-client.js
-      - run: node --check public/chess/game-state-client.js
-      - run: node --check public/chess/chess-ui.js
       - run: node --check public/auth.js
       - run: node --check public/session-ui.js
       - run: node --check public/native-app.js
       - run: node --check public/fluid-interactivity.js
       - run: node --check scripts/live-conversation-history-smoke.mjs
       - run: node --check scripts/synthetic-passkey-session.mjs
-      - run: node --check scripts/live-stockfish-browser-smoke.mjs
-      - run: node --check scripts/live-chess-recognition-smoke.mjs
       - name: Validate synthetic speech script syntax
         run: python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py
       - name: Validate required production secrets
@@ -47,8 +41,6 @@ jobs:
           NODE
       - run: npm run benchmark:validate
       - run: npm test
-      - name: Execute the actual Stockfish UCI smoke test
-        run: npm run chess:smoke
       - name: Validate D1 migrations against local SQLite
         run: npx wrangler d1 migrations apply askmoina-prod --local
       - run: npx wrangler deploy --dry-run --outdir=dist
