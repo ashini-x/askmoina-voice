@@ -57,7 +57,11 @@ export function handleVedaBoundaryRequest(request: Request, env: VedaEnvironment
   }
   if (!adminAuthorized) return deny(request, isVedaApiPath(path));
   if (!runtimeEnabled) return notFound(path);
-  if (status) return json({ ok: true, feature: "veda", phase: VEDA_PHASE, enabled: true, runtimeReady: false }, 200, {}, request.method === "HEAD");
+  if (status) {
+    if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "method_not_allowed" }, 405, { Allow: "GET, HEAD" });
+    return json({ ok: true, feature: "veda", phase: VEDA_PHASE, enabled: true, runtimeReady: false,
+      message: "Veda is isolated, but its installation UI, device pairing, and Live runtime are not implemented in Phase 1." }, 200, {}, request.method === "HEAD");
+  }
   return notFound(path);
 }
 function deny(request: Request, isApiOrAsset: boolean): Response {
