@@ -851,7 +851,7 @@ import {
     const chessEngine = getEngine();
     popupMessage.textContent = chessEngine.enginePhase === "ready"
       ? "Searching the confirmed position with Stockfish 19 Full…"
-      : "Loading full Stockfish 19 for its first use, then searching the confirmed position…";
+      : "First use downloads the full-strength Stockfish 19 engine (~90 MB, cached for future moves), then searches the confirmed position…";
     const sequence = ++analysisSequence;
     analysisInProgress = true;
     try {
