@@ -848,11 +848,14 @@ import {
 
     trackButton.disabled = true;
     popupTitle.textContent = "Next strong move";
-    popupMessage.textContent = "Checking the confirmed position with Stockfish…";
+    const chessEngine = getEngine();
+    popupMessage.textContent = chessEngine.enginePhase === "ready"
+      ? "Searching the confirmed position with Stockfish 19 Full…"
+      : "Loading full Stockfish 19 for its first use, then searching the confirmed position…";
     const sequence = ++analysisSequence;
     analysisInProgress = true;
     try {
-      const analysis = await getEngine().analyzePosition(fen, { movetimeMs: 4500 });
+      const analysis = await chessEngine.analyzePosition(fen, { movetimeMs: 4500 });
       if (sequence !== analysisSequence) return;
       lastSuggestedFen = fen;
       pendingMode = "message";
