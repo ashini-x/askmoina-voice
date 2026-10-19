@@ -14,14 +14,25 @@ A custom, swept-wing bird mark represents a helpful presence and forward motion.
 - `public/askmoina-social-avatar.svg`: social profile avatar artwork.
 - `public/askmoina-visual-guide.svg`: the same approved bird inside the separate open-orbit visual-guidance treatment.
 
-## Palette
-- Deep ink: `#08090c`
-- Porcelain: `#f8f8fa`
-- Light surface: `#f5f5f7`
-- Ink on light surfaces: `#171719`
-- Active-only light: cool silver with restrained periwinkle/lilac in the edge highlight.
+## Palette — Smoky Core / Liquid Glass
+- **Obsidian:** `#090A0D` — global dark canvas and installed-app launch colour.
+- **Smoky graphite:** `#151619` — elevated surfaces and translucent control material.
+- **Champagne:** `#D7C0AD` — a limited warm highlight for focus, key actions, and reflected light.
+- **Silver blue / titanium:** `#98A8BB` — a limited cool highlight for optical edges and active-state depth.
+- **Warm porcelain:** `#F5EFE9` — high-contrast text and primary light controls.
+- **Elevated graphite:** `#202126` — quiet depth behind glass, never a separate brand colour.
 
-Do not use a permanent neon rainbow, green call colour, or red call badge as part of the primary identity. Do not approximate another company's icon.
+The shared source of truth is `public/askmoina-liquid-system.css`, with `--askmoina-*` design tokens. The same tokens apply to the camera co-pilot, authentication, first-run experience, navigation, account and information pages, chess controls, and install/offline surfaces. Add the theme stylesheet after component styles and before `askmoina-global-font.css`.
+
+### Liquid Glass rules
+- Preserve a dark, cinematic foundation; use champagne and titanium as **small light reflections**, not colourful blocks.
+- Reserve translucent glass, fine strokes, blur, and inner highlights for navigation, camera controls, sheets, menus, dialogs, and transient response/chess overlays. Keep live camera content and long-form text clear.
+- Prefer one restrained material hierarchy: clear foreground controls, graphite glass, then the obsidian canvas. Avoid persistent rainbow gradients, bright electric blue, heavy glow on every card, and oversaturated accent colours.
+- Light controls use warm porcelain/champagne; active or analytical states may use titanium. Red is reserved for destructive actions, not ordinary app identity.
+- Maintain safe-area insets, touch targets, visible focus, and `prefers-reduced-motion` / `prefers-reduced-transparency` accessibility behavior.
+- Never use Apple logos or present AskMoina as an official Apple product. Match the discipline and clarity of native iOS interaction while keeping AskMoina’s own mark and typography.
+
+Do not approximate another company's icon. Never redraw or reshape AskMoina’s approved bird mark.
 
 ## Typography — canonical global font
 
