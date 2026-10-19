@@ -289,10 +289,10 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
       const entryId = typeof input.entryId === "string" ? input.entryId.trim().slice(0, 80) : "";
       const reviewerCode = typeof input.reviewerCode === "string" ? input.reviewerCode.trim() : "";
       const localityScope = typeof input.localityScope === "string" ? input.localityScope.trim().slice(0, 120) : "not_recorded";
-      const decision = input.decision;
+      const decision = typeof input.decision === "string" ? input.decision : "";
       const notes = typeof input.notes === "string" ? input.notes.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").trim().slice(0, 280) : "";
       if (!/^[a-zA-Z0-9_-]{3,80}$/.test(reviewerCode)) return json({ error: "invalid_reviewer_code", message: "Use a stable pseudonymous reviewer code (3–80 letters, numbers, underscores or hyphens), not a personal name." }, 400);
-      if (!/^[a-zA-Z0-9_-]{3,80}$/.test(entryId) || !["approved", "needs_revision", "rejected"].includes(String(decision))) return json({ error: "invalid_review" }, 400);
+      if (!/^[a-zA-Z0-9_-]{3,80}$/.test(entryId) || !["approved", "needs_revision", "rejected"].includes(decision)) return json({ error: "invalid_review" }, 400);
       if (input.nativeSpeakerAttestation !== true) return json({ error: "native_speaker_attestation_required" }, 400);
       if (typeof input.rightsConfirmed !== "boolean") return json({ error: "rights_decision_required" }, 400);
       const entry = await env.DB.prepare(
