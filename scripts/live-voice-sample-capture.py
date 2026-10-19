@@ -23,15 +23,15 @@ TURN_WAIT_SECONDS = 38
 SAMPLES = [
     (
         "01-english-greeting",
-        "Please say one short, friendly greeting in English. Keep the voice bright, light, naturally youthful, and clear.",
+        "Please say one short, friendly greeting in English. Sound naturally sweet, softly bright, youthful and warm, with clear gentle melody. Keep your voice authentic and unprocessed, never robotic or exaggerated.",
     ),
     (
         "02-assamese-english-gentle",
-        "Aji mood tu bhal nai yaar. Reply gently in a natural Assamese-English mix, in one or two short sentences, without giving advice.",
+        "Aji mood tu bhal nai yaar. Reply gently in a natural Upper Assam Assamese-English mix, in one or two short sentences, without giving advice. Use a sweet, caring, soft-bright tone, with natural rhythm and no forced high pitch.",
     ),
     (
         "03-assamese-english-celebration",
-        "I got selected for the job! Bohut din dhori try kori asilu. Congratulate me warmly in a casual Assamese-English mix, with one short response.",
+        "I got selected for the job! Bohut din dhori try kori asilu. Congratulate me warmly in a casual Upper Assam Assamese-English mix, with one short response. Sound sweet, bright and genuinely delighted, not theatrical or squeaky.",
     ),
 ]
 
@@ -183,8 +183,8 @@ def main():
         print("Voice sample captured: " + sample_id)
     manifest = {
         "source": "AskMoina production Gemini Live",
-        "voice": "Leda",
-        "purpose": "Disposable user-requested listen-back samples for the youthful high-register instruction",
+        "voice": "Zephyr",
+        "purpose": "Disposable owner listen-back samples for natural, sweet, youthful Zephyr voice behavior",
         "samples": results,
         "privacy": "Synthetic text input only. No input audio, transcripts, or prompt text saved.",
     }
