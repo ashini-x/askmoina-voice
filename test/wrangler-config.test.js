@@ -52,4 +52,29 @@ describe("production Worker configuration", () => {
     );
   });
 
+  it("declares the isolated Veda session namespace as SQLite-backed", () => {
+    expect(config.exports?.VedaSessionState).toEqual({
+      type: "durable-object",
+      storage: "sqlite",
+    });
+    expect(config.durable_objects?.bindings).toEqual(
+      expect.arrayContaining([{ name: "VEDA_SESSION_STATE", class_name: "VedaSessionState" }]),
+    );
+    expect(config.previews?.durable_objects?.bindings).toEqual(
+      expect.arrayContaining([{ name: "VEDA_SESSION_STATE", class_name: "VedaSessionState" }]),
+    );
+  });
+
+  it("keeps the Veda DB binding separate from both AskMoina databases", () => {
+    const vedaProd = config.d1_databases.find((db) => db.binding === "VEDA_DB");
+    const vedaPreview = config.previews?.d1_databases?.find((db) => db.binding === "VEDA_DB");
+    const askMoinaProd = config.d1_databases.find((db) => db.binding === "DB");
+    const askMoinaPreview = config.previews?.d1_databases?.find((db) => db.binding === "DB");
+    expect(vedaProd).toMatchObject({ database_name: "veda-prod", migrations_dir: "migrations/veda" });
+    expect(vedaPreview).toMatchObject({ database_name: "veda-preview", migrations_dir: "migrations/veda" });
+    expect(vedaProd.database_id).not.toBe(askMoinaProd.database_id);
+    expect(vedaPreview.database_id).not.toBe(askMoinaPreview.database_id);
+    expect(vedaProd.database_id).not.toBe(vedaPreview.database_id);
+  });
+
 });

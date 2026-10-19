@@ -41,8 +41,12 @@ jobs:
           NODE
       - run: npm run benchmark:validate
       - run: npm test
-      - name: Validate D1 migrations against local SQLite
+      - name: Validate AskMoina D1 migrations against local SQLite
         run: npx wrangler d1 migrations apply askmoina-prod --local
+      - name: Validate isolated Veda production migration against local SQLite
+        run: npx wrangler d1 migrations apply VEDA_DB --local
+      - name: Validate isolated Veda preview migration against local SQLite
+        run: npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
       - run: npx wrangler deploy --dry-run --outdir=dist
       - name: Verify M29/M30 Worker bundle contracts
         run: |

@@ -1,7 +1,10 @@
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  // Veda data must never fall back to AskMoina's DB binding.
+  VEDA_DB: D1Database;
   USER_STATE: DurableObjectNamespace;
+  VEDA_SESSION_STATE: DurableObjectNamespace;
   LIVE_SESSION_RELAY: DurableObjectNamespace;
   BACKGROUND_QUEUE: Queue;
 

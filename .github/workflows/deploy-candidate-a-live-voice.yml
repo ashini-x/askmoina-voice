@@ -51,6 +51,8 @@ jobs:
           set -euo pipefail
           npm run check
           npm test
+          npx wrangler d1 migrations apply VEDA_DB --local
+          npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
           npx wrangler deploy --dry-run --outdir=dist
 
 
