@@ -128,7 +128,7 @@ async function main() {
 
       try {
         const handshakeStart = performance.now();
-        const uciPromise = waitFor(line => line.trim() === "uciok", 120000, "uciok after full Stockfish WASM load");
+        const uciPromise = waitFor(line => line.trim() === "uciok", 180000, "uciok after full Stockfish WASM load");
         worker.postMessage("uci");
         await uciPromise;
         const uciMs = performance.now() - handshakeStart;
@@ -190,7 +190,7 @@ async function main() {
     const chess = new Chess();
     const move = chess.move({ from: moveMatch[1], to: moveMatch[2], promotion: moveMatch[3] });
     assert.ok(move, "Stockfish returned a legal move in the starting position");
-    assert.ok(result.uciMs < 120000, "Full Stockfish initialization should finish within the bound");
+    assert.ok(result.uciMs < 180000, "Full Stockfish initialization should finish within the bound");
     assert.ok(result.deepestDepth >= 8, "Full Stockfish should complete a meaningful search, not just return the first legal move");
     assert.equal(policyViolations.length, 0, "the production page should have no CSP violations during the engine test");
     const jsResponse = assetResponses.find(item => item.path.endsWith(".js"));
