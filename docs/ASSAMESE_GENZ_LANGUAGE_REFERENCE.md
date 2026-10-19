@@ -12,6 +12,10 @@
 - A bounded live-session reader that adds only eligible reference examples to the system instruction. Missing migrations, failed queries and empty corpora return no appendix and do not prevent session setup.
 - Initial internal entries taken from existing AskMoina instructions and its own synthetic speech evaluation scenarios. They are marked `native_review_pending`, `native_verified = 0`, and `enabled = 0`. They do not enter live prompts.
 
+## Explicit admin override
+
+The admin review centre supports an explicit owner override for the current AskMoina internal reference set. It records an override flag, owner, timestamp, and reason; it does not fabricate two independent native-speaker review records. Runtime eligibility accepts either two distinct native-speaker approvals or the explicit admin override, while continuing to require enabled/approved state, complete source/permission metadata, and rights/native verification flags. Treat overridden entries as owner-approved, not as independently native-verified. The override is auditable and should be re-evaluated if any source/permission metadata or wording changes.
+
 ## Protected admin review workflow
 
 The protected `/admin` review centre lists each candidate entry alongside its context, candidate user/response wording, intended register, source title, source URL, license and permission basis. The admin can record an explicit native-speaker decision, locality/dialect scope and short non-identifying note under a stable pseudonymous reviewer code; source/use rights are confirmed separately. Review codes are not proof of human identity: use one stable code per real reviewer, and do not invent multiple codes to satisfy the two-person gate. The server records one decision per entry/code and updates the eligible state only when two distinct codes have approved and source/use rights are confirmed. A needs-revision or rejected decision keeps the entry disabled.
