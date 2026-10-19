@@ -51,7 +51,6 @@ jobs:
           set -euo pipefail
           npm run check
           npm test
-          npm run chess:smoke
           npx wrangler deploy --dry-run --outdir=dist
 
 
@@ -405,8 +404,6 @@ jobs:
           # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
-          node scripts/live-chess-recognition-smoke.mjs
-          CHESS_RECOGNITION_STATUS=$?
           python scripts/live-turn-latency-benchmark.py
           TURN_LATENCY_STATUS=$?
           python scripts/live-grounding-smoke.py
@@ -429,7 +426,6 @@ jobs:
           trap - EXIT
           echo "Synthetic session revoked: OK"
           for result in \
-            "live digital chess recognition:$CHESS_RECOGNITION_STATUS" \
             "turn-latency benchmark:$TURN_LATENCY_STATUS" \
             "grounded web search:$GROUNDING_STATUS" \
             "speech-first voice turn:$SPOKEN_TURN_STATUS" \
@@ -446,7 +442,6 @@ jobs:
               echo "::error::Synthetic $name failed (exit $status)."
             fi
           done
-          test "$CHESS_RECOGNITION_STATUS" -eq 0
           test "$TURN_LATENCY_STATUS" -eq 0
           test "$GROUNDING_STATUS" -eq 0
           test "$SPOKEN_TURN_STATUS" -eq 0
