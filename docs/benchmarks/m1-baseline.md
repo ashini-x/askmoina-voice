@@ -66,6 +66,10 @@ The existing `docs/benchmarks/assamese-speech-v1.json` is the baseline evaluatio
 
 Have consenting Upper Assam speakers rate the actual generated audio in a private evaluation. Do not save audio or transcripts by default; store only evaluator codes, ratings, critical-failure flags, and brief non-identifying notes. Keep disputed regional variants marked as variants. One reviewer's preference must not be presented as a universal dialect rule.
 
+### Explicit admin override
+
+The protected review centre also has a one-click **Admin override: pass M1 + approve M2** action. Use only after the project owner explicitly requests it. The action records an audited owner override and marks the M1 dashboard gate as passed without fabricating case-by-case ratings: completed/rated cases remain zero and dimension scores remain unscored. This is a dashboard/governance override, not evidence that the 15-case human-listener benchmark or production latency benchmark met their numerical acceptance thresholds. Production reliability and latency evidence must continue to be reported separately.
+
 ### Protected admin review centre
 
 The protected `/admin` page includes an M1 score-only native speech review workflow. Open the review centre, use a stable pseudonymous reviewer code, attest that you are reviewing as a native Assamese-English speaker, copy each of the 15 prompts into Live Co-Pilot, and rate what you actually hear across the six dimensions. Record only 0/1/2 ratings, critical-failure flags and brief non-identifying notes; never upload or store audio, transcripts, screenshots, or personal details. The dashboard calculates the configured score gate and shows prior score-only runs. A passing score is evidence from that reviewer and run, not a universal dialect claim or a substitute for technical production benchmark evidence.

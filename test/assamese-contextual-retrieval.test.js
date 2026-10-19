@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
+  isEligibleAssameseConversationReference,
   rankAssameseConversationReferences,
   retrieveAssameseConversationReferences,
 } from "../src/sessions/assamese-contextual-retrieval";
@@ -83,6 +84,19 @@ describe("M5 query-aware Assamese contextual retrieval", () => {
       row({ response_example: "" }),
     ];
     expect(rankAssameseConversationReferences("mood low empathy", invalidRows)).toEqual([]);
+  });
+
+  it("allows an explicit admin override while keeping override distinct from two native-speaker reviews", () => {
+    const overridden = row({
+      review_status: "approved",
+      enabled: 1,
+      rights_confirmed: 1,
+      native_verified: 1,
+      approved_native_review_count: 0,
+      admin_override: 1,
+    });
+    expect(isEligibleAssameseConversationReference(overridden)).toBe(true);
+    expect(isEligibleAssameseConversationReference({ ...overridden, admin_override: 0 })).toBe(false);
   });
 
   it("returns at most three source-attributed examples through the eligible D1 view", async () => {

@@ -126,7 +126,7 @@ function adminPage(): string {
     '<h1>System overview</h1><p class="muted">Session and privacy-safe usage data. Costs are not inferred from duration; Google Cloud billing is the source for actual spend.</p><div class="cards" id="cards"><div class="card">Loading…</div></div>',
     '<div class="layout"><section class="section"><h2>Recent voice sessions</h2><div class="table-wrap"><table><thead><tr><th>Session</th><th>Visitor</th><th>Started</th><th>Duration</th><th>Outcome</th></tr></thead><tbody id="sessions"></tbody></table></div></section>',
     '<section class="section"><h2>Privacy & health</h2><div id="health" class="alert">Loading system status…</div><p class="muted">Microphone audio and transcript text are not written to the app analytics database. Admin access is audited.</p><p><a href="/">Open voice app</a></p></section></div>',
-    '<section id="assamese-review" class="section review-panel"><h2>Assamese-English review centre</h2><p class="muted">Human acceptance gate for M1 speech quality and M2 conversational examples. Admin access is required. Save scores and brief non-identifying notes only; never paste private conversations or transcripts.</p><div class="review-toolbar"><label>Stable reviewer code (pseudonym)<input id="as-reviewer-code" minlength="3" maxlength="80" pattern="[A-Za-z0-9_-]{3,80}" placeholder="e.g. native-reviewer-1" required></label><label>Broad locality or dialect scope (optional)<input id="as-reviewer-locality" maxlength="120" placeholder="e.g. Assamese-English; regional scope if applicable"></label><label class="attest"><input id="as-native-attest" type="checkbox"> I confirm I am reviewing as a native Assamese-English speaker and will judge only the dialect/register I know.</label></div><div class="review-toolbar"><button class="btn" id="as-refresh-refs">Refresh M2 phrases</button><button class="btn" id="as-refresh-scores">Refresh M1 score history</button><a class="btn" href="/copilot" target="_blank" rel="noopener">Open Live Co-Pilot</a><a class="btn" href="https://github.com/ashini-x/askmoina-voice/actions" target="_blank" rel="noopener">Production workflow results</a></div><p id="as-review-status" class="alert" role="status" aria-live="polite">Loading review items…</p><div id="as-references" class="review-list"></div><hr><h2>M1 · Assamese speech baseline</h2><p class="muted">Play/test each prompt in Live Co-Pilot, then score what you actually heard: 0 = fail, 1 = partly right, 2 = pass. At least 12 of 15 complete cases, at least 85% overall, configured dimension thresholds, and zero critical failures are required. The English synthetic latency benchmark is separate; see the linked production workflow.</p><div id="as-speech-cases" class="review-list"></div><div class="review-toolbar"><button class="btn" id="as-submit-speech">Save score-only evaluation</button><span id="as-speech-status" class="muted" role="status" aria-live="polite"></span></div><div id="as-speech-history" class="review-list"></div></section><p id="message" class="muted" role="status" aria-live="polite"></p><script src="/admin.js" defer></script><script src="/admin-review.js" defer></script></main></body></html>',
+    '<section id="assamese-review" class="section review-panel"><h2>Assamese-English review centre</h2><p class="muted">Human acceptance gate for M1 speech quality and M2 conversational examples. Admin access is required. Save scores and brief non-identifying notes only; never paste private conversations or transcripts.</p><div class="review-toolbar"><label>Stable reviewer code (pseudonym)<input id="as-reviewer-code" minlength="3" maxlength="80" pattern="[A-Za-z0-9_-]{3,80}" placeholder="e.g. native-reviewer-1" required></label><label>Broad locality or dialect scope (optional)<input id="as-reviewer-locality" maxlength="120" placeholder="e.g. Assamese-English; regional scope if applicable"></label><label class="attest"><input id="as-native-attest" type="checkbox"> I confirm I am reviewing as a native Assamese-English speaker and will judge only the dialect/register I know.</label></div><div class="review-toolbar"><button class="btn" id="as-override-all">Admin override: pass M1 + approve M2</button><button class="btn" id="as-refresh-refs">Refresh M2 phrases</button><button class="btn" id="as-refresh-scores">Refresh M1 score history</button><a class="btn" href="/copilot" target="_blank" rel="noopener">Open Live Co-Pilot</a><a class="btn" href="https://github.com/ashini-x/askmoina-voice/actions" target="_blank" rel="noopener">Production workflow results</a></div><p class="muted">An override is explicitly labelled and audited; it does not create fictional individual test scores or a second native-speaker identity.</p><p id="as-review-status" class="alert" role="status" aria-live="polite">Loading review items…</p><div id="as-references" class="review-list"></div><hr><h2>M1 · Assamese speech baseline</h2><p class="muted">Play/test each prompt in Live Co-Pilot, then score what you actually heard: 0 = fail, 1 = partly right, 2 = pass. At least 12 of 15 complete cases, at least 85% overall, configured dimension thresholds, and zero critical failures are required. The English synthetic latency benchmark is separate; see the linked production workflow.</p><div id="as-speech-cases" class="review-list"></div><div class="review-toolbar"><button class="btn" id="as-submit-speech">Save score-only evaluation</button><span id="as-speech-status" class="muted" role="status" aria-live="polite"></span></div><div id="as-speech-history" class="review-list"></div></section><p id="message" class="muted" role="status" aria-live="polite"></p><script src="/admin.js" defer></script><script src="/admin-review.js" defer></script></main></body></html>',
   ].join("");
 }
 
@@ -260,6 +260,7 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
           "e.permission_basis AS permissionBasis, e.attribution_required AS attributionRequired, " +
           "e.rights_confirmed AS rightsConfirmed, e.native_verified AS nativeVerified, " +
           "e.review_status AS reviewStatus, e.enabled AS enabled, e.priority AS priority, e.version AS version, " +
+          "e.admin_override AS adminOverride, e.admin_override_by AS adminOverrideBy, e.admin_override_at AS adminOverrideAt, e.admin_override_reason AS adminOverrideReason, " +
           "(SELECT COUNT(DISTINCT r.reviewer_code) FROM assamese_conversation_reference_reviews r " +
           "WHERE r.entry_id=e.entry_id AND r.reviewer_type='native_speaker' AND r.decision='approved') AS approvedNativeReviewCount " +
           "FROM assamese_conversation_reference e WHERE e.review_status <> 'retired' ORDER BY e.priority ASC, e.entry_id ASC",
@@ -333,12 +334,64 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
       const active = Number(updated?.approvedNativeReviewCount || 0) >= 2 && Number(updated?.rightsConfirmed) === 1 && Number(updated?.enabled) === 1;
       return json({ ok: true, entryId, result: updated, message: active ? "Second distinct native-speaker approval and rights gate passed. Entry is now eligible for retrieval." : "Review saved. This entry stays disabled until rights are confirmed and two distinct native speakers approve it." });
     }
+    if (url.pathname === "/admin/api/assamese/admin-override" && request.method === "POST") {
+      if (!sameOrigin(request)) return json({ error: "forbidden_origin" }, 403);
+      let input: { confirmation?: unknown };
+      try { input = await request.json() as typeof input; } catch { return json({ error: "invalid_json" }, 400); }
+      if (input.confirmation !== "ADMIN_OVERRIDE_M1_M2") return json({ error: "explicit_admin_override_confirmation_required" }, 400);
+      const now = new Date().toISOString();
+      const adminCode = (env.ADMIN_DASHBOARD_USER || "admin").slice(0, 80);
+      const reason = "Admin override requested by project owner, who reports that manual testing was completed and asks to pass the M1/M2 dashboard gates. Detailed per-case ratings and a second native-speaker identity were not supplied; this is recorded as an override, not as those reviews.";
+      const missing = await env.DB.prepare(
+        "SELECT COUNT(*) AS total FROM assamese_conversation_reference WHERE review_status <> 'retired' AND (" +
+        "length(trim(source_title))=0 OR length(trim(source_license))=0 OR length(trim(permission_basis))=0 OR length(trim(response_example))=0)",
+      ).first<{ total: number }>();
+      if (Number(missing?.total || 0) > 0) {
+        return json({ error: "reference_metadata_incomplete", message: "Some reference entries have incomplete source/permission metadata. They were not enabled." }, 409);
+      }
+      await env.DB.prepare(
+        "UPDATE assamese_conversation_reference SET rights_confirmed=1, native_verified=1, review_status='approved', enabled=1, " +
+        "admin_override=1, admin_override_by=?, admin_override_at=?, admin_override_reason=?, updated_at=?, version=version+1 " +
+        "WHERE review_status <> 'retired'",
+      ).bind(adminCode, now, reason, now).run();
+      const dimensions = {
+        language_match: { percent: null, rated: 0 },
+        conversational_naturalness: { percent: null, rated: 0 },
+        pronunciation_clarity: { percent: null, rated: 0 },
+        code_switching: { percent: null, rated: 0 },
+        turn_taking: { percent: null, rated: 0 },
+        uncertainty_honesty: { percent: null, rated: 0 }
+      };
+      const caseIds = Array.from({length: 15}, (_, i) => "AS" + String(i + 1).padStart(2, "0"));
+      const results = caseIds.map((case_id) => ({
+        case_id,
+        ratings: Object.fromEntries(Object.keys(dimensions).map((key) => [key, null])),
+        critical_failures: [],
+        notes: "No individual rating entered; covered by explicit admin override."
+      }));
+      const runId = crypto.randomUUID();
+      await env.DB.prepare(
+        "INSERT INTO assamese_speech_review_runs (review_id, evaluation_date, evaluator_code, suite_version, completed_cases, total_cases, overall_percent, dimensions_json, critical_failure_count, passed, results_json, created_at, admin_override, override_reason) " +
+        "VALUES (?, ?, ?, '1.0.0', 0, 15, NULL, ?, 0, 1, ?, ?, 1, ?)",
+      ).bind(runId, now.slice(0, 10), adminCode, JSON.stringify(dimensions), JSON.stringify(results), now, reason).run();
+      await audit(env, "admin_override_assamese_m1_m2").catch(() => undefined);
+      const count = await env.DB.prepare(
+        "SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 AND review_status='approved' AND admin_override=1 THEN 1 ELSE 0 END) AS enabledOverride " +
+        "FROM assamese_conversation_reference WHERE review_status <> 'retired'",
+      ).first<{ total: number; enabledOverride: number }>();
+      return json({
+        ok: true, outcome: "admin_override_applied", speechRunId: runId,
+        m1: { status: "passed_by_admin_override", detailedRatings: false, note: "The dashboard gate is overridden. Individual test ratings are intentionally left unscored." },
+        m2: { status: "approved_by_admin_override", entries: Number(count?.total || 0), enabled: Number(count?.enabledOverride || 0), distinctNativeApprovals: "not represented or fabricated" },
+        auditEvent: "admin_override_assamese_m1_m2"
+      }, 200);
+    }
     if (url.pathname === "/admin/api/assamese/speech-runs" && request.method === "GET") {
       try {
         const result = await env.DB.prepare(
           "SELECT review_id AS reviewId, evaluation_date AS evaluationDate, evaluator_code AS evaluatorCode, " +
           "completed_cases AS completedCases, total_cases AS totalCases, overall_percent AS overallPercent, " +
-          "dimensions_json AS dimensionsJson, critical_failure_count AS criticalFailureCount, passed, created_at AS createdAt " +
+          "dimensions_json AS dimensionsJson, critical_failure_count AS criticalFailureCount, passed, admin_override AS adminOverride, override_reason AS overrideReason, created_at AS createdAt " +
           "FROM assamese_speech_review_runs ORDER BY created_at DESC LIMIT 20",
         ).all<Record<string, unknown>>();
         return json({ runs: result.results || [] });

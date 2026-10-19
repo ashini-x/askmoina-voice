@@ -56,6 +56,7 @@ function addInfo(card, label, value) {
 }
 function reviewStatus(e) {
   const count = Number(e.approvedNativeReviewCount || 0);
+  if (Number(e.adminOverride) === 1 && Number(e.enabled) === 1) return "ADMIN OVERRIDE · enabled · owner approval · " + count + "/2 native reviews";
   if (Number(e.enabled) === 1) return "ACTIVE · rights confirmed · " + count + "/2 distinct native approvals";
   if (e.reviewStatus === "rejected") return "REJECTED · disabled";
   if (e.reviewStatus === "needs_revision") return "NEEDS REVISION · disabled";
@@ -192,8 +193,8 @@ async function loadSpeechHistory() {
       let dims = {}; try { dims = JSON.parse(r.dimensionsJson || "{}"); } catch {}
       const passed = Number(r.passed) === 1;
       const card = make("article", "", "review-card " + (passed ? "success" : "failure"));
-      card.append(make("h3", (passed ? "Numerical score gate passed" : "Acceptance pending") + " · " + String(r.evaluationDate || "")));
-      card.append(make("p", String(r.evaluatorCode) + " · " + String(r.completedCases) + "/" + String(r.totalCases) + " complete · overall " + (r.overallPercent == null ? "not scored" : String(r.overallPercent) + "%") + " · critical failures " + String(r.criticalFailureCount)));
+      card.append(make("h3", (Number(r.adminOverride) === 1 ? "ADMIN OVERRIDE PASS" : passed ? "Numerical score gate passed" : "Acceptance pending") + " · " + String(r.evaluationDate || "")));
+      card.append(make("p", String(r.evaluatorCode) + " · " + String(r.completedCases) + "/" + String(r.totalCases) + " individually scored · overall " + (r.overallPercent == null ? "not scored" : String(r.overallPercent) + "%") + " · critical failures " + String(r.criticalFailureCount) + (Number(r.adminOverride) === 1 ? " · override: " + String(r.overrideReason || "owner override") : "")));
       for (const d of DIMS) card.append(make("p", d[1] + ": " + (dims[d[0]] && dims[d[0]].percent != null ? dims[d[0]].percent + "%" : "not scored")));
       root.append(card);
     }
@@ -201,6 +202,19 @@ async function loadSpeechHistory() {
     root.append(make("p", err.message || "Score history is not available; apply the score-only review migration."));
   }
 }
+$("#as-override-all").addEventListener("click", async () => {
+  const status = $("#as-review-status");
+  if (!confirm("Apply an ADMIN OVERRIDE to pass the M1 dashboard gate and enable all M2 reference entries with complete source/permission metadata? This will NOT fabricate individual ratings or a second native reviewer. The override is permanent in the audit trail until reversed by a future admin action.")) return;
+  status.textContent = "Applying admin override…";
+  try {
+    const out = await api("/admin/api/assamese/admin-override", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({confirmation:"ADMIN_OVERRIDE_M1_M2"})
+    });
+    status.textContent = "ADMIN OVERRIDE APPLIED · M1 dashboard marked passed by owner override (individual ratings left unscored). M2: " + out.m2.enabled + "/" + out.m2.entries + " entries enabled. An audit event was recorded.";
+    await Promise.all([loadRefs(), loadSpeechHistory()]);
+  } catch (err) { status.textContent = err.message || "Admin override failed."; }
+});
 $("#as-refresh-refs").addEventListener("click", loadRefs);
 $("#as-refresh-scores").addEventListener("click", loadSpeechHistory);
 $("#as-submit-speech").addEventListener("click", submitSpeech);
