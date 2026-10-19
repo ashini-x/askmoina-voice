@@ -9,8 +9,10 @@ permissions:
   contents: read
 
 concurrency:
+  # Let an in-flight deployment finish its synthetic verification. GitHub keeps only the newest pending run.
+  # Cancelling this job on every push was aborting the production checks before they could report results.
   group: askmoina-candidate-a-production-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
