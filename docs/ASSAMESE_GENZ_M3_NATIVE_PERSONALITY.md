@@ -30,6 +30,10 @@ node scripts/reality-benchmark.mjs score personality /tmp/m3-personality-run.jso
 
 Each criterion is rated 0–2. The target is at least 85% overall, at least 10 completed cases, all configured dimension thresholds met, and zero critical failures. A perfect synthetic template in a unit test only tests the scorer; it is not a real acceptance result.
 
+## Owner listen-back samples
+
+The production deployment workflow can capture three short, synthetic-text responses from the deployed Live voice as temporary WAV artifacts for owner listen-back: an English greeting, a gentle Assamese-English reply, and an Assamese-English celebration. The workflow retains these generated sample WAVs for one day only when capture succeeds. It does not save the synthetic input audio, prompts, transcripts, or session cookies. These samples help inspect the actual vocal sound, but they are not a substitute for the held-out two-listener M3 acceptance evaluation.
+
 ## Native listening protocol
 
 1. Use the deployed live voice experience with the held-out prompts in a private session.
