@@ -31,6 +31,7 @@ import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedLis
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 
 export { UserState } from "./sessions/user-state";
+export { VedaSessionState } from "./veda/session-state";
 
 
 function withFluidInteractivity(html: string, version: string): string {
