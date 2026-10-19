@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "askmoina-veda-preview-migrations",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "d1_databases": [
+    {
+      "binding": "VEDA_DB",
+      "database_name": "veda-preview",
+      "database_id": "0ef1c504-6a71-499f-b27c-a3d72b77be0b",
+      "migrations_dir": "migrations/veda"
+    }
+  ]
+}
