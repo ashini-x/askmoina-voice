@@ -30,6 +30,7 @@ import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionO
 import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
+import { canAccessVoicePreview } from "./sessions/voice-preview-access";
 
 export { UserState } from "./sessions/user-state";
 export { VedaSessionState } from "./veda/session-state";
@@ -1333,8 +1334,12 @@ async function handleVoiceSocket(
   // A short-lived production audition flag lets authenticated users compare native
   // prebuilt voices in their own session. Administrative preview access remains supported.
   const adminAccess = voicePreviewRequested || !sessionUserId ? await isAdmin(request, env) : false;
-  const voiceAuditionAccess = env.VOICE_AUDITION_ENABLED === "true" && Boolean(sessionUserId);
-  if (voicePreviewRequested && !adminAccess && !voiceAuditionAccess) {
+  const voiceAuditionAccess = canAccessVoicePreview(
+    adminAccess,
+    Boolean(sessionUserId),
+    env.VOICE_AUDITION_ENABLED === "true",
+  );
+  if (voicePreviewRequested && !voiceAuditionAccess) {
     return json({ error: "admin_required" }, 401);
   }
   if (!sessionUserId && !adminAccess) return json({ error: "authentication_required" }, 401);
