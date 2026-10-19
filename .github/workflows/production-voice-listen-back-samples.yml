@@ -1,0 +1,96 @@
+name: Production voice listen-back samples
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/production-voice-listen-back-samples.yml"
+      - "scripts/live-voice-sample-capture.py"
+      - "docs/ASSAMESE_GENZ_M3_NATIVE_PERSONALITY.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+    steps:
+      - name: Check out validated repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Install Chromium for disposable passkey session
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Prepare Python WebSocket client
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/live-voice-sample-capture.py
+          python3 -m venv .venv-voice-samples
+          . .venv-voice-samples/bin/activate
+          python -m pip install --quiet --disable-pip-version-check websocket-client
+
+      - name: Capture live samples from the deployed youthful voice
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_file="$(mktemp)"
+          code="$(curl --silent --show-error --max-time 12 --output "$health_file" --write-out '%{http_code}' "$BASE_URL/api/health" || true)"
+          if [[ "$code" != "200" ]]; then
+            echo "::error::Production health endpoint returned HTTP $code."
+            cat "$health_file"
+            rm -f "$health_file"
+            exit 1
+          fi
+          node --input-type=module - "$health_file" <<'NODE'
+          import fs from "node:fs";
+          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          if (body.ok !== true || body.app !== "askmoina-voice" || body.version !== "0.4.147" || body.liveVoice !== "Leda") {
+            throw new Error("Listen-back samples require verified v0.4.147 production with Leda.");
+          }
+          console.log(JSON.stringify({productionHealth:"PASS",version:body.version,liveVoice:body.liveVoice,model:body.model,location:body.location}));
+          NODE
+          rm -f "$health_file"
+
+          SMOKE_COOKIE="$(node scripts/synthetic-passkey-session.mjs)"
+          if [[ ! "$SMOKE_COOKIE" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
+            echo "::error::Synthetic passkey setup did not return a valid session."
+            exit 1
+          fi
+          echo "::add-mask::$SMOKE_COOKIE"
+          export ASKMOINA_SYNTHETIC_COOKIE="$SMOKE_COOKIE"
+          cleanup() {
+            curl --silent --show-error --max-time 12 --output /dev/null \
+              --request POST "$BASE_URL/api/auth/logout" \
+              --header "Origin: $BASE_URL" \
+              --header "Cookie: $ASKMOINA_SYNTHETIC_COOKIE" \
+              --header "Content-Type: application/json" --data '{}' || true
+          }
+          trap cleanup EXIT
+          . .venv-voice-samples/bin/activate
+          python scripts/live-voice-sample-capture.py
+
+      - name: Upload listen-back WAVs for owner review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: askmoina-live-voice-samples
+          path: artifacts/live-voice-samples/*.wav
+          if-no-files-found: warn
+          retention-days: 1
