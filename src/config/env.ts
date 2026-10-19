@@ -11,6 +11,8 @@ export interface Env {
   APP_VERSION: string;
   // Explicit opt-in; Veda remains unavailable until its private app and runtime exist.
   VEDA_ENABLED?: string;
+  // Controls the admin-only installation portal independently of Veda runtime enablement.
+  VEDA_PORTAL_ENABLED?: string;
   ENVIRONMENT: string;
   GEMINI_MODEL: string;
   GEMINI_LOCATION: string;
