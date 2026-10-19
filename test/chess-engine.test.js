@@ -101,6 +101,12 @@ describe("Stockfish UCI browser client", () => {
     expect(result.analysis.score).toEqual({ unit: "cp", value: 24, perspective: "w" });
   });
 
+  it("allows enough first-use time for the full Stockfish WASM download", () => {
+    const engine = new StockfishChessEngine({ workerFactory: () => createFakeWorker("e2e4") });
+    engines.push(engine);
+    expect(engine.startupTimeoutMs).toBe(180000);
+  });
+
   it("uses the full Stockfish build with a deeper 4.5-second default search", async () => {
     const fen = new Chess().fen();
     const worker = createFakeWorker("e2e4");
