@@ -466,9 +466,6 @@ jobs:
           NETWORK_RECOVERY_STATUS=$?
           node scripts/live-session-continuity-smoke.mjs
           LIVE_CONTINUITY_STATUS=$?
-          # Capture user-requested listen-back audio before the history test revokes the synthetic cookie.
-          python scripts/live-voice-sample-capture.py
-          VOICE_SAMPLE_STATUS=$?
           node scripts/live-conversation-history-smoke.mjs
           CONVERSATION_HISTORY_STATUS=$?
           set -e
@@ -501,18 +498,4 @@ jobs:
           test "$NETWORK_RECOVERY_STATUS" -eq 0
           test "$LIVE_CONTINUITY_STATUS" -eq 0
           test "$CONVERSATION_HISTORY_STATUS" -eq 0
-          if [[ "${VOICE_SAMPLE_STATUS:-1}" -eq 0 ]]; then
-            echo "Synthetic generated voice listen-back samples: PASS"
-          else
-            echo "::warning::Generated voice listen-back samples were unavailable; core synthetic checks remain separately reported."
-          fi
-
-      - name: Upload disposable generated voice listen-back samples
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: askmoina-live-voice-samples-${{ github.run_number }}-attempt-${{ github.run_attempt }}
-          path: artifacts/live-voice-samples/*.wav
-          if-no-files-found: warn
-          retention-days: 1
 
