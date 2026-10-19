@@ -1,7 +1,7 @@
 import { Chess, validateFen } from "./chess.js";
 
-const ENGINE_VERSION = "Stockfish 19.0.1 lite single-threaded";
-const DEFAULT_WORKER_URL = "/chess/stockfish-19-lite-single.js";
+const ENGINE_VERSION = "Stockfish 19.0.1 full single-threaded";
+const DEFAULT_WORKER_URL = "/chess/stockfish-19-single.js?v=19.0.1";
 const MIN_MOVETIME_MS = 100;
 const MAX_MOVETIME_MS = 10000;
 const MAX_FEN_LENGTH = 128;
@@ -43,9 +43,9 @@ export class StockfishChessEngine {
   constructor(options = {}) {
     this.workerUrl = options.workerUrl || DEFAULT_WORKER_URL;
     this.workerFactory = options.workerFactory || ((url) => new Worker(url));
-    this.defaultMoveTimeMs = options.defaultMoveTimeMs || 1300;
+    this.defaultMoveTimeMs = options.defaultMoveTimeMs ?? 4500;
     this.startupTimeoutMs = options.startupTimeoutMs || 15000;
-    this.searchTimeoutMs = options.searchTimeoutMs || 20000;
+    this.searchTimeoutMs = options.searchTimeoutMs ?? 18000;
     this.worker = null;
     this.readyPromise = null;
     this.readyResolve = null;
@@ -55,6 +55,7 @@ export class StockfishChessEngine {
     this.busy = false;
     this.disposed = false;
     this.enginePhase = "stopped";
+    this.reportedEngineName = null;
   }
 
   async ensureReady() {
@@ -92,9 +93,18 @@ export class StockfishChessEngine {
     const line = String(rawLine == null ? "" : rawLine).trim();
     if (!line) return;
 
+    if (line.startsWith("id name ")) {
+      this.reportedEngineName = line.slice("id name ".length).trim();
+      return;
+    }
+
     if (line === "uciok" && this.enginePhase === "starting") {
       this.enginePhase = "waiting-ready";
       try {
+        // Give the full NNUE engine a useful transposition table and request
+        // one principal variation. This single-threaded binary honours Hash.
+        this.worker.postMessage("setoption name Hash value 32");
+        this.worker.postMessage("setoption name MultiPV value 1");
         this.worker.postMessage("isready");
       } catch (error) {
         this.failEngine(error instanceof Error ? error : new Error("Stockfish readiness check failed."));
@@ -124,12 +134,20 @@ export class StockfishChessEngine {
   }
 
   parseInfoLine(line, perspective) {
-    const depthMatch = line.match(/(?:^|\s)depth\s+(\d+)/);
-    const scoreMatch = line.match(/(?:^|\s)score\s+(cp|mate)\s+(-?\d+)/);
-    const pvMatch = line.match(/(?:^|\s)pv\s+(.+)$/);
+    const depthMatch = line.match(/(?:^|\\s)depth\\s+(\\d+)/);
+    const seldepthMatch = line.match(/(?:^|\\s)seldepth\\s+(\\d+)/);
+    const scoreMatch = line.match(/(?:^|\\s)score\\s+(cp|mate)\\s+(-?\\d+)/);
+    const nodesMatch = line.match(/(?:^|\\s)nodes\\s+(\\d+)/);
+    const npsMatch = line.match(/(?:^|\\s)nps\\s+(\\d+)/);
+    const timeMatch = line.match(/(?:^|\\s)time\\s+(\\d+)/);
+    const pvMatch = line.match(/(?:^|\\s)pv\\s+(.+)$/);
     return {
       depth: depthMatch ? Number(depthMatch[1]) : null,
+      selectiveDepth: seldepthMatch ? Number(seldepthMatch[1]) : null,
       score: scoreMatch ? { unit: scoreMatch[1], value: Number(scoreMatch[2]), perspective: perspective } : null,
+      nodes: nodesMatch ? Number(nodesMatch[1]) : null,
+      nodesPerSecond: npsMatch ? Number(npsMatch[1]) : null,
+      elapsedMs: timeMatch ? Number(timeMatch[1]) : null,
       principalVariation: pvMatch ? pvMatch[1].trim() : ""
     };
   }
