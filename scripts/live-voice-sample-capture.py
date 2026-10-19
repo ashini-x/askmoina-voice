@@ -21,7 +21,7 @@ OUTPUT_DIR = Path("artifacts/live-voice-samples")
 SETUP_WAIT_SECONDS = 18
 TURN_WAIT_SECONDS = 38
 # Compare the same prompts across native prebuilt voices. Never use DSP pitch-shifting.
-VOICE_CANDIDATES = ("Leda", "Aoede", "Achernar", "Zephyr")
+VOICE_CANDIDATES = ("Autonoe", "Laomedeia", "Sadachbia", "Puck", "Achird", "Enceladus", "Vindemiatrix", "Despina")
 SAMPLES = [
     (
         "01-reference-phrase",
