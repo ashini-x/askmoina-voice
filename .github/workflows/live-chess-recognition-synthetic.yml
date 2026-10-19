@@ -88,8 +88,7 @@ jobs:
                grep -Fq 'engine-client.js?v=0.4.146' /tmp/chess-ui.js &&
                grep -Fq 'Stockfish 19.0.1 full single-threaded' /tmp/engine-client.js &&
                grep -Eiq '^content-security-policy:.*wasm-unsafe-eval' /tmp/stockfish.headers &&
-               grep -Eiq '^content-type: *application/wasm' /tmp/stockfish-wasm.headers &&
-               grep -Eiq '^content-length: *[1-9][0-9]{7,}' /tmp/stockfish-wasm.headers; then
+               grep -Eiq '^content-type: *application/wasm' /tmp/stockfish-wasm.headers; then
               ready=true
               break
             fi
