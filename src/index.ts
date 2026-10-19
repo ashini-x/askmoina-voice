@@ -231,7 +231,7 @@ function renderSiteInfoPage(pathname: string, appVersion: string): string | null
   const paragraphs = page.paragraphs.map((paragraph) => "<p>" + paragraph + "</p>").join("");
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">" +
-    "<meta name=\"theme-color\" content=\"#000000\"><meta name=\"color-scheme\" content=\"dark\">" +
+    "<meta name=\"theme-color\" content=\"#090A0D\"><meta name=\"color-scheme\" content=\"dark\">" +
     "<link rel=\"icon\" type=\"image/svg+xml\" sizes=\"any\" href=\"/favicon.svg?v=" + version + "\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32.png?v=" + version + "\">" +
     "<link rel=\"stylesheet\" href=\"/native-app.css?v=" + version + "\"><link rel=\"stylesheet\" href=\"/askmoina-liquid-system.css?v=20261019-1\"><link rel=\"stylesheet\" href=\"/askmoina-global-font.css?v=" + version + "\"><title>" + page.title + " · askmoina</title></head>" +
     "<body class=\"native-info-page\" data-page=\"info\"><header class=\"native-info-nav\">" +
@@ -395,7 +395,7 @@ function withPwaStandaloneGate(html: string): string {
       : `<html${attrs} data-askmoina-pwa-gate="pending">`);
 
   // askmoina is a deliberately dark-only, camera-first app.
-  const themeColor = "#000000";
+  const themeColor = "#090A0D";
   const statusBarStyle = "black-translucent";
   // Remove template theme-color tags so installed iOS apps receive one unambiguous value.
   html = html.replace(/<meta\s+name=["']theme-color["'][^>]*>/ig, "");
@@ -3204,8 +3204,8 @@ export default {
                 purpose: "any maskable",
               });
             }
-            manifest.background_color = "#000000";
-            manifest.theme_color = "#000000";
+            manifest.background_color = "#090A0D";
+            manifest.theme_color = "#090A0D";
             responseBody = JSON.stringify(manifest);
             headers.delete("Content-Length");
             headers.delete("ETag");
