@@ -239,7 +239,54 @@ export function reconcileChessObservation(inputState, observation) {
     }
     if (candidateGame.turn() !== checked.sideToMove) continue;
     if (candidateGame.fen().split(" ")[0] !== checked.placement) continue;
-    candidates.push({ game: candidateGame, move: applied });
+    candidates.push({ game: candidateGame, moves: [applied], fens: [candidateGame.fen()] });
+  }
+
+  // A scan can miss the interval between the user's move and the opponent's
+  // reply. Permit exactly two plies only if the complete observed placement
+  // identifies one unique legal sequence. Never guess when multiple sequences fit.
+  if (candidates.length === 0) {
+    const twoPlyCandidates = [];
+    for (const firstLegalMove of currentGame.moves({ verbose: true })) {
+      const afterFirst = new Chess(currentGame.fen());
+      let firstApplied;
+      try {
+        firstApplied = afterFirst.move({
+          from: firstLegalMove.from,
+          to: firstLegalMove.to,
+          promotion: firstLegalMove.promotion
+        });
+      } catch {
+        continue;
+      }
+
+      for (const secondLegalMove of afterFirst.moves({ verbose: true })) {
+        const afterSecond = new Chess(afterFirst.fen());
+        let secondApplied;
+        try {
+          secondApplied = afterSecond.move({
+            from: secondLegalMove.from,
+            to: secondLegalMove.to,
+            promotion: secondLegalMove.promotion
+          });
+        } catch {
+          continue;
+        }
+        if (afterSecond.turn() !== checked.sideToMove) continue;
+        if (afterSecond.fen().split(" ")[0] !== checked.placement) continue;
+        twoPlyCandidates.push({
+          game: afterSecond,
+          moves: [firstApplied, secondApplied],
+          fens: [afterFirst.fen(), afterSecond.fen()]
+        });
+        if (twoPlyCandidates.length > 1) break;
+      }
+      if (twoPlyCandidates.length > 1) break;
+    }
+    if (twoPlyCandidates.length === 1) candidates.push(twoPlyCandidates[0]);
+    else if (twoPlyCandidates.length > 1) {
+      return fail("ambiguous_transition", "More than one legal two-move sequence fits this scan. I have not changed the game history. Improve the view or rescan.");
+    }
   }
 
   if (candidates.length !== 1) {
@@ -248,30 +295,31 @@ export function reconcileChessObservation(inputState, observation) {
     }
     const suffix = state.gameMode === "midgame-seed" ? (state.rightsKnown ? " This game began from a photographed mid-game position; earlier moves and en-passant eligibility remain unknown, although castling rights were confirmed." : " This game began from a photographed mid-game position, so historical moves, castling rights and en-passant eligibility are unknown.") : "";
     return fail(
-      "transition_not_one_legal_move",
-      "I could not match this image to exactly one legal move from the last confirmed position. I have not changed the game history. Scan each move, or use “current position” to safely reseed." + suffix
+      "transition_not_one_or_two_legal_moves",
+      "I could not match this image to one or two legal moves from the last confirmed position. I have not changed the game history. Keep the full board visible and rescan; if several moves were missed, restart tracking from the current position." + suffix
     );
   }
 
   const accepted = candidates[0];
-  const move = accepted.move;
-  const uci = move.from + move.to + (move.promotion || "");
-  const moveRecord = {
-    ply: state.moveHistory.length + 1,
-    uci: uci,
+  const acceptedMoves = accepted.moves || [accepted.move];
+  const acceptedFens = accepted.fens || [accepted.game.fen()];
+  const moveRecords = acceptedMoves.map((move, index) => ({
+    ply: state.moveHistory.length + index + 1,
+    uci: move.from + move.to + (move.promotion || ""),
     san: move.san,
     color: move.color,
     from: move.from,
     to: move.to,
     promotion: move.promotion || null,
     flags: move.flags,
-    fenAfter: accepted.game.fen(),
-    observedAt: timestamp
-  };
+    fenAfter: acceptedFens[index],
+    observedAt: timestamp,
+    ...(acceptedMoves.length > 1 ? { inferredFromStableTwoFrameScan: true } : {})
+  }));
   const nextState = {
     ...state,
     currentFen: accepted.game.fen(),
-    moveHistory: state.moveHistory.concat([moveRecord]),
+    moveHistory: state.moveHistory.concat(moveRecords),
     lastBoardRows: checked.boardRows,
     lastOrientation: checked.orientation,
     lastObservationAt: timestamp,
@@ -280,9 +328,10 @@ export function reconcileChessObservation(inputState, observation) {
   };
   return {
     ok: true,
-    status: "move-registered",
+    status: moveRecords.length > 1 ? "moves-registered" : "move-registered",
     state: nextState,
-    move: moveRecord,
+    move: moveRecords[moveRecords.length - 1],
+    moves: moveRecords,
     orientationChanged: Boolean(state.lastOrientation && state.lastOrientation !== checked.orientation),
     position: inspectPosition(accepted.game)
   };
