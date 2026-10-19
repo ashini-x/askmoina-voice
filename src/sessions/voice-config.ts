@@ -1,4 +1,4 @@
-export const DEFAULT_LIVE_VOICE_NAME = "Leda";
+export const DEFAULT_LIVE_VOICE_NAME = "Zephyr";
 
 /** Legacy stored TTS voice ID; the Gemini Live API does not accept this ID in its live VoiceConfig. */
 export const CANDIDATE_A_LIVE_VOICE_ID = "voice_6f4c602c-c79d-4a54-9bb1-c1549aab9c05";
