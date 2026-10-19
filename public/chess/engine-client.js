@@ -134,13 +134,13 @@ export class StockfishChessEngine {
   }
 
   parseInfoLine(line, perspective) {
-    const depthMatch = line.match(/(?:^|\\s)depth\\s+(\\d+)/);
-    const seldepthMatch = line.match(/(?:^|\\s)seldepth\\s+(\\d+)/);
-    const scoreMatch = line.match(/(?:^|\\s)score\\s+(cp|mate)\\s+(-?\\d+)/);
-    const nodesMatch = line.match(/(?:^|\\s)nodes\\s+(\\d+)/);
-    const npsMatch = line.match(/(?:^|\\s)nps\\s+(\\d+)/);
-    const timeMatch = line.match(/(?:^|\\s)time\\s+(\\d+)/);
-    const pvMatch = line.match(/(?:^|\\s)pv\\s+(.+)$/);
+    const depthMatch = line.match(/(?:^|\s)depth\s+(\d+)/);
+    const seldepthMatch = line.match(/(?:^|\s)seldepth\s+(\d+)/);
+    const scoreMatch = line.match(/(?:^|\s)score\s+(cp|mate)\s+(-?\d+)/);
+    const nodesMatch = line.match(/(?:^|\s)nodes\s+(\d+)/);
+    const npsMatch = line.match(/(?:^|\s)nps\s+(\d+)/);
+    const timeMatch = line.match(/(?:^|\s)time\s+(\d+)/);
+    const pvMatch = line.match(/(?:^|\s)pv\s+(.+)$/);
     return {
       depth: depthMatch ? Number(depthMatch[1]) : null,
       selectiveDepth: seldepthMatch ? Number(seldepthMatch[1]) : null,
