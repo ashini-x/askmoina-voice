@@ -25,9 +25,9 @@ describe("chess assistant popup and main control", () => {
     expect(handler).toContain("void detectChessboard(true)");
     expect(chessUi).toContain("function setPopupOpen(open)");
     expect(chessUi).toContain("persistUntilResult = false");
-    expect(chessUi).toContain("retryStableChessboardRecognition");
+    expect(chessUi).toContain("validateRecognitionCandidate");
     expect(chessUi).not.toContain("if (result) return result;");
-    expect(chessUi).toContain("Clear it and perform a fresh bounded confirmation sequence.");
+    expect(chessUi).toContain("Only take one fresh-frame retry if the first provider read was unusable.");
     expect(chessUi).toContain("let manualScanRequested = false");
     expect(chessUi).toContain("if (manual) manualScanRequested = true");
     expect(chessUi).toContain("Scanning the visible camera frame for the 8×8 board");

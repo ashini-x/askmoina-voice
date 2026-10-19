@@ -160,6 +160,14 @@ describe("board rows and FEN", () => {
     expect(validateBoardRows(tooMany)).toMatchObject({ ok: false, reason: "impossible_piece_count" });
   });
 
+  it("accepts a clear single-pass reading at the more tolerant confidence floor", () => {
+    const reading = strongRecognition(STARTING_ROWS, {
+      confidence: 0.74,
+      squareConfidences: Array(64).fill(0.60)
+    });
+    expect(assessChessboardRecognition(reading)).toMatchObject({ ok: true });
+  });
+
   it("rejects an absent or ambiguous board, partial visibility, unknown orientation, and low confidence", () => {
     expect(assessChessboardRecognition(strongRecognition(STARTING_ROWS, { boardVisible: false }))).toMatchObject({ ok: false, reason: "no_board" });
     expect(assessChessboardRecognition(strongRecognition(STARTING_ROWS, { allFourCornersVisible: false }))).toMatchObject({ ok: false, reason: "partial_board" });
@@ -277,7 +285,11 @@ describe("board rows and FEN", () => {
 });
 
 describe("provider result assessment", () => {
-  it("accepts only a complete high-confidence position", () => {
+  it("accepts a complete clear position at the fast single-pass confidence floor", () => {
+    expect(assessRecognition(strongRecognition(STARTING_ROWS, {
+      confidence: 0.74,
+      squareConfidences: Array(64).fill(0.60)
+    })).ok).toBe(true);
     expect(assessRecognition(strongRecognition()).ok).toBe(true);
   });
 
