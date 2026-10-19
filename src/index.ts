@@ -1334,10 +1334,15 @@ async function handleVoiceSocket(
   // A short-lived production audition flag lets authenticated users compare native
   // prebuilt voices in their own session. Administrative preview access remains supported.
   const adminAccess = voicePreviewRequested || !sessionUserId ? await isAdmin(request, env) : false;
+  const auditionExpiresAt = Date.parse(env.VOICE_AUDITION_EXPIRES_AT || "");
+  const auditionWindowOpen =
+    env.VOICE_AUDITION_ENABLED === "true" &&
+    Number.isFinite(auditionExpiresAt) &&
+    Date.now() < auditionExpiresAt;
   const voiceAuditionAccess = canAccessVoicePreview(
     adminAccess,
     Boolean(sessionUserId),
-    env.VOICE_AUDITION_ENABLED === "true",
+    auditionWindowOpen,
   );
   if (voicePreviewRequested && !voiceAuditionAccess) {
     return json({ error: "admin_required" }, 401);
