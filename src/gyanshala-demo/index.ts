@@ -887,6 +887,18 @@ async function findSmartSupplies(r:Request,e:GEnv):Promise<Response>{
     return reply({error:"supply_search_failed",message:"The campus inventory could not be searched. Please try again."},503);
   }
 }
+
+async function listSupplyHostels(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required",message:"Sign in to use the supply finder."},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  try{
+    await ensureSmartSupplyDemoData(e);
+    const rows=await e.GYANSHALA_DB.prepare("SELECT hostel_id,name,latitude,longitude,coordinate_source,is_demo FROM gyanshala_supply_hostels WHERE status='active' ORDER BY name").all<{hostel_id:string;name:string;latitude:number;longitude:number;coordinate_source:string;is_demo:number}>();
+    return reply({ok:true,hostels:(rows.results||[]).map(h=>({id:h.hostel_id,name:h.name,latitude:h.latitude,longitude:h.longitude,coordinateSource:h.coordinate_source,isDemo:h.is_demo===1})),demoCoordinates:true});
+  }catch{return reply({error:"supply_hostels_unavailable",message:"The campus pickup list could not be loaded."},503);}
+}
 async function reserveSmartSupply(r:Request,e:GEnv,supplyId:string):Promise<Response>{
   const u=await getUser(r,e);
   if(!u)return reply({error:"authentication_required"},401);
@@ -1214,6 +1226,7 @@ async function api(r: Request, e: GEnv): Promise<Response> {
     return createResource(r, e);
   }
   if (p === API + "/my-requests" && r.method === "GET") return listMyRequests(r, e);
+  if(p===API+"/supply-finder/hostels"&&r.method==="GET")return listSupplyHostels(r,e);
   if(p===API+"/supply-finder"&&r.method==="POST"){
     if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
     return findSmartSupplies(r,e);
