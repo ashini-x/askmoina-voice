@@ -5,7 +5,7 @@ Gyanshala-specific assets live in public/gyanshala-demo; backend and schema live
 ## Required integrations
 1. Cloudflare D1 database bound as GYANSHALA_DB.
 2. Resend for college-email verification codes.
-3. Twilio Verify for SMS verification.
+3. Twilio Verify for SMS verification, authenticated with a dedicated API key instead of the account master Auth Token.
 4. GYANSHALA_ALLOWED_EMAIL_DOMAINS as a comma-separated allowlist of the real college domains.
 5. GYANSHALA_OTP_SECRET as a dedicated long random secret.
 
