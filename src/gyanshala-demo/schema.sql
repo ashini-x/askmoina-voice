@@ -151,3 +151,19 @@ CREATE TABLE IF NOT EXISTS gyanshala_community_interests (
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_community_interests_user
   ON gyanshala_community_interests(user_id, created_at);
+
+
+-- Coordinates exist only while a participant has explicitly enabled live sharing.
+-- Rows older than the tracking freshness window are never returned by the API.
+CREATE TABLE IF NOT EXISTS gyanshala_live_locations (
+  request_id TEXT NOT NULL REFERENCES gyanshala_resource_requests(request_id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  latitude REAL NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+  longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+  accuracy_m REAL NOT NULL DEFAULT 0 CHECK (accuracy_m BETWEEN 0 AND 10000),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (request_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_live_locations_updated
+  ON gyanshala_live_locations(request_id, updated_at);
