@@ -1,13 +1,14 @@
 # Gyanshala demo — setup and cleanup
 
-## Campus interfaces 7–9
+## Campus interfaces 7–14
 
 The authenticated preview experience includes:
-- **Home / Dashboard:** greeting, category shortcuts, and nearby resources.
-- **Explore / Browse:** keyword search and category filters backed by the resource catalogue.
-- **Resource Details:** item information, condition, pickup point, owner details, and a saved borrow-request action.
+- **7. Home / Dashboard, 8. Explore / Browse, 9. Resource Details:** browse the shared catalogue, search by keyword, filter by category, and save a borrow request.
+- **12. Add / List an Item:** authenticated students can publish a listing under their own account with category, description, condition, lending/sale/free preference, amount, and campus pickup point.
+- **13. My Requests:** the signed-in student can review their sent requests and filter them by status.
+- **14. Messages:** private conversations are attached to a resource request and are available only when the listing belongs to a real Gyanshala account. Messages are delivered/stored by the Gyanshala API, not external email or SMS.
 
-The dedicated D1 schema includes `gyanshala_resources` and `gyanshala_resource_requests`. In the guarded preview-test environment only, six sample resources are seeded into the Gyanshala preview DB when the catalogue is empty. Production never seeds sample resources. Resource reads and borrow requests require a verified Gyanshala session and a completed student profile. Borrow requests are stored with a pending state; owner approvals, messaging, the My Requests screen, and real pickup routing are separate future interfaces.
+The dedicated D1 schema contains `gyanshala_resources`, `gyanshala_resource_requests`, and `gyanshala_messages`. In guarded preview-test mode only, six sample resources are seeded into the Gyanshala preview DB when the catalogue is empty. Sample catalogue resources have no live owner account: requests against them can be saved and tracked, but they do not start a real conversation. Listings created by signed-in students are associated with their authenticated account, and requests against those listings create eligible message threads. Owner approval/decline, marketplace pickup routing, and external notifications are not included in these interfaces.
 
 
 ## Free preview verification testing
