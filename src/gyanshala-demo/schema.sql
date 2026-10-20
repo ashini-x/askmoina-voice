@@ -86,3 +86,20 @@ CREATE INDEX IF NOT EXISTS idx_gyanshala_requests_requester
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_requests_owner
   ON gyanshala_resource_requests(owner_id, status, created_at);
+
+
+CREATE TABLE IF NOT EXISTS gyanshala_messages (
+  message_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES gyanshala_resource_requests(request_id) ON DELETE CASCADE,
+  sender_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  recipient_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  body TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 1200),
+  read_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_messages_thread
+  ON gyanshala_messages(request_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_messages_recipient
+  ON gyanshala_messages(recipient_id, read_at, created_at);
