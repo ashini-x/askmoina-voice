@@ -21,6 +21,7 @@ describe("Gyanshala campus workflows (interfaces 12–14)", () => {
     expect(create).toContain("if (u.profile_complete !== 1)");
     expect(create).toContain("INSERT INTO gyanshala_resources");
     expect(create).toContain("owner_id");
+    expect(create).toContain('lendingType === "sell" && priceInput < 1');
   });
 
   it("scopes sent requests to the signed-in student", () => {
@@ -42,6 +43,8 @@ describe("Gyanshala campus workflows (interfaces 12–14)", () => {
     expect(app).toContain("function addResourceScreen()");
     expect(app).toContain("function myRequestsScreen()");
     expect(app).toContain("function messagesScreen()");
+    expect(app).toContain("Ask about this item");
+    expect(app).toContain("Request this free item");
     expect(app).toContain('form.id === "listing-form"');
     expect(app).toContain('form.id === "thread-message-form"');
     expect(app).toContain('data-action="my-requests"');
