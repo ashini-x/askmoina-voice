@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/voice-reference-audition.yml"
       - "scripts/live-voice-audition.py"
+      - "scripts/synthetic-passkey-session.mjs"
+      - "wrangler.jsonc"
   workflow_dispatch:
 
 permissions:
@@ -21,29 +23,67 @@ jobs:
     timeout-minutes: 18
     env:
       BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
-      ADMIN_DASHBOARD_USER: ${{ secrets.ADMIN_DASHBOARD_USER }}
-      ADMIN_DASHBOARD_PASSWORD: ${{ secrets.ADMIN_DASHBOARD_PASSWORD }}
     steps:
       - name: Check out the audition harness
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install WebSocket client
+      - name: Install isolated audition dependencies
         run: |
           set -euo pipefail
+          npm install --no-audit --no-fund --legacy-peer-deps
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
           python -m pip install --quiet --disable-pip-version-check websocket-client
           python -m py_compile scripts/live-voice-audition.py
+
+      - name: Wait for the short-lived audition-enabled release
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_version="$(node -p "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc','utf8')).vars.APP_VERSION")"
+          for attempt in $(seq 1 60); do
+            body="$(curl --silent --show-error --max-time 12 "$BASE_URL/api/health" || true)"
+            if node --input-type=module - "$expected_version" "$body" <<'NODE'
+          const expected = process.argv[2];
+          let body;
+          try { body = JSON.parse(process.argv[3]); } catch { process.exit(1); }
+          if (body.ok === true && body.app === "askmoina-voice" && body.version === expected) {
+            console.log(JSON.stringify({productionReleaseReady:true,version:body.version,liveVoice:body.liveVoice}));
+            process.exit(0);
+          }
+          process.exit(1);
+          NODE
+            then exit 0; fi
+            echo "Waiting for release $expected_version to be healthy (attempt $attempt/60)."
+            sleep 10
+          done
+          echo "::error::Production did not expose the expected audition-enabled release."
+          exit 1
 
       - name: Capture same-prompt samples for four native voices
         shell: bash
         run: |
           set -euo pipefail
+          set +x
+          SMOKE_COOKIE="$(node scripts/synthetic-passkey-session.mjs)"
+          if [[ ! "$SMOKE_COOKIE" =~ ^moina_session=[A-Za-z0-9_-]{43}$ ]]; then
+            echo "::error::Synthetic passkey setup did not return a valid session."
+            exit 1
+          fi
+          echo "::add-mask::$SMOKE_COOKIE"
+          export ASKMOINA_SYNTHETIC_COOKIE="$SMOKE_COOKIE"
           python scripts/live-voice-audition.py
 
       - name: Upload audition WAVs and manifest
