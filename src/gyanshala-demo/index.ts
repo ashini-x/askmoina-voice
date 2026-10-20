@@ -374,6 +374,7 @@ async function listResources(r: Request, e: GEnv): Promise<Response> {
   if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
   try {
     await seedPreviewResources(e);
+    await ensurePickupPoints(e);
     const url = new URL(r.url);
     const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
     const categoryValue = url.searchParams.get("category") || "All";
@@ -395,6 +396,7 @@ async function getResource(r: Request, e: GEnv, resourceId: string): Promise<Res
   if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
   try {
     await seedPreviewResources(e);
+    await ensurePickupPoints(e);
     const row = await e.GYANSHALA_DB.prepare(
       "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.resource_id=? AND r.status='available' LIMIT 1"
     ).bind(u.user_id, resourceId).first<ResourceRow>();
@@ -614,7 +616,7 @@ async function ensurePickupPoints(e:GEnv):Promise<void> {
     await db.prepare("INSERT INTO gyanshala_pickup_points(pickup_id,name,area,description,map_x,map_y,latitude,longitude,coordinate_source,walk_minutes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'OpenStreetMap',?,'active',?,?) ON CONFLICT(pickup_id) DO UPDATE SET name=excluded.name,area=excluded.area,description=excluded.description,map_x=excluded.map_x,map_y=excluded.map_y,latitude=excluded.latitude,longitude=excluded.longitude,coordinate_source=excluded.coordinate_source,walk_minutes=excluded.walk_minutes,status='active',updated_at=excluded.updated_at")
       .bind(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],now,now).run();
   }
-  await db.prepare("UPDATE gyanshala_resources SET pickup_location='NIT Silchar Campus',distance_label='Campus-level preview',updated_at=? WHERE owner_id IS NULL AND resource_id LIKE 'gy-rsc-%'").bind(now).run();
+  await db.prepare("UPDATE gyanshala_resources SET owner_name='Gyanshala Preview',owner_branch='Sample listing',pickup_location='NIT Silchar Campus',distance_label='Campus-level preview',updated_at=? WHERE owner_id IS NULL AND resource_id LIKE 'gy-rsc-%'").bind(now).run();
   await db.prepare("UPDATE gyanshala_community_posts SET pickup_location='NIT Silchar Campus',updated_at=? WHERE owner_id IS NULL AND post_id LIKE 'gy-post-%'").bind(now).run();
 }
 async function listPickupLocations(r:Request,e:GEnv):Promise<Response>{
