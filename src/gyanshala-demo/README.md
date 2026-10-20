@@ -1,14 +1,16 @@
 # Gyanshala demo — setup and cleanup
 
-## Campus interfaces 7–14
+## Campus interfaces 7–15
 
 The authenticated preview experience includes:
 - **7. Home / Dashboard, 8. Explore / Browse, 9. Resource Details:** browse the shared catalogue, search by keyword, filter by category, and save a borrow request.
+- **11. Map & Pickup Locations:** an illustrative campus schematic with selectable public pickup points and resources listed at each location. It is **not live GPS navigation**; walking times are preview estimates and must be confirmed on campus.
 - **12. Add / List an Item:** authenticated students can publish a listing under their own account with category, description, condition, lending/sale/free preference, amount, and campus pickup point.
 - **13. My Requests:** the signed-in student can review their sent requests and filter them by status.
-- **14. Messages:** private conversations are attached to a resource request and are available only when the listing belongs to a real Gyanshala account. Messages are delivered/stored by the Gyanshala API, not external email or SMS.
+- **14. Messages:** private conversations are attached to a resource request and are available only when the listing belongs to a real Gyanshala account. Messages are stored by the Gyanshala API, not external email or SMS.
+- **15. Community / Offers & Needs:** students can publish an offer or need, filter/search the community board, express interest, and mark their own posts as fulfilled.
 
-The dedicated D1 schema contains `gyanshala_resources`, `gyanshala_resource_requests`, and `gyanshala_messages`. In guarded preview-test mode only, six sample resources are seeded into the Gyanshala preview DB when the catalogue is empty. Sample catalogue resources have no live owner account: requests against them can be saved and tracked, but they do not start a real conversation. Listings created by signed-in students are associated with their authenticated account, and requests against those listings create eligible message threads. Owner approval/decline, marketplace pickup routing, and external notifications are not included in these interfaces.
+The dedicated D1 schema contains `gyanshala_resources`, `gyanshala_resource_requests`, `gyanshala_messages`, `gyanshala_pickup_points`, `gyanshala_community_posts`, and `gyanshala_community_interests`. In guarded preview-test mode only, six sample resources, eight schematic pickup points, and six community posts are seeded into the Gyanshala preview DB when the relevant tables are empty. Sample resources and posts are clearly marked as preview samples and do not represent live student accounts. Resource requests and interest events are stored against the preview test account; messages require a request associated with a genuine student-owned listing. Owner approval/decline, real GPS routing, and external notifications are not included in these interfaces.
 
 
 ## Free preview verification testing
