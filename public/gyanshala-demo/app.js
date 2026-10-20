@@ -250,10 +250,10 @@
     try {
       map.addLayer({
         id:id,type:"fill-extrusion",source:building.source,"source-layer":building["source-layer"],
-        ...(building.filter?{filter:building.filter}:{}),minzoom:15,
+        filter:["all",["==",["geometry-type"],"Polygon"],["any",["has","render_height"],["has","height"]]],minzoom:15,
         paint:{
           "fill-extrusion-color":"#cbd9ea",
-          "fill-extrusion-height":["coalesce",["to-number",["get","render_height"]],["to-number",["get","height"]],7],
+          "fill-extrusion-height":["coalesce",["to-number",["get","render_height"]],["to-number",["get","height"]]],
           "fill-extrusion-base":["coalesce",["to-number",["get","render_min_height"]],["to-number",["get","min_height"]],0],
           "fill-extrusion-opacity":0.84
         },
