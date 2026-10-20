@@ -9,11 +9,11 @@ Gyanshala-specific assets live in public/gyanshala-demo; backend and schema live
 4. GYANSHALA_ALLOWED_EMAIL_DOMAINS as a comma-separated allowlist of the real college domains.
 5. GYANSHALA_OTP_SECRET as a dedicated long random secret.
 
-## Worker secrets (add all in Workers & Pages → gyanshala-voice → Settings → Variables and Secrets)
+## Worker secrets (add all in Workers & Pages → askmoina-voice → Settings → Variables and Secrets)
 - GYANSHALA_RESEND_API_KEY
 - GYANSHALA_OTP_SECRET
-- TWILIO_ACCOUNT_SID
-- TWILIO_AUTH_TOKEN
+- TWILIO_API_KEY_SID
+- TWILIO_API_KEY_SECRET
 - TWILIO_VERIFY_SERVICE_SID
 - GYANSHALA_EMAIL_FROM: sender address verified in Resend, e.g. Gyanshala <verify@your-real-domain.in>
 - GYANSHALA_ALLOWED_EMAIL_DOMAINS: real college domains, comma-separated, e.g. students.college.ac.in,college.ac.in
