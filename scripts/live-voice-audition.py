@@ -5,7 +5,6 @@ Uses two identical synthetic text prompts for each native voice. It does not
 record input audio or write transcripts/prompt text to artifacts.
 """
 import base64
-import http.cookiejar
 import json
 import os
 import re
@@ -20,6 +19,7 @@ import websocket
 BASE_URL = os.environ.get(
     "BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev"
 ).rstrip("/")
+AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 OUTPUT_DIR = Path("artifacts/voice-reference-audition")
 SETUP_WAIT_SECONDS = 18
 TURN_WAIT_SECONDS = 35
@@ -49,39 +49,6 @@ SAMPLES = [
         "no forced high pitch, no exaggerated sing-song style.",
     ),
 ]
-
-
-def login_admin():
-    username = os.environ.get("ADMIN_DASHBOARD_USER", "").strip()
-    password = os.environ.get("ADMIN_DASHBOARD_PASSWORD", "")
-    if not username or not password:
-        raise RuntimeError(
-            "GitHub Actions secrets ADMIN_DASHBOARD_USER and "
-            "ADMIN_DASHBOARD_PASSWORD are required for the protected voice audition."
-        )
-    jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    payload = json.dumps({"username": username, "password": password}).encode("utf-8")
-    request = urllib.request.Request(
-        BASE_URL + "/admin/login",
-        data=payload,
-        method="POST",
-        headers={
-            "Origin": BASE_URL,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Cache-Control": "no-store",
-        },
-    )
-    with opener.open(request, timeout=20) as response:
-        data = json.loads(response.read().decode("utf-8"))
-    if not isinstance(data, dict) or data.get("ok") is not True:
-        raise RuntimeError("Admin login was rejected; no audition was run.")
-    cookies = {cookie.name: cookie.value for cookie in jar}
-    if not cookies.get("moina_admin_session"):
-        raise RuntimeError("Admin login succeeded without the expected session cookie.")
-    cookie_header = "; ".join(name + "=" + value for name, value in cookies.items())
-    return cookie_header, opener
 
 
 def recv_json_message(ws):
@@ -237,9 +204,9 @@ def capture_sample(cookie_header, voice_name, sample_id, prompt):
             pass
 
 
-def logout_admin(cookie_header):
+def logout_synthetic_session(cookie_header):
     request = urllib.request.Request(
-        BASE_URL + "/admin/logout",
+        BASE_URL + "/api/auth/logout",
         data=b"{}",
         method="POST",
         headers={
@@ -253,25 +220,25 @@ def logout_admin(cookie_header):
         with urllib.request.urlopen(request, timeout=12):
             pass
     except Exception:
-        # Cookie expiry and worker-side validation still protect the short-lived
-        # session; never fail the already captured audition solely on logout.
+        # Never leak a cookie or fail an otherwise complete sample capture on logout.
         pass
 
 
 def main():
     if not BASE_URL.startswith("https://"):
         raise RuntimeError("Production audition requires HTTPS.")
+    if not re.fullmatch(r"moina_session=[A-Za-z0-9_-]{43}", AUTH_COOKIE):
+        raise RuntimeError("A disposable authenticated synthetic passkey session is required.")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    cookie_header, _ = login_admin()
     results = []
     try:
         for voice_id, voice_name in VOICES:
             for sample_id, prompt in SAMPLES:
-                result = capture_sample(cookie_header, voice_name, sample_id, prompt)
+                result = capture_sample(AUTH_COOKIE, voice_name, sample_id, prompt)
                 results.append(result)
                 print("Captured native voice audition: " + voice_id + "/" + sample_id)
     finally:
-        logout_admin(cookie_header)
+        logout_synthetic_session(AUTH_COOKIE)
 
     manifest = {
         "source": "AskMoina production Gemini Live",
