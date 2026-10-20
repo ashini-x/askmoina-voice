@@ -8,6 +8,9 @@ type GEnv = Env & {
   GYANSHALA_OTP_SECRET?: string;
   GYANSHALA_PREVIEW_TEST_MODE?: string;
   GYANSHALA_GOOGLE_MAPS_BROWSER_KEY?: string;
+  GYANSHALA_GOOGLE_MAPS_SERVER_KEY?: string;
+  GYANSHALA_GEMINI_API_KEY?: string;
+  GYANSHALA_GEMINI_MODEL?: string;
 };
 type Challenge = {
   challenge_id: string;
@@ -621,6 +624,308 @@ async function updateLiveLocation(r:Request,e:GEnv,requestId:string):Promise<Res
     return reply({error:"location_update_failed",message:"Could not update your location. Please try again."},503);
   }
 }
+
+const SUPPLY_CATEGORIES = ["Academic", "Books", "Electronics", "Hostel Essentials", "Lab Equipment", "Sports", "Stationery", "Daily Essentials", "Tools", "Other"] as const;
+type SupplyCategory = typeof SUPPLY_CATEGORIES[number];
+type SupplyType = "donation" | "borrow" | "sell";
+type SupplyHostelSeed = { id:string; name:string; latitude:number; longitude:number };
+type SupplySeed = { slug:string; name:string; aliases:string[]; category:SupplyCategory; description:string; condition:string; offerType:SupplyType; basePrice:number };
+const SUPPLY_HOSTELS: SupplyHostelSeed[] = (() => {
+  const names = [
+    "Boys Hostel 1","Boys Hostel 2","Boys Hostel 3","Boys Hostel 4","Boys Hostel 5","Boys Hostel 6","Boys Hostel 7","Boys Hostel 8",
+    "Boys Hostel 9A","Boys Hostel 9B","Boys Hostel 9C","Boys Hostel 9D",
+    "Girls Hostel 1","Girls Hostel 2","Girls Hostel 3","PG Hostel","Married Scholar Hostel"
+  ];
+  return names.map((name,i) => {
+    const row=i%5, col=Math.floor(i/5);
+    return {id:"gy-hostel-"+String(i+1).padStart(2,"0"),name,latitude:24.7551+(row-2)*0.00165+(col%2)*0.00025,longitude:92.78682+(col-1.5)*0.00225+(row%2)*0.00018};
+  });
+})();
+const SUPPLY_SEEDS: SupplySeed[] = [
+  {slug:"scientific-calculator",name:"Scientific Calculator",aliases:["engineering calculator","fx-991 style calculator","calculator"],category:"Electronics",description:"Scientific calculator for engineering mathematics, calculus, circuits and lab calculations.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"basic-calculator",name:"Basic Calculator",aliases:["pocket calculator","desk calculator"],category:"Electronics",description:"Basic four-function calculator for everyday calculations.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"drawing-kit",name:"Engineering Drawing Kit",aliases:["drafter kit","geometry box","set square","drawing instruments"],category:"Stationery",description:"Engineering drawing kit with set squares, compass, divider and pencils.",condition:"Good",offerType:"sell",basePrice:180},
+  {slug:"drawing-board",name:"Mini Drawing Board",aliases:["drafting board","drawing board"],category:"Stationery",description:"Portable board for engineering graphics and drawing practice.",condition:"Fair",offerType:"borrow",basePrice:0},
+  {slug:"lab-coat",name:"Lab Coat",aliases:["white coat","laboratory coat","lab apron"],category:"Lab Equipment",description:"Clean lab coat for practical sessions. Confirm size and lab safety rules.",condition:"Very good",offerType:"donation",basePrice:0},
+  {slug:"safety-goggles",name:"Safety Goggles",aliases:["lab goggles","protective glasses","safety glasses"],category:"Lab Equipment",description:"Protective eyewear for supervised lab work.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"breadboard-kit",name:"Breadboard & Jumper Wire Kit",aliases:["breadboard","jumper wires","electronics kit"],category:"Lab Equipment",description:"Breadboard, jumper wires and common components for supervised electronics practice.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"multimeter",name:"Digital Multimeter",aliases:["multimeter","voltmeter","electrical tester"],category:"Lab Equipment",description:"Digital multimeter for basic voltage and continuity checks under lab guidance.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"soldering-iron",name:"Soldering Iron Kit",aliases:["solder iron","soldering kit","solder wire"],category:"Tools",description:"Basic soldering iron and stand for supervised electronics work.",condition:"Fair",offerType:"borrow",basePrice:0},
+  {slug:"usb-c-charger",name:"USB-C Phone Charger",aliases:["type c charger","phone adapter","fast charger"],category:"Electronics",description:"USB-C wall adapter for phone and small-device charging.",condition:"Good",offerType:"sell",basePrice:250},
+  {slug:"laptop-charger",name:"Laptop Charger",aliases:["notebook charger","power adapter","laptop adapter"],category:"Electronics",description:"Spare laptop power adapter. Confirm connector and wattage before pickup.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"power-bank",name:"Power Bank",aliases:["portable charger","battery pack"],category:"Electronics",description:"Portable battery pack for phones and other compatible devices.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"wired-mouse",name:"Wired USB Mouse",aliases:["computer mouse","mouse"],category:"Electronics",description:"Wired USB mouse for laptop or desktop use.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"keyboard",name:"USB Keyboard",aliases:["computer keyboard","external keyboard"],category:"Electronics",description:"External keyboard for laptop or desktop use.",condition:"Fair",offerType:"borrow",basePrice:0},
+  {slug:"hdmi-cable",name:"HDMI Cable",aliases:["display cable","monitor cable","hdmi"],category:"Electronics",description:"HDMI cable for connecting a laptop to a display or projector.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"ethernet-cable",name:"Ethernet Cable",aliases:["lan cable","network cable","rj45 cable"],category:"Electronics",description:"Ethernet cable for compatible wired network connections.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"headphones",name:"Wired Earphones",aliases:["earbuds","headphones","audio earphones"],category:"Electronics",description:"Wired earphones for study and online classes.",condition:"Good",offerType:"sell",basePrice:100},
+  {slug:"semester-books",name:"Semester Book Bundle",aliases:["textbook bundle","semester books","engineering books","used books"],category:"Books",description:"A bundle of used semester textbooks and reference books. Ask for the included titles.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"dsa-textbook",name:"Data Structures Textbook",aliases:["dsa book","data structures","algorithms textbook"],category:"Books",description:"Used data structures and algorithms textbook for semester study.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"maths-textbook",name:"Engineering Mathematics Textbook",aliases:["maths book","calculus book","engineering maths"],category:"Books",description:"Mathematics reference book covering calculus, linear algebra and engineering topics.",condition:"Good",offerType:"sell",basePrice:220},
+  {slug:"notebook-pack",name:"Notebook Pack",aliases:["notebooks","registers","class notebook"],category:"Stationery",description:"Ruled notebooks for lecture notes and assignments.",condition:"New",offerType:"sell",basePrice:90},
+  {slug:"pens-highlighters",name:"Pens & Highlighters Set",aliases:["pens","markers","highlighter pens","stationery"],category:"Stationery",description:"Pens and highlighters for note-taking and revision.",condition:"New",offerType:"donation",basePrice:0},
+  {slug:"exam-pad",name:"Exam Writing Pad",aliases:["clipboard","writing board","exam board"],category:"Stationery",description:"Firm writing pad for tests and everyday note-taking.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"extension-board",name:"Extension Board",aliases:["power strip","extension cord","multi plug"],category:"Hostel Essentials",description:"Extension board for hostel desk use. Check socket and electrical safety before use.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"desk-lamp",name:"LED Study Lamp",aliases:["table lamp","reading lamp","study light"],category:"Hostel Essentials",description:"LED desk lamp for late-evening study.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"mini-fan",name:"Mini Desk Fan",aliases:["table fan","small fan","desk fan"],category:"Hostel Essentials",description:"Compact desk fan for a study table.",condition:"Fair",offerType:"sell",basePrice:300},
+  {slug:"umbrella",name:"Umbrella",aliases:["rain umbrella","monsoon umbrella"],category:"Daily Essentials",description:"Foldable umbrella for rainy campus walks.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"raincoat",name:"Raincoat",aliases:["rain jacket","waterproof jacket"],category:"Daily Essentials",description:"Rain protection for walking around campus in wet weather.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"water-bottle",name:"Reusable Water Bottle",aliases:["water flask","bottle"],category:"Daily Essentials",description:"Reusable water bottle for classes and campus activities.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"lunch-box",name:"Reusable Lunch Box",aliases:["tiffin","food container","lunch container"],category:"Daily Essentials",description:"Reusable food container for carrying meals or snacks.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"bed-sheet",name:"Spare Bed Sheet",aliases:["bedsheet","linen","hostel bedsheet"],category:"Hostel Essentials",description:"Clean spare bed sheet for hostel use.",condition:"Good",offerType:"sell",basePrice:180},
+  {slug:"pillow",name:"Pillow",aliases:["sleeping pillow","hostel pillow"],category:"Hostel Essentials",description:"Spare pillow for a hostel room.",condition:"Good",offerType:"sell",basePrice:150},
+  {slug:"laundry-basket",name:"Laundry Basket",aliases:["clothes basket","laundry hamper"],category:"Hostel Essentials",description:"Compact laundry basket for a shared hostel room.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"toiletry-kit",name:"Toiletry Kit",aliases:["toiletries","toothbrush kit","personal care kit"],category:"Daily Essentials",description:"Basic personal-care kit for hostel living.",condition:"New",offerType:"sell",basePrice:120},
+  {slug:"bicycle-lock",name:"Bicycle Lock",aliases:["cycle lock","bike lock","cable lock"],category:"Hostel Essentials",description:"Cable lock for a bicycle parked on campus.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"sports-shoes",name:"Sports Shoes",aliases:["running shoes","football shoes","sneakers"],category:"Sports",description:"Pair of used sports shoes. Confirm size before requesting.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"football",name:"Football",aliases:["soccer ball","football ball"],category:"Sports",description:"Football for recreational games on campus.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"badminton-racket",name:"Badminton Racket",aliases:["racket","shuttle racket"],category:"Sports",description:"Badminton racket for casual play.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"first-aid-kit",name:"Basic First-Aid Kit",aliases:["bandages","first aid","medical kit"],category:"Daily Essentials",description:"Basic first-aid supplies. Check expiry dates and use responsibly.",condition:"New",offerType:"donation",basePrice:0},
+  {slug:"tool-kit",name:"Small Tool Kit",aliases:["screwdriver set","tools","repair kit"],category:"Tools",description:"Small basic tool kit for simple supervised repairs.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"usb-drive",name:"USB Flash Drive",aliases:["pen drive","thumb drive","usb stick"],category:"Electronics",description:"USB storage drive for moving personal files.",condition:"Good",offerType:"sell",basePrice:180},
+  {slug:"phone-stand",name:"Phone Stand",aliases:["mobile holder","phone holder"],category:"Electronics",description:"Desk phone stand for study or video calls.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"thermos",name:"Thermal Flask",aliases:["thermos","hot water flask","vacuum flask"],category:"Daily Essentials",description:"Reusable insulated flask for hot or cold drinks.",condition:"Good",offerType:"sell",basePrice:220},
+  {slug:"graph-paper",name:"Graph Paper Pack",aliases:["graph sheets","engineering graph paper"],category:"Stationery",description:"Graph paper for assignments, lab records and plotting.",condition:"New",offerType:"donation",basePrice:0},
+  {slug:"whiteboard-markers",name:"Whiteboard Markers",aliases:["board markers","dry erase markers"],category:"Stationery",description:"Markers for group study and whiteboard practice.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"laptop-stand",name:"Laptop Stand",aliases:["notebook stand","computer stand"],category:"Electronics",description:"Foldable stand to raise a laptop on a study desk.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"phone-tripod",name:"Mini Phone Tripod",aliases:["mobile tripod","phone holder tripod"],category:"Electronics",description:"Small tripod for a phone or small camera.",condition:"Good",offerType:"borrow",basePrice:0},
+  {slug:"lab-record-book",name:"Lab Record Notebook",aliases:["practical record book","lab journal"],category:"Lab Equipment",description:"Notebook for recording lab observations and practical results.",condition:"New",offerType:"sell",basePrice:80},
+  {slug:"safety-mask",name:"Reusable Safety Mask",aliases:["protective mask","dust mask"],category:"Lab Equipment",description:"Reusable face covering for dusty workshop environments.",condition:"Good",offerType:"donation",basePrice:0},
+  {slug:"screwdriver-set",name:"Precision Screwdriver Set",aliases:["small screwdriver","electronics screwdriver"],category:"Tools",description:"Precision screwdriver set for small devices; do not open mains-powered equipment.",condition:"Good",offerType:"borrow",basePrice:0}
+];
+function normalizeSupplyText(value: unknown, max = 100): string {
+  return typeof value === "string" ? value.normalize("NFKC").replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,max) : "";
+}
+async function ensureSmartSupplyDemoData(e:GEnv):Promise<void>{
+  if(!previewTestMode(e)||!e.GYANSHALA_DB)return;
+  const db=e.GYANSHALA_DB;
+  const hostelCount=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_supply_hostels WHERE is_demo=1").first<{total:number}>();
+  if(Number(hostelCount?.total||0)<SUPPLY_HOSTELS.length){
+    for(const h of SUPPLY_HOSTELS){
+      await db.prepare("INSERT INTO gyanshala_supply_hostels(hostel_id,name,latitude,longitude,coordinate_source,is_demo,status,created_at,updated_at) VALUES(?,?,?,?,'demo_approximation',1,'active',?,?) ON CONFLICT(hostel_id) DO NOTHING")
+        .bind(h.id,h.name,h.latitude,h.longitude,new Date().toISOString(),new Date().toISOString()).run();
+    }
+  }
+  const expected=SUPPLY_HOSTELS.length*SUPPLY_SEEDS.length;
+  const inventoryCount=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_supply_inventory WHERE is_demo=1").first<{total:number}>();
+  if(Number(inventoryCount?.total||0)>=expected)return;
+  const now=new Date().toISOString();
+  for(let h=0;h<SUPPLY_HOSTELS.length;h++){
+    const hostel=SUPPLY_HOSTELS[h];
+    for(let i=0;i<SUPPLY_SEEDS.length;i++){
+      const item=SUPPLY_SEEDS[i];
+      const quantity=((h*7+i*3)%11===0)?0:1+((h*3+i*5)%5);
+      const status=quantity>0?"available":"unavailable";
+      const offerType=item.offerType;
+      const isFree=offerType==="donation"||offerType==="borrow";
+      const price=offerType==="sell"?Math.max(10,item.basePrice+(((h+i)%4)*15)):0;
+      const condition=item.condition;
+      const id="gy-demo-supply-"+hostel.id.slice(-2)+"-"+item.slug;
+      await db.prepare("INSERT INTO gyanshala_supply_inventory(supply_id,hostel_id,name,aliases,category,description,item_condition,offer_type,price_amount,quantity_available,status,is_demo,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(supply_id) DO NOTHING")
+        .bind(id,hostel.id,item.name,item.aliases.join("|"),item.category,item.description,condition,offerType,price,quantity,status,now,now).run();
+    }
+  }
+}
+function parseSupplyQueryFallback(query:string):Record<string,unknown>{
+  const q=query.toLowerCase();
+  const category=SUPPLY_CATEGORIES.find(c=>q.includes(c.toLowerCase()))||null;
+  const guessedType:SupplyType|"any"=/(donat|free|give away|no cost)/.test(q)?"donation":/(borrow|lend|loan|temporary)/.test(q)?"borrow":/(buy|purchase|for sale|under rupees|under rs|under ₹|price)/.test(q)?"sell":"any";
+  const priceMatch=q.match(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?(\d{1,6})/);
+  const item=query.replace(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?\d{1,6}/ig,"").replace(/\b(please|i need|i want|find me|find|looking for|show me|near me|available|available now|under|below|for rent|to borrow|to buy|for sale)\b/ig," ").replace(/\s+/g," ").trim();
+  return {isSupplySearch:true,item:item||query,aliases:[],category,offerType:guessedType,maxPrice:priceMatch?Number(priceMatch[1]):null,quantity:1,urgent:/\b(urgent|today|now|immediately|tomorrow|practical|exam)\b/.test(q)};
+}
+async function interpretSupplySearch(e:GEnv,query:string):Promise<{filters:Record<string,unknown>;usedGemini:boolean}>{
+  const key=e.GYANSHALA_GEMINI_API_KEY?.trim();
+  if(!key)return {filters:parseSupplyQueryFallback(query),usedGemini:false};
+  const schema={
+    type:"OBJECT",properties:{
+      isSupplySearch:{type:"BOOLEAN",description:"True only when the user is seeking a physical item/supply available on campus."},
+      item:{type:"STRING",description:"Short canonical physical item name, empty for unrelated conversation."},
+      aliases:{type:"ARRAY",items:{type:"STRING"},description:"Up to six useful item synonyms."},
+      category:{type:["STRING","NULL"],enum:[...SUPPLY_CATEGORIES,null]},
+      offerType:{type:"STRING",enum:["donation","borrow","sell","any"]},
+      maxPrice:{type:["NUMBER","NULL"]},
+      quantity:{type:"INTEGER",minimum:1,maximum:10},
+      urgent:{type:"BOOLEAN"}
+    },required:["isSupplySearch","item","aliases","category","offerType","maxPrice","quantity","urgent"]
+  };
+  const model=(e.GYANSHALA_GEMINI_MODEL||"gemini-3.8-flash").trim().replace(/[^A-Za-z0-9._-]/g,"");
+  try{
+    const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent?key="+encodeURIComponent(key),{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        systemInstruction:{parts:[{text:"You are the query parser for Gyanshala Smart Supply Locator at NIT Silchar. This is NOT a chatbot. Only interpret searches for physical supplies that could exist in a campus inventory. Never answer the user, never recommend imaginary stock, never create facts. For questions, greetings, coding help, jokes, weather, or unrelated conversation, set isSupplySearch=false and item empty. Extract item synonyms and strict filters only. Return JSON matching the provided schema."}]},
+        contents:[{role:"user",parts:[{text:query.slice(0,500)}]}],
+        generationConfig:{responseMimeType:"application/json",responseSchema:schema,temperature:0}
+      })
+    });
+    if(!response.ok)throw new Error("Gemini supply parser returned "+response.status);
+    const data=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>} ;
+    const text=data.candidates?.[0]?.content?.parts?.map(p=>p.text||"").join("")||"";
+    const value=JSON.parse(text) as Record<string,unknown>;
+    const isSupplySearch=value.isSupplySearch===true;
+    const item=normalizeSupplyText(value.item,80);
+    const aliases=Array.isArray(value.aliases)?value.aliases.filter((x):x is string=>typeof x==="string").map(x=>normalizeSupplyText(x,60)).filter(Boolean).slice(0,6):[];
+    const category=typeof value.category==="string"&&SUPPLY_CATEGORIES.includes(value.category as SupplyCategory)?value.category:null;
+    const offerType=["donation","borrow","sell","any"].includes(String(value.offerType))?String(value.offerType):"any";
+    const maxPrice=typeof value.maxPrice==="number"&&Number.isFinite(value.maxPrice)&&value.maxPrice>=0&&value.maxPrice<=1000000?Math.round(value.maxPrice):null;
+    const quantity=typeof value.quantity==="number"&&Number.isFinite(value.quantity)?Math.max(1,Math.min(10,Math.round(value.quantity))):1;
+    return {filters:{isSupplySearch,item,aliases,category,offerType,maxPrice,quantity,urgent:value.urgent===true},usedGemini:true};
+  }catch{
+    return {filters:parseSupplyQueryFallback(query),usedGemini:false};
+  }
+}
+function distanceMetersBetween(aLat:number,aLng:number,bLat:number,bLng:number):number{
+  const rad=(v:number)=>v*Math.PI/180;
+  const dLat=rad(bLat-aLat),dLng=rad(bLng-aLng);
+  const value=Math.sin(dLat/2)**2+Math.cos(rad(aLat))*Math.cos(rad(bLat))*Math.sin(dLng/2)**2;
+  return 6371000*2*Math.atan2(Math.sqrt(value),Math.sqrt(Math.max(0,1-value)));
+}
+async function computeWalkingDistances(e:GEnv,origin:{latitude:number;longitude:number}|null,hostels:SupplyHostelSeed[]):Promise<Map<string,{meters:number;seconds:number}>|null>{
+  const key=e.GYANSHALA_GOOGLE_MAPS_SERVER_KEY?.trim();
+  if(!key||!origin||!hostels.length)return null;
+  try{
+    const response=await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Goog-Api-Key":key,"X-Goog-FieldMask":"originIndex,destinationIndex,distanceMeters,duration,status,condition"},
+      body:JSON.stringify({
+        origins:[{waypoint:{location:{latLng:{latitude:origin.latitude,longitude:origin.longitude}}}}],
+        destinations:hostels.map(h=>({waypoint:{location:{latLng:{latitude:h.latitude,longitude:h.longitude}}}})),
+        travelMode:"WALK"
+      })
+    });
+    if(!response.ok)return null;
+    const payload=await response.json() as Array<{originIndex?:number;destinationIndex?:number;distanceMeters?:number;duration?:string;condition?:string;status?:{code?:number}}>;
+    if(!Array.isArray(payload))return null;
+    const result=new Map<string,{meters:number;seconds:number}>();
+    for(const row of payload){
+      const hostel=hostels[row.destinationIndex||0];
+      if(!hostel||row.condition==="ROUTE_NOT_FOUND"||row.status&&row.status.code&&row.status.code!==0||typeof row.distanceMeters!=="number")continue;
+      const seconds=typeof row.duration==="string"?Number(row.duration.replace(/s$/,"")):0;
+      result.set(hostel.id,{meters:row.distanceMeters,seconds:Number.isFinite(seconds)?seconds:0});
+    }
+    return result.size?result:null;
+  }catch{return null;}
+}
+async function findSmartSupplies(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required",message:"Sign in to use the campus supply finder."},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete",message:"Complete your student profile first."},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  const query=normalizeSupplyText(b?.query,500);
+  if(query.length<2)return reply({error:"query_required",message:"Describe the physical item you need."},400);
+  const lat=typeof b?.latitude==="number"?b.latitude:Number(b?.latitude);
+  const lng=typeof b?.longitude==="number"?b.longitude:Number(b?.longitude);
+  const hasGps=Number.isFinite(lat)&&lat>=-90&&lat<=90&&Number.isFinite(lng)&&lng>=-180&&lng<=180;
+  const originHostelId=normalizeSupplyText(b?.originHostelId,60);
+  try{
+    await ensureSmartSupplyDemoData(e);
+    const interpreted=await interpretSupplySearch(e,query);
+    const filters=interpreted.filters;
+    if(filters.isSupplySearch!==true||!normalizeSupplyText(filters.item,80)){
+      return reply({ok:true,usedGemini:interpreted.usedGemini,mode:interpreted.usedGemini?"gemini":"keyword_fallback",isSupplySearch:false,message:"I’m Gyanshala’s supply finder. Describe a physical item you need (for example, “borrow a scientific calculator under ₹300 near my hostel”). I only search campus inventory; I don’t handle general conversations.",results:[]});
+    }
+    const db=e.GYANSHALA_DB;
+    const hostelRows=await db.prepare("SELECT hostel_id,name,latitude,longitude,coordinate_source,is_demo FROM gyanshala_supply_hostels WHERE status='active' ORDER BY name").all<{hostel_id:string;name:string;latitude:number;longitude:number;coordinate_source:string;is_demo:number}>();
+    const hostels=(hostelRows.results||[]).map(h=>({id:h.hostel_id,name:h.name,latitude:h.latitude,longitude:h.longitude,coordinateSource:h.coordinate_source,isDemo:h.is_demo===1}));
+    const selectedHostel=hostels.find(h=>h.id===originHostelId)||null;
+    const origin=hasGps?{latitude:lat,longitude:lng}:selectedHostel?{latitude:selectedHostel.latitude,longitude:selectedHostel.longitude}:null;
+    const terms=[normalizeSupplyText(filters.item,80),...(Array.isArray(filters.aliases)?filters.aliases.filter((x):x is string=>typeof x==="string").slice(0,6):[])].filter(x=>x.length>=2);
+    const deduped=[...new Set(terms.map(x=>x.toLowerCase()))];
+    const category=typeof filters.category==="string"&&SUPPLY_CATEGORIES.includes(filters.category as SupplyCategory)?filters.category:null;
+    const offer=String(filters.offerType||"any");
+    const quantity=Math.max(1,Math.min(10,Number(filters.quantity)||1));
+    const maxPrice=typeof filters.maxPrice==="number"?filters.maxPrice:null;
+    const clauses=deduped.map(()=>"(lower(s.name) LIKE ? OR lower(s.aliases) LIKE ? OR lower(s.description) LIKE ? OR lower(s.category) LIKE ?)");
+    const binds:unknown[]=[quantity];
+    if(maxPrice!==null)binds.push(maxPrice);
+    binds.push(...deduped.flatMap(t=>{const like="%"+t+"%";return[like,like,like,like];}));
+    const where=["s.status='available'","s.quantity_available>=?"];
+    if(maxPrice!==null)where.push("s.price_amount<=?");
+    if(offer==="donation"||offer==="borrow"||offer==="sell"){where.push("s.offer_type=?");binds.push(offer);}
+    if(category){where.push("s.category=?");binds.push(category);}
+    if(clauses.length)where.push("("+clauses.join(" OR ")+")");
+    const result=await db.prepare(
+      "SELECT s.supply_id,s.name,s.aliases,s.category,s.description,s.item_condition,s.offer_type,s.price_amount,s.quantity_available,s.is_demo,s.updated_at,h.hostel_id,h.name AS hostel_name,h.latitude,h.longitude,h.coordinate_source FROM gyanshala_supply_inventory s JOIN gyanshala_supply_hostels h ON h.hostel_id=s.hostel_id WHERE "+where.join(" AND ")+" ORDER BY s.name LIMIT 500"
+    ).bind(...binds).all<{supply_id:string;name:string;aliases:string;category:string;description:string;item_condition:string;offer_type:SupplyType;price_amount:number;quantity_available:number;is_demo:number;updated_at:string;hostel_id:string;hostel_name:string;latitude:number;longitude:number;coordinate_source:string}>();
+    const rows=result.results||[];
+    const routeHostels=[...new Map(rows.map(x=>[x.hostel_id,{id:x.hostel_id,name:x.hostel_name,latitude:x.latitude,longitude:x.longitude}])).values()];
+    const walking=await computeWalkingDistances(e,origin,routeHostels);
+    const scored=rows.map(row=>{
+      const name=row.name.toLowerCase(),aliases=row.aliases.toLowerCase(),desc=(row.description+" "+row.category).toLowerCase();
+      let relevance=0;
+      for(const term of deduped){if(name===term)relevance+=120;else if(name.includes(term))relevance+=80;if(aliases.includes(term))relevance+=45;if(desc.includes(term))relevance+=20;}
+      if(category&&row.category===category)relevance+=30;
+      const straight=origin?distanceMetersBetween(origin.latitude,origin.longitude,row.latitude,row.longitude):null;
+      const route=walking?.get(row.hostel_id)||null;
+      const distance=route?.meters??straight;
+      return {...row,relevance,distanceMeters:distance,straightLineMeters:straight,walkingDurationSeconds:route?.seconds??null,distanceType:route?"walking_route":straight!==null?"straight_line_estimate":"unknown"};
+    }).sort((x,y)=>{
+      if(origin&&x.distanceMeters!==null&&y.distanceMeters!==null&&x.distanceMeters!==y.distanceMeters)return x.distanceMeters-y.distanceMeters;
+      if(y.relevance!==x.relevance)return y.relevance-x.relevance;
+      return x.price_amount-y.price_amount;
+    });
+    const limited=scored.slice(0,40).map(x=>({
+      id:x.supply_id,name:x.name,category:x.category,description:x.description,condition:x.item_condition,
+      offerType:x.offer_type,priceAmount:x.price_amount,quantityAvailable:x.quantity_available,
+      hostelId:x.hostel_id,hostelName:x.hostel_name,latitude:x.latitude,longitude:x.longitude,
+      distanceMeters:x.distanceMeters,distanceType:x.distanceType,walkingDurationSeconds:x.walkingDurationSeconds,
+      coordinateSource:x.coordinate_source,isDemo:x.is_demo===1,updatedAt:x.updated_at,
+      directionsUrl:"https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(x.latitude+","+x.longitude)+"&travelmode=walking"
+    }));
+    return reply({ok:true,usedGemini:interpreted.usedGemini,mode:interpreted.usedGemini?"gemini":"keyword_fallback",isSupplySearch:true,query,filters:{
+      item:filters.item,aliases:deduped,category,offerType:offer,maxPrice,quantity,urgent:filters.urgent===true
+    },origin:origin?{latitude:origin.latitude,longitude:origin.longitude,source:hasGps?"gps_opt_in":"selected_hostel"}:null,
+      routeQuality:walking?"google_walking_route":origin?"straight_line_demo_estimate":"not_available",
+      googleMapsBrowserKey:e.GYANSHALA_GOOGLE_MAPS_BROWSER_KEY||null,
+      results:limited,totalMatches:scored.length,
+      dataNotice:"Preview inventory is artificial test data. Hostel names follow public NIT Silchar listings, but coordinates are synthetic and must not be used as real directions."
+    });
+  }catch{
+    return reply({error:"supply_search_failed",message:"The campus inventory could not be searched. Please try again."},503);
+  }
+}
+async function reserveSmartSupply(r:Request,e:GEnv,supplyId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  const quantity=typeof b?.quantity==="number"?Math.round(b.quantity):1;
+  if(!Number.isInteger(quantity)||quantity<1||quantity>10)return reply({error:"invalid_quantity",message:"Request between 1 and 10 units."},400);
+  const db=e.GYANSHALA_DB;
+  try{
+    await ensureSmartSupplyDemoData(e);
+    const supply=await db.prepare("UPDATE gyanshala_supply_inventory SET quantity_available=quantity_available-?,status=CASE WHEN quantity_available-?<=0 THEN 'unavailable' ELSE 'available' END,updated_at=? WHERE supply_id=? AND status='available' AND quantity_available>=? RETURNING supply_id,name,hostel_id,quantity_available")
+      .bind(quantity,quantity,new Date().toISOString(),supplyId,quantity).first<{supply_id:string;name:string;hostel_id:string;quantity_available:number}>();
+    if(!supply)return reply({error:"supply_unavailable",message:"That quantity is no longer available. Search again to see the nearest available match."},409);
+    const requestId="gysr_"+token(18),now=new Date().toISOString();
+    try{
+      await db.prepare("INSERT INTO gyanshala_supply_requests(request_id,supply_id,requester_id,quantity,status,is_demo,created_at,updated_at) VALUES(?,?,?,?,'reserved',1,?,?)")
+        .bind(requestId,supplyId,u.user_id,quantity,now,now).run();
+    }catch{
+      await db.prepare("UPDATE gyanshala_supply_inventory SET quantity_available=quantity_available+?,status='available',updated_at=? WHERE supply_id=?").bind(quantity,now,supplyId).run();
+      throw new Error("reservation_insert_failed");
+    }
+    return reply({ok:true,requestId,supplyId,name:supply.name,quantity,status:"reserved",remaining:supply.quantity_available,hostelId:supply.hostel_id,message:"Reserved in preview. This is test inventory, not a real student offer."},201);
+  }catch{
+    return reply({error:"reservation_failed",message:"Could not reserve the supply. Search again and retry."},503);
+  }
+}
+async function cancelSmartSupplyReservation(r:Request,e:GEnv,requestId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required"},401);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  try{
+    const db=e.GYANSHALA_DB,now=new Date().toISOString();
+    const request=await db.prepare("UPDATE gyanshala_supply_requests SET status='cancelled',updated_at=? WHERE request_id=? AND requester_id=? AND status='reserved' RETURNING supply_id,quantity")
+      .bind(now,requestId,u.user_id).first<{supply_id:string;quantity:number}>();
+    if(!request)return reply({error:"reservation_not_found",message:"An active reservation for this account was not found."},404);
+    await db.prepare("UPDATE gyanshala_supply_inventory SET quantity_available=quantity_available+?,status='available',updated_at=? WHERE supply_id=?").bind(request.quantity,now,request.supply_id).run();
+    return reply({ok:true,requestId,status:"cancelled",message:"Reservation cancelled and demo stock restored."});
+  }catch{return reply({error:"reservation_cancel_failed",message:"Could not cancel this reservation."},503);}
+}
 type MessageThreadRow = {
   request_id:string; status:string; request_created_at:string; resource_id:string; resource_title:string; category:string;
   other_name:string|null; other_branch:string|null; last_body:string|null; last_message_at:string|null;
@@ -908,6 +1213,23 @@ async function api(r: Request, e: GEnv): Promise<Response> {
     return createResource(r, e);
   }
   if (p === API + "/my-requests" && r.method === "GET") return listMyRequests(r, e);
+  if(p===API+"/supply-finder"&&r.method==="POST"){
+    if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+    return findSmartSupplies(r,e);
+  }
+  if(p===API+"/supplies/reservations"&&r.method==="POST"){
+    if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+    const b=await body(r);const supplyId=normalizeSupplyText(b?.supplyId,100);
+    if(!supplyId||! /^[A-Za-z0-9_-]{1,100}$/.test(supplyId))return reply({error:"invalid_supply_id"},400);
+    return reserveSmartSupply(r,e,supplyId);
+  }
+  const reservationPrefix=API+"/supplies/reservations/";
+  if(p.startsWith(reservationPrefix)&&r.method==="POST"&&p.endsWith("/cancel")){
+    if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+    const id=p.slice(reservationPrefix.length,-7).replace(/\/$/,"");
+    if(!id||! /^[A-Za-z0-9_-]{1,100}$/.test(id))return reply({error:"reservation_not_found"},404);
+    return cancelSmartSupplyReservation(r,e,id);
+  }
   const requestsPrefix=API+"/requests/";
   if(p.startsWith(requestsPrefix)){
     const parts=p.slice(requestsPrefix.length).split("/");
