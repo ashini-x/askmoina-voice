@@ -479,7 +479,8 @@
     }
   }
   function updateTrackingPolling() {
-    if(state.screen!=="track"||!state.trackingInfo||!state.trackingInfo.canTrack)return;
+    const enabled=state.screen==="track"&&state.trackingInfo&&state.trackingInfo.canTrack;
+    if(!enabled){if(state.trackingPollTimer){window.clearInterval(state.trackingPollTimer);state.trackingPollTimer=null;}return;}
     if(!state.trackingPollTimer)state.trackingPollTimer=window.setInterval(()=>refreshTrackingRequest(true),5000);
   }
   function loadGoogleMapsScript(key) {
@@ -748,7 +749,8 @@
     try {
       const result=await api("/my-requests",null,"GET");
       state.myRequests=Array.isArray(result.requests)?result.requests:[];
-    } catch(e) { state.requestsError=e.message || "Please try again."; state.myRequests=[]; }
+      state.incomingRequests=Array.isArray(result.incomingRequests)?result.incomingRequests:[];
+    } catch(e) { state.requestsError=e.message || "Please try again."; state.myRequests=[]; state.incomingRequests=[]; }
     finally { state.requestsLoading=false; render(); }
   }
   async function loadMessages() {
@@ -870,6 +872,13 @@
   }
 
   function render() {
+    if(state.screen!=="track"){
+      if(state.trackingPollTimer){window.clearInterval(state.trackingPollTimer);state.trackingPollTimer=null;}
+      if(state.locationWatchId!==null&&navigator.geolocation){navigator.geolocation.clearWatch(state.locationWatchId);state.locationWatchId=null;}
+      if(state.trackingShareEnabled&&state.trackingRequestId)api("/requests/"+encodeURIComponent(state.trackingRequestId)+"/location",{stop:true},"POST").catch(()=>{});
+      state.trackingShareEnabled=false;
+      state.trackingMapInstance=null;state.trackingMapMarkers={};state.trackingMapRequestId="";
+    }
     releaseCampusMap();
     state.message = "";
     if (state.screen === "splash") return splash();
@@ -881,7 +890,8 @@
     if (state.screen === "home") return dashboard();
     if (state.screen === "explore") return browse();
     if (state.screen === "detail") return detail();
-    if (state.screen === "map") return pickupMapScreen();
+    if (state.screen === "map") return trackingHubScreen();
+    if (state.screen === "track") return requestTrackingScreen();
     if (state.screen === "community") return communityScreen();
     if (state.screen === "listing") return addResourceScreen();
     if (state.screen === "my-requests") return myRequestsScreen();
@@ -993,7 +1003,12 @@
       navigate("splash"); return;
     }
 
-    if (name === "map") { await loadPickupLocations(); return; }
+    if (name === "map") { await loadTrackingHub(); return; }
+    if (name === "request-scope") { state.requestScope=id==="received"?"received":"sent";state.requestFilter="All";render();return; }
+    if (name === "request-status") { const target=btn.getAttribute("data-status");if(target)await changeRequestStatus(id,target);return; }
+    if (name === "track-request") { await loadTrackingRequest(id);return; }
+    if (name === "start-location-share") { await startLiveLocationShare();return; }
+    if (name === "stop-location-share") { await stopLiveLocationShare();return; }
 
     if (name === "select-pickup") { state.pickupSelectedId=id||"";state.mapFocusId=id||"";render();return; }
     if (name === "reset-campus-map") { state.campusMapView=null;state.mapFocusId="";state.mapSearch="";state.pickupSelectedId=state.pickupPoints[0]?state.pickupPoints[0].id:"";render();return; }
@@ -1034,7 +1049,7 @@
     if (name === "close-community-post") { await closeCommunityPost(id);return; }
     if (name === "explore") { state.screen = "explore"; render(); refreshResources(); return; }
     if (name === "add-resource") { state.workspaceMessage=""; navigate("listing"); return; }
-    if (name === "my-requests") { await loadMyRequests(); return; }
+    if (name === "my-requests") { state.requestScope="sent";state.requestFilter="All";await loadMyRequests(); return; }
     if (name === "messages") { await loadMessages(); return; }
     if (name === "request-filter") { state.requestFilter=id || "All"; render(); return; }
     if (name === "open-thread") { await openMessageThread(id); return; }
@@ -1063,6 +1078,9 @@
     }
     if (name === "logout") {
       try { await api("/auth/logout", {}); } catch {}
+      if(state.locationWatchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(state.locationWatchId);
+      state.locationWatchId=null;state.trackingShareEnabled=false;
+      if(state.trackingRequestId)api("/requests/"+encodeURIComponent(state.trackingRequestId)+"/location",{stop:true},"POST").catch(()=>{});
       state.user = null; state.challengeId = ""; state.email = ""; state.mode = "signup";
       navigate("splash"); return;
     }
