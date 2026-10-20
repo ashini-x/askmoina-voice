@@ -1,5 +1,15 @@
 # Gyanshala demo — setup and cleanup
 
+## Smart Supply Locator — AI that searches, not chats
+
+The **AI Supply Finder** is a distinct, purpose-built workflow. It is not a general Gemini chat screen. A student types a request such as “borrow a scientific calculator under ₹300 near my hostel”; the server asks Gemini to convert it into validated JSON filters, queries the Gyanshala D1 inventory in real time, filters out unavailable/insufficient stock, and ranks matched pickup hostels by walking-route distance if a Google Routes API key is configured. If not configured, it uses clearly labelled straight-line estimates. Google Maps walking directions are opened via a link; the local map frame uses the standard OpenStreetMap embed so it does not depend on MapLibre or a browser Google Maps key.
+
+- Gemini is query interpretation only. The model never invents stock or supplies, and the application never renders general-purpose AI replies.
+- Set the optional Worker secret `GYANSHALA_GEMINI_API_KEY` to enable Gemini query interpretation; `GYANSHALA_GEMINI_MODEL` defaults to `gemini-3.8-flash`. Without the key, the finder remains usable in keyword-fallback mode.
+- Set optional secret `GYANSHALA_GOOGLE_MAPS_SERVER_KEY` with the Routes API enabled to return walking distance/time rather than direct-line estimates. Restrict it to the Routes API and server usage. The frontend’s Google Maps API/browser key is not needed for the OpenStreetMap map frame or the external directions link.
+- In preview test mode only, the Worker seeds 50 supply templates across 17 hostel labels (850 synthetic hostel/item combinations), with varied conditions, donation/borrow/sale types, quantities, prices and availability. It also records reservations against preview accounts and restores stock when reservations are cancelled.
+- The hostels listed use NIT Silchar hostel names from public institute listings, but all coordinates are synthetic, all stock is fictional, and every result is labelled as demo data. Do not use these demo coordinates for real travel. Replace them with verified entrances/pickup pins and real inventory before live use.
+
 ## Campus interfaces 7–15
 
 The authenticated preview experience includes:
