@@ -3,7 +3,7 @@
   const API = "/api/gyanshala";
   const APP = "/gyanshala-demo/";
   const root = document.getElementById("app");
-  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "", mapSearch: "", mapFocusId: "", campusMapInstance: null, campusMapLib: null, campusMapStylesPromise: null, campusMapLibPromise: null, campusMapGeneration: 0, campusMapView: null, campusMapMarkers: [], map3dEnabled: false, map3dAvailable: false, mapBuildingLayerId: "" };
+  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "", mapSearch: "", mapFocusId: "", incomingRequests: [], requestScope: "sent", trackingRequestId: "", trackingLoading: false, trackingError: "", trackingInfo: null, trackingMapInstance: null, trackingMapMarkers: {}, trackingMapRequestId: "", googleMapsPromise: null, trackingPollTimer: null, locationWatchId: null, trackingShareEnabled: false, trackingLocationError: "", trackingLocationBusy: false, campusMapInstance: null, campusMapLib: null, campusMapStylesPromise: null, campusMapLibPromise: null, campusMapGeneration: 0, campusMapView: null, campusMapMarkers: [], map3dEnabled: false, map3dAvailable: false, mapBuildingLayerId: "" };
   const esc = (value) => String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const logo = '<img src="/gyanshala-demo/icon.svg" alt="" width="36" height="36">';
   function button(label, action, cls, type) {
@@ -109,7 +109,7 @@
     const user = state.user || {};
     const name = user.fullName || "Student";
     const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join("") || "S";
-    root.innerHTML = '<div class="campus-app"><header class="campus-header"><a class="campus-brand" href="/gyanshala-demo/" data-action="home">' + logo + '<span>Gyanshala<small>Campus, together</small></span></a><form class="campus-search" id="search-form"><span class="search-glyph" aria-hidden="true">⌕</span><input type="search" name="q" value="' + esc(state.search) + '" placeholder="Search books, equipment, and more…" aria-label="Search campus resources"><button type="submit" aria-label="Submit search">Search</button></form><div class="campus-user"><span class="campus-avatar">' + esc(initials) + '</span><span class="campus-user-copy"><strong>' + esc(name) + '</strong><small>' + esc(user.branch || "Verified student") + '</small></span><button class="signout-link" type="button" data-action="logout">Sign out</button></div></header><div class="campus-layout"><aside class="campus-sidebar"><p class="sidebar-label">WORKSPACE</p><button type="button" class="sidebar-link' + (active === "home" ? " selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="sidebar-link' + (active === "explore" ? " selected" : "") + '" data-action="explore"><span>⌕</span>Explore resources</button><button type="button" class="sidebar-link' + (active === "map" ? " selected" : "") + '" data-action="map"><span>⌖</span>Map & pickup</button><button type="button" class="sidebar-link' + (active === "community" ? " selected" : "") + '" data-action="community"><span>♧</span>Community</button><button type="button" class="sidebar-link' + (active === "list" ? " selected" : "") + '" data-action="add-resource"><span>＋</span>List a resource</button><button type="button" class="sidebar-link' + (active === "requests" ? " selected" : "") + '" data-action="my-requests"><span>▤</span>My Requests</button><button type="button" class="sidebar-link' + (active === "messages" ? " selected" : "") + '" data-action="messages"><span>◌</span>Messages</button><div class="sidebar-spacer"></div><div class="sidebar-note"><span class="sidebar-note-icon">✳</span><strong>Share more. Waste less.</strong><p>Good resources deserve more than one life.</p></div><div class="sidebar-account"><span class="account-check">✓</span><span><strong>Verified student</strong><small>' + esc(user.email || "") + '</small></span></div></aside><section class="campus-main"><div class="campus-content">' + (state.workspaceMessage ? '<div class="workspace-flash" role="status">' + esc(state.workspaceMessage) + '</div>' : '') + content + '</div></section></div><nav class="campus-mobile-nav"><button type="button" class="' + (active === "home" ? "selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="' + (active === "explore" ? "selected" : "") + '" data-action="explore"><span>⌕</span>Explore</button><button type="button" class="' + (active === "map" ? "selected" : "") + '" data-action="map"><span>⌖</span>Map</button><button type="button" class="' + (active === "community" ? "selected" : "") + '" data-action="community"><span>♧</span>Community</button><button type="button" data-action="open-more" aria-expanded="false"><span>•••</span>More</button></nav><div class="mobile-more-menu" id="mobile-more-menu" aria-label="More navigation"><button type="button" data-action="add-resource"><span>＋</span><span><strong>List a resource</strong><small>Share an item with campus</small></span></button><button type="button" data-action="my-requests"><span>▤</span><span><strong>My Requests</strong><small>Follow your borrowing activity</small></span></button><button type="button" data-action="messages"><span>◌</span><span><strong>Messages</strong><small>Chat with another student</small></span></button><button type="button" data-action="close-more"><span>×</span><span><strong>Close menu</strong><small>Return to the current screen</small></span></button></div><footer class="campus-footer"><span>Gyanshala <span class="footer-dot">·</span> Built for your campus</span><span>Preview experience <span class="footer-dot">·</span> Student access</span></footer></div>';
+    root.innerHTML = '<div class="campus-app"><header class="campus-header"><a class="campus-brand" href="/gyanshala-demo/" data-action="home">' + logo + '<span>Gyanshala<small>Campus, together</small></span></a><form class="campus-search" id="search-form"><span class="search-glyph" aria-hidden="true">⌕</span><input type="search" name="q" value="' + esc(state.search) + '" placeholder="Search books, equipment, and more…" aria-label="Search campus resources"><button type="submit" aria-label="Submit search">Search</button></form><div class="campus-user"><span class="campus-avatar">' + esc(initials) + '</span><span class="campus-user-copy"><strong>' + esc(name) + '</strong><small>' + esc(user.branch || "Verified student") + '</small></span><button class="signout-link" type="button" data-action="logout">Sign out</button></div></header><div class="campus-layout"><aside class="campus-sidebar"><p class="sidebar-label">WORKSPACE</p><button type="button" class="sidebar-link' + (active === "home" ? " selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="sidebar-link' + (active === "explore" ? " selected" : "") + '" data-action="explore"><span>⌕</span>Explore resources</button><button type="button" class="sidebar-link' + (active === "map" ? " selected" : "") + '" data-action="map"><span>⌖</span>Track exchanges</button><button type="button" class="sidebar-link' + (active === "community" ? " selected" : "") + '" data-action="community"><span>♧</span>Community</button><button type="button" class="sidebar-link' + (active === "list" ? " selected" : "") + '" data-action="add-resource"><span>＋</span>List a resource</button><button type="button" class="sidebar-link' + (active === "requests" ? " selected" : "") + '" data-action="my-requests"><span>▤</span>My Requests</button><button type="button" class="sidebar-link' + (active === "messages" ? " selected" : "") + '" data-action="messages"><span>◌</span>Messages</button><div class="sidebar-spacer"></div><div class="sidebar-note"><span class="sidebar-note-icon">✳</span><strong>Share more. Waste less.</strong><p>Good resources deserve more than one life.</p></div><div class="sidebar-account"><span class="account-check">✓</span><span><strong>Verified student</strong><small>' + esc(user.email || "") + '</small></span></div></aside><section class="campus-main"><div class="campus-content">' + (state.workspaceMessage ? '<div class="workspace-flash" role="status">' + esc(state.workspaceMessage) + '</div>' : '') + content + '</div></section></div><nav class="campus-mobile-nav"><button type="button" class="' + (active === "home" ? "selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="' + (active === "explore" ? "selected" : "") + '" data-action="explore"><span>⌕</span>Explore</button><button type="button" class="' + (active === "map" ? "selected" : "") + '" data-action="map"><span>⌖</span>Track</button><button type="button" class="' + (active === "community" ? "selected" : "") + '" data-action="community"><span>♧</span>Community</button><button type="button" data-action="open-more" aria-expanded="false"><span>•••</span>More</button></nav><div class="mobile-more-menu" id="mobile-more-menu" aria-label="More navigation"><button type="button" data-action="add-resource"><span>＋</span><span><strong>List a resource</strong><small>Share an item with campus</small></span></button><button type="button" data-action="my-requests"><span>▤</span><span><strong>My Requests</strong><small>Follow your borrowing activity</small></span></button><button type="button" data-action="messages"><span>◌</span><span><strong>Messages</strong><small>Chat with another student</small></span></button><button type="button" data-action="close-more"><span>×</span><span><strong>Close menu</strong><small>Return to the current screen</small></span></button></div><footer class="campus-footer"><span>Gyanshala <span class="footer-dot">·</span> Built for your campus</span><span>Preview experience <span class="footer-dot">·</span> Student access</span></footer></div>';
     root.querySelectorAll("form").forEach(function (form) { form.addEventListener("submit", onSubmit); });
   }
   function dashboard() {
@@ -366,28 +366,231 @@
       showMapFallback("The enhanced map could not load. You can still use the standard OpenStreetMap view below.");
     }
   }
-  function pickupMapScreen() {
-    if(state.pickupsLoading) {
-      appShell('<section class="workspace-page-heading"><p class="workspace-eyebrow">KNOW WHERE TO MEET</p><h1>NIT Silchar campus map</h1><p>Loading real campus places and resource pickup points.</p></section><div class="resource-state"><span class="spinner"></span><strong>Loading campus places</strong><p>Connecting mapped locations to your Gyanshala resource catalogue…</p></div>',"map");
+  function trackingHubScreen() {
+    const all=state.myRequests.concat(state.incomingRequests);
+    const live=all.filter(x=>x.status==="approved"||x.status==="active");
+    const pendingReceived=state.incomingRequests.filter(x=>x.status==="pending");
+    let content;
+    if(state.requestsLoading) content='<div class="resource-state"><span class="spinner"></span><strong>Checking your exchanges…</strong><p>Tracking maps are available only for requests that the owner has accepted.</p></div>';
+    else if(state.requestsError) content='<div class="resource-state"><strong>We couldn’t load your exchanges.</strong><p>'+esc(state.requestsError)+'</p><button type="button" class="btn btn-outline" data-action="map">Try again</button></div>';
+    else if(!live.length) content='<div class="tracking-empty"><div class="tracking-empty-glyph">⌖</div><p class="section-overline">TRACK WHEN ACCEPTED</p><h2>No active exchange to track</h2><p>Request a resource or list one for other students. Once the owner accepts a request, this area will show its meetup point, live distance and any location updates the two participants choose to share.</p><button type="button" class="btn btn-primary" data-action="'+(pendingReceived.length?"my-requests":"explore")+'">'+(pendingReceived.length?"Review incoming requests":"Explore resources")+' <span class="arrow">→</span></button>'+(pendingReceived.length?'<p class="tracking-pending-note">'+pendingReceived.length+' request'+(pendingReceived.length===1?" is":"s are")+' waiting for your decision.</p>':"")+'</div>';
+    else content='<div class="tracking-hub-list">'+live.map(function(item){const res=item.resource||{};return '<article class="tracking-hub-card"><span class="tracking-hub-icon">'+esc(res.icon||"⌖")+'</span><div class="tracking-hub-copy"><span class="request-status status-'+esc(item.status)+'">'+esc(requestStatusLabel(item.status))+'</span><h2>'+esc(res.title||"Campus resource")+'</h2><p>'+esc(res.pickupLocation||"Campus meetup")+' · '+esc(item.role==="owner"?"With "+(item.otherName||"requester"):"With "+(item.otherName||"owner"))+'</p></div><button type="button" class="btn btn-primary" data-action="track-request" data-id="'+esc(item.requestId)+'">Open tracking <span class="arrow">→</span></button></article>';}).join("")+'</div>';
+    const contentHtml='<section class="workspace-page-heading"><p class="workspace-eyebrow">ONLY FOR ACCEPTED REQUESTS</p><h1>Track an exchange</h1><p>No generic location pins. Your map appears only for a request that has been accepted, and live locations are shared only by explicit choice.</p></section>'+content;
+    appShell(contentHtml,"map");
+  }
+  function requestTrackingScreen() {
+    if(state.trackingLoading) {
+      appShell('<section class="workspace-page-heading"><p class="workspace-eyebrow">GYANSHALA EXCHANGE</p><h1>Opening tracking…</h1><p>Loading the accepted request and its meetup point.</p></section><div class="resource-state"><span class="spinner"></span><strong>Preparing your exchange</strong></div>',"map");
       return;
     }
-    const selected=state.pickupPoints.find(function(p){return p.id===state.pickupSelectedId;})||state.pickupPoints[0]||null;
-    const match=state.mapSearch.trim().toLowerCase();
-    const filtered=match?state.pickupPoints.filter(function(p){return (p.name+" "+p.area+" "+p.description).toLowerCase().includes(match);}):state.pickupPoints;
-    const pointList=filtered.map(function(p){
-      return '<button type="button" class="pickup-location-row'+(selected&&selected.id===p.id?' selected':'')+'" data-action="select-pickup" data-id="'+esc(p.id)+'"><span class="pickup-row-marker">'+esc(campusPointIcon(p))+'</span><span class="pickup-row-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.area)+'</small><span>'+Number(p.resourceCount||0)+' Gyanshala '+(Number(p.resourceCount)===1?'resource':'resources')+'</span></span><span class="pickup-row-coordinate">'+Number(p.latitude).toFixed(4)+'°</span></button>';
-    }).join("");
-    const resources=selected&&selected.resources&&selected.resources.length
-      ?'<div class="pickup-item-grid">'+selected.resources.map(resourceCard).join("")+'</div>'
-      :'<div class="pickup-no-items"><span>⌕</span><strong>No resources pinned to this campus place yet</strong><p>New listings can choose this mapped point as their public pickup location.</p><button type="button" class="text-action" data-action="add-resource">List a resource <span>→</span></button></div>';
-    const detail=selected
-      ?'<section class="pickup-selected-panel"><div class="pickup-selected-heading"><span class="pickup-selected-icon">'+esc(campusPointIcon(selected))+'</span><div><p class="section-overline">SELECTED MAP FEATURE</p><h2>'+esc(selected.name)+'</h2><p>'+esc(selected.area)+' · '+Number(selected.latitude).toFixed(5)+', '+Number(selected.longitude).toFixed(5)+'</p></div><a class="btn btn-outline map-external-link" href="https://www.openstreetmap.org/?mlat='+encodeURIComponent(Number(selected.latitude))+'&mlon='+encodeURIComponent(Number(selected.longitude))+'#map=18/'+Number(selected.latitude)+'/'+Number(selected.longitude)+'" target="_blank" rel="noopener noreferrer">Open in OSM <span class="arrow">↗</span></a></div><p class="pickup-description">'+esc(selected.description)+'</p><div class="pickup-source-note"><span>ⓘ</span><p>This pin marks the OpenStreetMap feature centre, not a verified doorway or official pickup desk. Confirm access and the exact meeting spot before travelling.</p></div><div class="pickup-resources-heading"><div><p class="section-overline">GYANSHALA RESOURCES</p><h3>Listed at this map point</h3></div><span>'+Number(selected.resourceCount||0)+' listed</span></div>'+resources+'</section>'
-      :'<section class="pickup-selected-panel"><strong>No mapped campus places are available.</strong><p>Try refreshing the map.</p></section>';
-    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">OPEN MAP DATA · BUILT FOR CAMPUS</p><h1>NIT Silchar, in detail.</h1><p>Explore the real mapped campus area, zoom into mapped buildings and paths, and connect Gyanshala listings to public map points.</p></section><section class="campus-map-search-panel"><form class="campus-map-search-form" id="campus-map-search-form"><span>⌕</span><input name="q" type="search" value="'+esc(state.mapSearch)+'" placeholder="Find campus landmarks, grounds, parks…" aria-label="Search mapped campus places"><button type="submit">Find place</button></form><div class="campus-map-search-tools"><span>Known places <strong>'+state.pickupPoints.length+'</strong></span><button type="button" class="map-tool-button'+(state.map3dEnabled?' active':'')+'" data-action="toggle-map-3d">▱ 3D buildings '+(state.map3dEnabled?'On':'Off')+'</button><button type="button" class="map-tool-button" data-action="reset-campus-map">↗ Reset campus view</button></div></section><section class="pickup-layout real-campus-layout"><div class="pickup-map-panel real-campus-map-panel"><div class="pickup-map-header"><div><p class="section-overline">LIVE VECTOR MAP</p><h2>NIT Silchar campus</h2></div><span class="map-preview-badge map-loaded-indicator"><i></i>Map initializing</span></div><div class="campus-map-viewport"><iframe id="campus-osm-fallback" title="Standard OpenStreetMap view of NIT Silchar campus" src="https://www.openstreetmap.org/export/embed.html?bbox=92.77682%2C24.7451%2C92.79682%2C24.7651&amp;layer=mapnik&amp;marker=24.7551%2C92.78682" loading="eager" referrerpolicy="no-referrer"></iframe><div id="campus-real-map" class="campus-real-map" role="application" aria-label="Enhanced interactive map of NIT Silchar. Use map controls to zoom, rotate, tilt, or find your location."></div></div><div id="campus-map-status" class="campus-map-status loading" role="status" aria-live="polite">Preparing the map…</div><div id="campus-map-fallback" class="campus-map-fallback" hidden><p>The enhanced map is unavailable, but the standard OpenStreetMap map remains usable above. You can also open it in a full tab.</p><a href="https://www.openstreetmap.org/#map=16/24.7551/92.78682" target="_blank" rel="noopener noreferrer">Open NIT Silchar on OpenStreetMap ↗</a> <button type="button" class="map-retry-button" data-action="retry-campus-map">Retry enhanced map</button></div><div class="map-footer"><span><i class="map-footer-pin"></i>Gyanshala campus points</span><span>© OpenStreetMap contributors</span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Report a map issue</a></div><p class="map-disclaimer">MapLibre GL JS · OpenFreeMap vector tiles · OpenStreetMap data. Building outlines, labels and paths depend on source-data coverage; not every interior or entrance is mapped.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">MAPPED CAMPUS PLACES</p><h2>Explore places</h2></div><span class="pickup-total">'+filtered.length+'</span></div><div class="pickup-location-list">'+(pointList||'<div class="pickup-no-items"><strong>No places matched</strong><p>Try a campus, grounds, park or lake name.</p></div>')+'</div><p class="map-list-footnote">Select a place to focus the map. You can also click named features directly on the map.</p></aside></section>'+detail;
+    const info=state.trackingInfo;
+    if(state.trackingError||!info) {
+      appShell('<section class="workspace-page-heading"><p class="workspace-eyebrow">GYANSHALA EXCHANGE</p><h1>Tracking unavailable</h1><p>'+esc(state.trackingError||"Open an accepted request to track it.")+'</p></section><button type="button" class="btn btn-outline" data-action="map">Back to exchanges</button>',"map");
+      return;
+    }
+    const status=info.status||"pending";
+    const statusText={pending:"Waiting for owner approval",approved:"Request accepted · coordinate meetup",active:"Exchange in progress",completed:"Exchange completed",declined:"Request declined",cancelled:"Request cancelled"}[status]||"Exchange update";
+    const isLive=status==="approved"||status==="active";
+    const locs=Array.isArray(info.locations)?info.locations:[];
+    const myLocation=locs.find(x=>x.isMine);
+    const otherLocation=locs.find(x=>!x.isMine);
+    const metersToMeetup=point=>point&&info.meetup&&Number.isFinite(Number(info.meetup.latitude))&&Number.isFinite(Number(info.meetup.longitude))?haversineMeters(Number(point.latitude),Number(point.longitude),Number(info.meetup.latitude),Number(info.meetup.longitude)):null;
+    const distance=myLocation?formatDistance(metersToMeetup(myLocation)):"Not sharing";
+    const otherDistance=otherLocation?formatDistance(metersToMeetup(otherLocation)):"Not sharing";
+    const now=Date.now();
+    const updatedLabel=point=>point?Math.max(0,Math.round((now-Date.parse(point.updatedAt))/1000))+" sec ago":"—";
+    const otherName=info.role==="owner"?info.participants.requesterName:info.participants.ownerName;
+    const mapsKey=info.googleMapsBrowserKey;
+    const directionsUrl=info.meetup&&Number.isFinite(Number(info.meetup.latitude))&&Number.isFinite(Number(info.meetup.longitude))
+      ?"https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(info.meetup.latitude+","+info.meetup.longitude)+"&travelmode=walking":"https://www.google.com/maps";
+    let mapPanel;
+    if(!isLive) mapPanel='<div class="tracking-map-ended"><span>✓</span><strong>'+(status==="completed"?"This exchange is complete":"Tracking is not active")+'</strong><p>'+(status==="completed"?"Live location sharing has stopped and shared coordinates have been removed.":"Live tracking opens after the request is accepted.")+'</p><a class="btn btn-outline" href="'+directionsUrl+'" target="_blank" rel="noopener noreferrer">Open meetup in Google Maps ↗</a></div>';
+    else if(!mapsKey) mapPanel='<div class="tracking-map-setup"><div class="tracking-map-placeholder">⌖</div><h2>Google Maps needs a browser API key</h2><p>The request flow works, but the in-app map stays disabled until a restricted Google Maps JavaScript API key is configured for this preview. Meanwhile, open the meetup in Google Maps.</p><a class="btn btn-primary" href="'+directionsUrl+'" target="_blank" rel="noopener noreferrer">Open route in Google Maps ↗</a><small>Ask the project admin to configure <code>GYANSHALA_GOOGLE_MAPS_BROWSER_KEY</code>. Never paste the key in a message.</small></div>';
+    else mapPanel='<div class="tracking-map-wrap"><div id="tracking-google-map" class="tracking-google-map" role="application" aria-label="Live map for this accepted Gyanshala exchange"></div><div id="tracking-map-status" class="tracking-map-status" role="status" aria-live="polite">Loading Google Maps…</div></div>';
+    const locCard=(point,label)=>'<div class="tracking-location-card"><span class="tracking-location-dot '+(point?"shared":"")+'"></span><div><strong>'+esc(label)+'</strong><p>'+(point?esc(formatDistance(metersToMeetup(point)))+' from meetup · updated '+esc(updatedLabel(point)):"Location not shared")+'</p></div></div>';
+    const shareAction=state.trackingShareEnabled
+      ?'<button type="button" class="btn btn-outline" data-action="stop-location-share">Stop sharing my location</button>'
+      :'<button type="button" class="btn btn-primary" data-action="start-location-share">Share my live location</button>';
+    const content='<section class="workspace-page-heading tracking-heading"><p class="workspace-eyebrow">REQUEST-BASED LIVE TRACKING</p><button class="back" type="button" data-action="map">← All exchanges</button><div class="tracking-title-row"><div><h1>'+esc(info.resource.title)+'</h1><p>'+esc(info.meetup.name)+' · '+esc(otherName||"Campus student")+'</p></div><span class="request-status status-'+esc(status)+'">'+esc(requestStatusLabel(status))+'</span></div><p class="tracking-status-copy">'+esc(statusText)+'</p></section><section class="tracking-grid"><div class="tracking-map-card"><div class="tracking-map-heading"><div><p class="section-overline">MEETUP MAP</p><h2>'+esc(info.meetup.name)+'</h2></div><a href="'+directionsUrl+'" target="_blank" rel="noopener noreferrer">Directions ↗</a></div>'+mapPanel+'<div class="tracking-location-list">'+locCard(myLocation,"Your location")+(info.role==="owner"?locCard(otherLocation,info.participants.requesterName||"Requester"):locCard(otherLocation,info.participants.ownerName||"Owner"))+'</div><div class="tracking-distance-row"><div><small>Your direct distance to meetup</small><strong id="tracking-your-distance">'+esc(distance)+'</strong></div><div><small>Other participant</small><strong id="tracking-other-distance">'+esc(otherDistance)+'</strong></div></div></div><aside class="tracking-side-card"><p class="section-overline">YOUR CONTROL</p><h2>Share only when you choose</h2><p>Location is shared only with the other participant in this accepted request. Keep this screen open while you want live updates, and stop sharing any time.</p><div class="tracking-share-status" id="tracking-share-status">'+(state.trackingLocationError?esc(state.trackingLocationError):(state.trackingShareEnabled?"Waiting for your GPS fix…":"Your location is private until you enable sharing."))+'</div>'+ (isLive?shareAction:"")+'<div class="tracking-action-divider"></div>'+(status==="approved"?'<button type="button" class="btn btn-primary full" data-action="request-status" data-id="'+esc(info.requestId)+'" data-status="active">Start exchange</button>':"")+(status==="active"?'<button type="button" class="btn btn-primary full" data-action="request-status" data-id="'+esc(info.requestId)+'" data-status="completed">Mark exchange completed</button>':"")+'<p class="tracking-smallprint">Distance shown is a straight-line estimate, not road distance or an ETA. Use Google Maps Directions for walking-route distance. Location records older than two minutes are hidden.</p></aside></section>';
     appShell(content,"map");
-    initializeCampusMap();
+    if(isLive&&mapsKey) initializeGoogleTrackingMap(mapsKey,info);
+    updateTrackingPolling();
   }
-
+  function haversineMeters(lat1,lon1,lat2,lon2) {
+    const toRad=value=>value*Math.PI/180;
+    const dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);
+    const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return 6371000*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)));
+  }
+  function formatDistance(meters) {
+    if(!Number.isFinite(meters))return "—";
+    if(meters<1000)return Math.round(meters/10)*10+" m";
+    return (meters/1000).toFixed(2)+" km";
+  }
+  function buildDirectionsUrl(info,origin) {
+    if(!info||!info.meetup||info.meetup.latitude==null||info.meetup.longitude==null)return "https://www.google.com/maps";
+    const params=new URLSearchParams({api:"1",destination:info.meetup.latitude+","+info.meetup.longitude,travelmode:"walking"});
+    if(origin)params.set("origin",origin.latitude+","+origin.longitude);
+    return "https://www.google.com/maps/dir/?"+params.toString();
+  }
+  async function loadTrackingHub() {
+    state.screen="map";state.requestsLoading=true;state.requestsError="";state.workspaceMessage="";
+    render();
+    try {
+      const result=await api("/my-requests",null,"GET");
+      state.myRequests=Array.isArray(result.requests)?result.requests:[];
+      state.incomingRequests=Array.isArray(result.incomingRequests)?result.incomingRequests:[];
+    } catch(e) { state.requestsError=e.message||"Please try again.";state.myRequests=[];state.incomingRequests=[]; }
+    finally { state.requestsLoading=false;render(); }
+  }
+  async function loadTrackingRequest(requestId) {
+    if(!requestId)return;
+    if(state.locationWatchId!==null){navigator.geolocation&&navigator.geolocation.clearWatch(state.locationWatchId);state.locationWatchId=null;}
+    if(state.trackingPollTimer){window.clearInterval(state.trackingPollTimer);state.trackingPollTimer=null;}
+    if(state.trackingShareEnabled){
+      const previousId=state.trackingRequestId;
+      if(previousId)api("/requests/"+encodeURIComponent(previousId)+"/location",{stop:true},"POST").catch(()=>{});
+    }
+    state.trackingShareEnabled=false;state.trackingLocationError="";
+    state.trackingRequestId=requestId;state.trackingInfo=null;state.trackingError="";state.trackingLoading=true;state.screen="track";
+    if(state.trackingMapInstance){try{Object.values(state.trackingMapMarkers).forEach(m=>m.setMap(null));}catch{}}
+    state.trackingMapInstance=null;state.trackingMapMarkers={};state.trackingMapRequestId="";
+    render();
+    try { state.trackingInfo=await api("/requests/"+encodeURIComponent(requestId)+"/tracking",null,"GET"); }
+    catch(e) { state.trackingError=e.message||"This tracking link is unavailable."; }
+    finally { state.trackingLoading=false;render(); }
+  }
+  async function refreshTrackingRequest(silent) {
+    const requestId=state.trackingRequestId;
+    if(!requestId||state.screen!=="track")return;
+    try {
+      const info=await api("/requests/"+encodeURIComponent(requestId)+"/tracking",null,"GET");
+      const oldStatus=state.trackingInfo&&state.trackingInfo.status;
+      state.trackingInfo=info;
+      if(["completed","declined","cancelled"].includes(info.status)&&state.trackingShareEnabled) {
+        if(state.locationWatchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(state.locationWatchId);
+        state.locationWatchId=null;state.trackingShareEnabled=false;
+      }
+      if(!silent||oldStatus!==info.status)render();
+      else {updateTrackingMarkers();updateTrackingDistanceReadouts();}
+    } catch(e) {
+      if(!silent){state.trackingError=e.message||"Tracking is unavailable.";render();}
+      else {const el=root.querySelector("#tracking-share-status");if(el)el.textContent="Connection interrupted; waiting to refresh tracking…";}
+    }
+  }
+  function updateTrackingPolling() {
+    if(state.screen!=="track"||!state.trackingInfo||!state.trackingInfo.canTrack)return;
+    if(!state.trackingPollTimer)state.trackingPollTimer=window.setInterval(()=>refreshTrackingRequest(true),5000);
+  }
+  function loadGoogleMapsScript(key) {
+    if(window.google&&window.google.maps)return Promise.resolve(window.google.maps);
+    if(state.googleMapsPromise)return state.googleMapsPromise;
+    state.googleMapsPromise=new Promise(function(resolve,reject){
+      const script=document.createElement("script");
+      script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(key)+"&v=weekly";
+      script.async=true;script.defer=true;
+      script.onload=function(){if(window.google&&window.google.maps)resolve(window.google.maps);else reject(new Error("Google Maps loaded without map support."));};
+      script.onerror=function(){reject(new Error("Google Maps did not load. Check the restricted API key and its enabled APIs."));};
+      document.head.appendChild(script);
+      window.setTimeout(()=>reject(new Error("Google Maps timed out. Check your connection and API key setup.")),10000);
+    }).catch(function(error){state.googleMapsPromise=null;throw error;});
+    return state.googleMapsPromise;
+  }
+  async function initializeGoogleTrackingMap(key,info) {
+    const container=root.querySelector("#tracking-google-map");
+    if(!container||!info||!info.meetup||info.meetup.latitude==null||info.meetup.longitude==null)return;
+    const rid=info.requestId;
+    if(state.trackingMapInstance&&state.trackingMapRequestId===rid){updateTrackingMarkers();return;}
+    const status=root.querySelector("#tracking-map-status");
+    try {
+      if(status)status.textContent="Loading Google Maps…";
+      const maps=await loadGoogleMapsScript(key);
+      if(state.screen!=="track"||state.trackingRequestId!==rid||!root.contains(container))return;
+      const pickup={lat:Number(info.meetup.latitude),lng:Number(info.meetup.longitude)};
+      const map=new maps.Map(container,{center:pickup,zoom:17,mapTypeId:"roadmap",mapTypeControl:false,streetViewControl:false,fullscreenControl:true,clickableIcons:false});
+      state.trackingMapInstance=map;state.trackingMapRequestId=rid;
+      state.trackingMapMarkers={meetup:new maps.Marker({map,position:pickup,title:"Agreed meetup point",label:"M"})};
+      updateTrackingMarkers();
+      if(status)status.hidden=true;
+    } catch(e) {
+      if(state.screen!=="track"||state.trackingRequestId!==rid)return;
+      if(status){status.hidden=false;status.textContent=e.message||"Google Maps could not be loaded.";}
+    }
+  }
+  function updateTrackingMarkers() {
+    const info=state.trackingInfo,map=state.trackingMapInstance;
+    if(!info||!map||!window.google||!window.google.maps)return;
+    const maps=window.google.maps;
+    const pickup=info.meetup&&{lat:Number(info.meetup.latitude),lng:Number(info.meetup.longitude)};
+    if(pickup&&Number.isFinite(pickup.lat)&&Number.isFinite(pickup.lng)){
+      if(state.trackingMapMarkers.meetup)state.trackingMapMarkers.meetup.setPosition(pickup);
+      else state.trackingMapMarkers.meetup=new maps.Marker({map,position:pickup,title:"Agreed meetup point",label:"M"});
+    }
+    const seen=new Set(["meetup"]);
+    (info.locations||[]).forEach(function(loc){
+      const key="user-"+loc.userId;seen.add(key);
+      const position={lat:Number(loc.latitude),lng:Number(loc.longitude)};
+      if(!Number.isFinite(position.lat)||!Number.isFinite(position.lng))return;
+      const title=loc.isMine?"Your shared location":(loc.name||"Other participant");
+      if(state.trackingMapMarkers[key]){state.trackingMapMarkers[key].setPosition(position);state.trackingMapMarkers[key].setTitle(title);}
+      else state.trackingMapMarkers[key]=new maps.Marker({map,position,title,label:loc.isMine?"Y":"•"});
+    });
+    Object.keys(state.trackingMapMarkers).forEach(key=>{if(!seen.has(key)){state.trackingMapMarkers[key].setMap(null);delete state.trackingMapMarkers[key];}});
+  }
+  function updateTrackingDistanceReadouts() {
+    const info=state.trackingInfo;
+    if(!info)return;
+    const locs=info.locations||[],mine=locs.find(x=>x.isMine),other=locs.find(x=>!x.isMine);
+    const dist=point=>point&&info.meetup&&info.meetup.latitude!=null&&info.meetup.longitude!=null?formatDistance(haversineMeters(Number(point.latitude),Number(point.longitude),Number(info.meetup.latitude),Number(info.meetup.longitude))):"Not sharing";
+    const your=root.querySelector("#tracking-your-distance"),their=root.querySelector("#tracking-other-distance");
+    if(your)your.textContent=dist(mine);if(their)their.textContent=dist(other);
+    const status=root.querySelector("#tracking-share-status");
+    if(status&&mine&&state.trackingShareEnabled)status.textContent="Sharing on this request · last updated "+Math.max(0,Math.round((Date.now()-Date.parse(mine.updatedAt))/1000))+" seconds ago.";
+  }
+  async function startLiveLocationShare() {
+    if(!navigator.geolocation){state.trackingLocationError="This browser does not support location sharing.";render();return;}
+    if(!state.trackingInfo||!state.trackingInfo.canTrack)return;
+    if(state.locationWatchId!==null&&state.trackingShareEnabled)return;
+    state.trackingLocationError="Requesting location permission…";state.trackingShareEnabled=true;render();
+    const requestId=state.trackingRequestId;
+    try {
+      const watchId=navigator.geolocation.watchPosition(async function(position){
+        if(state.screen!=="track"||state.trackingRequestId!==requestId||!state.trackingShareEnabled)return;
+        const payload={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracyM:position.coords.accuracy||0};
+        try { await api("/requests/"+encodeURIComponent(requestId)+"/location",payload,"POST");state.trackingLocationError="";await refreshTrackingRequest(true); }
+        catch(e){state.trackingLocationError=e.message||"Could not share your location.";const status=root.querySelector("#tracking-share-status");if(status)status.textContent=state.trackingLocationError;}
+      },function(error){
+        if(state.trackingRequestId!==requestId)return;
+        if(state.locationWatchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(state.locationWatchId);
+        state.locationWatchId=null;state.trackingShareEnabled=false;
+        state.trackingLocationError=error.code===1?"Location permission was denied. You can enable it in browser settings.":error.code===3?"Getting your location timed out. Try again.":"Your location is unavailable right now.";
+        const status=root.querySelector("#tracking-share-status");if(status)status.textContent=state.trackingLocationError;
+        const action=root.querySelector('[data-action="start-location-share"]');if(action){action.textContent="Try sharing again";action.disabled=false;}
+      },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+      state.locationWatchId=watchId;
+      const action=root.querySelector('[data-action="start-location-share"]');if(action)action.disabled=true;
+      state.trackingLocationError="Waiting for a GPS fix…";
+      const status=root.querySelector("#tracking-share-status");if(status)status.textContent=state.trackingLocationError;
+    }catch{
+      state.trackingShareEnabled=false;state.trackingLocationError="We couldn’t start location sharing. Try again.";
+      const status=root.querySelector("#tracking-share-status");if(status)status.textContent=state.trackingLocationError;
+    }
+  }
+  async function stopLiveLocationShare() {
+    const requestId=state.trackingRequestId;
+    if(state.locationWatchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(state.locationWatchId);
+    state.locationWatchId=null;state.trackingShareEnabled=false;
+    try { if(requestId)await api("/requests/"+encodeURIComponent(requestId)+"/location",{stop:true},"POST"); } catch {}
+    await refreshTrackingRequest(true);render();
+  }
+  async function changeRequestStatus(requestId,status) {
+    try {
+      await api("/requests/"+encodeURIComponent(requestId)+"/status",{status},"POST");
+      state.workspaceMessage=status==="approved"?"Request accepted. The tracking map is now available to both participants.":status==="declined"?"Request declined.":status==="active"?"Exchange started. You can share your location whenever you choose.":status==="completed"?"Exchange completed. Live locations were removed.": "Request cancelled.";
+      if(state.screen==="track"&&state.trackingRequestId===requestId){await refreshTrackingRequest(true);render();return;}
+      await loadMyRequests();
+    } catch(e) { state.workspaceMessage=e.message||"Could not update the request.";if(state.screen==="track")await refreshTrackingRequest(false);else render(); }
+  }
   function communityCategoryChips(active) {
     const categories=["All","Books","Lab Equipment","Electronics","Stationery","Other"];
     return '<div class="community-category-chips">'+categories.map(c=>'<button type="button" class="community-category-chip'+(c===active?' active':'')+'" data-action="community-category" data-id="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div>';
@@ -474,23 +677,40 @@
     return ({ pending:"Pending", approved:"Approved", declined:"Declined", active:"In progress", completed:"Completed", cancelled:"Cancelled" })[status] || "Pending";
   }
   function requestListCard(item) {
-    const resource = item.resource || {};
-    const hasMessages = Boolean(item.messagesAvailable);
-    const icon = resource.icon || categoryIcon(resource.category);
-    const sampleNote = hasMessages ? "" : '<p class="request-sample-note">Preview sample listing · no live owner account</p>';
-    return '<article class="request-card"><div class="request-art cover-' + esc(({Books:"books","Lab Equipment":"lab",Electronics:"electronics",Stationery:"stationery"})[resource.category] || "other") + '"><span>' + esc(icon) + '</span></div><div class="request-card-main"><div class="request-card-top"><span class="request-category">' + esc(resource.category || "Resource") + '</span><span class="request-status status-' + esc(item.status) + '">' + esc(requestStatusLabel(item.status)) + '</span></div><h3>' + esc(resource.title || "Campus resource") + '</h3><p>' + esc(resource.pickupLocation || "Campus pickup") + ' <span>·</span> ' + esc(priceLabel(resource)) + '</p><small>Requested ' + esc(new Date(item.createdAt).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})) + '</small>' + sampleNote + '</div><div class="request-card-actions">' + (hasMessages ? '<button type="button" class="btn btn-outline" data-action="open-thread" data-id="' + esc(item.requestId) + '">Message owner</button>' : '<button type="button" class="btn btn-outline" data-action="resource" data-id="' + esc(resource.id) + '">View item</button>') + '</div></article>';
+    const resource=item.resource||{};
+    const hasMessages=Boolean(item.messagesAvailable);
+    const icon=resource.icon||categoryIcon(resource.category);
+    const sampleNote=hasMessages?"":'<p class="request-sample-note">Preview sample listing · no live owner account</p>';
+    const actions=[];
+    if(item.role==="owner"&&item.status==="pending"){
+      actions.push('<button type="button" class="btn btn-primary" data-action="request-status" data-id="'+esc(item.requestId)+'" data-status="approved">Accept request</button>');
+      actions.push('<button type="button" class="btn btn-outline" data-action="request-status" data-id="'+esc(item.requestId)+'" data-status="declined">Decline</button>');
+    } else if(item.status==="approved"||item.status==="active") {
+      actions.push('<button type="button" class="btn btn-primary" data-action="track-request" data-id="'+esc(item.requestId)+'">Track exchange <span class="arrow">→</span></button>');
+      if(hasMessages)actions.push('<button type="button" class="btn btn-outline" data-action="open-thread" data-id="'+esc(item.requestId)+'">Message '+(item.role==="owner"?"requester":"owner")+'</button>');
+    } else if(item.status==="pending"&&item.role==="requester") {
+      if(hasMessages)actions.push('<button type="button" class="btn btn-outline" data-action="open-thread" data-id="'+esc(item.requestId)+'">Message owner</button>');
+      actions.push('<button type="button" class="btn btn-outline" data-action="request-status" data-id="'+esc(item.requestId)+'" data-status="cancelled">Cancel request</button>');
+    } else if(hasMessages) {
+      actions.push('<button type="button" class="btn btn-outline" data-action="open-thread" data-id="'+esc(item.requestId)+'">Open messages</button>');
+    } else {
+      actions.push('<button type="button" class="btn btn-outline" data-action="resource" data-id="'+esc(resource.id)+'">View item</button>');
+    }
+    const otherLabel=item.role==="owner"?"Requested by ":"With ";
+    return '<article class="request-card"><div class="request-art cover-'+esc(({Books:"books","Lab Equipment":"lab",Electronics:"electronics",Stationery:"stationery"})[resource.category]||"other")+'"><span>'+esc(icon)+'</span></div><div class="request-card-main"><div class="request-card-top"><span class="request-category">'+esc(resource.category||"Resource")+'</span><span class="request-status status-'+esc(item.status)+'">'+esc(requestStatusLabel(item.status))+'</span></div><h3>'+esc(resource.title||"Campus resource")+'</h3><p>'+esc(resource.pickupLocation||"Campus pickup")+' <span>·</span> '+esc(priceLabel(resource))+'</p><small>'+otherLabel+esc(item.otherName||resource.ownerName||"Student")+' · '+esc(new Date(item.createdAt).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}))+'</small>'+sampleNote+'</div><div class="request-card-actions">'+actions.join("")+'</div></article>';
   }
   function myRequestsScreen() {
-    const filters=["All","pending","approved","active","completed","declined"];
-    const items=state.requestFilter==="All" ? state.myRequests : state.myRequests.filter(x=>x.status===state.requestFilter);
-    const filterLabels={All:"All",pending:"Pending",approved:"Approved",active:"Active",completed:"Completed",declined:"Declined"};
-    const tabs=filters.map(function(f){return '<button type="button" class="request-filter' + (state.requestFilter===f ? ' active' : '') + '" data-action="request-filter" data-id="' + esc(f) + '">' + esc(filterLabels[f]||f) + (f==="All" ? '<span>' + state.myRequests.length + '</span>' : '') + '</button>';}).join("");
+    const collection=state.requestScope==="received"?state.incomingRequests:state.myRequests;
+    const filters=["All","pending","approved","active","completed","declined","cancelled"];
+    const items=state.requestFilter==="All"?collection:collection.filter(x=>x.status===state.requestFilter);
+    const labels={All:"All",pending:"Pending",approved:"Accepted",active:"In progress",completed:"Completed",declined:"Declined",cancelled:"Cancelled"};
+    const tabs=filters.map(function(f){return '<button type="button" class="request-filter'+(f===state.requestFilter?" active":"")+'" data-action="request-filter" data-id="'+esc(f)+'">'+esc(labels[f]||f)+(f==="All"?"<span>"+collection.length+"</span>":"")+'</button>';}).join("");
     let body;
-    if(state.requestsLoading) body='<div class="resource-state"><span class="spinner"></span><strong>Loading your requests</strong><p>Checking your campus activity…</p></div>';
-    else if(state.requestsError) body='<div class="resource-state"><strong>Your requests didn’t load.</strong><p>' + esc(state.requestsError) + '</p><button type="button" class="btn btn-outline" data-action="my-requests">Try again</button></div>';
-    else if(!items.length) body='<div class="resource-state"><div class="empty-mark">▤</div><strong>' + (state.myRequests.length ? "No requests in this category" : "No requests yet") + '</strong><p>' + (state.myRequests.length ? "Choose another status to see your activity." : "When you request a campus resource, it will appear here with its latest status.") + '</p><button type="button" class="btn btn-primary" data-action="explore">Explore resources <span class="arrow">→</span></button></div>';
-    else body='<div class="request-list">' + items.map(requestListCard).join("") + '</div>';
-    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">YOUR CAMPUS ACTIVITY</p><div class="workspace-heading-row"><div><h1>My Requests</h1><p>Keep track of the resources you’ve asked to borrow or share.</p></div><span class="request-count">' + state.myRequests.length + '<small>Total</small></span></div></section><section class="request-panel"><div class="request-filters">' + tabs + '</div>' + body + '</section>';
+    if(state.requestsLoading) body='<div class="resource-state"><span class="spinner"></span><strong>Loading requests</strong><p>Checking your campus exchanges…</p></div>';
+    else if(state.requestsError) body='<div class="resource-state"><strong>Your requests didn’t load.</strong><p>'+esc(state.requestsError)+'</p><button type="button" class="btn btn-outline" data-action="my-requests">Try again</button></div>';
+    else if(!items.length) body='<div class="resource-state"><div class="empty-mark">▤</div><strong>'+(collection.length?"No requests in this category":(state.requestScope==="received"?"No one has requested your listings yet":"No requests yet"))+'</strong><p>'+(collection.length?"Choose another status to see your activity.":(state.requestScope==="received"?"When another student requests one of your listings, you can accept or decline it here.":"When you request a campus resource, you can follow it here. Tracking appears only after the owner accepts."))+'</p><button type="button" class="btn btn-primary" data-action="'+(state.requestScope==="received"?"add-resource":"explore")+'">'+(state.requestScope==="received"?"List a resource":"Explore resources")+' <span class="arrow">→</span></button></div>';
+    else body='<div class="request-list">'+items.map(requestListCard).join("")+'</div>';
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">YOUR CAMPUS ACTIVITY</p><div class="workspace-heading-row"><div><h1>Requests & exchanges</h1><p>Accept requests, coordinate the meetup, and follow an exchange once it’s approved.</p></div><span class="request-count">'+(state.myRequests.length+state.incomingRequests.length)+'<small>Total</small></span></div></section><section class="request-panel"><div class="request-scope-switch"><button type="button" class="'+(state.requestScope==="sent"?"active":"")+'" data-action="request-scope" data-id="sent">Requests I sent <span>'+state.myRequests.length+'</span></button><button type="button" class="'+(state.requestScope==="received"?"active":"")+'" data-action="request-scope" data-id="received">Requests to my listings <span>'+state.incomingRequests.length+'</span></button></div><div class="request-filters">'+tabs+'</div>'+body+'</section>';
     appShell(content,"requests");
   }
   function messageThreadCard(thread) {
