@@ -6,6 +6,7 @@ type GEnv = Env & {
   GYANSHALA_EMAIL_FROM?: string;
   GYANSHALA_ALLOWED_EMAIL_DOMAINS?: string;
   GYANSHALA_OTP_SECRET?: string;
+  GYANSHALA_PREVIEW_TEST_MODE?: string;
 };
 type Challenge = {
   challenge_id: string;
@@ -81,7 +82,13 @@ async function mac(secret: string, value: string): Promise<string> {
   const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(value));
   return Array.from(new Uint8Array(sig), x => x.toString(16).padStart(2, "0")).join("");
 }
-function secret(e: GEnv): string | null { return e.GYANSHALA_OTP_SECRET?.trim() || null; }
+export function isPreviewTestMode(environment: string | undefined, flag: string | undefined): boolean {
+  return environment === "preview" && flag?.trim().toLowerCase() === "true";
+}
+function previewTestMode(e: GEnv): boolean { return isPreviewTestMode(e.ENVIRONMENT, e.GYANSHALA_PREVIEW_TEST_MODE); }
+function secret(e: GEnv): string | null {
+  return e.GYANSHALA_OTP_SECRET?.trim() || (previewTestMode(e) ? "gyanshala-preview-only-test-secret-v1" : null);
+}
 function allowedDomains(e: GEnv): string[] {
   return (e.GYANSHALA_ALLOWED_EMAIL_DOMAINS || "").split(",")
     .map(x => x.trim().toLowerCase().replace(/^@/, ""))
@@ -118,7 +125,8 @@ function setup(e: GEnv, schema: boolean) {
     databaseSchema: schema,
     emailProvider: emailProviderReady(e),
     collegeDomainPolicy: allowedDomains(e).length > 0,
-    otpSecret: Boolean(secret(e))
+    otpSecret: Boolean(e.GYANSHALA_OTP_SECRET?.trim()),
+    previewTestMode: previewTestMode(e)
   };
 }
 async function cleanupExpired(e: GEnv): Promise<void> {
@@ -138,9 +146,15 @@ async function health(e: GEnv): Promise<Response> {
   if (!s.emailProvider) missing.push("GYANSHALA_RESEND_API_KEY and GYANSHALA_EMAIL_FROM");
   if (!s.collegeDomainPolicy) missing.push("GYANSHALA_ALLOWED_EMAIL_DOMAINS (institutional root domains)");
   if (!s.otpSecret) missing.push("GYANSHALA_OTP_SECRET");
-  return reply({ ok: true, app: "gyanshala", signupReady: missing.length === 0, setup: s, requiredSettings: missing });
+  const testMode = previewTestMode(e);
+  const signupReady = testMode
+    ? Boolean(s.databaseBinding && s.databaseSchema && s.collegeDomainPolicy)
+    : missing.length === 0;
+  return reply({ ok: true, app: "gyanshala", signupReady, previewTestMode: testMode, setup: s, requiredSettings: missing });
 }
 async function sendEmail(e: GEnv, to: string, code: string): Promise<boolean> {
+  // Preview-only test mode deliberately simulates delivery. Production never falls back to this path.
+  if (previewTestMode(e)) return true;
   if (!emailProviderReady(e)) return false;
   const text = "Your Gyanshala verification code is " + code + ". It expires in 10 minutes. If you did not request this, ignore this message.";
   const html = '<div style="font-family:Arial,sans-serif;color:#111;line-height:1.6"><h2>Verify your college email</h2><p>Enter this code in Gyanshala to continue.</p><p style="font-size:32px;font-weight:700;letter-spacing:8px">' + code + '</p><p>This code expires in 10 minutes.</p></div>';
@@ -215,7 +229,7 @@ async function start(r: Request, e: GEnv): Promise<Response> {
   const roots = allowedDomains(e);
   if (!roots.length) return reply({ error: "college_domains_not_configured", message: "The approved institutional email domains are not configured." }, 503);
   if (!isAllowedCollegeEmail(email, e)) return reply({ error: "college_email_not_allowed", message: "Use an email address belonging to NIT Silchar's approved email domain." }, 403);
-  if (!e.GYANSHALA_DB || !secret(e) || !emailProviderReady(e) || !(await hasSchema(e))) {
+  if (!e.GYANSHALA_DB || !secret(e) || (!emailProviderReady(e) && !previewTestMode(e)) || !(await hasSchema(e))) {
     return reply({ error: "signup_setup_incomplete", message: "Email verification is not enabled yet. An administrator must finish the setup checklist.", setup: setup(e, await hasSchema(e)) }, 503);
   }
   const db = e.GYANSHALA_DB;
@@ -237,7 +251,17 @@ async function start(r: Request, e: GEnv): Promise<Response> {
     return reply({ error: "email_delivery_failed", message: "Verification email failed to send. Check Resend's API key and verified sender domain." }, 502);
   }
   await markEmailSent(e, email);
-  return reply({ ok: true, challengeId: id, emailSent: true, expiresInSeconds: CODE_SECONDS, message: "Check your college email for a verification code." }, 202);
+  const testMode = previewTestMode(e);
+  return reply({
+    ok: true,
+    challengeId: id,
+    emailSent: !testMode,
+    ...(testMode ? { previewOnly: true, previewVerificationCode: code } : {}),
+    expiresInSeconds: CODE_SECONDS,
+    message: testMode
+      ? "PREVIEW TEST MODE — no email was sent. Enter the one-time code shown here: " + code + ". It expires in 10 minutes."
+      : "Check your college email for a verification code."
+  }, 202);
 }
 async function verifyEmail(r: Request, e: GEnv): Promise<Response> {
   const b = await body(r);
@@ -268,7 +292,10 @@ async function resendEmail(r: Request, e: GEnv): Promise<Response> {
   await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET email_code_hash=?,email_expires_at=?,email_sent_at=?,attempts=0 WHERE challenge_id=?")
     .bind(hash, expires.toISOString(), now.toISOString(), c.challenge_id).run();
   await markEmailSent(e, c.email);
-  return reply({ ok: true });
+  const testMode = previewTestMode(e);
+  return reply(testMode
+    ? { ok: true, previewOnly: true, previewVerificationCode: code, message: "PREVIEW TEST MODE — no email was sent. Use code " + code + "." }
+    : { ok: true });
 }
 async function me(r: Request, e: GEnv): Promise<Response> {
   const u = await getUser(r, e);
