@@ -243,6 +243,10 @@
     state.threadMessages=[]; state.threadLoading=true; state.workspaceMessage="";
     render();
     try {
+      if(!state.messageThreads.some(t=>t.requestId===requestId)) {
+        const index=await api("/messages",null,"GET");
+        state.messageThreads=Array.isArray(index.threads)?index.threads:[];
+      }
       const result=await api("/messages/"+encodeURIComponent(requestId),null,"GET");
       state.activeThread=state.messageThreads.find(t=>t.requestId===requestId) || result.thread || null;
       if(state.activeThread && result.thread) Object.assign(state.activeThread,result.thread);
