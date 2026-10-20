@@ -169,6 +169,7 @@
   }
   async function openResource(id) {
     state.selectedResourceId = id;
+    state.resourcesError = "";
     state.activeResource = null;
     state.detailLoading = true;
     state.screen = "detail";
@@ -295,12 +296,12 @@
   }
   async function action(name, id) {
     if (name === "home") {
-      if (state.user && state.user.profileComplete) { state.category = "All"; state.search = ""; navigate("home"); return; }
+      if (state.user && state.user.profileComplete) { state.category = "All"; state.search = ""; state.screen = "home"; refreshResources(); return; }
       if (state.user) { navigate("profile"); return; }
       navigate("splash"); return;
     }
     if (name === "explore") { state.screen = "explore"; render(); refreshResources(); return; }
-    if (name === "category") { state.category = resourceCategories.includes(id) ? id : "All"; state.screen = "explore"; refreshResources(); return; }
+    if (name === "category") { state.search = ""; state.category = resourceCategories.includes(id) ? id : "All"; state.screen = "explore"; refreshResources(); return; }
     if (name === "resource") { await openResource(id); return; }
     if (name === "request-resource") { await requestResource(id); return; }
     if (name === "refresh-resources") { await refreshResources(); return; }
