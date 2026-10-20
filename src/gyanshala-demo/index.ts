@@ -926,10 +926,47 @@ async function reserveSmartSupply(r:Request,e:GEnv,supplyId:string):Promise<Resp
       await db.prepare("UPDATE gyanshala_supply_inventory SET quantity_available=quantity_available+?,status='available',updated_at=? WHERE supply_id=?").bind(quantity,now,supplyId).run();
       throw new Error("reservation_insert_failed");
     }
-    return reply({ok:true,requestId,supplyId,name:supply.name,quantity,status:"reserved",remaining:supply.quantity_available,hostelId:supply.hostel_id,message:"Reserved in preview. This is test inventory, not a real student offer."},201);
+    const pickup=await db.prepare("SELECT name,latitude,longitude,coordinate_source FROM gyanshala_supply_hostels WHERE hostel_id=? LIMIT 1")
+      .bind(supply.hostel_id).first<{name:string;latitude:number;longitude:number;coordinate_source:string}>();
+    return reply({ok:true,requestId,supplyId,name:supply.name,quantity,status:"reserved",remaining:supply.quantity_available,hostelId:supply.hostel_id,
+      hostelName:pickup?.name||"Campus pickup",latitude:pickup?.latitude??null,longitude:pickup?.longitude??null,
+      coordinateSource:pickup?.coordinate_source||"unverified",
+      directionsUrl:pickup?"https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(pickup.latitude+","+pickup.longitude)+"&travelmode=walking":"https://www.google.com/maps",
+      message:"Reserved in preview. This is test inventory, not a real student offer."},201);
   }catch{
     return reply({error:"reservation_failed",message:"Could not reserve the supply. Search again and retry."},503);
   }
+}
+
+async function listSmartSupplyReservations(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required",message:"Sign in to view supply reservations."},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  try{
+    const rows=await e.GYANSHALA_DB.prepare(
+      "SELECT q.request_id,q.supply_id,q.quantity,q.status,q.created_at,q.updated_at,s.name,s.category,s.offer_type,s.price_amount,s.item_condition,h.hostel_id,h.name AS hostel_name,h.latitude,h.longitude,h.coordinate_source FROM gyanshala_supply_requests q JOIN gyanshala_supply_inventory s ON s.supply_id=q.supply_id JOIN gyanshala_supply_hostels h ON h.hostel_id=s.hostel_id WHERE q.requester_id=? ORDER BY q.created_at DESC LIMIT 100"
+    ).bind(u.user_id).all<{request_id:string;supply_id:string;quantity:number;status:string;created_at:string;updated_at:string;name:string;category:string;offer_type:SupplyType;price_amount:number;item_condition:string;hostel_id:string;hostel_name:string;latitude:number;longitude:number;coordinate_source:string}>();
+    return reply({ok:true,reservations:(rows.results||[]).map(x=>({
+      requestId:x.request_id,supplyId:x.supply_id,quantity:x.quantity,status:x.status,createdAt:x.created_at,updatedAt:x.updated_at,
+      name:x.name,category:x.category,offerType:x.offer_type,priceAmount:x.price_amount,condition:x.item_condition,
+      hostelId:x.hostel_id,hostelName:x.hostel_name,latitude:x.latitude,longitude:x.longitude,coordinateSource:x.coordinate_source,
+      directionsUrl:"https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(x.latitude+","+x.longitude)+"&travelmode=walking"
+    }))});
+  }catch{return reply({error:"reservations_unavailable",message:"Your reservations could not be loaded."},503);}
+}
+async function completeSmartSupplyReservation(r:Request,e:GEnv,requestId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  try{
+    const now=new Date().toISOString();
+    const completed=await e.GYANSHALA_DB.prepare("UPDATE gyanshala_supply_requests SET status='collected',updated_at=? WHERE request_id=? AND requester_id=? AND status='reserved' RETURNING request_id,supply_id,quantity")
+      .bind(now,requestId,u.user_id).first<{request_id:string;supply_id:string;quantity:number}>();
+    if(!completed)return reply({error:"reservation_not_found",message:"An active reservation for this account was not found."},404);
+    return reply({ok:true,requestId,status:"collected",message:"Marked collected. The pickup map is now closed for this reservation."});
+  }catch{return reply({error:"reservation_complete_failed",message:"Could not complete this reservation."},503);}
 }
 async function cancelSmartSupplyReservation(r:Request,e:GEnv,requestId:string):Promise<Response>{
   const u=await getUser(r,e);
@@ -1236,11 +1273,19 @@ async function api(r: Request, e: GEnv): Promise<Response> {
     if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
     return findSmartSupplies(r,e);
   }
+  if(p===API+"/supply-reservations"&&r.method==="GET")return listSmartSupplyReservations(r,e);
   if(p===API+"/supplies/reservations"&&r.method==="POST"){
     if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
     const b=await body(r);const supplyId=normalizeSupplyText(b?.supplyId,100);
     if(!supplyId||! /^[A-Za-z0-9_-]{1,100}$/.test(supplyId))return reply({error:"invalid_supply_id"},400);
     return reserveSmartSupply(r,e,supplyId);
+  }
+  const supplyReservationPrefix=API+"/supply-reservations/";
+  if(p.startsWith(supplyReservationPrefix)&&r.method==="POST"&&p.endsWith("/complete")){
+    if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+    const id=p.slice(supplyReservationPrefix.length,-9).replace(/\/$/,"");
+    if(!id||! /^[A-Za-z0-9_-]{1,100}$/.test(id))return reply({error:"reservation_not_found"},404);
+    return completeSmartSupplyReservation(r,e,id);
   }
   const reservationPrefix=API+"/supplies/reservations/";
   if(p.startsWith(reservationPrefix)&&r.method==="POST"&&p.endsWith("/cancel")){
