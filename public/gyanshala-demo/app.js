@@ -3,7 +3,7 @@
   const API = "/api/gyanshala";
   const APP = "/gyanshala-demo/";
   const root = document.getElementById("app");
-  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "" };
+  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "", mapSearch: "", mapFocusId: "", campusMapInstance: null, campusMapLib: null, campusMapStylesPromise: null, campusMapLibPromise: null, campusMapGeneration: 0, campusMapView: null, campusMapMarkers: [], map3dEnabled: false, map3dAvailable: false, mapBuildingLayerId: "" };
   const esc = (value) => String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const logo = '<img src="/gyanshala-demo/icon.svg" alt="" width="36" height="36">';
   function button(label, action, cls, type) {
@@ -154,7 +154,7 @@
   }
 
   function addResourceScreen() {
-    const content = '<section class="workspace-page-heading"><p class="workspace-eyebrow">GIVE GOOD THINGS ANOTHER LIFE</p><h1>List a resource</h1><p>Share something useful with your campus community. Students will see the details before requesting it.</p></section><section class="listing-layout"><div class="listing-intro-card"><span class="listing-art-icon">＋</span><h2>Someone nearby<br>might need this.</h2><p>Books, lab essentials and everyday study tools can go further when students share them.</p><div class="listing-tip"><span>✧</span><div><strong>A little detail goes a long way</strong><p>Add a clear description and a public campus pickup point.</p></div></div><div class="listing-tip"><span>⌖</span><div><strong>Keep exchanges safe</strong><p>Use a shared campus location. Never include passwords or sensitive personal details.</p></div></div></div><form class="listing-form" id="listing-form"><div class="listing-form-header"><div><p class="section-overline">RESOURCE DETAILS</p><h2>What are you sharing?</h2></div><span class="required-note">* Required</span></div><div id="listing-message"></div><label class="field"><span>Resource title *</span><input name="title" type="text" minlength="3" maxlength="100" placeholder="e.g. Engineering Drawing Kit" required></label><div class="field-row"><label class="field"><span>Category *</span><select name="category" required><option value="">Choose a category</option><option>Books</option><option>Lab Equipment</option><option>Electronics</option><option>Stationery</option></select></label><label class="field"><span>Condition *</span><select name="condition" required><option>Good</option><option>New</option><option>Very good</option><option>Fair</option></select></label></div><label class="field"><span>Description *</span><textarea name="description" minlength="8" maxlength="1500" rows="4" placeholder="What is included? What should a student know before requesting it?" required></textarea><small>8–1,500 characters.</small></label><div class="listing-form-divider"></div><p class="section-overline">SHARING PREFERENCES</p><label class="field"><span>How would you like to share it? *</span><select name="lendingType" id="listing-lending-type" required><option value="lend">Lend · return it later</option><option value="free">Give away · free</option><option value="sell">Sell · one-time price</option></select></label><div class="field-row"><label class="field"><span>Amount (₹)</span><input name="priceAmount" id="listing-price" type="number" min="0" max="1000000" step="1" value="0" required><small>Free items are saved at ₹0.</small></label><label class="field"><span>Campus pickup point *</span><input name="pickupLocation" type="text" maxlength="120" placeholder="e.g. Central Library entrance" required><small>Use a public campus meeting point.</small></label></div><label class="field"><span>Walking distance (optional)</span><input name="distanceLabel" type="text" maxlength="60" placeholder="e.g. 5 min walk"></label><div id="listing-message-bottom"></div><button class="btn btn-primary full" type="submit">Publish listing <span class="arrow">→</span></button><p class="form-footnote">Your listing will be linked to your Gyanshala account and stored in the campus resource catalogue.</p></form></section>';
+    const content = '<section class="workspace-page-heading"><p class="workspace-eyebrow">GIVE GOOD THINGS ANOTHER LIFE</p><h1>List a resource</h1><p>Share something useful with your campus community. Students will see the details before requesting it.</p></section><section class="listing-layout"><div class="listing-intro-card"><span class="listing-art-icon">＋</span><h2>Someone nearby<br>might need this.</h2><p>Books, lab essentials and everyday study tools can go further when students share them.</p><div class="listing-tip"><span>✧</span><div><strong>A little detail goes a long way</strong><p>Add a clear description and a public campus pickup point.</p></div></div><div class="listing-tip"><span>⌖</span><div><strong>Keep exchanges safe</strong><p>Use a shared campus location. Never include passwords or sensitive personal details.</p></div></div></div><form class="listing-form" id="listing-form"><div class="listing-form-header"><div><p class="section-overline">RESOURCE DETAILS</p><h2>What are you sharing?</h2></div><span class="required-note">* Required</span></div><div id="listing-message"></div><label class="field"><span>Resource title *</span><input name="title" type="text" minlength="3" maxlength="100" placeholder="e.g. Engineering Drawing Kit" required></label><div class="field-row"><label class="field"><span>Category *</span><select name="category" required><option value="">Choose a category</option><option>Books</option><option>Lab Equipment</option><option>Electronics</option><option>Stationery</option></select></label><label class="field"><span>Condition *</span><select name="condition" required><option>Good</option><option>New</option><option>Very good</option><option>Fair</option></select></label></div><label class="field"><span>Description *</span><textarea name="description" minlength="8" maxlength="1500" rows="4" placeholder="What is included? What should a student know before requesting it?" required></textarea><small>8–1,500 characters.</small></label><div class="listing-form-divider"></div><p class="section-overline">SHARING PREFERENCES</p><label class="field"><span>How would you like to share it? *</span><select name="lendingType" id="listing-lending-type" required><option value="lend">Lend · return it later</option><option value="free">Give away · free</option><option value="sell">Sell · one-time price</option></select></label><div class="field-row"><label class="field"><span>Amount (₹)</span><input name="priceAmount" id="listing-price" type="number" min="0" max="1000000" step="1" value="0" required><small>Free items are saved at ₹0.</small></label><label class="field"><span>Campus pickup point *</span><select name="pickupLocation" required><option value="">Choose a mapped campus place</option><option>NIT Silchar Campus</option><option>NITS Cricket Playground</option><option>NITS Football Ground</option><option>Indie Lake</option><option>NITS Childrens Park</option><option>NITS Mini Park</option><option>Football Ground Lake</option></select><small>Choose a mapped landmark, then agree the exact public meeting spot with the other student.</small></label></div><div id="listing-message-bottom"></div><button class="btn btn-primary full" type="submit">Publish listing <span class="arrow">→</span></button><p class="form-footnote">Your listing will be linked to your Gyanshala account and stored in the campus resource catalogue.</p></form></section>';
     appShell(content, "list");
     const typeSelect = root.querySelector("#listing-lending-type");
     const priceInput = root.querySelector("#listing-price");
@@ -168,33 +168,202 @@
     }
   }
 
-  function campusMapSvg(selected) {
-    const x=selected?Math.round(Math.max(5,Math.min(95,Number(selected.mapX)||50))*10):500;
-    const y=selected?Math.round(Math.max(5,Math.min(95,Number(selected.mapY)||50))*6.5):325;
-    const route=selected?'<path class="map-walk-route" d="M 500 325 C 470 315 460 295 '+Math.round((500+x)/2)+' '+Math.round((325+y)/2)+' S '+x+' '+y+' '+x+' '+y+'" />':"";
-    const pins=state.pickupPoints.map(function(p){
-      const chosen=selected&&selected.id===p.id;
-      const left=Math.max(3,Math.min(97,Number(p.mapX)||50));
-      const top=Math.max(4,Math.min(96,Number(p.mapY)||50));
-      return '<button type="button" class="map-pin'+(chosen?' selected':'')+'" style="left:'+left+'%;top:'+top+'%" data-action="select-pickup" data-id="'+esc(p.id)+'" aria-label="'+esc(p.name)+', '+Number(p.resourceCount||0)+' available resources"><span class="map-pin-dot">'+(chosen?'✓':'⌖')+'</span><span class="map-pin-label">'+esc(p.name)+'</span></button>';
-    }).join("");
-    return '<div class="pickup-map-canvas"><svg class="campus-schematic" viewBox="0 0 1000 650" role="img" aria-label="Illustrative campus schematic showing pickup points and a preview walking route" preserveAspectRatio="xMidYMid meet"><defs><pattern id="map-grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M 36 0 L 0 0 0 36" fill="none" stroke="#dbe7e2" stroke-width="1"/></pattern></defs><rect width="1000" height="650" rx="26" fill="#eff6f0"/><rect width="1000" height="650" rx="26" fill="url(#map-grid)" opacity=".72"/><path class="map-road-wide" d="M -40 130 C 180 120 260 180 400 160 S 730 95 1040 140 M -30 470 C 180 440 320 500 480 455 S 800 425 1040 500 M 260 -40 C 310 100 250 210 340 330 S 450 530 430 700 M 760 -40 C 730 100 790 225 700 330 S 650 540 720 700"/><path class="map-road" d="M -40 130 C 180 120 260 180 400 160 S 730 95 1040 140 M -30 470 C 180 440 320 500 480 455 S 800 425 1040 500 M 260 -40 C 310 100 250 210 340 330 S 450 530 430 700 M 760 -40 C 730 100 790 225 700 330 S 650 540 720 700"/><path class="map-path" d="M 65 340 C 190 275 270 260 390 305 S 550 405 650 330 815 245 940 315 M 80 565 C 190 570 260 530 345 455 S 570 305 620 190 770 85 930 65 M 75 80 C 210 140 290 110 420 210 S 650 255 800 305 885 410 940 580"/>'+route+'<g class="map-building"><rect x="75" y="175" width="150" height="82" rx="12"/><rect x="420" y="82" width="142" height="76" rx="12"/><rect x="535" y="210" width="125" height="82" rx="12"/><rect x="770" y="185" width="145" height="84" rx="12"/><rect x="118" y="367" width="132" height="72" rx="12"/><rect x="465" y="505" width="152" height="71" rx="12"/><rect x="788" y="380" width="125" height="76" rx="12"/></g><g class="map-building-label"><text x="150" y="220">LIBRARY WING</text><text x="491" y="122">ACADEMIC BLOCK</text><text x="597" y="255">STUDENT HUB</text><text x="842" y="230">SCIENCE BLOCK</text><text x="184" y="405">CAMPUS SERVICES</text><text x="541" y="546">COMMON AREA</text><text x="850" y="420">RESIDENCES</text></g><g class="map-green"><circle cx="315" cy="185" r="39"/><circle cx="350" cy="205" r="22"/><circle cx="670" cy="100" r="35"/><circle cx="705" cy="117" r="19"/><circle cx="280" cy="420" r="30"/><circle cx="316" cy="431" r="20"/><circle cx="690" cy="510" r="40"/><circle cx="730" cy="490" r="19"/><circle cx="905" cy="540" r="31"/></g><g class="map-start"><circle cx="500" cy="325" r="19"/><circle cx="500" cy="325" r="7"/><text x="518" y="319">CAMPUS CENTRE</text></g></svg><div class="map-pin-layer">'+pins+'</div><div class="map-watermark">GYANSHALA CAMPUS GUIDE <span>PREVIEW</span></div></div>';
+
+  const CAMPUS_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+  const CAMPUS_MAP_MODULE = "https://unpkg.com/maplibre-gl@6.9.1/dist/maplibre-gl.mjs";
+  const CAMPUS_CENTER = [92.78682, 24.7551];
+  function releaseCampusMap() {
+    state.campusMapGeneration += 1;
+    const oldMap=state.campusMapInstance;
+    if(oldMap) {
+      try {
+        const c=oldMap.getCenter();
+        state.campusMapView={center:[c.lng,c.lat],zoom:oldMap.getZoom(),pitch:oldMap.getPitch(),bearing:oldMap.getBearing()};
+        oldMap.remove();
+      } catch {}
+    }
+    state.campusMapInstance=null;
+    state.campusMapMarkers=[];
+  }
+  function ensureMapLibreCss() {
+    if(state.campusMapStylesPromise) return state.campusMapStylesPromise;
+    state.campusMapStylesPromise=new Promise(function(resolve) {
+      if(document.getElementById("gyanshala-maplibre-css")) { resolve(true); return; }
+      const link=document.createElement("link");
+      link.id="gyanshala-maplibre-css";
+      link.rel="stylesheet";
+      link.href="https://unpkg.com/maplibre-gl@6.9.1/dist/maplibre-gl.css";
+      link.onload=function(){resolve(true);};
+      link.onerror=function(){resolve(false);};
+      document.head.appendChild(link);
+    });
+    return state.campusMapStylesPromise;
+  }
+  function loadMapLibre() {
+    if(!state.campusMapLibPromise) state.campusMapLibPromise=import(CAMPUS_MAP_MODULE);
+    return state.campusMapLibPromise;
+  }
+  function campusPointIcon(point) {
+    const area=String(point.area||"").toLowerCase();
+    if(area.includes("sport")) return "◇";
+    if(area.includes("park")) return "✳";
+    if(area.includes("lake")||area.includes("natural")) return "≈";
+    return "⌖";
+  }
+  function pointPopupHtml(point) {
+    return '<div class="campus-popup"><span class="campus-popup-type">'+esc(point.area||"Campus place")+'</span><strong>'+esc(point.name)+'</strong><p>'+esc(point.description)+'</p><small>'+Number(point.resourceCount||0)+' mapped Gyanshala '+(Number(point.resourceCount)===1?'resource':'resources')+'</small></div>';
+  }
+  function addCampusPointMarkers(map, lib) {
+    state.campusMapMarkers.forEach(function(marker){try{marker.remove();}catch{}});
+    state.campusMapMarkers=[];
+    state.pickupPoints.forEach(function(point) {
+      const lat=Number(point.latitude),lng=Number(point.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180) return;
+      const el=document.createElement("button");
+      el.type="button";
+      el.className="campus-map-marker"+(point.id===state.pickupSelectedId?" selected":"");
+      el.setAttribute("aria-label",point.name);
+      el.title=point.name;
+      el.innerHTML='<span class="campus-marker-core">'+esc(campusPointIcon(point))+'</span><span class="campus-marker-label">'+esc(point.name)+'</span>';
+      el.addEventListener("click",function(event) {
+        event.preventDefault();event.stopPropagation();
+        state.pickupSelectedId=point.id;state.mapFocusId=point.id;
+        render();
+      });
+      const popup=new lib.Popup({offset:26,closeButton:true,maxWidth:"285px"}).setHTML(pointPopupHtml(point));
+      const marker=new lib.Marker({element:el,anchor:"bottom"}).setLngLat([lng,lat]).setPopup(popup).addTo(map);
+      state.campusMapMarkers.push(marker);
+    });
+  }
+  function configureCampus3DBuildings(map) {
+    const layers=(map.getStyle()&&map.getStyle().layers)||[];
+    const existing=layers.find(function(layer){return layer.type==="fill-extrusion"&&/building/i.test(layer.id);});
+    if(existing) {
+      state.mapBuildingLayerId=existing.id;state.map3dAvailable=true;
+      map.setLayoutProperty(existing.id,"visibility",state.map3dEnabled?"visible":"none");
+      return true;
+    }
+    const building=layers.find(function(layer){return layer.source&&layer["source-layer"]&&String(layer["source-layer"]).toLowerCase()==="building"&&layer.type==="fill";});
+    if(!building) { state.map3dAvailable=false;state.mapBuildingLayerId="";return false; }
+    const before=(layers.find(function(layer){return layer.type==="symbol";})||{}).id;
+    const id="gyanshala-campus-buildings-3d";
+    try {
+      map.addLayer({
+        id:id,type:"fill-extrusion",source:building.source,"source-layer":building["source-layer"],
+        ...(building.filter?{filter:building.filter}:{}),minzoom:15,
+        paint:{
+          "fill-extrusion-color":"#cbd9ea",
+          "fill-extrusion-height":["coalesce",["to-number",["get","render_height"]],["to-number",["get","height"]],7],
+          "fill-extrusion-base":["coalesce",["to-number",["get","render_min_height"]],["to-number",["get","min_height"]],0],
+          "fill-extrusion-opacity":0.84
+        },
+        layout:{"visibility":state.map3dEnabled?"visible":"none"}
+      },before);
+      state.mapBuildingLayerId=id;state.map3dAvailable=true;
+      return true;
+    } catch {
+      state.map3dAvailable=false;state.mapBuildingLayerId="";
+      return false;
+    }
+  }
+  async function initializeCampusMap() {
+    const container=root.querySelector("#campus-real-map");
+    if(!container) return;
+    const generation=state.campusMapGeneration;
+    const status=root.querySelector("#campus-map-status");
+    const setStatus=function(message,kind) {
+      const el=root.querySelector("#campus-map-status");
+      if(!el)return;
+      el.className="campus-map-status"+(kind?" "+kind:"");
+      el.textContent=message;
+      el.hidden=!message;
+    };
+    setStatus("Loading the real campus map…","loading");
+    try {
+      const cssReady=await ensureMapLibreCss();
+      const lib=await loadMapLibre();
+      if(generation!==state.campusMapGeneration||!root.contains(container)) return;
+      if(!cssReady) setStatus("Map controls may look unstyled; loading the map…","loading");
+      const view=state.campusMapView||{center:CAMPUS_CENTER,zoom:16.25,pitch:0,bearing:0};
+      const map=new lib.Map({
+        container:container,style:CAMPUS_MAP_STYLE,center:view.center||CAMPUS_CENTER,zoom:view.zoom||16.25,
+        pitch:view.pitch||0,bearing:view.bearing||0,minZoom:12,maxZoom:21,
+        attributionControl:false,dragRotate:true,renderWorldCopies:false
+      });
+      state.campusMapInstance=map;state.campusMapLib=lib;
+      map.addControl(new lib.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),"top-right");
+      map.addControl(new lib.GeolocateControl({
+        positionOptions:{enableHighAccuracy:true,timeout:10000},trackUserLocation:false,showUserHeading:true
+      }),"top-right");
+      map.addControl(new lib.AttributionControl({
+        compact:true,customAttribution:'<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>'
+      }),"bottom-right");
+      let mapLoaded=false;
+      map.on("load",function() {
+        if(generation!==state.campusMapGeneration||state.campusMapInstance!==map)return;
+        mapLoaded=true;
+        state.map3dAvailable=configureCampus3DBuildings(map);
+        addCampusPointMarkers(map,lib);
+        setStatus("Live vector map loaded · OpenStreetMap data","success");
+        const selected=state.pickupPoints.find(function(point){return point.id===state.pickupSelectedId;});
+        if(state.mapFocusId&&selected) {
+          map.flyTo({center:[Number(selected.longitude),Number(selected.latitude)],zoom:Math.max(17.1,map.getZoom()),duration:650});
+          state.mapFocusId="";
+        }
+        const legend=root.querySelector(".map-loaded-indicator");
+        if(legend)legend.textContent="Interactive map";
+      });
+      map.on("moveend",function() {
+        if(state.campusMapInstance!==map)return;
+        const c=map.getCenter();
+        state.campusMapView={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()};
+      });
+      map.on("click",function(event) {
+        if(generation!==state.campusMapGeneration||state.campusMapInstance!==map)return;
+        const features=map.queryRenderedFeatures(event.point)||[];
+        const feature=features.find(function(f){return f.properties&&(f.properties.name||f.properties["name:en"]||f.properties.ref);});
+        if(!feature)return;
+        const props=feature.properties||{};
+        const name=props.name||props["name:en"]||props.ref;
+        const extra=[props.class,props.subclass,props.amenity,props.shop].filter(Boolean).join(" · ");
+        new lib.Popup({closeButton:true,maxWidth:"260px"})
+          .setLngLat(event.lngLat)
+          .setHTML('<div class="campus-popup"><span class="campus-popup-type">Mapped feature</span><strong>'+esc(name)+'</strong>'+(extra?'<small>'+esc(extra)+'</small>':"")+'<p>Feature label from OpenStreetMap-derived map data. Verify building entrances and access on campus.</p></div>')
+          .addTo(map);
+      });
+      map.on("error",function() {
+        if(!mapLoaded&&generation===state.campusMapGeneration)
+          setStatus("The map is taking longer than expected. Check your connection or open the map provider directly.","loading");
+      });
+    } catch {
+      if(generation!==state.campusMapGeneration||!root.contains(container)) return;
+      setStatus("The map service could not load. The campus list is still available below.","error");
+      const fallback=root.querySelector("#campus-map-fallback");
+      if(fallback)fallback.hidden=false;
+    }
   }
   function pickupMapScreen() {
-    const selected=state.pickupPoints.find(p=>p.id===state.pickupSelectedId)||state.pickupPoints[0]||null;
-    let main;
-    if(state.pickupsLoading) main='<div class="resource-state"><span class="spinner"></span><strong>Finding pickup points</strong><p>Loading the campus resource map…</p></div>';
-    else if(state.pickupsError) main='<div class="resource-state"><strong>Campus map didn’t load.</strong><p>'+esc(state.pickupsError)+'</p><button type="button" class="btn btn-outline" data-action="refresh-pickups">Try again</button></div>';
-    else if(!state.pickupPoints.length) main='<div class="resource-state"><strong>No pickup points yet</strong><p>Campus pickup locations will appear here when they are configured.</p></div>';
-    else {
-      const routeLabel="About "+Number(selected.walkMinutes||5)+" min from the campus centre";
-      const pointList=state.pickupPoints.map(p=>'<button type="button" class="pickup-location-row'+(selected.id===p.id?' selected':'')+'" data-action="select-pickup" data-id="'+esc(p.id)+'"><span class="pickup-row-marker">⌖</span><span class="pickup-row-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.area)+'</small><span>'+Number(p.resourceCount||0)+' available '+(Number(p.resourceCount)===1?'resource':'resources')+'</span></span><span class="pickup-row-time">'+Number(p.walkMinutes||5)+' min</span></button>').join("");
-      const resources=selected.resources&&selected.resources.length?'<div class="pickup-item-grid">'+selected.resources.map(resourceCard).join("")+'</div>':'<div class="pickup-no-items"><span>⌕</span><strong>No listed resources at this point yet</strong><p>Students can use this location as a pickup point when creating a listing.</p></div>';
-      main='<div class="pickup-layout"><div class="pickup-map-panel"><div class="pickup-map-header"><div><p class="section-overline">CAMPUS GUIDE</p><h2>Find your pickup point</h2></div><span class="map-preview-badge"><i></i>Preview map</span></div>'+campusMapSvg(selected)+'<div class="map-legend"><span><i class="legend-pin"></i>Pickup point</span><span><i class="legend-route"></i>Illustrative route</span><span><i class="legend-start"></i>Campus centre</span></div><p class="map-disclaimer">This is an illustrative campus schematic, not live GPS navigation. Walking times are preview estimates; confirm your route on campus.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">PICKUP LOCATIONS</p><h2>Meet nearby</h2></div><span class="pickup-total">'+state.pickupPoints.length+'</span></div><div class="pickup-location-list">'+pointList+'</div></aside></div><section class="pickup-selected-panel"><div class="pickup-selected-heading"><span class="pickup-selected-icon">⌖</span><div><p class="section-overline">SELECTED MEETING POINT</p><h2>'+esc(selected.name)+'</h2><p>'+esc(selected.area)+' · '+esc(routeLabel)+'</p></div><button type="button" class="btn btn-outline" data-action="browse-pickup">View resources here <span class="arrow">→</span></button></div><p class="pickup-description">'+esc(selected.description)+'</p><div class="pickup-resources-heading"><div><p class="section-overline">AVAILABLE NEARBY</p><h3>Resources at this location</h3></div><span>'+Number(selected.resourceCount||0)+' available</span></div>'+resources+'</section>';
+    if(state.pickupsLoading) {
+      appShell('<section class="workspace-page-heading"><p class="workspace-eyebrow">KNOW WHERE TO MEET</p><h1>NIT Silchar campus map</h1><p>Loading real campus places and resource pickup points.</p></section><div class="resource-state"><span class="spinner"></span><strong>Loading campus places</strong><p>Connecting mapped locations to your Gyanshala resource catalogue…</p></div>',"map");
+      return;
     }
-    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">KNOW WHERE TO MEET</p><h1>Campus map & pickup points</h1><p>Choose a public campus meeting point and see which shared resources are listed there.</p></section>'+main;
+    const selected=state.pickupPoints.find(function(p){return p.id===state.pickupSelectedId;})||state.pickupPoints[0]||null;
+    const match=state.mapSearch.trim().toLowerCase();
+    const filtered=match?state.pickupPoints.filter(function(p){return (p.name+" "+p.area+" "+p.description).toLowerCase().includes(match);}):state.pickupPoints;
+    const pointList=filtered.map(function(p){
+      return '<button type="button" class="pickup-location-row'+(selected&&selected.id===p.id?' selected':'')+'" data-action="select-pickup" data-id="'+esc(p.id)+'"><span class="pickup-row-marker">'+esc(campusPointIcon(p))+'</span><span class="pickup-row-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.area)+'</small><span>'+Number(p.resourceCount||0)+' Gyanshala '+(Number(p.resourceCount)===1?'resource':'resources')+'</span></span><span class="pickup-row-coordinate">'+Number(p.latitude).toFixed(4)+'°</span></button>';
+    }).join("");
+    const resources=selected&&selected.resources&&selected.resources.length
+      ?'<div class="pickup-item-grid">'+selected.resources.map(resourceCard).join("")+'</div>'
+      :'<div class="pickup-no-items"><span>⌕</span><strong>No resources pinned to this campus place yet</strong><p>New listings can choose this mapped point as their public pickup location.</p><button type="button" class="text-action" data-action="add-resource">List a resource <span>→</span></button></div>';
+    const detail=selected
+      ?'<section class="pickup-selected-panel"><div class="pickup-selected-heading"><span class="pickup-selected-icon">'+esc(campusPointIcon(selected))+'</span><div><p class="section-overline">SELECTED MAP FEATURE</p><h2>'+esc(selected.name)+'</h2><p>'+esc(selected.area)+' · '+Number(selected.latitude).toFixed(5)+', '+Number(selected.longitude).toFixed(5)+'</p></div><a class="btn btn-outline map-external-link" href="https://www.openstreetmap.org/?mlat='+encodeURIComponent(Number(selected.latitude))+'&mlon='+encodeURIComponent(Number(selected.longitude))+'#map=18/'+Number(selected.latitude)+'/'+Number(selected.longitude)+'" target="_blank" rel="noopener noreferrer">Open in OSM <span class="arrow">↗</span></a></div><p class="pickup-description">'+esc(selected.description)+'</p><div class="pickup-source-note"><span>ⓘ</span><p>This pin marks the OpenStreetMap feature centre, not a verified doorway or official pickup desk. Confirm access and the exact meeting spot before travelling.</p></div><div class="pickup-resources-heading"><div><p class="section-overline">GYANSHALA RESOURCES</p><h3>Listed at this map point</h3></div><span>'+Number(selected.resourceCount||0)+' listed</span></div>'+resources+'</section>'
+      :'<section class="pickup-selected-panel"><strong>No mapped campus places are available.</strong><p>Try refreshing the map.</p></section>';
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">OPEN MAP DATA · BUILT FOR CAMPUS</p><h1>NIT Silchar, in detail.</h1><p>Explore the real mapped campus area, zoom into mapped buildings and paths, and connect Gyanshala listings to public map points.</p></section><section class="campus-map-search-panel"><form class="campus-map-search-form" id="campus-map-search-form"><span>⌕</span><input name="q" type="search" value="'+esc(state.mapSearch)+'" placeholder="Find campus landmarks, grounds, parks…" aria-label="Search mapped campus places"><button type="submit">Find place</button></form><div class="campus-map-search-tools"><span>Known places <strong>'+state.pickupPoints.length+'</strong></span><button type="button" class="map-tool-button'+(state.map3dEnabled?' active':'')+'" data-action="toggle-map-3d">▱ 3D buildings '+(state.map3dEnabled?'On':'Off')+'</button><button type="button" class="map-tool-button" data-action="reset-campus-map">↗ Reset campus view</button></div></section><section class="pickup-layout real-campus-layout"><div class="pickup-map-panel real-campus-map-panel"><div class="pickup-map-header"><div><p class="section-overline">LIVE VECTOR MAP</p><h2>NIT Silchar campus</h2></div><span class="map-preview-badge map-loaded-indicator"><i></i>Map initializing</span></div><div id="campus-real-map" class="campus-real-map" role="application" aria-label="Interactive OpenStreetMap-derived map of NIT Silchar. Use map controls to zoom, rotate, tilt, or find your location."></div><div id="campus-map-status" class="campus-map-status loading" role="status" aria-live="polite">Preparing the map…</div><div id="campus-map-fallback" class="campus-map-fallback" hidden><p>The live map service could not be reached. Check your connection and reload the map.</p><a href="https://www.openstreetmap.org/#map=16/24.7551/92.78682" target="_blank" rel="noopener noreferrer">Open NIT Silchar on OpenStreetMap ↗</a></div><div class="map-footer"><span><i class="map-footer-pin"></i>Gyanshala campus points</span><span>© OpenStreetMap contributors</span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Report a map issue</a></div><p class="map-disclaimer">MapLibre GL JS · OpenFreeMap vector tiles · OpenStreetMap data. Building outlines, labels and paths depend on source-data coverage; not every interior or entrance is mapped.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">MAPPED CAMPUS PLACES</p><h2>Explore places</h2></div><span class="pickup-total">'+filtered.length+'</span></div><div class="pickup-location-list">'+(pointList||'<div class="pickup-no-items"><strong>No places matched</strong><p>Try a campus, grounds, park or lake name.</p></div>')+'</div><p class="map-list-footnote">Select a place to focus the map. You can also click named features directly on the map.</p></aside></section>'+detail;
     appShell(content,"map");
+    initializeCampusMap();
   }
+
   function communityCategoryChips(active) {
     const categories=["All","Books","Lab Equipment","Electronics","Stationery","Other"];
     return '<div class="community-category-chips">'+categories.map(c=>'<button type="button" class="community-category-chip'+(c===active?' active':'')+'" data-action="community-category" data-id="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div>';
@@ -457,6 +626,7 @@
   }
 
   function render() {
+    releaseCampusMap();
     state.message = "";
     if (state.screen === "splash") return splash();
     if (state.screen === "onboarding") return onboarding();
@@ -507,7 +677,14 @@
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
-    if (form.id === "community-post-form") {
+    if (form.id === "campus-map-search-form") {
+      state.mapSearch=String(fd.get("q")||"").trim().slice(0,100);
+      const q=state.mapSearch.toLowerCase();
+      const point=state.pickupPoints.find(function(p){return p.name.toLowerCase()===q;})||state.pickupPoints.find(function(p){return (p.name+" "+p.area).toLowerCase().includes(q);});
+      if(point){state.pickupSelectedId=point.id;state.mapFocusId=point.id;state.workspaceMessage="";}
+      else state.workspaceMessage="No matching pinned place found. You can still click any named map feature to inspect its OpenStreetMap label.";
+      render();
+    } else if (form.id === "community-post-form") {
       await createCommunityPost(form);
     } else if (form.id === "community-search-form") {
       state.communitySearch=String(fd.get("q")||"").trim().slice(0,100);
@@ -573,6 +750,24 @@
     }
 
     if (name === "map") { await loadPickupLocations(); return; }
+
+    if (name === "select-pickup") { state.pickupSelectedId=id||"";state.mapFocusId=id||"";render();return; }
+    if (name === "reset-campus-map") { state.campusMapView=null;state.mapFocusId="";state.mapSearch="";state.pickupSelectedId=state.pickupPoints[0]?state.pickupPoints[0].id:"";render();return; }
+    if (name === "toggle-map-3d") {
+      state.map3dEnabled=!state.map3dEnabled;
+      if(state.campusMapInstance&&state.campusMapLib&&state.campusMapInstance.isStyleLoaded()){
+        const ok=configureCampus3DBuildings(state.campusMapInstance);
+        if(!ok){state.map3dEnabled=false;state.workspaceMessage="3D building heights are not available in this map area’s source data.";render();return;}
+      }
+      render();return;
+    }
+    if (name === "copy-map-coordinates") {
+      const point=state.pickupPoints.find(function(p){return p.id===id;});
+      if(point&&navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(Number(point.latitude).toFixed(6)+", "+Number(point.longitude).toFixed(6)).catch(function(){});
+      state.workspaceMessage=point?"Coordinates copied.":"No coordinates available.";
+      render();return;
+    }
+
     if (name === "community") { state.communityFormOpen=false; await loadCommunity(); return; }
     if (name === "open-more") {
       const menu=root.querySelector("#mobile-more-menu"), control=root.querySelector('[data-action="open-more"]');
