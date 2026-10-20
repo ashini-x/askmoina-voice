@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const schema = source("../src/gyanshala-demo/schema.sql");
 const backend = source("../src/gyanshala-demo/index.ts");
 const app = source("../public/gyanshala-demo/app.js");
