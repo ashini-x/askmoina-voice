@@ -64,7 +64,7 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(backend).toContain("async function getRequestTracking");
     expect(backend).toContain("async function updateLiveLocation");
     expect(backend).toContain("async function updateRequestStatus");
-    expect(backend).toContain("CREATE TABLE IF NOT EXISTS gyanshala_live_locations");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_live_locations");
     expect(app).toContain("function trackingHubScreen()");
     expect(app).toContain("function requestTrackingScreen()");
     expect(app).toContain('data-action="track-request"');
