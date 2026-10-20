@@ -49,7 +49,7 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
 
   it("protects pickup and community reads and requires real account ownership for updates", () => {
     const pickup = backend.slice(backend.indexOf("async function listPickupLocations"), backend.indexOf("type CommunityPostRow"));
-    const community = backend.slice(backend.indexOf("async function listCommunityPosts"), backend.indexOf("async function logout"));
+    const community = backend.slice(backend.indexOf("async function listCommunityPosts"), backend.indexOf("async function api("));
     expect(pickup).toContain("getUser(r,e)");
     expect(pickup).toContain("profile_complete!==1");
     expect(community).toContain("getUser(r,e)");
