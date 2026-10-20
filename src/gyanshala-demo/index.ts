@@ -730,7 +730,8 @@ function parseSupplyQueryFallback(query:string):Record<string,unknown>{
   const q=query.toLowerCase();
   const catalogMatch=SUPPLY_SEEDS.some(item=>[item.name,...item.aliases].some(term=>q.includes(term.toLowerCase())));
   const inventoryIntent=/\b(need|want|find|search|looking for|available|in stock|borrow|lend|rent|buy|purchase|donate|donation|give away|have any|can i get|where can i get|show me|under|below|near me|tomorrow|today|urgent)\b/.test(q);
-  if(!catalogMatch&&!inventoryIntent){
+  const genericIntent=/\b(explain|tell me|write|solve|debug|joke|weather|story|general advice|help with|how do i|what is|why is|teach me|summarize)\b/.test(q);
+  if((genericIntent&&!catalogMatch)||(!catalogMatch&&!inventoryIntent)){
     return {isSupplySearch:false,item:"",aliases:[],category:null,offerType:"any",maxPrice:null,quantity:1,urgent:false};
   }
   const category=SUPPLY_CATEGORIES.find(c=>q.includes(c.toLowerCase()))||null;
