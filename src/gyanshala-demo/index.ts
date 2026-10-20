@@ -701,15 +701,16 @@ async function ensureSmartSupplyDemoData(e:GEnv):Promise<void>{
   const db=e.GYANSHALA_DB;
   const hostelCount=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_supply_hostels WHERE is_demo=1").first<{total:number}>();
   if(Number(hostelCount?.total||0)<SUPPLY_HOSTELS.length){
-    for(const h of SUPPLY_HOSTELS){
-      await db.prepare("INSERT INTO gyanshala_supply_hostels(hostel_id,name,latitude,longitude,coordinate_source,is_demo,status,created_at,updated_at) VALUES(?,?,?,?,'demo_approximation',1,'active',?,?) ON CONFLICT(hostel_id) DO NOTHING")
-        .bind(h.id,h.name,h.latitude,h.longitude,new Date().toISOString(),new Date().toISOString()).run();
-    }
+    const now=new Date().toISOString();
+    const hostelStatements=SUPPLY_HOSTELS.map(h=>db.prepare("INSERT INTO gyanshala_supply_hostels(hostel_id,name,latitude,longitude,coordinate_source,is_demo,status,created_at,updated_at) VALUES(?,?,?,?,'demo_approximation',1,'active',?,?) ON CONFLICT(hostel_id) DO NOTHING")
+      .bind(h.id,h.name,h.latitude,h.longitude,now,now));
+    await db.batch(hostelStatements);
   }
   const expected=SUPPLY_HOSTELS.length*SUPPLY_SEEDS.length;
   const inventoryCount=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_supply_inventory WHERE is_demo=1").first<{total:number}>();
   if(Number(inventoryCount?.total||0)>=expected)return;
   const now=new Date().toISOString();
+  const statements:D1PreparedStatement[]=[];
   for(let h=0;h<SUPPLY_HOSTELS.length;h++){
     const hostel=SUPPLY_HOSTELS[h];
     for(let i=0;i<SUPPLY_SEEDS.length;i++){
@@ -717,14 +718,13 @@ async function ensureSmartSupplyDemoData(e:GEnv):Promise<void>{
       const quantity=((h*7+i*3)%11===0)?0:1+((h*3+i*5)%5);
       const status=quantity>0?"available":"unavailable";
       const offerType=item.offerType;
-      const isFree=offerType==="donation"||offerType==="borrow";
       const price=offerType==="sell"?Math.max(10,item.basePrice+(((h+i)%4)*15)):0;
-      const condition=item.condition;
       const id="gy-demo-supply-"+hostel.id.slice(-2)+"-"+item.slug;
-      await db.prepare("INSERT INTO gyanshala_supply_inventory(supply_id,hostel_id,name,aliases,category,description,item_condition,offer_type,price_amount,quantity_available,status,is_demo,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(supply_id) DO NOTHING")
-        .bind(id,hostel.id,item.name,item.aliases.join("|"),item.category,item.description,condition,offerType,price,quantity,status,now,now).run();
+      statements.push(db.prepare("INSERT INTO gyanshala_supply_inventory(supply_id,hostel_id,name,aliases,category,description,item_condition,offer_type,price_amount,quantity_available,status,is_demo,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(supply_id) DO NOTHING")
+        .bind(id,hostel.id,item.name,item.aliases.join("|"),item.category,item.description,item.condition,offerType,price,quantity,status,now,now));
     }
   }
+  for(let i=0;i<statements.length;i+=50)await db.batch(statements.slice(i,i+50));
 }
 function parseSupplyQueryFallback(query:string):Record<string,unknown>{
   const q=query.toLowerCase();
