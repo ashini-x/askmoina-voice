@@ -24,6 +24,8 @@
       "/pwa-icon-512.svg",
       "/pwa-icon-512.png",
       "/api/*",
+      "/gyanshala-demo",
+      "/gyanshala-demo/*",
       "/veda/*",
       "/veda",
       "/voice-lab",
@@ -136,6 +138,11 @@
       "database_name": "veda-prod",
       "database_id": "d63f471f-3a66-4a7f-9cfb-9087d00f9dcc",
       "migrations_dir": "migrations/veda"
+    },
+    {
+      "binding": "GYANSHALA_DB",
+      "database_name": "gyanshala-demo-prod",
+      "database_id": "188e5b37-b61a-48c4-aa48-d9617074b41a"
     }
   ],
   "queues": {
@@ -199,6 +206,11 @@
         "database_name": "veda-preview",
         "database_id": "0ef1c504-6a71-499f-b27c-a3d72b77be0b",
         "migrations_dir": "migrations/veda"
+      },
+      {
+        "binding": "GYANSHALA_DB",
+        "database_name": "gyanshala-demo-preview",
+        "database_id": "3424f65d-8ecd-4a35-ac74-02b98abc4579"
       }
     ],
     "queues": {
