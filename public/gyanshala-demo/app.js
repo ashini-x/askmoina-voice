@@ -278,13 +278,19 @@
     if(!textBody) return;
     state.messageSending=true;
     const submit=form.querySelector('button[type="submit"]'); if(submit)submit.disabled=true;
+    let sendError="";
     try {
       const result=await api("/messages/"+encodeURIComponent(state.selectedThreadId),{body:textBody},"POST");
       if(result.message) state.threadMessages.push(result.message);
       if(state.activeThread) { state.activeThread.lastMessage=textBody; state.activeThread.lastMessageAt=result.message && result.message.createdAt; }
       state.workspaceMessage="";
-    } catch(e) { state.workspaceMessage=e.message || "Your message couldn’t be sent."; }
-    finally { state.messageSending=false; await loadMessages(); if(state.selectedThreadId) await openMessageThread(state.selectedThreadId); }
+    } catch(e) { sendError=e.message || "Your message couldn’t be sent."; }
+    finally {
+      state.messageSending=false;
+      await loadMessages();
+      if(state.selectedThreadId) await openMessageThread(state.selectedThreadId);
+      if(sendError) { state.workspaceMessage=sendError; render(); }
+    }
   }
 
   async function refreshResources() {
