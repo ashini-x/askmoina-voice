@@ -380,7 +380,7 @@ async function listResources(r: Request, e: GEnv): Promise<Response> {
     const category = categories.includes(categoryValue) ? categoryValue : "All";
     const like = "%" + q.replace(/[\\%_]/g, "\\async function logout(r: Request, e: GEnv): Promise<Response> {") + "%";
     const rows = await e.GYANSHALA_DB.prepare(
-      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? ESCAPE '\\\\' COLLATE NOCASE OR r.category LIKE ? ESCAPE '\\\\' COLLATE NOCASE OR r.description LIKE ? ESCAPE '\\\\' COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
+      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? COLLATE NOCASE OR r.category LIKE ? COLLATE NOCASE OR r.description LIKE ? COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
     ).bind(u.user_id, q, like, like, like, category, category).all<ResourceRow>();
     return reply({ ok: true, resources: (rows.results || []).map(resourceView), total: (rows.results || []).length });
   } catch {
@@ -417,7 +417,7 @@ async function requestResource(r: Request, e: GEnv, resourceId: string): Promise
       .bind(resourceId, u.user_id).first<{request_id:string;status:string}>();
     if (existing) return reply({ ok: true, alreadyRequested: true, requestStatus: existing.status, requestId: existing.request_id });
     const id = "gyr_" + token(18), now = new Date().toISOString();
-    await db.prepare("INSERT INTO gyanshala_resource_requests(request_id,resource_id,requester_id,owner_id,status,message,created_at,updated_at) VALUES(?,?,?,?, 'pending','',?,?,?)")
+    await db.prepare("INSERT INTO gyanshala_resource_requests(request_id,resource_id,requester_id,owner_id,status,message,created_at,updated_at) VALUES(?,?,?,?,'pending','',?,?)")
       .bind(id, resourceId, u.user_id, resource.owner_id, now, now).run();
     return reply({ ok: true, requestId: id, requestStatus: "pending" }, 201);
   } catch {
