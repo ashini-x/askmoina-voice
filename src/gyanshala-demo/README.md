@@ -1,5 +1,12 @@
 # Gyanshala demo — setup and cleanup
 
+## Free preview verification testing
+
+The Wrangler `previews.vars` block sets `GYANSHALA_ALLOWED_EMAIL_DOMAINS=nits.ac.in` and `GYANSHALA_PREVIEW_TEST_MODE=true`. In that preview environment only, signup/sign-in verification codes are generated normally but delivery is simulated; the one-time code is returned to the preview UI so the profile/session flow can be tested without purchasing a domain or configuring Resend.
+
+The backend requires both `ENVIRONMENT=preview` and the exact `GYANSHALA_PREVIEW_TEST_MODE=true` flag. The production `vars` block must never contain this flag. Preview test accounts live in the separate Gyanshala preview D1 database. This does **not** prove ownership of an email address and must never be used as the student-facing production verification path. Before launch, configure the real Resend sender and secret, and verify real inbox delivery.
+
+
 Gyanshala-specific assets live in public/gyanshala-demo; backend and schema live in src/gyanshala-demo. Shared integration points are a small router hook in src/index.ts, asset-route entries and the dedicated GYANSHALA_DB binding in wrangler.jsonc, plus isolated validation steps in GitHub Actions.
 
 ## Institutional email policy
