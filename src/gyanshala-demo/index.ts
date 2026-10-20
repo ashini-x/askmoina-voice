@@ -108,7 +108,22 @@ function setup(e: GEnv, schema: boolean) {
     otpSecret: Boolean(secret(e))
   };
 }
+
+async function cleanupExpired(e: GEnv): Promise<void> {
+  const db = e.GYANSHALA_DB;
+  if (!db) return;
+  const now = new Date().toISOString();
+  const retainedSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Keep stale OTP contact details and expired sessions only as long as needed.
+  await db.prepare("DELETE FROM gyanshala_signup_challenges WHERE email_expires_at <= ?")
+    .bind(now).run().catch(() => undefined);
+  await db.prepare("DELETE FROM gyanshala_sessions WHERE expires_at <= ?")
+    .bind(now).run().catch(() => undefined);
+  await db.prepare("DELETE FROM gyanshala_rate_limits WHERE last_sent_at <= ?")
+    .bind(retainedSince).run().catch(() => undefined);
+}
 async function health(e: GEnv): Promise<Response> {
+  await cleanupExpired(e);
   const schema = await hasSchema(e);
   const s = setup(e, schema);
   const missing: string[] = [];
@@ -210,6 +225,7 @@ async function start(r: Request, e: GEnv): Promise<Response> {
     return reply({ error: "signup_setup_incomplete", message: "Student verification is not enabled yet. An administrator must finish the setup checklist.", setup: setup(e, await hasSchema(e)) }, 503);
   }
   const db = e.GYANSHALA_DB;
+  await cleanupExpired(e);
   const byEmail = await db.prepare("SELECT user_id FROM gyanshala_users WHERE email=? LIMIT 1").bind(email).first<{user_id:string}>();
   const byPhone = await db.prepare("SELECT user_id FROM gyanshala_users WHERE phone=? LIMIT 1").bind(phone).first<{user_id:string}>();
   let userId: string | null = null;
