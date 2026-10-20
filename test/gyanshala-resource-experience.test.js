@@ -106,8 +106,8 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(app).toContain("function supplyFinderScreen()");
     expect(app).toContain('id="supply-finder-form"');
     expect(app).toContain('data-action="supply-reserve"');
-    expect(app).toContain("data-demo coordinates");
-    expect(app).toContain("no generic chatbot");
+    expect(app).toContain("Demo coordinates");
+    expect(app).toContain("No general chatbot");
     expect(app).toContain("synthetic and are not real student listings");
   });
 
