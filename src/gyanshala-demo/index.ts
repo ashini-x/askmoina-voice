@@ -7,6 +7,7 @@ type GEnv = Env & {
   GYANSHALA_ALLOWED_EMAIL_DOMAINS?: string;
   GYANSHALA_OTP_SECRET?: string;
   GYANSHALA_PREVIEW_TEST_MODE?: string;
+  GYANSHALA_GOOGLE_MAPS_BROWSER_KEY?: string;
 };
 type Challenge = {
   challenge_id: string;
@@ -430,6 +431,7 @@ async function requestResource(r: Request, e: GEnv, resourceId: string): Promise
 
 type RequestListRow = {
   request_id: string; status: string; message: string; created_at: string; updated_at: string;
+  requester_id: string; owner_id: string | null; requester_name: string | null; owner_full_name: string | null;
   resource_id: string; title: string; category: string; description: string; item_condition: string;
   lending_type: "lend" | "sell" | "free"; price_amount: number; pickup_location: string;
   distance_label: string; owner_name: string; owner_branch: string; icon: string;
@@ -486,18 +488,137 @@ async function listMyRequests(r: Request, e: GEnv): Promise<Response> {
   try {
     await seedPreviewResources(e);
     const rows = await e.GYANSHALA_DB.prepare(
-      "SELECT q.request_id,q.status,q.message,q.created_at,q.updated_at,r.resource_id,r.title,r.category,r.description,r.item_condition,r.lending_type,r.price_amount,r.pickup_location,r.distance_label,r.owner_name,r.owner_branch,r.icon,CASE WHEN q.owner_id IS NOT NULL THEN 1 ELSE 0 END AS messages_available FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id WHERE q.requester_id=? ORDER BY q.created_at DESC LIMIT 100"
-    ).bind(u.user_id).all<RequestListRow>();
-    const requests = (rows.results || []).map(x => ({
-      requestId:x.request_id, status:x.status, message:x.message, createdAt:x.created_at, updatedAt:x.updated_at,
-      resource:{id:x.resource_id,title:x.title,category:x.category,description:x.description,condition:x.item_condition,
-        lendingType:x.lending_type,priceAmount:x.price_amount,pickupLocation:x.pickup_location,distanceLabel:x.distance_label,
-        ownerName:x.owner_name,ownerBranch:x.owner_branch,icon:x.icon},
-      messagesAvailable:x.messages_available === 1
-    }));
-    return reply({ ok:true, requests, total:requests.length });
+      "SELECT q.request_id,q.status,q.message,q.created_at,q.updated_at,q.requester_id,q.owner_id,r.resource_id,r.title,r.category,r.description,r.item_condition,r.lending_type,r.price_amount,r.pickup_location,r.distance_label,r.owner_name,r.owner_branch,r.icon,requester.full_name AS requester_name,owner.full_name AS owner_full_name,CASE WHEN q.owner_id IS NOT NULL THEN 1 ELSE 0 END AS messages_available FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id LEFT JOIN gyanshala_users requester ON requester.user_id=q.requester_id LEFT JOIN gyanshala_users owner ON owner.user_id=q.owner_id WHERE q.requester_id=? OR q.owner_id=? ORDER BY q.created_at DESC LIMIT 200"
+    ).bind(u.user_id,u.user_id).all<RequestListRow>();
+    const mapped = (rows.results || []).map(x => {
+      const role = x.requester_id === u.user_id ? "requester" : "owner";
+      return {
+        requestId:x.request_id, status:x.status, role, message:x.message, createdAt:x.created_at, updatedAt:x.updated_at,
+        otherName:role === "requester" ? (x.owner_full_name || x.owner_name || "Student") : (x.requester_name || "Student"),
+        otherBranch:role === "requester" ? x.owner_branch : "",
+        resource:{id:x.resource_id,title:x.title,category:x.category,description:x.description,condition:x.item_condition,
+          lendingType:x.lending_type,priceAmount:x.price_amount,pickupLocation:x.pickup_location,distanceLabel:x.distance_label,
+          ownerName:x.owner_name,ownerBranch:x.owner_branch,icon:x.icon},
+        messagesAvailable:x.messages_available === 1
+      };
+    });
+    const requests = mapped.filter(x=>x.role === "requester");
+    const incomingRequests = mapped.filter(x=>x.role === "owner");
+    return reply({ ok:true, requests, incomingRequests, total:requests.length, incomingTotal:incomingRequests.length });
   } catch {
     return reply({ error:"requests_unavailable", message:"Your requests are temporarily unavailable. Try again." },503);
+  }
+}
+type TrackingRequestRow = {
+  request_id:string;status:string;requester_id:string;owner_id:string|null;created_at:string;updated_at:string;
+  title:string;pickup_location:string;requester_name:string|null;owner_name:string|null;
+  latitude:number|null;longitude:number|null;
+};
+type LiveLocationRow = {
+  request_id:string;user_id:string;latitude:number;longitude:number;accuracy_m:number;updated_at:string;
+  full_name:string|null;branch:string|null;
+};
+async function getRequestTracking(r: Request,e:GEnv,requestId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required",message:"Sign in to view exchange tracking."},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  try{
+    const db=e.GYANSHALA_DB;
+    await ensurePickupPoints(e);
+    const req=await db.prepare(
+      "SELECT q.request_id,q.status,q.requester_id,q.owner_id,q.created_at,q.updated_at,r.title,r.pickup_location,requester.full_name AS requester_name,owner.full_name AS owner_name,p.latitude,p.longitude FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id LEFT JOIN gyanshala_users requester ON requester.user_id=q.requester_id LEFT JOIN gyanshala_users owner ON owner.user_id=q.owner_id LEFT JOIN gyanshala_pickup_points p ON p.name=r.pickup_location WHERE q.request_id=? AND (q.requester_id=? OR q.owner_id=?) LIMIT 1"
+    ).bind(requestId,u.user_id,u.user_id).first<TrackingRequestRow>();
+    if(!req)return reply({error:"tracking_not_found",message:"This exchange is not available to your account."},404);
+    const isOwner=req.owner_id===u.user_id;
+    const isRequester=req.requester_id===u.user_id;
+    const liveStatus=req.status==="approved"||req.status==="active";
+    let locations: Array<Record<string,unknown>>=[];
+    if(liveStatus){
+      const cutoff=new Date(Date.now()-120000).toISOString();
+      const rows=await db.prepare(
+        "SELECT l.request_id,l.user_id,l.latitude,l.longitude,l.accuracy_m,l.updated_at,u.full_name,u.branch FROM gyanshala_live_locations l LEFT JOIN gyanshala_users u ON u.user_id=l.user_id WHERE l.request_id=? AND l.updated_at>=? ORDER BY l.updated_at DESC"
+      ).bind(requestId,cutoff).all<LiveLocationRow>();
+      locations=(rows.results||[]).map(x=>({
+        userId:x.user_id,name:x.full_name||"Student",branch:x.branch||"",latitude:x.latitude,longitude:x.longitude,
+        accuracyM:x.accuracy_m,updatedAt:x.updated_at,role:x.user_id===req.requester_id?"requester":"owner",isMine:x.user_id===u.user_id
+      }));
+    }
+    return reply({
+      ok:true,requestId:req.request_id,status:req.status,createdAt:req.created_at,updatedAt:req.updated_at,
+      role:isOwner?"owner":"requester",canTrack:liveStatus,
+      resource:{title:req.title,pickupLocation:req.pickup_location},
+      meetup:{name:req.pickup_location,latitude:req.latitude,longitude:req.longitude},
+      participants:{requesterName:req.requester_name||"Student",ownerName:req.owner_name||"Student"},
+      locations,googleMapsBrowserKey:e.GYANSHALA_GOOGLE_MAPS_BROWSER_KEY||null,
+      privacy:{locationSharingOptInRequired:true,locationUpdatesExpireAfterSeconds:120}
+    });
+  }catch{
+    return reply({error:"tracking_unavailable",message:"Tracking is temporarily unavailable. Try again."},503);
+  }
+}
+async function updateRequestStatus(r:Request,e:GEnv,requestId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  const next=typeof b?.status==="string"?b.status:"";
+  if(!["approved","declined","active","completed","cancelled"].includes(next))
+    return reply({error:"invalid_status",message:"Choose a supported exchange action."},400);
+  try{
+    const db=e.GYANSHALA_DB;
+    const q=await db.prepare("SELECT request_id,status,requester_id,owner_id FROM gyanshala_resource_requests WHERE request_id=? AND (requester_id=? OR owner_id=?) LIMIT 1")
+      .bind(requestId,u.user_id,u.user_id).first<{request_id:string;status:string;requester_id:string;owner_id:string|null}>();
+    if(!q)return reply({error:"request_not_found",message:"This request is not available to your account."},404);
+    if(!q.owner_id)return reply({error:"sample_listing_no_owner",message:"This sample listing has no signed-in owner account yet."},409);
+    const owner=q.owner_id===u.user_id, requester=q.requester_id===u.user_id;
+    let allowed=false;
+    if(owner&&q.status==="pending"&&["approved","declined"].includes(next))allowed=true;
+    if(requester&&q.status==="pending"&&next==="cancelled")allowed=true;
+    if((owner||requester)&&q.status==="approved"&&["active","cancelled"].includes(next))allowed=true;
+    if((owner||requester)&&q.status==="active"&&next==="completed")allowed=true;
+    if(!allowed)return reply({error:"invalid_transition",message:"That action is not available at this stage of the exchange."},409);
+    const now=new Date().toISOString();
+    await db.prepare("UPDATE gyanshala_resource_requests SET status=?,updated_at=? WHERE request_id=?").bind(next,now,requestId).run();
+    if(["declined","cancelled","completed"].includes(next)){
+      await db.prepare("DELETE FROM gyanshala_live_locations WHERE request_id=?").bind(requestId).run();
+    }
+    return reply({ok:true,requestId,status:next,updatedAt:now,trackingAvailable:next==="approved"||next==="active"});
+  }catch{
+    return reply({error:"request_update_failed",message:"Could not update this exchange. Please try again."},503);
+  }
+}
+async function updateLiveLocation(r:Request,e:GEnv,requestId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u)return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1)return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB)return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  try{
+    const db=e.GYANSHALA_DB;
+    const q=await db.prepare("SELECT request_id,status,requester_id,owner_id FROM gyanshala_resource_requests WHERE request_id=? AND (requester_id=? OR owner_id=?) LIMIT 1")
+      .bind(requestId,u.user_id,u.user_id).first<{request_id:string;status:string;requester_id:string;owner_id:string|null}>();
+    if(!q)return reply({error:"tracking_not_found"},404);
+    if(b?.stop===true){
+      await db.prepare("DELETE FROM gyanshala_live_locations WHERE request_id=? AND user_id=?").bind(requestId,u.user_id).run();
+      return reply({ok:true,sharing:false});
+    }
+    if(!q.owner_id||!["approved","active"].includes(q.status))
+      return reply({error:"tracking_not_active",message:"Location sharing is available only after the owner accepts the request."},409);
+    const lat=typeof b?.latitude==="number"?b.latitude:Number(b?.latitude);
+    const lng=typeof b?.longitude==="number"?b.longitude:Number(b?.longitude);
+    const accuracy=typeof b?.accuracyM==="number"?b.accuracyM:Number(b?.accuracyM||0);
+    if(!Number.isFinite(lat)||lat < -90||lat > 90||!Number.isFinite(lng)||lng < -180||lng > 180||
+       !Number.isFinite(accuracy)||accuracy<0||accuracy>10000)
+      return reply({error:"invalid_location",message:"The location update was invalid."},400);
+    const now=new Date().toISOString();
+    await db.prepare(
+      "INSERT INTO gyanshala_live_locations(request_id,user_id,latitude,longitude,accuracy_m,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(request_id,user_id) DO UPDATE SET latitude=excluded.latitude,longitude=excluded.longitude,accuracy_m=excluded.accuracy_m,updated_at=excluded.updated_at"
+    ).bind(requestId,u.user_id,lat,lng,accuracy,now).run();
+    return reply({ok:true,sharing:true,updatedAt:now});
+  }catch{
+    return reply({error:"location_update_failed",message:"Could not update your location. Please try again."},503);
   }
 }
 type MessageThreadRow = {
@@ -787,6 +908,22 @@ async function api(r: Request, e: GEnv): Promise<Response> {
     return createResource(r, e);
   }
   if (p === API + "/my-requests" && r.method === "GET") return listMyRequests(r, e);
+  const requestsPrefix=API+"/requests/";
+  if(p.startsWith(requestsPrefix)){
+    const parts=p.slice(requestsPrefix.length).split("/");
+    const requestId=parts[0]||"";
+    if(requestId&&!/^[A-Za-z0-9_-]{1,100}$/.test(requestId))return reply({error:"request_not_found"},404);
+    if(parts.length===2&&parts[1]==="tracking"&&r.method==="GET")return getRequestTracking(r,e,requestId);
+    if(parts.length===2&&parts[1]==="status"&&r.method==="POST"){
+      if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+      return updateRequestStatus(r,e,requestId);
+    }
+    if(parts.length===2&&parts[1]==="location"&&r.method==="POST"){
+      if(!sameOrigin(r))return reply({error:"origin_rejected"},403);
+      return updateLiveLocation(r,e,requestId);
+    }
+    return reply({error:"not_found"},404);
+  }
   if (p === API + "/messages" && r.method === "GET") return listMessageThreads(r, e);
   const messagePrefix = API + "/messages/";
   if (p.startsWith(messagePrefix)) {
@@ -838,7 +975,7 @@ export async function handleGyanshalaRequest(request: Request, env: Env): Promis
   // Only the Gyanshala shell permits the map library/style/tiles. All unrelated
   // AskMoina and Veda routes retain their existing restrictive CSP.
   h.set("Content-Security-Policy", isGyanshalaShell
-    ? "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org; form-action 'self'; connect-src 'self' wss: https://unpkg.com https://tiles.openfreemap.org; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data: https://tiles.openfreemap.org; manifest-src 'self'; worker-src 'self' blob:; child-src blob:;"
+    ? "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org https://www.google.com https://maps.google.com; form-action 'self'; connect-src 'self' wss: https://unpkg.com https://tiles.openfreemap.org https://maps.googleapis.com; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://maps.googleapis.com; img-src 'self' data: blob: https://tiles.openfreemap.org https://maps.googleapis.com https://maps.gstatic.com; font-src 'self' data: https://tiles.openfreemap.org https://fonts.gstatic.com; manifest-src 'self'; worker-src 'self' blob:; child-src blob:;"
     : "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; manifest-src 'self'; worker-src 'self';");
   if (isGyanshalaShell) h.set("Permissions-Policy", "geolocation=(self), camera=(), microphone=()");
   if (url.pathname.endsWith("/manifest.webmanifest")) h.set("Content-Type", "application/manifest+json; charset=utf-8");
