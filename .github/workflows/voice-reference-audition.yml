@@ -1,0 +1,56 @@
+name: Voice reference audition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/voice-reference-audition.yml"
+      - "scripts/live-voice-audition.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askmoina-voice-reference-audition
+  cancel-in-progress: true
+
+jobs:
+  audition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      BASE_URL: https://askmoina-voice.thenewtongs.workers.dev
+      ADMIN_DASHBOARD_USER: ${{ secrets.ADMIN_DASHBOARD_USER }}
+      ADMIN_DASHBOARD_PASSWORD: ${{ secrets.ADMIN_DASHBOARD_PASSWORD }}
+    steps:
+      - name: Check out the audition harness
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install WebSocket client
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet --disable-pip-version-check websocket-client
+          python -m py_compile scripts/live-voice-audition.py
+
+      - name: Capture same-prompt samples for four native voices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/live-voice-audition.py
+
+      - name: Upload audition WAVs and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: askmoina-voice-reference-audition
+          path: artifacts/voice-reference-audition/*
+          if-no-files-found: warn
+          retention-days: 3
