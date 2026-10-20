@@ -6,6 +6,9 @@ type GEnv = Env & {
   GYANSHALA_EMAIL_FROM?: string;
   GYANSHALA_ALLOWED_EMAIL_DOMAINS?: string;
   GYANSHALA_OTP_SECRET?: string;
+  TWILIO_API_KEY_SID?: string;
+  TWILIO_API_KEY_SECRET?: string;
+  TWILIO_VERIFY_SERVICE_SID?: string;
 };
 type Challenge = {
   challenge_id: string; mode: "signup" | "signin"; user_id: string | null;
