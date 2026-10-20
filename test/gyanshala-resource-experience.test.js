@@ -86,6 +86,31 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(app).toContain('id="mobile-more-menu"');
   });
 
+  it("keeps Smart Supply Locator inventory, stock, and reservations in dedicated tables", () => {
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_supply_hostels");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_supply_inventory");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_supply_requests");
+    expect(schema).toContain("quantity_available INTEGER NOT NULL");
+    expect(schema).toContain("offer_type TEXT NOT NULL CHECK(offer_type IN ('donation','borrow','sell'))");
+    expect(backend).toContain("async function ensureSmartSupplyDemoData");
+    expect(backend).toContain("if(!previewTestMode(e)||!e.GYANSHALA_DB)return");
+    expect(backend).toContain("const expected=SUPPLY_HOSTELS.length*SUPPLY_SEEDS.length");
+    expect(backend).toContain("async function findSmartSupplies");
+    expect(backend).toContain("generativelanguage.googleapis.com");
+    expect(backend).toContain("responseMimeType:\"application/json\"");
+    expect(backend).toContain("async function reserveSmartSupply");
+    expect(backend).toContain("async function cancelSmartSupplyReservation");
+    expect(backend).toContain("distanceMatrix/v2:computeRouteMatrix");
+    expect(backend).toContain('p===API+"/supply-finder"&&r.method==="POST"');
+    expect(backend).toContain('p===API+"/supply-finder/hostels"&&r.method==="GET"');
+    expect(app).toContain("function supplyFinderScreen()");
+    expect(app).toContain('id="supply-finder-form"');
+    expect(app).toContain('data-action="supply-reserve"');
+    expect(app).toContain("data-demo coordinates");
+    expect(app).toContain("no generic chatbot");
+    expect(app).toContain("synthetic and are not real student listings");
+  });
+
   it("wires listing, request history, and message screens into navigation and forms", () => {
     expect(app).toContain("function addResourceScreen()");
     expect(app).toContain("function myRequestsScreen()");
