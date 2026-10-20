@@ -103,3 +103,48 @@ CREATE INDEX IF NOT EXISTS idx_gyanshala_messages_thread
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_messages_recipient
   ON gyanshala_messages(recipient_id, read_at, created_at);
+
+
+CREATE TABLE IF NOT EXISTS gyanshala_pickup_points (
+  pickup_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  area TEXT NOT NULL,
+  description TEXT NOT NULL,
+  map_x INTEGER NOT NULL CHECK (map_x BETWEEN 5 AND 95),
+  map_y INTEGER NOT NULL CHECK (map_y BETWEEN 5 AND 95),
+  walk_minutes INTEGER NOT NULL DEFAULT 5 CHECK (walk_minutes BETWEEN 1 AND 60),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS gyanshala_community_posts (
+  post_id TEXT PRIMARY KEY,
+  owner_id TEXT REFERENCES gyanshala_users(user_id) ON DELETE SET NULL,
+  post_type TEXT NOT NULL CHECK (post_type IN ('offer','need')),
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  pickup_location TEXT NOT NULL DEFAULT '',
+  owner_name TEXT NOT NULL,
+  owner_branch TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','fulfilled','removed')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_community_posts
+  ON gyanshala_community_posts(status, post_type, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_community_owner
+  ON gyanshala_community_posts(owner_id, status, created_at);
+
+CREATE TABLE IF NOT EXISTS gyanshala_community_interests (
+  post_id TEXT NOT NULL REFERENCES gyanshala_community_posts(post_id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_community_interests_user
+  ON gyanshala_community_interests(user_id, created_at);
