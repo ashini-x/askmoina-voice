@@ -662,8 +662,9 @@
       state.supplyTrackReservationId=result.requestId;
       state.supplyToast="Reserved "+result.quantity+" × "+result.name+" at "+result.hostelName+". The pickup map is now available below. Demo inventory only; no real student has been contacted.";
       state.supplyBusyId="";
+      const toast=state.supplyToast;
       await searchSmartSupplies(state.supplyQuery);
-      state.workspaceMessage=state.supplyToast;
+      state.supplyToast=toast;state.workspaceMessage=toast;render();
     } catch(e) {
       state.supplyBusyId="";state.supplyError=e.message||"That supply could not be reserved.";render();
     }
@@ -678,9 +679,9 @@
         state.supplyTrackReservationId=next?next.requestId:"";
       }
       state.supplyToast="Reservation cancelled"+(old?" for "+old.name:"")+". Demo inventory has been restored.";
-      state.workspaceMessage=state.supplyToast;
+      const toast=state.supplyToast;
       await searchSmartSupplies(state.supplyQuery);
-      state.workspaceMessage=state.supplyToast;
+      state.supplyToast=toast;state.workspaceMessage=toast;render();
     } catch(e) {state.supplyError=e.message||"Could not cancel this reservation.";render();}
   }
   async function completeSmartSupplyReservation(requestId) {
@@ -692,9 +693,9 @@
         state.supplyTrackReservationId=next?next.requestId:"";
       }
       state.supplyToast="Marked collected. The pickup map is closed for this completed reservation.";
-      state.workspaceMessage=state.supplyToast;
+      const toast=state.supplyToast;
       await searchSmartSupplies(state.supplyQuery);
-      state.workspaceMessage=state.supplyToast;
+      state.supplyToast=toast;state.workspaceMessage=toast;render();
     } catch(e){state.supplyError=e.message||"Could not mark this reservation completed.";render();}
   }
   function supplyDistanceLabel(result) {
