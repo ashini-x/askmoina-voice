@@ -91,8 +91,8 @@ function twilioReady(e: GEnv): boolean { return Boolean(e.TWILIO_ACCOUNT_SID?.tr
 async function hasSchema(e: GEnv): Promise<boolean> {
   if (!e.GYANSHALA_DB) return false;
   try {
-    const x = await e.GYANSHALA_DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('gyanshala_users','gyanshala_signup_challenges','gyanshala_sessions')").all<{name:string}>();
-    return (x.results || []).length === 3;
+    const x = await e.GYANSHALA_DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('gyanshala_users','gyanshala_signup_challenges','gyanshala_sessions','gyanshala_rate_limits')").all<{name:string}>();
+    return (x.results || []).length === 4;
   } catch { return false; }
 }
 function setup(e: GEnv, schema: boolean) {
@@ -144,11 +144,19 @@ async function getChallenge(e: GEnv, id: unknown): Promise<Challenge | null> {
     .bind(id, new Date().toISOString()).first<Challenge>();
 }
 async function cooldown(e: GEnv, email: string, phone: string): Promise<boolean> {
-  if (!e.GYANSHALA_DB) return true;
+  if (!e.GYANSHALA_DB || !secret(e)) return true;
   const since = new Date(Date.now() - COOLDOWN_MS).toISOString();
-  const x = await e.GYANSHALA_DB.prepare("SELECT challenge_id FROM gyanshala_signup_challenges WHERE (email=? OR phone=?) AND created_at>? LIMIT 1")
-    .bind(email, phone, since).first<{challenge_id:string}>();
+  const emailHash = await mac(secret(e) || "", "rate:email:" + email);
+  const phoneHash = await mac(secret(e) || "", "rate:phone:" + phone);
+  const x = await e.GYANSHALA_DB.prepare("SELECT contact_hash FROM gyanshala_rate_limits WHERE contact_hash IN (?,?) AND last_sent_at>? LIMIT 1")
+    .bind(emailHash, phoneHash, since).first<{contact_hash:string}>();
   return Boolean(x);
+}
+async function markSent(e: GEnv, kind: "email" | "phone", contact: string): Promise<void> {
+  if (!e.GYANSHALA_DB || !secret(e)) return;
+  const contactHash = await mac(secret(e) || "", "rate:" + kind + ":" + contact);
+  await e.GYANSHALA_DB.prepare("INSERT INTO gyanshala_rate_limits(contact_hash,last_sent_at) VALUES(?,?) ON CONFLICT(contact_hash) DO UPDATE SET last_sent_at=excluded.last_sent_at")
+    .bind(contactHash, new Date().toISOString()).run();
 }
 async function makeCookie(e: GEnv, id: string): Promise<string> {
   if (!e.GYANSHALA_DB || !secret(e)) throw new Error("Gyanshala session configuration missing");
@@ -219,8 +227,12 @@ async function start(r: Request, e: GEnv): Promise<Response> {
     await db.prepare("DELETE FROM gyanshala_signup_challenges WHERE challenge_id=?").bind(id).run();
     return reply({ error: "email_delivery_failed", message: "Email delivery failed. Check the Resend key and verified sender domain." }, 502);
   }
+  await markSent(e, "email", email);
   const sms = await twilio(e, "Verifications", { To: phone, Channel: "sms" });
-  if (sms.ok) await db.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?").bind(new Date().toISOString(), id).run();
+  if (sms.ok) {
+    await db.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?").bind(new Date().toISOString(), id).run();
+    await markSent(e, "phone", phone);
+  }
   return reply({ ok: true, challengeId: id, emailSent: true, smsSent: sms.ok, expiresInSeconds: CODE_SECONDS,
     message: sms.ok ? "Verification codes sent." : "Email sent; SMS could not start. You can retry SMS on the next screen." }, 202);
 }
@@ -252,6 +264,7 @@ async function resendEmail(r: Request, e: GEnv): Promise<Response> {
   if (!(await sendEmail(e, c.email, code))) return reply({ error: "email_delivery_failed" }, 502);
   await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET email_code_hash=?,email_expires_at=?,email_sent_at=?,attempts=0 WHERE challenge_id=?")
     .bind(hash, expires.toISOString(), now.toISOString(), c.challenge_id).run();
+  await markSent(e, "email", c.email);
   return reply({ ok: true });
 }
 async function startPhone(r: Request, e: GEnv): Promise<Response> {
@@ -266,6 +279,7 @@ async function startPhone(r: Request, e: GEnv): Promise<Response> {
   if (!sent.ok) return reply({ error: "sms_delivery_failed", message: "SMS could not start. Check Twilio Verify settings and phone-number support." }, 502);
   await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?")
     .bind(new Date().toISOString(), c.challenge_id).run();
+  await markSent(e, "phone", c.phone);
   return reply({ ok: true });
 }
 async function verifyPhone(r: Request, e: GEnv): Promise<Response> {
