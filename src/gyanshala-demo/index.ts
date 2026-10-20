@@ -838,7 +838,7 @@ export async function handleGyanshalaRequest(request: Request, env: Env): Promis
   // Only the Gyanshala shell permits the map library/style/tiles. All unrelated
   // AskMoina and Veda routes retain their existing restrictive CSP.
   h.set("Content-Security-Policy", isGyanshalaShell
-    ? "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss: https://unpkg.com https://tiles.openfreemap.org; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data: https://tiles.openfreemap.org; manifest-src 'self'; worker-src 'self' blob:; child-src blob:;"
+    ? "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org; form-action 'self'; connect-src 'self' wss: https://unpkg.com https://tiles.openfreemap.org; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data: https://tiles.openfreemap.org; manifest-src 'self'; worker-src 'self' blob:; child-src blob:;"
     : "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; manifest-src 'self'; worker-src 'self';");
   if (isGyanshalaShell) h.set("Permissions-Policy", "geolocation=(self), camera=(), microphone=()");
   if (url.pathname.endsWith("/manifest.webmanifest")) h.set("Content-Type", "application/manifest+json; charset=utf-8");
