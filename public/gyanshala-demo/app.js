@@ -3,7 +3,7 @@
   const API = "/api/gyanshala";
   const APP = "/gyanshala-demo/";
   const root = document.getElementById("app");
-  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null };
+  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "" };
   const esc = (value) => String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const logo = '<img src="/gyanshala-demo/icon.svg" alt="" width="36" height="36">';
   function button(label, action, cls, type) {
@@ -79,6 +79,125 @@
     const u = state.user || {};
     shell('<section class="screen"><div class="form-layout"><div class="form-card center"><div class="success-mark">✓</div><p class="step-kicker">Student account ready</p><h1>You&#39;re in, ' + esc((u.fullName || "").split(" ")[0] || "student") + '.</h1><p class="form-intro">Your Gyanshala account is ready. Your college email is verified, and your profile is saved.</p><div class="account-summary"><div><span>College email</span><strong>' + esc(u.email || state.email) + '</strong></div><div><span>Department</span><strong>' + esc(u.branch || "—") + '</strong></div><div><span>Year</span><strong>' + esc(u.yearOfStudy || "—") + '</strong></div><div><span>Residence</span><strong>' + esc(u.residence || "—") + '</strong></div></div><div id="form-message">' + messageBox() + '</div>' + '<div class="message visible success">Your verified student account has been saved. Resource discovery is the next Gyanshala milestone.</div><div class="form-bottom"><button class="btn btn-quiet" data-action="logout">Sign out</button></div><div class="bottom-note">This account is unique within Gyanshala, separate from AskMoina account access.</div></div></div></section>');
   }
+
+  const resourceCategories = ["All", "Books", "Lab Equipment", "Electronics", "Stationery"];
+  function categoryIcon(category) {
+    return ({ "Books": "▤", "Lab Equipment": "◒", "Electronics": "▦", "Stationery": "✎" })[category] || "⌘";
+  }
+  function priceLabel(resource) {
+    return Number(resource.priceAmount || 0) <= 0 || resource.lendingType === "free"
+      ? "Free to borrow" : "₹" + Number(resource.priceAmount).toLocaleString("en-IN") + " / semester";
+  }
+  function resourceCard(resource) {
+    const cat = ({ "Books": "books", "Lab Equipment": "lab", "Electronics": "electronics", "Stationery": "stationery" })[resource.category] || "other";
+    return '<button type="button" class="resource-card" data-action="resource" data-id="' + esc(resource.id) + '"><span class="resource-cover cover-' + cat + '"><span class="resource-symbol">' + esc(resource.icon || categoryIcon(resource.category)) + '</span><span class="cover-caption">' + esc(resource.category) + '</span></span><span class="resource-card-body"><span class="resource-title">' + esc(resource.title) + '</span><span class="resource-meta"><span class="availability-dot"></span>Available <span class="meta-separator">·</span> ' + esc(resource.distanceLabel || "On campus") + '</span><span class="resource-price">' + esc(priceLabel(resource)) + '</span><span class="resource-owner">' + esc(resource.ownerName || "Student community") + '</span></span><span class="card-chevron" aria-hidden="true">↗</span></button>';
+  }
+  function resourceCards(items) {
+    if (state.resourcesLoading) return '<div class="resource-state"><span class="spinner"></span><strong>Finding resources</strong><p>Searching your campus community…</p></div>';
+    if (state.resourcesError) return '<div class="resource-state"><strong>We couldn’t load resources.</strong><p>' + esc(state.resourcesError) + '</p><button type="button" class="btn btn-outline" data-action="refresh-resources">Try again</button></div>';
+    if (!items.length) return '<div class="resource-state"><div class="empty-mark">⌕</div><strong>No resources found</strong><p>Try another search or choose a different category.</p><button type="button" class="btn btn-outline" data-action="clear-filters">Clear filters</button></div>';
+    return '<div class="resource-grid">' + items.map(resourceCard).join("") + '</div>';
+  }
+  function categoryChips(active, compact) {
+    return '<div class="category-chips' + (compact ? ' compact' : '') + '">' + resourceCategories.map(function (category) {
+      return '<button type="button" class="category-chip' + (category === active ? ' active' : '') + '" data-action="category" data-id="' + esc(category) + '">' + (category === "All" ? '<span class="chip-dot"></span>' : '<span class="chip-icon">' + categoryIcon(category) + '</span>') + esc(category) + '</button>';
+    }).join("") + '</div>';
+  }
+  function appShell(content, active) {
+    const user = state.user || {};
+    const name = user.fullName || "Student";
+    const initials = name.split(/\\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join("") || "S";
+    root.innerHTML = '<div class="campus-app"><header class="campus-header"><a class="campus-brand" href="/gyanshala-demo/" data-action="home">' + logo + '<span>Gyanshala<small>Campus, together</small></span></a><form class="campus-search" id="search-form"><span class="search-glyph" aria-hidden="true">⌕</span><input type="search" name="q" value="' + esc(state.search) + '" placeholder="Search books, equipment, and more…" aria-label="Search campus resources"><button type="submit" aria-label="Submit search">Search</button></form><div class="campus-user"><span class="campus-avatar">' + esc(initials) + '</span><span class="campus-user-copy"><strong>' + esc(name) + '</strong><small>' + esc(user.branch || "Verified student") + '</small></span><button class="signout-link" type="button" data-action="logout">Sign out</button></div></header><div class="campus-layout"><aside class="campus-sidebar"><p class="sidebar-label">WORKSPACE</p><button type="button" class="sidebar-link' + (active === "home" ? " selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="sidebar-link' + (active === "explore" ? " selected" : "") + '" data-action="explore"><span>⌕</span>Explore resources</button><div class="sidebar-spacer"></div><div class="sidebar-note"><span class="sidebar-note-icon">✳</span><strong>Share more. Waste less.</strong><p>Good resources deserve more than one life.</p></div><div class="sidebar-account"><span class="account-check">✓</span><span><strong>Verified student</strong><small>' + esc(user.email || "") + '</small></span></div></aside><section class="campus-main"><div class="campus-content">' + (state.workspaceMessage ? '<div class="workspace-flash" role="status">' + esc(state.workspaceMessage) + '</div>' : '') + content + '</div></section></div><nav class="campus-mobile-nav"><button type="button" class="' + (active === "home" ? "selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="' + (active === "explore" ? "selected" : "") + '" data-action="explore"><span>⌕</span>Explore</button><button type="button" data-action="logout"><span>↗</span>Sign out</button></nav><footer class="campus-footer"><span>Gyanshala <span class="footer-dot">·</span> Built for your campus</span><span>Preview experience <span class="footer-dot">·</span> Student access</span></footer></div>';
+    root.querySelectorAll("form").forEach(function (form) { form.addEventListener("submit", onSubmit); });
+  }
+  function dashboard() {
+    const firstName = (state.user && state.user.fullName ? state.user.fullName.split(/\\s+/)[0] : "there");
+    const items = state.resources.slice(0, 4);
+    const categories = [
+      ["Books", "Books & notes", "Course materials shared by students"],
+      ["Lab Equipment", "Lab equipment", "Useful kit for practicals"],
+      ["Electronics", "Electronics", "Calculators and essentials"],
+      ["Stationery", "Stationery", "Everyday study supplies"]
+    ];
+    const tiles = categories.map(function (item) {
+      return '<button type="button" class="category-tile" data-action="category" data-id="' + esc(item[0]) + '"><span class="tile-icon">' + categoryIcon(item[0]) + '</span><span><strong>' + esc(item[1]) + '</strong><small>' + esc(item[2]) + '</small></span><span class="tile-arrow">↗</span></button>';
+    }).join("");
+    const content = '<section class="welcome-panel"><div class="welcome-copy"><p class="workspace-eyebrow">YOUR CAMPUS, CONNECTED</p><h1>What do you need today' + (firstName && firstName !== "there" ? ', ' + esc(firstName) : '') + '?</h1><p>Find useful things nearby, shared by students who know campus best.</p><form class="hero-search" id="hero-search-form"><span aria-hidden="true">⌕</span><input name="q" value="' + esc(state.search) + '" type="search" placeholder="Try “scientific calculator”" aria-label="Search resources"><button type="submit" aria-label="Search">→</button></form><div class="welcome-tags"><span>✓ Verified community</span><span>♧ Borrow and share</span><span>⌖ Pickup nearby</span></div></div><div class="welcome-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-float float-book">▤<small>LEARN</small></div><div class="art-float float-calc">▦<small>TOOLS</small></div><div class="art-float float-lab">◒<small>LAB</small></div><div class="art-glass"><span>✳</span><strong>Shared by students.</strong><small>Ready when you are.</small></div></div></section><section class="dashboard-categories"><div class="section-heading"><div><p class="section-overline">FIND YOUR NEXT ESSENTIAL</p><h2>Browse by category</h2></div><button type="button" class="text-action" data-action="explore">View all resources <span>→</span></button></div><div class="category-tile-grid">' + tiles + '</div></section><section class="dashboard-resources"><div class="section-heading"><div><p class="section-overline">GOOD THINGS, CLOSE BY</p><h2>Nearby for you</h2><p class="section-subtitle">Campus essentials available to borrow or share.</p></div><button type="button" class="text-action" data-action="explore">Explore all <span>→</span></button></div>' + resourceCards(items) + '</section>';
+    appShell(content, "home");
+  }
+  function browse() {
+    const content = '<section class="browse-heading"><p class="workspace-eyebrow">THE CAMPUS SHELF</p><div class="browse-title-row"><div><h1>Explore resources</h1><p>Discover books, tools and essentials shared around campus.</p></div><span class="result-count">' + state.resources.length + ' ' + (state.resources.length === 1 ? "resource" : "resources") + '</span></div></section><section class="browse-controls"><div><p class="section-overline">FILTER BY</p>' + categoryChips(state.category, false) + '</div><div class="browse-toolbar"><span>' + (state.search ? 'Results for <strong>' + esc(state.search) + '</strong>' : 'All campus resources') + '</span><button type="button" class="subtle-action" data-action="clear-filters">Clear filters</button></div></section><section class="browse-results">' + resourceCards(state.resources) + '</section>';
+    appShell(content, "explore");
+  }
+  function detail() {
+    if (state.detailLoading) {
+      appShell('<div class="detail-loading"><span class="spinner"></span><p>Opening resource details…</p></div>', "explore");
+      return;
+    }
+    const r = state.activeResource;
+    if (!r) {
+      appShell('<div class="resource-state"><strong>Resource unavailable</strong><p>' + esc(state.resourcesError || "This listing may have been removed.") + '</p><button type="button" class="btn btn-outline" data-action="explore">Back to explore</button></div>', "explore");
+      return;
+    }
+    const already = Boolean(r.requestStatus);
+    const statusText = r.requestStatus === "pending" ? "Request sent" : r.requestStatus ? "Request " + r.requestStatus : "Request to borrow";
+    const price = priceLabel(r);
+    const cat = ({ "Books": "books", "Lab Equipment": "lab", "Electronics": "electronics", "Stationery": "stationery" })[r.category] || "other";
+    const cta = already
+      ? '<button class="btn btn-primary full" type="button" disabled><span>✓</span>' + esc(statusText) + '</button><p class="cta-note">This resource is already in your requests.</p>'
+      : '<button class="btn btn-primary full request-button" type="button" data-action="request-resource" data-id="' + esc(r.id) + '">Request to borrow <span class="arrow">→</span></button><p class="cta-note">The owner can review your request. You can track its status in a later milestone.</p>';
+    const content = '<div class="detail-back-row"><button type="button" class="back" data-action="explore">← Back to explore</button><span class="detail-breadcrumb">Explore <span> / </span>' + esc(r.category) + '</span></div><section class="detail-layout"><div class="detail-main"><div class="detail-visual cover-' + cat + '"><span class="detail-art-orbit"></span><span class="detail-visual-icon">' + esc(r.icon || categoryIcon(r.category)) + '</span><span class="detail-visual-label">' + esc(r.category) + '</span></div><div class="detail-description"><p class="section-overline">ABOUT THIS RESOURCE</p><h2>Made to be shared.</h2><p>' + esc(r.description) + '</p><div class="detail-facts"><div><span class="fact-icon">✧</span><span><small>Condition</small><strong>' + esc(r.condition || "Good") + '</strong></span></div><div><span class="fact-icon">⌖</span><span><small>Pickup location</small><strong>' + esc(r.pickupLocation) + '</strong></span></div><div><span class="fact-icon">◷</span><span><small>Distance</small><strong>' + esc(r.distanceLabel || "On campus") + '</strong></span></div></div></div></div><aside class="detail-side"><span class="availability-badge"><i></i>Available now</span><p class="detail-category">' + esc(r.category) + '</p><h1>' + esc(r.title) + '</h1><p class="detail-price">' + esc(price) + '</p><div class="owner-card"><span class="owner-avatar">' + esc((r.ownerName || "S").split(/\\s+/).map(function (x) { return x.charAt(0); }).slice(0, 2).join("").toUpperCase()) + '</span><span><small>Shared by</small><strong>' + esc(r.ownerName || "Student community") + '</strong><small>' + esc(r.ownerBranch || "Campus community") + '</small></span><span class="owner-check">✓</span></div>' + cta + '<div class="privacy-note"><span>♧</span><p>Student-to-student sharing, with campus email verification.</p></div></aside></section>';
+    appShell(content, "explore");
+  }
+  async function refreshResources() {
+    state.resourcesLoading = true;
+    state.resourcesError = "";
+    render();
+    try {
+      const params = new URLSearchParams();
+      params.set("q", state.search || "");
+      params.set("category", state.category || "All");
+      const result = await api("/resources?" + params.toString(), null, "GET");
+      state.resources = Array.isArray(result.resources) ? result.resources : [];
+    } catch (e) {
+      state.resourcesError = e.message || "Please try again.";
+      state.resources = [];
+    } finally {
+      state.resourcesLoading = false;
+      render();
+    }
+  }
+  async function openResource(id) {
+    state.selectedResourceId = id;
+    state.activeResource = null;
+    state.detailLoading = true;
+    state.screen = "detail";
+    render();
+    try {
+      const result = await api("/resources/" + encodeURIComponent(id), null, "GET");
+      state.activeResource = result.resource || null;
+    } catch (e) {
+      state.resourcesError = e.message || "This resource is temporarily unavailable.";
+    } finally {
+      state.detailLoading = false;
+      render();
+    }
+  }
+  async function requestResource(id) {
+    if (!id) return;
+    try {
+      const result = await api("/resources/" + encodeURIComponent(id) + "/request", {}, "POST");
+      if (state.activeResource && state.activeResource.id === id) state.activeResource.requestStatus = result.requestStatus || "pending";
+      state.resources = state.resources.map(function (item) {
+        return item.id === id ? Object.assign({}, item, { requestStatus: result.requestStatus || "pending" }) : item;
+      });
+      state.workspaceMessage = result.alreadyRequested ? "You’ve already requested this resource." : "Request sent. You can track it in My Requests when that interface is ready.";
+    } catch (e) {
+      state.workspaceMessage = e.message || "We couldn’t send that request. Try again.";
+    }
+    render();
+  }
+
   function render() {
     state.message = "";
     if (state.screen === "splash") return splash();
@@ -87,7 +206,10 @@
     if (state.screen === "email") return emailVerify();
     
     if (state.screen === "profile") return profile();
-    if (state.screen === "complete") return complete();
+    if (state.screen === "home") return dashboard();
+    if (state.screen === "explore") return browse();
+    if (state.screen === "detail") return detail();
+    if (state.screen === "complete") return dashboard();
     return splash();
   }
   function setMessage(text, type) {
@@ -122,7 +244,12 @@
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
-    if (form.id === "auth-form") {
+    if (form.id === "search-form" || form.id === "hero-search-form") {
+      state.search = String(fd.get("q") || "").trim().slice(0, 120);
+      state.category = "All";
+      state.screen = "explore";
+      await refreshResources();
+    } else if (form.id === "auth-form") {
       if (!fd.get("consent")) { setMessage("Please agree to the student community terms to continue.", "error"); return; }
       const email = String(fd.get("email") || "").trim().toLowerCase();
       state.email = email;
@@ -145,7 +272,7 @@
       busy(form, true);
       try {
         const r = await api("/auth/verify-email", { challengeId: state.challengeId, code: String(fd.get("code") || "").trim() });
-        if (r.user) { state.user = r.user; state.screen = r.next === "complete" ? "complete" : "profile"; render(); }
+        if (r.user) { state.user = r.user; state.screen = r.user.profileComplete ? "home" : "profile"; render(); if (state.screen === "home") refreshResources(); }
         else setMessage("Email verification was incomplete. Please request a new code.", "error");
       } catch (e) { setMessage(e.message, "error"); }
       finally { busy(form, false); }
@@ -154,7 +281,7 @@
       busy(form, true);
       try {
         const r = await api("/profile", data);
-        state.user = r.user; state.screen = "complete"; render();
+        state.user = r.user; state.screen = "home"; state.category = "All"; state.search = ""; refreshResources();
       } catch (e) { setMessage(e.message, "error"); }
       finally { busy(form, false); }
     }
@@ -166,12 +293,18 @@
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-  async function action(name) {
+  async function action(name, id) {
     if (name === "home") {
-      if (state.user && state.user.profileComplete) { navigate("complete"); return; }
+      if (state.user && state.user.profileComplete) { state.category = "All"; state.search = ""; navigate("home"); return; }
       if (state.user) { navigate("profile"); return; }
       navigate("splash"); return;
     }
+    if (name === "explore") { state.screen = "explore"; render(); refreshResources(); return; }
+    if (name === "category") { state.category = resourceCategories.includes(id) ? id : "All"; state.screen = "explore"; refreshResources(); return; }
+    if (name === "resource") { await openResource(id); return; }
+    if (name === "request-resource") { await requestResource(id); return; }
+    if (name === "refresh-resources") { await refreshResources(); return; }
+    if (name === "clear-filters") { state.category = "All"; state.search = ""; state.screen = "explore"; await refreshResources(); return; }
     if (name === "onboarding" || name === "signup" || name === "signin" || name === "back") {
       if (name === "back") {
         const order = { onboarding: "splash", signup: "onboarding", signin: "splash", email: state.mode, profile: "email" };
@@ -205,8 +338,9 @@
     const btn = e.target.closest("[data-action]");
     if (!btn) return;
     const name = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id");
     if (btn.tagName === "A") e.preventDefault();
-    action(name);
+    action(name, id);
   });
   async function init() {
     try { state.setup = await api("/health", null, "GET"); } catch { state.setup = null; }
@@ -214,10 +348,11 @@
       const r = await api("/me", null, "GET");
       if (r.authenticated && r.user) {
         state.user = r.user;
-        state.screen = r.user.profileComplete ? "complete" : "profile";
+        state.screen = r.user.profileComplete ? "home" : "profile";
       }
     } catch {}
     render();
+    if (state.screen === "home") refreshResources();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register(APP + "sw.js", { scope: APP }).catch(() => {});
   }
   window.addEventListener("beforeinstallprompt", (event) => {
