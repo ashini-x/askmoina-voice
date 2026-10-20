@@ -319,6 +319,7 @@ async function saveProfile(r: Request, e: GEnv): Promise<Response> {
   return reply({ ok: true, user: updated ? userView(updated) : null, next: "complete" });
 }
 
+
 type ResourceRow = {
   resource_id: string;
   owner_id: string | null;
@@ -357,7 +358,7 @@ async function seedPreviewResources(e: GEnv): Promise<void> {
     ["gy-rsc-calculator","Scientific Calculator","Electronics","Scientific calculator suitable for engineering mathematics, with standard scientific functions and a clear display.","Good","lend",200,"Hostel A · Block 2","5 min walk","Rohan S.","Electronics & Communication","▦"],
     ["gy-rsc-labcoat","Lab Coat","Lab Equipment","Clean lab coat for practical sessions. Check your lab’s required size and safety rules before borrowing.","Very good","free",0,"Chemistry Block","3 min walk","Priya M.","Chemical Engineering","◒"],
     ["gy-rsc-drawingkit","Engineering Drawing Kit","Stationery","Drawing instruments and essentials for engineering graphics and studio work.","Good","lend",100,"Main Library","4 min walk","Arjun K.","Civil Engineering","✎"],
-    ["gy-rsc-dsa-textbook","Textbook — Data Structures","Books","A student copy of a data structures textbook for revision and semester practice.","Good","free",0,"Central Library","6 min walk","Admin Library","Computer Science","▤"],
+    ["gy-rsc-dsa-textbook","Textbook — Data Structures","Books","A student copy of a data structures textbook for revision and semester practice.","Good","free",0,"Central Library","6 min walk","Main Library","Computer Science","▤"],
     ["gy-rsc-electronics-kit","Electronics Practice Kit","Lab Equipment","Starter kit with jumper wires, breadboard and basic components for supervised practice.","Good","lend",150,"ECE Department","7 min walk","Neha P.","Electronics & Communication","⌁"],
     ["gy-rsc-engineering-books","Engineering Books Bundle","Books","A small bundle of first-year engineering reference books. Borrow the full bundle for a study week.","Fair","free",0,"Hostel B · Common Room","8 min walk","Aditi R.","Mechanical Engineering","▤"]
   ];
@@ -378,7 +379,7 @@ async function listResources(r: Request, e: GEnv): Promise<Response> {
     const categoryValue = url.searchParams.get("category") || "All";
     const categories = ["All","Books","Lab Equipment","Electronics","Stationery"];
     const category = categories.includes(categoryValue) ? categoryValue : "All";
-    const like = "%" + q.replace(/[\\%_]/g, "\\async function logout(r: Request, e: GEnv): Promise<Response> {") + "%";
+    const like = "%" + q + "%";
     const rows = await e.GYANSHALA_DB.prepare(
       "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? COLLATE NOCASE OR r.category LIKE ? COLLATE NOCASE OR r.description LIKE ? COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
     ).bind(u.user_id, q, like, like, like, category, category).all<ResourceRow>();
@@ -424,7 +425,6 @@ async function requestResource(r: Request, e: GEnv, resourceId: string): Promise
     return reply({ error: "request_failed", message: "We could not save this request. Please try again." }, 503);
   }
 }
-
 async function logout(r: Request, e: GEnv): Promise<Response> {
   const raw = readCookie(r, COOKIE);
   if (raw && e.GYANSHALA_DB && secret(e)) {
@@ -433,17 +433,23 @@ async function logout(r: Request, e: GEnv): Promise<Response> {
   }
   return reply({ ok: true }, 200, { "Set-Cookie": COOKIE + "=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax" });
 }
+
+
 async function api(r: Request, e: GEnv): Promise<Response> {
   const p = new URL(r.url).pathname;
   if (r.method === "GET" && (p === API + "/health" || p === API + "/auth/config")) return health(e);
   if (p === API + "/me" && r.method === "GET") return me(r, e);
   if (p === API + "/resources" && r.method === "GET") return listResources(r, e);
-  const resourceMatch = p.match(/^\\/api\\/gyanshala\\/resources\\/([A-Za-z0-9_-]+)$/);
-  if (resourceMatch && r.method === "GET") return getResource(r, e, resourceMatch[1]);
-  const resourceRequestMatch = p.match(/^\\/api\\/gyanshala\\/resources\\/([A-Za-z0-9_-]+)\\/request$/);
-  if (resourceRequestMatch && r.method === "POST") {
-    if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
-    return requestResource(r, e, resourceRequestMatch[1]);
+  const resourcesPrefix = API + "/resources/";
+  if (p.startsWith(resourcesPrefix)) {
+    const tail = p.slice(resourcesPrefix.length);
+    if (r.method === "POST" && tail.endsWith("/request")) {
+      if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
+      const resourceId = tail.slice(0, -8);
+      if (resourceId && !resourceId.includes("/") && /^[A-Za-z0-9_-]{1,80}$/.test(resourceId)) return requestResource(r, e, resourceId);
+      return reply({ error: "resource_not_found" }, 404);
+    }
+    if (r.method === "GET" && !tail.includes("/") && /^[A-Za-z0-9_-]{1,80}$/.test(tail)) return getResource(r, e, tail);
   }
   if (r.method !== "POST") return reply({ error: "method_not_allowed" }, 405, { Allow: "GET, POST" });
   if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
@@ -454,6 +460,7 @@ async function api(r: Request, e: GEnv): Promise<Response> {
   if (p === API + "/auth/logout") return logout(r, e);
   return reply({ error: "not_found" }, 404);
 }
+
 export async function handleGyanshalaRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === APP) return Response.redirect(url.origin + APP + "/", 308);
