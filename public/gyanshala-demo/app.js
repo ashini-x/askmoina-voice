@@ -15,7 +15,11 @@
   }
   function setupBox() {
     const s = state.setup;
-    if (!s || s.signupReady) return "";
+    if (!s) return "";
+    if (s.previewTestMode) {
+      return '<div class="setup-panel"><div class="setup-title"><span class="setup-pill"></span>Preview-only verification</div><p>No email is sent in this testing environment. Verification codes are shown on screen. Test accounts are stored only in the separate preview database; real student email verification is not configured.</p></div>';
+    }
+    if (s.signupReady) return "";
     const labels = [
       ["databaseBinding", "Create and bind Gyanshala D1 database"],
       ["databaseSchema", "Apply the Gyanshala database schema"],
@@ -60,7 +64,12 @@
     shell('<section class="screen"><div class="form-layout"><div class="form-card"><div class="back-row"><button class="back" data-action="back">← Back</button></div><p class="step-kicker">' + (signin ? "Student sign in" : "Step 1 of 3 · Your college email") + '</p><h1>' + title + '</h1><p class="form-intro">' + intro + '</p><div id="form-message">' + messageBox() + '</div><form id="auth-form">' + field("College email ID", "email", "email", "you@college.ac.in", state.email, "Use your NIT Silchar email; department subdomains under nits.ac.in are accepted.") + '<label class="consent"><input type="checkbox" name="consent" required><span>I agree to the campus community terms and understand my college email must be verified.</span></label>' + button((signin ? "Send sign-in codes" : "Continue") + ' <span class="arrow">→</span>', "", "btn-primary full", "submit") + '</form><div class="form-bottom">' + (signin ? 'New to Gyanshala? <button class="btn btn-quiet" data-action="signup">Create an account</button>' : 'Already registered? <button class="btn btn-quiet" data-action="signin">Sign in</button>') + '</div>' + setupBox() + dots(1) + '</div></div></section>');
   }
   function emailVerify() {
-    shell('<section class="screen"><div class="form-layout"><div class="form-card center"><div class="back-row left"><button class="back" data-action="back">← Back</button></div><div class="verify-icon">✉</div><p class="step-kicker">Step 2 of 3 · Email verification</p><h1>Check your college email.</h1><p class="form-intro">We sent a 6-digit verification code to<br><span class="verify-email">' + esc(state.email) + '</span></p><div id="form-message">' + messageBox() + '</div><form id="email-code-form">' + field("6-digit email code", "code", "text", "000000", "", "The code expires after 10 minutes.", true).replace('type="text"', 'type="text" inputmode="numeric" maxlength="6" autocapitalize="off"') + button('Verify email <span class="arrow">→</span>', "", "btn-primary full", "submit") + '</form><div class="resend-row">Didn&#39;t receive it? <button class="btn btn-quiet" data-action="resend-email">Resend code</button></div><button class="btn btn-quiet" data-action="change-details">Change email</button>' + dots(2) + '</div></div></section>');
+    const preview = Boolean(state.setup && state.setup.previewTestMode);
+    const title = preview ? "Test your verification." : "Check your college email.";
+    const intro = preview
+      ? "Preview-only test mode is active. No email will be sent; the code appears on screen."
+      : 'We sent a 6-digit verification code to<br><span class="verify-email">' + esc(state.email) + '</span>';
+    shell('<section class="screen"><div class="form-layout"><div class="form-card center"><div class="back-row left"><button class="back" data-action="back">← Back</button></div><div class="verify-icon">✉</div><p class="step-kicker">Step 2 of 3 · Email verification</p><h1>' + title + '</h1><p class="form-intro">' + intro + '</p><div id="form-message">' + messageBox() + '</div><form id="email-code-form">' + field("6-digit email code", "code", "text", "000000", "", "The code expires after 10 minutes.", true).replace('type="text"', 'type="text" inputmode="numeric" maxlength="6" autocapitalize="off"') + button('Verify email <span class="arrow">→</span>', "", "btn-primary full", "submit") + '</form><div class="resend-row">Didn&#39;t receive it? <button class="btn btn-quiet" data-action="resend-email">Resend code</button></div><button class="btn btn-quiet" data-action="change-details">Change email</button>' + dots(2) + '</div></div></section>');
   }
   function profile() {
     const u = state.user || {};
@@ -173,8 +182,10 @@
     if (name === "change-details") { state.challengeId = ""; navigate(state.mode); return; }
     if (name === "resend-email") {
       try {
-        await api("/auth/resend-email", { challengeId: state.challengeId });
-        setMessage("A new email code has been sent.", "success");
+        const r = await api("/auth/resend-email", { challengeId: state.challengeId });
+        setMessage(r.previewOnly
+          ? "PREVIEW TEST MODE — no email was sent. Use code " + r.previewVerificationCode + "."
+          : "A new email code has been sent.", "success");
       } catch (e) { setMessage(e.message, "error"); }
       return;
     }
