@@ -58,32 +58,26 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(community).toContain("post.owner_id!==u.user_id");
   });
 
-  it("connects the pickup map and community board to live APIs and reachable navigation", () => {
+  it("connects request-scoped tracking and community workflows to authenticated APIs", () => {
     expect(backend).toContain('p === API + "/pickup-locations"');
     expect(backend).toContain('p === API + "/community/posts"');
+    expect(backend).toContain("async function getRequestTracking");
+    expect(backend).toContain("async function updateLiveLocation");
+    expect(backend).toContain("async function updateRequestStatus");
+    expect(backend).toContain("CREATE TABLE IF NOT EXISTS gyanshala_live_locations");
     expect(app).toContain("function trackingHubScreen()");
-    expect(app).toContain("function communityScreen()");
-    expect(app).toContain('const CAMPUS_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"');
-    expect(app).toContain("maplibre-gl@6.9.1/dist/maplibre-gl.mjs");
-    expect(app).toContain("const CAMPUS_CENTER = [92.78682, 24.7551]");
-    expect(app).toContain("map.queryRenderedFeatures(event.point)");
-    expect(app).toContain('id="campus-osm-fallback"');
+    expect(app).toContain("function requestTrackingScreen()");
+    expect(app).toContain('data-action="track-request"');
+    expect(app).toContain('data-action="start-location-share"');
+    expect(app).toContain('data-action="stop-location-share"');
     expect(app).toContain("openstreetmap.org/export/embed.html");
-    expect(app).toContain("window.setTimeout(function() {");
-    expect(app).toContain("The enhanced map could not load");
-    expect(app).toContain('data-action="retry-campus-map"');
-    expect(app).toContain("new lib.GeolocateControl");
-    expect(app).toContain("fill-extrusion");
-    expect(app).not.toContain("function campusMapSvg(selected)");
-    expect(schema).toContain("latitude REAL NOT NULL");
-    expect(schema).toContain("coordinate_source TEXT NOT NULL");
-    expect(backend).toContain("https://tiles.openfreemap.org");
-    expect(backend).toContain("isGyanshalaShell");
-    expect(backend).toContain("frame-src https://www.openstreetmap.org");
+    expect(app).toContain("Reserve a supply to open its pickup map");
+    expect(app).toContain("Location is shared only with the other participant");
     expect(app).toContain('form.id === "community-post-form"');
     expect(app).toContain('data-action="community-interest"');
     expect(app).toContain('data-action="close-community-post"');
     expect(app).toContain('id="mobile-more-menu"');
+    expect(backend).toContain("frame-src https://www.openstreetmap.org");
   });
 
   it("keeps Smart Supply Locator inventory, stock, and reservations in dedicated tables", () => {
