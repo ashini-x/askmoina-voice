@@ -381,8 +381,8 @@ async function listResources(r: Request, e: GEnv): Promise<Response> {
     const category = categories.includes(categoryValue) ? categoryValue : "All";
     const like = "%" + q + "%";
     const rows = await e.GYANSHALA_DB.prepare(
-      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? COLLATE NOCASE OR r.category LIKE ? COLLATE NOCASE OR r.description LIKE ? COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
-    ).bind(u.user_id, q, like, like, like, category, category).all<ResourceRow>();
+      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? COLLATE NOCASE OR r.category LIKE ? COLLATE NOCASE OR r.description LIKE ? COLLATE NOCASE OR r.pickup_location LIKE ? COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
+    ).bind(u.user_id, q, like, like, like, like, category, category).all<ResourceRow>();
     return reply({ ok: true, resources: (rows.results || []).map(resourceView), total: (rows.results || []).length });
   } catch {
     return reply({ error: "resource_store_unavailable", message: "Resource discovery is being prepared. Refresh and try again." }, 503);
@@ -584,11 +584,195 @@ async function logout(r: Request, e: GEnv): Promise<Response> {
 
 
 
+
+type PickupPointRow = {
+  pickup_id:string; name:string; area:string; description:string; map_x:number; map_y:number;
+  walk_minutes:number; resource_count:number;
+};
+async function seedPreviewPickupPoints(e:GEnv):Promise<void> {
+  if (!previewTestMode(e) || !e.GYANSHALA_DB) return;
+  const db=e.GYANSHALA_DB;
+  const count=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_pickup_points").first<{total:number}>();
+  if(Number(count?.total||0)>0) return;
+  const now=new Date().toISOString();
+  const points=[
+    ["gy-pick-central-library","Central Library","Academic core","Quiet, central meeting point near the main library entrance.",28,25,4],
+    ["gy-pick-main-library","Main Library","Academic core","A simple place to meet before or after study sessions.",44,36,5],
+    ["gy-pick-chemistry","Chemistry Block","Science zone","Use the public entrance and follow your department’s lab safety guidance.",77,24,7],
+    ["gy-pick-hostel-a","Hostel A · Block 2","Residential zone","Choose the common entrance rather than a room or private residence.",70,65,6],
+    ["gy-pick-ece","ECE Department","Engineering zone","Meet in the public department foyer before exchanging equipment.",83,45,8],
+    ["gy-pick-hostel-b","Hostel B · Common Room","Residential zone","The common room is a public campus exchange point.",48,79,9],
+    ["gy-pick-student-centre","Student Centre","Campus centre","Central public spot with space for quick handovers.",51,51,3],
+    ["gy-pick-canteen","Main Canteen","Campus centre","Meet by the public entrance, away from busy service areas.",62,62,5]
+  ];
+  for(const p of points){
+    await db.prepare("INSERT INTO gyanshala_pickup_points(pickup_id,name,area,description,map_x,map_y,walk_minutes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'active',?,?) ON CONFLICT(pickup_id) DO NOTHING")
+      .bind(p[0],p[1],p[2],p[3],p[4],p[5],p[6],now,now).run();
+  }
+}
+async function listPickupLocations(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u) return reply({error:"authentication_required",message:"Sign in to view campus pickup locations."},401);
+  if(u.profile_complete!==1) return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  try{
+    await seedPreviewResources(e);
+    await seedPreviewPickupPoints(e);
+    const db=e.GYANSHALA_DB;
+    const points=await db.prepare("SELECT p.pickup_id,p.name,p.area,p.description,p.map_x,p.map_y,p.walk_minutes,COUNT(r.resource_id) AS resource_count FROM gyanshala_pickup_points p LEFT JOIN gyanshala_resources r ON r.status='available' AND r.pickup_location=p.name WHERE p.status='active' GROUP BY p.pickup_id ORDER BY p.map_y,p.map_x").all<PickupPointRow>();
+    const resources=await db.prepare("SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' ORDER BY r.created_at DESC,r.title ASC LIMIT 80").bind(u.user_id).all<ResourceRow>();
+    const available=(resources.results||[]).map(resourceView);
+    const locations=(points.results||[]).map(p=>({
+      id:p.pickup_id,name:p.name,area:p.area,description:p.description,mapX:p.map_x,mapY:p.map_y,
+      walkMinutes:p.walk_minutes,resourceCount:Number(p.resource_count||0),
+      resources:available.filter(x=>x.pickupLocation===p.name).slice(0,4)
+    }));
+    return reply({ok:true,locations,total:locations.length,routeMode:"illustrative"});
+  }catch{
+    return reply({error:"pickup_locations_unavailable",message:"Campus pickup locations are temporarily unavailable. Try again."},503);
+  }
+}
+type CommunityPostRow={
+  post_id:string;owner_id:string|null;post_type:"offer"|"need";title:string;category:string;description:string;
+  pickup_location:string;owner_name:string;owner_branch:string;status:"active"|"fulfilled"|"removed";
+  created_at:string;updated_at:string;interested_count:number;my_interest:number;is_mine:number;
+};
+function communityPostView(p:CommunityPostRow){
+  return {id:p.post_id,type:p.post_type,title:p.title,category:p.category,description:p.description,
+    pickupLocation:p.pickup_location,ownerName:p.owner_name,ownerBranch:p.owner_branch,status:p.status,
+    createdAt:p.created_at,updatedAt:p.updated_at,interestedCount:Number(p.interested_count||0),
+    interested:Boolean(p.my_interest),isMine:Boolean(p.is_mine),sample:!p.owner_id};
+}
+async function seedPreviewCommunityPosts(e:GEnv):Promise<void>{
+  if(!previewTestMode(e)||!e.GYANSHALA_DB) return;
+  const db=e.GYANSHALA_DB;
+  const count=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_community_posts").first<{total:number}>();
+  if(Number(count?.total||0)>0) return;
+  const now=new Date().toISOString();
+  const posts=[
+    ["gy-post-offer-notes","offer","First-year engineering notes","Books","Sharing a tidy set of first-year notes. Happy to help someone revise before the next assessment.","Central Library"],
+    ["gy-post-offer-labcoat","offer","Extra lab coat to share","Lab Equipment","Clean lab coat available for a student who needs one for an upcoming practical. Please confirm size first.","Chemistry Block"],
+    ["gy-post-need-drawingkit","need","Looking for a drawing kit","Stationery","I need a basic engineering drawing kit for a studio session this week. A loan is absolutely fine.","Main Library"],
+    ["gy-post-offer-circuit","offer","Circuit basics study circle","Electronics","A few of us are revising basic circuit concepts. Join for a friendly peer study session.","Student Centre"],
+    ["gy-post-need-textbook","need","Need a data structures textbook","Books","Looking to borrow a data structures reference for a few days while preparing for labs.","Central Library"],
+    ["gy-post-offer-stationery","offer","Spare stationery bundle","Stationery","A few spare notebooks, pens and geometry essentials for anyone who could use them.","Main Canteen"]
+  ];
+  for(const p of posts){
+    await db.prepare("INSERT INTO gyanshala_community_posts(post_id,owner_id,post_type,title,category,description,pickup_location,owner_name,owner_branch,status,created_at,updated_at) VALUES(?,NULL,?,?,?,?,?,'Gyanshala Preview Community','Preview samples','active',?,?) ON CONFLICT(post_id) DO NOTHING")
+      .bind(p[0],p[1],p[2],p[3],p[4],p[5],now,now).run();
+  }
+}
+async function listCommunityPosts(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u) return reply({error:"authentication_required",message:"Sign in to join the campus community."},401);
+  if(u.profile_complete!==1) return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  try{
+    await seedPreviewCommunityPosts(e);
+    const url=new URL(r.url);
+    const typeValue=url.searchParams.get("type")||"All";
+    const type=["All","offer","need","mine"].includes(typeValue)?typeValue:"All";
+    const categoryValue=url.searchParams.get("category")||"All";
+    const categories=["All","Books","Lab Equipment","Electronics","Stationery","Other"];
+    const category=categories.includes(categoryValue)?categoryValue:"All";
+    const q=(url.searchParams.get("q")||"").trim().slice(0,100);
+    const like="%"+q+"%";
+    const rows=await e.GYANSHALA_DB.prepare(
+      "SELECT p.*,CASE WHEN mine.user_id IS NULL THEN 0 ELSE 1 END AS my_interest,CASE WHEN p.owner_id=? THEN 1 ELSE 0 END AS is_mine,(SELECT COUNT(*) FROM gyanshala_community_interests ci WHERE ci.post_id=p.post_id) AS interested_count FROM gyanshala_community_posts p LEFT JOIN gyanshala_community_interests mine ON mine.post_id=p.post_id AND mine.user_id=? WHERE p.status<>'removed' AND ((?='mine' AND p.owner_id=?) OR (?<>'mine' AND p.status='active' AND (?='All' OR p.post_type=?))) AND (?='All' OR p.category=?) AND (?='' OR p.title LIKE ? COLLATE NOCASE OR p.description LIKE ? COLLATE NOCASE OR p.pickup_location LIKE ? COLLATE NOCASE) ORDER BY CASE p.status WHEN 'active' THEN 0 ELSE 1 END,p.created_at DESC LIMIT 100"
+    ).bind(u.user_id,u.user_id,type,u.user_id,type,type,type,category,category,q,like,like,like).all<CommunityPostRow>();
+    const posts=(rows.results||[]).map(communityPostView);
+    return reply({ok:true,posts,total:posts.length,type,category});
+  }catch{
+    return reply({error:"community_unavailable",message:"Community posts are temporarily unavailable. Try again."},503);
+  }
+}
+async function createCommunityPost(r:Request,e:GEnv):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u) return reply({error:"authentication_required",message:"Sign in to post an offer or need."},401);
+  if(u.profile_complete!==1) return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  if(!b) return reply({error:"invalid_json"},400);
+  const type=typeof b.type==="string"?b.type.trim():"";
+  const title=typeof b.title==="string"?b.title.trim().replace(/\s+/g," "):"";
+  const category=typeof b.category==="string"?b.category.trim():"";
+  const description=typeof b.description==="string"?b.description.trim():"";
+  const pickupLocation=typeof b.pickupLocation==="string"?b.pickupLocation.trim().replace(/\s+/g," "):"";
+  if(!["offer","need"].includes(type)||title.length<3||title.length>100||
+    !["Books","Lab Equipment","Electronics","Stationery","Other"].includes(category)||
+    description.length<8||description.length>1000||pickupLocation.length>120){
+    return reply({error:"invalid_community_post",message:"Add a title, category, and description between 8 and 1,000 characters."},400);
+  }
+  const id="gyp_"+token(18),now=new Date().toISOString();
+  try{
+    await e.GYANSHALA_DB.prepare("INSERT INTO gyanshala_community_posts(post_id,owner_id,post_type,title,category,description,pickup_location,owner_name,owner_branch,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)")
+      .bind(id,u.user_id,type,title,category,description,pickupLocation,u.full_name||"Student",u.branch||"",now,now).run();
+    return reply({ok:true,postId:id,message:type==="offer"?"Your offer is now on the community board.":"Your need is now on the community board."},201);
+  }catch{
+    return reply({error:"community_post_failed",message:"We couldn’t publish this post. Please try again."},503);
+  }
+}
+async function expressCommunityInterest(r:Request,e:GEnv,postId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u) return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1) return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  const db=e.GYANSHALA_DB;
+  try{
+    const post=await db.prepare("SELECT post_id,owner_id,status FROM gyanshala_community_posts WHERE post_id=? LIMIT 1").bind(postId).first<{post_id:string;owner_id:string|null;status:string}>();
+    if(!post||post.status!=="active") return reply({error:"community_post_not_found",message:"This post is no longer active."},404);
+    if(post.owner_id===u.user_id) return reply({error:"own_post",message:"This is your post."},409);
+    const prior=await db.prepare("SELECT post_id FROM gyanshala_community_interests WHERE post_id=? AND user_id=? LIMIT 1").bind(postId,u.user_id).first<{post_id:string}>();
+    if(!prior) await db.prepare("INSERT INTO gyanshala_community_interests(post_id,user_id,created_at) VALUES(?,?,?) ON CONFLICT(post_id,user_id) DO NOTHING").bind(postId,u.user_id,new Date().toISOString()).run();
+    const count=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_community_interests WHERE post_id=?").bind(postId).first<{total:number}>();
+    return reply({ok:true,interested:true,alreadyInterested:Boolean(prior),interestedCount:Number(count?.total||0)});
+  }catch{
+    return reply({error:"community_interest_failed",message:"We couldn’t save your interest. Please try again."},503);
+  }
+}
+async function closeCommunityPost(r:Request,e:GEnv,postId:string):Promise<Response>{
+  const u=await getUser(r,e);
+  if(!u) return reply({error:"authentication_required"},401);
+  if(u.profile_complete!==1) return reply({error:"profile_incomplete"},403);
+  if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  try{
+    const post=await e.GYANSHALA_DB.prepare("SELECT post_id,owner_id,status FROM gyanshala_community_posts WHERE post_id=? LIMIT 1").bind(postId).first<{post_id:string;owner_id:string|null;status:string}>();
+    if(!post||post.owner_id!==u.user_id) return reply({error:"post_not_found",message:"Only the student who created this post can update it."},404);
+    if(post.status!=="active") return reply({ok:true,status:post.status});
+    await e.GYANSHALA_DB.prepare("UPDATE gyanshala_community_posts SET status='fulfilled',updated_at=? WHERE post_id=? AND owner_id=?").bind(new Date().toISOString(),postId,u.user_id).run();
+    return reply({ok:true,status:"fulfilled",message:"Your post has been marked as fulfilled."});
+  }catch{
+    return reply({error:"community_post_update_failed",message:"We couldn’t update this post. Try again."},503);
+  }
+}
+
 async function api(r: Request, e: GEnv): Promise<Response> {
   const p = new URL(r.url).pathname;
   if (r.method === "GET" && (p === API + "/health" || p === API + "/auth/config")) return health(e);
   if (p === API + "/me" && r.method === "GET") return me(r, e);
   if (p === API + "/resources" && r.method === "GET") return listResources(r, e);
+  if (p === API + "/pickup-locations" && r.method === "GET") return listPickupLocations(r,e);
+  if (p === API + "/community/posts" && r.method === "GET") return listCommunityPosts(r,e);
+  if (p === API + "/community/posts" && r.method === "POST") {
+    if (!sameOrigin(r)) return reply({error:"origin_rejected"},403);
+    return createCommunityPost(r,e);
+  }
+  const communityPrefix=API + "/community/posts/";
+  if (p.startsWith(communityPrefix)) {
+    const tail=p.slice(communityPrefix.length);
+    const interestSuffix="/interest", closeSuffix="/close";
+    if(r.method==="POST" && tail.endsWith(interestSuffix)){
+      if(!sameOrigin(r)) return reply({error:"origin_rejected"},403);
+      const id=tail.slice(0,-interestSuffix.length);
+      if(id&&!id.includes("/")&&/^[A-Za-z0-9_-]{1,100}$/.test(id)) return expressCommunityInterest(r,e,id);
+    }
+    if(r.method==="POST" && tail.endsWith(closeSuffix)){
+      if(!sameOrigin(r)) return reply({error:"origin_rejected"},403);
+      const id=tail.slice(0,-closeSuffix.length);
+      if(id&&!id.includes("/")&&/^[A-Za-z0-9_-]{1,100}$/.test(id)) return closeCommunityPost(r,e,id);
+    }
+    return reply({error:"not_found"},404);
+  }
   if (p === API + "/resources" && r.method === "POST") {
     if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
     return createResource(r, e);
