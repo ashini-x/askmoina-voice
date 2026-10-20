@@ -425,6 +425,153 @@ async function requestResource(r: Request, e: GEnv, resourceId: string): Promise
     return reply({ error: "request_failed", message: "We could not save this request. Please try again." }, 503);
   }
 }
+
+type RequestListRow = {
+  request_id: string; status: string; message: string; created_at: string; updated_at: string;
+  resource_id: string; title: string; category: string; description: string; item_condition: string;
+  lending_type: "lend" | "sell" | "free"; price_amount: number; pickup_location: string;
+  distance_label: string; owner_name: string; owner_branch: string; icon: string;
+  messages_available: number;
+};
+async function createResource(r: Request, e: GEnv): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error: "authentication_required", message: "Sign in to list a resource." }, 401);
+  if (u.profile_complete !== 1) return reply({ error: "profile_incomplete", message: "Complete your student profile before listing a resource." }, 403);
+  if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
+  const b = await body(r);
+  if (!b) return reply({ error: "invalid_json", message: "Check the listing details and try again." }, 400);
+  const title = typeof b.title === "string" ? b.title.trim().replace(/\s+/g, " ") : "";
+  const category = typeof b.category === "string" ? b.category.trim() : "";
+  const description = typeof b.description === "string" ? b.description.trim() : "";
+  const itemCondition = typeof b.condition === "string" ? b.condition.trim() : "Good";
+  const lendingType = typeof b.lendingType === "string" ? b.lendingType.trim() : "lend";
+  const pickupLocation = typeof b.pickupLocation === "string" ? b.pickupLocation.trim().replace(/\s+/g, " ") : "";
+  const distanceLabel = typeof b.distanceLabel === "string" ? b.distanceLabel.trim().slice(0, 60) : "";
+  const priceInput = b.priceAmount === undefined || b.priceAmount === null || b.priceAmount === "" ? 0 : Number(b.priceAmount);
+  const categories = ["Books", "Lab Equipment", "Electronics", "Stationery"];
+  const conditions = ["New", "Very good", "Good", "Fair"];
+  if (title.length < 3 || title.length > 100 || !categories.includes(category) ||
+      description.length < 8 || description.length > 1500 ||
+      !conditions.includes(itemCondition) || !["lend","sell","free"].includes(lendingType) ||
+      pickupLocation.length < 2 || pickupLocation.length > 120 ||
+      !Number.isSafeInteger(priceInput) || priceInput < 0 || priceInput > 1000000) {
+    return reply({ error: "invalid_resource", message: "Add a title, category, description, condition, pickup location, and a valid whole-rupee amount." }, 400);
+  }
+  const priceAmount = lendingType === "free" ? 0 : priceInput;
+  const id = "gyr_" + token(18);
+  const now = new Date().toISOString();
+  const icon = ({ Books: "▤", "Lab Equipment": "◒", Electronics: "▦", Stationery: "✎" } as Record<string, string>)[category] || "📦";
+  try {
+    await e.GYANSHALA_DB.prepare(
+      "INSERT INTO gyanshala_resources(resource_id,owner_id,title,category,description,item_condition,lending_type,price_amount,pickup_location,distance_label,owner_name,owner_branch,icon,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'available',?,?)"
+    ).bind(id,u.user_id,title,category,description,itemCondition,lendingType,priceAmount,pickupLocation,distanceLabel,u.full_name || "Student",u.branch || "",icon,now,now).run();
+    return reply({ ok: true, resourceId: id, message: "Your resource is now listed on the campus shelf." }, 201);
+  } catch {
+    return reply({ error: "resource_create_failed", message: "We couldn’t publish this listing. Please try again." }, 503);
+  }
+}
+async function listMyRequests(r: Request, e: GEnv): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error: "authentication_required", message: "Sign in to view your requests." }, 401);
+  if (u.profile_complete !== 1) return reply({ error: "profile_incomplete" }, 403);
+  if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
+  try {
+    await seedPreviewResources(e);
+    const rows = await e.GYANSHALA_DB.prepare(
+      "SELECT q.request_id,q.status,q.message,q.created_at,q.updated_at,r.resource_id,r.title,r.category,r.description,r.item_condition,r.lending_type,r.price_amount,r.pickup_location,r.distance_label,r.owner_name,r.owner_branch,r.icon,CASE WHEN q.owner_id IS NOT NULL THEN 1 ELSE 0 END AS messages_available FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id WHERE q.requester_id=? ORDER BY q.created_at DESC LIMIT 100"
+    ).bind(u.user_id).all<RequestListRow>();
+    const requests = (rows.results || []).map(x => ({
+      requestId:x.request_id, status:x.status, message:x.message, createdAt:x.created_at, updatedAt:x.updated_at,
+      resource:{id:x.resource_id,title:x.title,category:x.category,description:x.description,condition:x.item_condition,
+        lendingType:x.lending_type,priceAmount:x.price_amount,pickupLocation:x.pickup_location,distanceLabel:x.distance_label,
+        ownerName:x.owner_name,ownerBranch:x.owner_branch,icon:x.icon},
+      messagesAvailable:x.messages_available === 1
+    }));
+    return reply({ ok:true, requests, total:requests.length });
+  } catch {
+    return reply({ error:"requests_unavailable", message:"Your requests are temporarily unavailable. Try again." },503);
+  }
+}
+type MessageThreadRow = {
+  request_id:string; status:string; request_created_at:string; resource_id:string; resource_title:string; category:string;
+  other_name:string|null; other_branch:string|null; last_body:string|null; last_message_at:string|null;
+  last_sender_id:string|null; unread_count:number;
+};
+type MessageRow = {
+  message_id:string; request_id:string; sender_id:string; recipient_id:string; body:string; read_at:string|null;
+  created_at:string; sender_name:string|null; sender_branch:string|null;
+};
+function messageView(m: MessageRow, userId: string) {
+  return { id:m.message_id, requestId:m.request_id, senderId:m.sender_id, senderName:m.sender_name || "Student",
+    senderBranch:m.sender_branch || "", body:m.body, createdAt:m.created_at, isMine:m.sender_id === userId };
+}
+async function listMessageThreads(r: Request, e: GEnv): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error:"authentication_required", message:"Sign in to view messages." },401);
+  if (u.profile_complete !== 1) return reply({ error:"profile_incomplete" },403);
+  if (!e.GYANSHALA_DB) return reply({ error:"database_not_configured" },503);
+  try {
+    const rows = await e.GYANSHALA_DB.prepare(
+      "SELECT q.request_id,q.status,q.created_at AS request_created_at,r.resource_id,r.title AS resource_title,r.category,CASE WHEN q.requester_id=? THEN owner.full_name ELSE requester.full_name END AS other_name,CASE WHEN q.requester_id=? THEN owner.branch ELSE requester.branch END AS other_branch,(SELECT m.body FROM gyanshala_messages m WHERE m.request_id=q.request_id ORDER BY m.created_at DESC LIMIT 1) AS last_body,(SELECT m.created_at FROM gyanshala_messages m WHERE m.request_id=q.request_id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at,(SELECT m.sender_id FROM gyanshala_messages m WHERE m.request_id=q.request_id ORDER BY m.created_at DESC LIMIT 1) AS last_sender_id,(SELECT COUNT(*) FROM gyanshala_messages m WHERE m.request_id=q.request_id AND m.recipient_id=? AND m.read_at IS NULL) AS unread_count FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id LEFT JOIN gyanshala_users requester ON requester.user_id=q.requester_id LEFT JOIN gyanshala_users owner ON owner.user_id=q.owner_id WHERE q.owner_id IS NOT NULL AND (q.requester_id=? OR q.owner_id=?) ORDER BY COALESCE(last_message_at,q.updated_at,q.created_at) DESC LIMIT 100"
+    ).bind(u.user_id,u.user_id,u.user_id,u.user_id,u.user_id).all<MessageThreadRow>();
+    const threads = (rows.results || []).map(x => ({
+      requestId:x.request_id,status:x.status,requestCreatedAt:x.request_created_at,resourceId:x.resource_id,
+      resourceTitle:x.resource_title,category:x.category,otherName:x.other_name || "Student",
+      otherBranch:x.other_branch || "",lastMessage:x.last_body || "Start the conversation",
+      lastMessageAt:x.last_message_at,unreadCount:Number(x.unread_count || 0)
+    }));
+    return reply({ok:true,threads,total:threads.length});
+  } catch {
+    return reply({error:"messages_unavailable",message:"Conversations are temporarily unavailable. Try again."},503);
+  }
+}
+async function getMessageThread(r: Request, e: GEnv, requestId: string): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({error:"authentication_required"},401);
+  if (u.profile_complete !== 1) return reply({error:"profile_incomplete"},403);
+  if (!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  try {
+    const db=e.GYANSHALA_DB;
+    const req = await db.prepare("SELECT q.request_id,q.status,q.requester_id,q.owner_id,q.created_at,r.title AS resource_title FROM gyanshala_resource_requests q JOIN gyanshala_resources r ON r.resource_id=q.resource_id WHERE q.request_id=? AND (q.requester_id=? OR q.owner_id=?) LIMIT 1")
+      .bind(requestId,u.user_id,u.user_id).first<{request_id:string;status:string;requester_id:string;owner_id:string|null;created_at:string;resource_title:string}>();
+    if (!req) return reply({error:"message_thread_not_found",message:"This conversation is unavailable."},404);
+    if (!req.owner_id) return reply({error:"sample_listing_no_owner",message:"This sample listing has no live owner account yet. Messages are available on resources listed by a signed-in student."},409);
+    const now=new Date().toISOString();
+    await db.prepare("UPDATE gyanshala_messages SET read_at=? WHERE request_id=? AND recipient_id=? AND read_at IS NULL").bind(now,requestId,u.user_id).run();
+    const rows=await db.prepare("SELECT m.message_id,m.request_id,m.sender_id,m.recipient_id,m.body,m.read_at,m.created_at,u.full_name AS sender_name,u.branch AS sender_branch FROM gyanshala_messages m LEFT JOIN gyanshala_users u ON u.user_id=m.sender_id WHERE m.request_id=? ORDER BY m.created_at ASC LIMIT 300")
+      .bind(requestId).all<MessageRow>();
+    return reply({ok:true,thread:{requestId:req.request_id,status:req.status,resourceTitle:req.resource_title,createdAt:req.created_at},messages:(rows.results || []).map(m=>messageView(m,u.user_id))});
+  } catch {
+    return reply({error:"message_thread_unavailable",message:"We couldn’t open this conversation. Try again."},503);
+  }
+}
+async function sendThreadMessage(r: Request, e: GEnv, requestId: string): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({error:"authentication_required"},401);
+  if (u.profile_complete !== 1) return reply({error:"profile_incomplete"},403);
+  if (!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
+  const b=await body(r);
+  const bodyText=typeof b?.body==="string" ? b.body.trim() : "";
+  if (!bodyText || bodyText.length>1200) return reply({error:"invalid_message",message:"Write a message of 1–1,200 characters."},400);
+  try {
+    const db=e.GYANSHALA_DB;
+    const req=await db.prepare("SELECT request_id,requester_id,owner_id FROM gyanshala_resource_requests WHERE request_id=? AND (requester_id=? OR owner_id=?) LIMIT 1")
+      .bind(requestId,u.user_id,u.user_id).first<{request_id:string;requester_id:string;owner_id:string|null}>();
+    if (!req) return reply({error:"message_thread_not_found",message:"This conversation is unavailable."},404);
+    if (!req.owner_id) return reply({error:"sample_listing_no_owner",message:"This sample listing has no live owner account yet."},409);
+    const recipientId=req.requester_id === u.user_id ? req.owner_id : req.requester_id;
+    const id="gym_"+token(18),now=new Date().toISOString();
+    await db.prepare("INSERT INTO gyanshala_messages(message_id,request_id,sender_id,recipient_id,body,read_at,created_at) VALUES(?,?,?,?,?,NULL,?)")
+      .bind(id,requestId,u.user_id,recipientId,bodyText,now).run();
+    const row=await db.prepare("SELECT m.message_id,m.request_id,m.sender_id,m.recipient_id,m.body,m.read_at,m.created_at,u.full_name AS sender_name,u.branch AS sender_branch FROM gyanshala_messages m LEFT JOIN gyanshala_users u ON u.user_id=m.sender_id WHERE m.message_id=? LIMIT 1")
+      .bind(id).first<MessageRow>();
+    await db.prepare("UPDATE gyanshala_resource_requests SET updated_at=? WHERE request_id=?").bind(now,requestId).run();
+    return reply({ok:true,message:row ? messageView(row,u.user_id) : null},201);
+  } catch {
+    return reply({error:"message_send_failed",message:"Your message couldn’t be sent. Try again."},503);
+  }
+}
+
 async function logout(r: Request, e: GEnv): Promise<Response> {
   const raw = readCookie(r, COOKIE);
   if (raw && e.GYANSHALA_DB && secret(e)) {
@@ -435,11 +582,30 @@ async function logout(r: Request, e: GEnv): Promise<Response> {
 }
 
 
+
 async function api(r: Request, e: GEnv): Promise<Response> {
   const p = new URL(r.url).pathname;
   if (r.method === "GET" && (p === API + "/health" || p === API + "/auth/config")) return health(e);
   if (p === API + "/me" && r.method === "GET") return me(r, e);
   if (p === API + "/resources" && r.method === "GET") return listResources(r, e);
+  if (p === API + "/resources" && r.method === "POST") {
+    if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
+    return createResource(r, e);
+  }
+  if (p === API + "/my-requests" && r.method === "GET") return listMyRequests(r, e);
+  if (p === API + "/messages" && r.method === "GET") return listMessageThreads(r, e);
+  const messagePrefix = API + "/messages/";
+  if (p.startsWith(messagePrefix)) {
+    const requestId=p.slice(messagePrefix.length);
+    if (requestId && !requestId.includes("/") && /^[A-Za-z0-9_-]{1,100}$/.test(requestId)) {
+      if (r.method === "GET") return getMessageThread(r,e,requestId);
+      if (r.method === "POST") {
+        if (!sameOrigin(r)) return reply({error:"origin_rejected"},403);
+        return sendThreadMessage(r,e,requestId);
+      }
+    }
+    return reply({error:"not_found"},404);
+  }
   const resourcesPrefix = API + "/resources/";
   if (p.startsWith(resourcesPrefix)) {
     const tail = p.slice(resourcesPrefix.length);
