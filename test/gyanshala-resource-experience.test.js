@@ -39,6 +39,37 @@ describe("Gyanshala campus workflows (interfaces 12–14)", () => {
     expect(threads).toContain("sample_listing_no_owner");
   });
 
+  it("stores pickup points, community posts, and per-student interest separately", () => {
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_pickup_points");
+    expect(schema).toContain("map_x INTEGER NOT NULL CHECK (map_x BETWEEN 5 AND 95)");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_community_posts");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_community_interests");
+    expect(schema).toContain("PRIMARY KEY (post_id, user_id)");
+  });
+
+  it("protects pickup and community reads and requires real account ownership for updates", () => {
+    const pickup = backend.slice(backend.indexOf("async function listPickupLocations"), backend.indexOf("type CommunityPostRow"));
+    const community = backend.slice(backend.indexOf("async function listCommunityPosts"), backend.indexOf("async function logout"));
+    expect(pickup).toContain("getUser(r, e)");
+    expect(pickup).toContain("profile_complete !== 1");
+    expect(community).toContain("getUser(r, e)");
+    expect(community).toContain("INSERT INTO gyanshala_community_posts");
+    expect(community).toContain("INSERT INTO gyanshala_community_interests");
+    expect(community).toContain("post.owner_id!==u.user_id");
+  });
+
+  it("connects the pickup map and community board to live APIs and reachable navigation", () => {
+    expect(backend).toContain('p === API + "/pickup-locations"');
+    expect(backend).toContain('p === API + "/community/posts"');
+    expect(app).toContain("function pickupMapScreen()");
+    expect(app).toContain("function communityScreen()");
+    expect(app).toContain("This is an illustrative campus schematic, not live GPS navigation");
+    expect(app).toContain('form.id === "community-post-form"');
+    expect(app).toContain('data-action="community-interest"');
+    expect(app).toContain('data-action="close-community-post"');
+    expect(app).toContain('id="mobile-more-menu"');
+  });
+
   it("wires listing, request history, and message screens into navigation and forms", () => {
     expect(app).toContain("function addResourceScreen()");
     expect(app).toContain("function myRequestsScreen()");
