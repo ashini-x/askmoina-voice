@@ -728,6 +728,11 @@ async function ensureSmartSupplyDemoData(e:GEnv):Promise<void>{
 }
 function parseSupplyQueryFallback(query:string):Record<string,unknown>{
   const q=query.toLowerCase();
+  const catalogMatch=SUPPLY_SEEDS.some(item=>[item.name,...item.aliases].some(term=>q.includes(term.toLowerCase())));
+  const inventoryIntent=/\b(need|want|find|search|looking for|available|in stock|borrow|lend|rent|buy|purchase|donate|donation|give away|have any|can i get|where can i get|show me|under|below|near me|tomorrow|today|urgent)\b/.test(q);
+  if(!catalogMatch&&!inventoryIntent){
+    return {isSupplySearch:false,item:"",aliases:[],category:null,offerType:"any",maxPrice:null,quantity:1,urgent:false};
+  }
   const category=SUPPLY_CATEGORIES.find(c=>q.includes(c.toLowerCase()))||null;
   const guessedType:SupplyType|"any"=/(donat|free|give away|no cost)/.test(q)?"donation":/(borrow|lend|loan|temporary)/.test(q)?"borrow":/(buy|purchase|for sale|under rupees|under rs|under ₹|price)/.test(q)?"sell":"any";
   const priceMatch=q.match(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?(\d{1,6})/);
