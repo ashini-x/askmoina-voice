@@ -53,6 +53,9 @@ jobs:
           set -euo pipefail
           npm run check
           npm test
+          node --check public/gyanshala-demo/app.js
+          node --check public/gyanshala-demo/sw.js
+          npx wrangler d1 execute GYANSHALA_DB --local --file=src/gyanshala-demo/schema.sql
           npx wrangler d1 migrations apply VEDA_DB --local
           npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
           npx wrangler deploy --dry-run --outdir=dist

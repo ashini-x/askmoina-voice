@@ -17,6 +17,8 @@ jobs:
       - run: npm install --no-audit --no-fund --legacy-peer-deps
       - run: npm run check
       - run: node --check public/app.js
+      - run: node --check public/gyanshala-demo/app.js
+      - run: node --check public/gyanshala-demo/sw.js
       - run: node --check public/copilot.js
       - run: node --check public/auth.js
       - run: node --check public/session-ui.js
@@ -42,6 +44,8 @@ jobs:
           NODE
       - run: npm run benchmark:validate
       - run: npm test
+      - name: Validate Gyanshala isolated schema against local SQLite
+        run: npx wrangler d1 execute GYANSHALA_DB --local --file=src/gyanshala-demo/schema.sql
       - name: Validate AskMoina D1 migrations against local SQLite
         run: npx wrangler d1 migrations apply askmoina-prod --local
       - name: Validate isolated Veda production migration against local SQLite
