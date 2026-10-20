@@ -85,8 +85,10 @@
     return ({ "Books": "▤", "Lab Equipment": "◒", "Electronics": "▦", "Stationery": "✎" })[category] || "⌘";
   }
   function priceLabel(resource) {
-    return Number(resource.priceAmount || 0) <= 0 || resource.lendingType === "free"
-      ? "Free to borrow" : "₹" + Number(resource.priceAmount).toLocaleString("en-IN") + (resource.lendingType === "sell" ? " · one-time" : " / semester");
+    const amount = Number(resource.priceAmount || 0);
+    if (resource.lendingType === "free" || (resource.lendingType === "lend" && amount <= 0)) return "Free to borrow";
+    if (resource.lendingType === "sell") return "₹" + amount.toLocaleString("en-IN") + " · one-time";
+    return "₹" + amount.toLocaleString("en-IN") + " / semester";
   }
   function resourceCard(resource) {
     const cat = ({ "Books": "books", "Lab Equipment": "lab", "Electronics": "electronics", "Stationery": "stationery" })[resource.category] || "other";
@@ -143,9 +145,10 @@
     const statusText = r.requestStatus === "pending" ? "Request sent" : r.requestStatus ? "Request " + r.requestStatus : "Request to borrow";
     const price = priceLabel(r);
     const cat = ({ "Books": "books", "Lab Equipment": "lab", "Electronics": "electronics", "Stationery": "stationery" })[r.category] || "other";
+    const requestLabel = r.lendingType === "sell" ? "Ask about this item" : r.lendingType === "free" ? "Request this free item" : "Request to borrow";
     const cta = already
       ? '<button class="btn btn-primary full" type="button" disabled><span>✓</span>' + esc(statusText) + '</button><p class="cta-note">This resource is already in your requests.</p>'
-      : '<button class="btn btn-primary full request-button" type="button" data-action="request-resource" data-id="' + esc(r.id) + '">Request to borrow <span class="arrow">→</span></button><p class="cta-note">The owner can review your request. You can track its status in a later milestone.</p>';
+      : '<button class="btn btn-primary full request-button" type="button" data-action="request-resource" data-id="' + esc(r.id) + '">' + esc(requestLabel) + ' <span class="arrow">→</span></button><p class="cta-note">The owner can review your request. You can track its status in My Requests.</p>';
     const content = '<div class="detail-back-row"><button type="button" class="back" data-action="explore">← Back to explore</button><span class="detail-breadcrumb">Explore <span> / </span>' + esc(r.category) + '</span></div><section class="detail-layout"><div class="detail-main"><div class="detail-visual cover-' + cat + '"><span class="detail-art-orbit"></span><span class="detail-visual-icon">' + esc(r.icon || categoryIcon(r.category)) + '</span><span class="detail-visual-label">' + esc(r.category) + '</span></div><div class="detail-description"><p class="section-overline">ABOUT THIS RESOURCE</p><h2>Made to be shared.</h2><p>' + esc(r.description) + '</p><div class="detail-facts"><div><span class="fact-icon">✧</span><span><small>Condition</small><strong>' + esc(r.condition || "Good") + '</strong></span></div><div><span class="fact-icon">⌖</span><span><small>Pickup location</small><strong>' + esc(r.pickupLocation) + '</strong></span></div><div><span class="fact-icon">◷</span><span><small>Distance</small><strong>' + esc(r.distanceLabel || "On campus") + '</strong></span></div></div></div></div><aside class="detail-side"><span class="availability-badge"><i></i>Available now</span><p class="detail-category">' + esc(r.category) + '</p><h1>' + esc(r.title) + '</h1><p class="detail-price">' + esc(price) + '</p><div class="owner-card"><span class="owner-avatar">' + esc((r.ownerName || "S").split(/\s+/).map(function (x) { return x.charAt(0); }).slice(0, 2).join("").toUpperCase()) + '</span><span><small>Shared by</small><strong>' + esc(r.ownerName || "Student community") + '</strong><small>' + esc(r.ownerBranch || "Campus community") + '</small></span><span class="owner-check">✓</span></div>' + cta + '<div class="privacy-note"><span>♧</span><p>Student-to-student sharing, with campus email verification.</p></div></aside></section>';
     appShell(content, "explore");
   }
