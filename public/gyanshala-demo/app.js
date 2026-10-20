@@ -167,6 +167,116 @@
       syncPrice();
     }
   }
+
+  function campusMapSvg(selected) {
+    const x=selected?Math.round(Math.max(5,Math.min(95,Number(selected.mapX)||50))*10):500;
+    const y=selected?Math.round(Math.max(5,Math.min(95,Number(selected.mapY)||50))*6.5):325;
+    const route=selected?'<path class="map-walk-route" d="M 500 325 C 470 315 460 295 '+Math.round((500+x)/2)+' '+Math.round((325+y)/2)+' S '+x+' '+y+' '+x+' '+y+'" />':"";
+    const pins=state.pickupPoints.map(function(p){
+      const chosen=selected&&selected.id===p.id;
+      const left=Math.max(3,Math.min(97,Number(p.mapX)||50));
+      const top=Math.max(4,Math.min(96,Number(p.mapY)||50));
+      return '<button type="button" class="map-pin'+(chosen?' selected':'')+'" style="left:'+left+'%;top:'+top+'%" data-action="select-pickup" data-id="'+esc(p.id)+'" aria-label="'+esc(p.name)+', '+Number(p.resourceCount||0)+' available resources"><span class="map-pin-dot">'+(chosen?'✓':'⌖')+'</span><span class="map-pin-label">'+esc(p.name)+'</span></button>';
+    }).join("");
+    return '<div class="pickup-map-canvas"><svg class="campus-schematic" viewBox="0 0 1000 650" role="img" aria-label="Illustrative campus schematic showing pickup points and a preview walking route" preserveAspectRatio="xMidYMid meet"><defs><pattern id="map-grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M 36 0 L 0 0 0 36" fill="none" stroke="#dbe7e2" stroke-width="1"/></pattern></defs><rect width="1000" height="650" rx="26" fill="#eff6f0"/><rect width="1000" height="650" rx="26" fill="url(#map-grid)" opacity=".72"/><path class="map-road-wide" d="M -40 130 C 180 120 260 180 400 160 S 730 95 1040 140 M -30 470 C 180 440 320 500 480 455 S 800 425 1040 500 M 260 -40 C 310 100 250 210 340 330 S 450 530 430 700 M 760 -40 C 730 100 790 225 700 330 S 650 540 720 700"/><path class="map-road" d="M -40 130 C 180 120 260 180 400 160 S 730 95 1040 140 M -30 470 C 180 440 320 500 480 455 S 800 425 1040 500 M 260 -40 C 310 100 250 210 340 330 S 450 530 430 700 M 760 -40 C 730 100 790 225 700 330 S 650 540 720 700"/><path class="map-path" d="M 65 340 C 190 275 270 260 390 305 S 550 405 650 330 815 245 940 315 M 80 565 C 190 570 260 530 345 455 S 570 305 620 190 770 85 930 65 M 75 80 C 210 140 290 110 420 210 S 650 255 800 305 885 410 940 580"/>'+route+'<g class="map-building"><rect x="75" y="175" width="150" height="82" rx="12"/><rect x="420" y="82" width="142" height="76" rx="12"/><rect x="535" y="210" width="125" height="82" rx="12"/><rect x="770" y="185" width="145" height="84" rx="12"/><rect x="118" y="367" width="132" height="72" rx="12"/><rect x="465" y="505" width="152" height="71" rx="12"/><rect x="788" y="380" width="125" height="76" rx="12"/></g><g class="map-building-label"><text x="150" y="220">LIBRARY WING</text><text x="491" y="122">ACADEMIC BLOCK</text><text x="597" y="255">STUDENT HUB</text><text x="842" y="230">SCIENCE BLOCK</text><text x="184" y="405">CAMPUS SERVICES</text><text x="541" y="546">COMMON AREA</text><text x="850" y="420">RESIDENCES</text></g><g class="map-green"><circle cx="315" cy="185" r="39"/><circle cx="350" cy="205" r="22"/><circle cx="670" cy="100" r="35"/><circle cx="705" cy="117" r="19"/><circle cx="280" cy="420" r="30"/><circle cx="316" cy="431" r="20"/><circle cx="690" cy="510" r="40"/><circle cx="730" cy="490" r="19"/><circle cx="905" cy="540" r="31"/></g><g class="map-start"><circle cx="500" cy="325" r="19"/><circle cx="500" cy="325" r="7"/><text x="518" y="319">CAMPUS CENTRE</text></g></svg><div class="map-pin-layer">'+pins+'</div><div class="map-watermark">GYANSHALA CAMPUS GUIDE <span>PREVIEW</span></div></div>';
+  }
+  function pickupMapScreen() {
+    const selected=state.pickupPoints.find(p=>p.id===state.pickupSelectedId)||state.pickupPoints[0]||null;
+    let main;
+    if(state.pickupsLoading) main='<div class="resource-state"><span class="spinner"></span><strong>Finding pickup points</strong><p>Loading the campus resource map…</p></div>';
+    else if(state.pickupsError) main='<div class="resource-state"><strong>Campus map didn’t load.</strong><p>'+esc(state.pickupsError)+'</p><button type="button" class="btn btn-outline" data-action="refresh-pickups">Try again</button></div>';
+    else if(!state.pickupPoints.length) main='<div class="resource-state"><strong>No pickup points yet</strong><p>Campus pickup locations will appear here when they are configured.</p></div>';
+    else {
+      const routeLabel="About "+Number(selected.walkMinutes||5)+" min from the campus centre";
+      const pointList=state.pickupPoints.map(p=>'<button type="button" class="pickup-location-row'+(selected.id===p.id?' selected':'')+'" data-action="select-pickup" data-id="'+esc(p.id)+'"><span class="pickup-row-marker">⌖</span><span class="pickup-row-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.area)+'</small><span>'+Number(p.resourceCount||0)+' available '+(Number(p.resourceCount)===1?'resource':'resources')+'</span></span><span class="pickup-row-time">'+Number(p.walkMinutes||5)+' min</span></button>').join("");
+      const resources=selected.resources&&selected.resources.length?'<div class="pickup-item-grid">'+selected.resources.map(resourceCard).join("")+'</div>':'<div class="pickup-no-items"><span>⌕</span><strong>No listed resources at this point yet</strong><p>Students can use this location as a pickup point when creating a listing.</p></div>';
+      main='<div class="pickup-layout"><div class="pickup-map-panel"><div class="pickup-map-header"><div><p class="section-overline">CAMPUS GUIDE</p><h2>Find your pickup point</h2></div><span class="map-preview-badge"><i></i>Preview map</span></div>'+campusMapSvg(selected)+'<div class="map-legend"><span><i class="legend-pin"></i>Pickup point</span><span><i class="legend-route"></i>Illustrative route</span><span><i class="legend-start"></i>Campus centre</span></div><p class="map-disclaimer">This is an illustrative campus schematic, not live GPS navigation. Walking times are preview estimates; confirm your route on campus.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">PICKUP LOCATIONS</p><h2>Meet nearby</h2></div><span class="pickup-total">'+state.pickupPoints.length+'</span></div><div class="pickup-location-list">'+pointList+'</div></aside></div><section class="pickup-selected-panel"><div class="pickup-selected-heading"><span class="pickup-selected-icon">⌖</span><div><p class="section-overline">SELECTED MEETING POINT</p><h2>'+esc(selected.name)+'</h2><p>'+esc(selected.area)+' · '+esc(routeLabel)+'</p></div><button type="button" class="btn btn-outline" data-action="browse-pickup">View resources here <span class="arrow">→</span></button></div><p class="pickup-description">'+esc(selected.description)+'</p><div class="pickup-resources-heading"><div><p class="section-overline">AVAILABLE NEARBY</p><h3>Resources at this location</h3></div><span>'+Number(selected.resourceCount||0)+' available</span></div>'+resources+'</section>';
+    }
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">KNOW WHERE TO MEET</p><h1>Campus map & pickup points</h1><p>Choose a public campus meeting point and see which shared resources are listed there.</p></section>'+main;
+    appShell(content,"map");
+  }
+  function communityCategoryChips(active) {
+    const categories=["All","Books","Lab Equipment","Electronics","Stationery","Other"];
+    return '<div class="community-category-chips">'+categories.map(c=>'<button type="button" class="community-category-chip'+(c===active?' active':'')+'" data-action="community-category" data-id="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div>';
+  }
+  function communityPostCard(post) {
+    const isOffer=post.type==="offer";
+    const status=post.status==="fulfilled"?'<span class="community-status fulfilled">Fulfilled</span>':"";
+    const sample=post.sample?'<span class="community-sample">Preview sample</span>':"";
+    const icon=categoryIcon(post.category);
+    let action;
+    if(post.isMine) action=post.status==="active"?'<button type="button" class="btn btn-outline" data-action="close-community-post" data-id="'+esc(post.id)+'">Mark fulfilled</button>':'<span class="community-complete-label">✓ Fulfilled</span>';
+    else action='<button type="button" class="btn '+(post.interested?'btn-outline':'btn-primary')+' community-interest-button" data-action="community-interest" data-id="'+esc(post.id)+'"'+(post.interested?' disabled':'')+'>'+(post.interested?'✓ Interested':isOffer?'I’m interested':'I can help')+' <span class="interest-count">'+Number(post.interestedCount||0)+'</span></button>';
+    return '<article class="community-post-card '+(isOffer?'offer-card':'need-card')+'"><div class="community-card-top"><span class="community-type-pill '+(isOffer?'offer':'need')+'">'+(isOffer?'↗ Offer':'⌕ Need')+'</span>'+status+sample+'</div><div class="community-post-icon">'+icon+'</div><p class="community-post-category">'+esc(post.category)+'</p><h3>'+esc(post.title)+'</h3><p class="community-post-description">'+esc(post.description)+'</p><div class="community-post-meta"><span class="community-avatar">'+esc((post.ownerName||"G").trim().split(/\s+/).map(x=>x.charAt(0)).slice(0,2).join("").toUpperCase())+'</span><span><strong>'+esc(post.ownerName||"Campus community")+'</strong><small>'+esc(post.ownerBranch||"Student community")+'</small></span></div><div class="community-post-location"><span>⌖</span>'+esc(post.pickupLocation||"Campus-wide")+'</div><div class="community-card-footer"><small>'+esc(new Date(post.createdAt).toLocaleDateString(undefined,{day:"numeric",month:"short"}))+'</small>'+action+'</div></article>';
+  }
+  function communityPostForm() {
+    return '<form class="community-post-form" id="community-post-form"><div class="community-form-heading"><div><p class="section-overline">START A GOOD THING</p><h2>Create a community post</h2></div><button type="button" class="icon-close" data-action="community-cancel" aria-label="Close form">×</button></div><div id="community-form-message"></div><div class="field-row"><label class="field"><span>Post type *</span><select name="type" required><option value="offer">Offer something</option><option value="need">I need something</option></select></label><label class="field"><span>Category *</span><select name="category" required><option>Books</option><option>Lab Equipment</option><option>Electronics</option><option>Stationery</option><option>Other</option></select></label></div><label class="field"><span>Title *</span><input name="title" type="text" minlength="3" maxlength="100" placeholder="e.g. Looking for a lab coat" required></label><label class="field"><span>Details *</span><textarea name="description" rows="4" minlength="8" maxlength="1000" placeholder="Say what you’re offering or what would help you." required></textarea><small>8–1,000 characters.</small></label><label class="field"><span>Preferred campus location (optional)</span><input name="pickupLocation" maxlength="120" placeholder="e.g. Central Library"></label><div class="community-form-actions"><button type="button" class="btn btn-outline" data-action="community-cancel">Cancel</button><button type="submit" class="btn btn-primary">Publish post <span class="arrow">→</span></button></div><p class="form-footnote">Use a public campus location. Avoid posting private contact details.</p></form>';
+  }
+  function communityScreen() {
+    const types=[["All","All posts"],["offer","Offers"],["need","Needs"],["mine","My posts"]];
+    const tabs=types.map(t=>'<button type="button" class="community-type-tab'+(state.communityType===t[0]?' active':'')+'" data-action="community-type" data-id="'+esc(t[0])+'">'+esc(t[1])+(t[0]==="All"?'<span>'+state.communityPosts.length+'</span>':'')+'</button>').join("");
+    let posts;
+    if(state.communityLoading) posts='<div class="resource-state"><span class="spinner"></span><strong>Loading campus posts</strong><p>Checking what students can offer and what they need…</p></div>';
+    else if(state.communityError) posts='<div class="resource-state"><strong>Community posts didn’t load.</strong><p>'+esc(state.communityError)+'</p><button type="button" class="btn btn-outline" data-action="community">Try again</button></div>';
+    else if(!state.communityPosts.length) posts='<div class="resource-state"><div class="empty-mark">♧</div><strong>Nothing here just yet</strong><p>'+(state.communityType==="mine"?"Posts you publish will be saved here.":"Be the first to offer something useful or ask for help.")+'</p><button type="button" class="btn btn-primary" data-action="community-new-post">Create a post <span class="arrow">→</span></button></div>';
+    else posts='<div class="community-post-grid">'+state.communityPosts.map(communityPostCard).join("")+'</div>';
+    const content='<section class="community-hero"><div><p class="workspace-eyebrow">BETTER, TOGETHER</p><h1>Offers & needs</h1><p>Small acts of sharing make campus life easier. Offer something, ask for help, or help someone nearby.</p><div class="community-hero-tags"><span>✳ Peer-powered</span><span>♧ Campus-wide</span><span>✓ Verified community</span></div></div><div class="community-hero-art" aria-hidden="true"><span class="community-art-orbit"></span><span class="community-art-card art-one">↗<small>OFFER</small></span><span class="community-art-card art-two">⌕<small>NEED</small></span><div class="community-art-message"><span>✳</span><strong>What goes around,<br>helps someone learn.</strong></div></div></section>'+(state.communityToast?'<div class="workspace-flash community-toast" role="status">'+esc(state.communityToast)+'</div>':'')+(state.communityFormOpen?communityPostForm():'')+'<section class="community-board"><div class="community-board-heading"><div><p class="section-overline">THE STUDENT COMMUNITY</p><h2>What’s happening on campus?</h2></div><button type="button" class="btn btn-primary" data-action="community-new-post">＋ Create a post</button></div><form class="community-search-form" id="community-search-form"><span>⌕</span><input name="q" type="search" value="'+esc(state.communitySearch)+'" placeholder="Search offers, needs, and campus posts…" aria-label="Search community posts"><button type="submit">Search</button></form><div class="community-filter-row"><div class="community-type-tabs">'+tabs+'</div>'+communityCategoryChips(state.communityCategory)+'</div>'+posts+'</section>';
+    appShell(content,"community");
+  }
+  async function loadPickupLocations() {
+    state.screen="map";state.pickupsLoading=true;state.pickupsError="";state.workspaceMessage="";
+    render();
+    try {
+      const result=await api("/pickup-locations",null,"GET");
+      state.pickupPoints=Array.isArray(result.locations)?result.locations:[];
+      if(!state.pickupPoints.some(p=>p.id===state.pickupSelectedId)) state.pickupSelectedId=state.pickupPoints[0]?state.pickupPoints[0].id:"";
+    } catch(e) { state.pickupsError=e.message||"Please try again.";state.pickupPoints=[]; }
+    finally { state.pickupsLoading=false;render(); }
+  }
+  async function loadCommunity() {
+    state.screen="community";state.communityLoading=true;state.communityError="";state.workspaceMessage="";
+    render();
+    try {
+      const params=new URLSearchParams();
+      params.set("type",state.communityType);params.set("category",state.communityCategory);params.set("q",state.communitySearch);
+      const result=await api("/community/posts?"+params.toString(),null,"GET");
+      state.communityPosts=Array.isArray(result.posts)?result.posts:[];
+    } catch(e) { state.communityError=e.message||"Please try again.";state.communityPosts=[]; }
+    finally { state.communityLoading=false;render(); }
+  }
+  async function createCommunityPost(form) {
+    const fd=new FormData(form);
+    const payload={type:fd.get("type"),title:fd.get("title"),category:fd.get("category"),description:fd.get("description"),pickupLocation:fd.get("pickupLocation")};
+    state.communitySubmitting=true;
+    const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent="Publishing…";}
+    try {
+      const result=await api("/community/posts",payload,"POST");
+      state.communityType="mine";state.communityCategory="All";state.communitySearch="";
+      state.communityFormOpen=false;state.communityToast=result.message||"Your post is on the community board.";
+      await loadCommunity();
+    } catch(e) {
+      const slot=root.querySelector("#community-form-message");
+      if(slot) slot.innerHTML='<div class="workspace-form-error" role="alert">'+esc(e.message||"We couldn’t publish your post.")+'</div>';
+      if(submit){submit.disabled=false;submit.textContent="Publish post →";}
+    } finally { state.communitySubmitting=false; }
+  }
+  async function communityInterest(id) {
+    if(!id)return;
+    try {
+      const result=await api("/community/posts/"+encodeURIComponent(id)+"/interest",{},"POST");
+      state.communityToast=result.alreadyInterested?"You’ve already expressed interest.":"Interest saved. Your interest is visible on this post.";
+      await loadCommunity();
+    } catch(e) { state.communityToast=e.message||"We couldn’t save your interest.";render(); }
+  }
+  async function closeCommunityPost(id) {
+    if(!id)return;
+    try {
+      const result=await api("/community/posts/"+encodeURIComponent(id)+"/close",{},"POST");
+      state.communityToast=result.message||"Post updated.";
+      await loadCommunity();
+    } catch(e) { state.communityToast=e.message||"We couldn’t update your post.";render(); }
+  }
+
   function requestStatusLabel(status) {
     return ({ pending:"Pending", approved:"Approved", declined:"Declined", active:"In progress", completed:"Completed", cancelled:"Cancelled" })[status] || "Pending";
   }
@@ -357,6 +467,8 @@
     if (state.screen === "home") return dashboard();
     if (state.screen === "explore") return browse();
     if (state.screen === "detail") return detail();
+    if (state.screen === "map") return pickupMapScreen();
+    if (state.screen === "community") return communityScreen();
     if (state.screen === "listing") return addResourceScreen();
     if (state.screen === "my-requests") return myRequestsScreen();
     if (state.screen === "messages") return messagesScreen();
@@ -395,7 +507,12 @@
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
-    if (form.id === "search-form" || form.id === "hero-search-form") {
+    if (form.id === "community-post-form") {
+      await createCommunityPost(form);
+    } else if (form.id === "community-search-form") {
+      state.communitySearch=String(fd.get("q")||"").trim().slice(0,100);
+      await loadCommunity();
+    } else if (form.id === "search-form" || form.id === "hero-search-form") {
       state.search = String(fd.get("q") || "").trim().slice(0, 120);
       state.category = "All";
       state.screen = "explore";
@@ -454,6 +571,34 @@
       if (state.user) { navigate("profile"); return; }
       navigate("splash"); return;
     }
+
+    if (name === "map") { await loadPickupLocations(); return; }
+    if (name === "community") { state.communityFormOpen=false; await loadCommunity(); return; }
+    if (name === "open-more") {
+      const menu=root.querySelector("#mobile-more-menu"), control=root.querySelector('[data-action="open-more"]');
+      if(menu) menu.classList.toggle("open");
+      if(control) control.setAttribute("aria-expanded",menu&&menu.classList.contains("open")?"true":"false");
+      return;
+    }
+    if (name === "close-more") {
+      const menu=root.querySelector("#mobile-more-menu"), control=root.querySelector('[data-action="open-more"]');
+      if(menu) menu.classList.remove("open");
+      if(control) control.setAttribute("aria-expanded","false");
+      return;
+    }
+    if (name === "refresh-pickups") { await loadPickupLocations(); return; }
+    if (name === "select-pickup") { state.pickupSelectedId=id||"";render();return; }
+    if (name === "browse-pickup") {
+      const point=state.pickupPoints.find(p=>p.id===state.pickupSelectedId);
+      if(point){state.search=point.name;state.category="All";state.screen="explore";refreshResources();}
+      return;
+    }
+    if (name === "community-type") { state.communityType=id||"All";await loadCommunity();return; }
+    if (name === "community-category") { state.communityCategory=id||"All";await loadCommunity();return; }
+    if (name === "community-new-post") { state.communityFormOpen=!state.communityFormOpen;render();return; }
+    if (name === "community-cancel") { state.communityFormOpen=false;render();return; }
+    if (name === "community-interest") { await communityInterest(id);return; }
+    if (name === "close-community-post") { await closeCommunityPost(id);return; }
     if (name === "explore") { state.screen = "explore"; render(); refreshResources(); return; }
     if (name === "add-resource") { state.workspaceMessage=""; navigate("listing"); return; }
     if (name === "my-requests") { await loadMyRequests(); return; }
