@@ -3,7 +3,7 @@
   const API = "/api/gyanshala";
   const APP = "/gyanshala-demo/";
   const root = document.getElementById("app");
-  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "" };
+  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false };
   const esc = (value) => String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const logo = '<img src="/gyanshala-demo/icon.svg" alt="" width="36" height="36">';
   function button(label, action, cls, type) {
@@ -86,7 +86,7 @@
   }
   function priceLabel(resource) {
     return Number(resource.priceAmount || 0) <= 0 || resource.lendingType === "free"
-      ? "Free to borrow" : "₹" + Number(resource.priceAmount).toLocaleString("en-IN") + " / semester";
+      ? "Free to borrow" : "₹" + Number(resource.priceAmount).toLocaleString("en-IN") + (resource.lendingType === "sell" ? " · one-time" : " / semester");
   }
   function resourceCard(resource) {
     const cat = ({ "Books": "books", "Lab Equipment": "lab", "Electronics": "electronics", "Stationery": "stationery" })[resource.category] || "other";
@@ -107,7 +107,7 @@
     const user = state.user || {};
     const name = user.fullName || "Student";
     const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join("") || "S";
-    root.innerHTML = '<div class="campus-app"><header class="campus-header"><a class="campus-brand" href="/gyanshala-demo/" data-action="home">' + logo + '<span>Gyanshala<small>Campus, together</small></span></a><form class="campus-search" id="search-form"><span class="search-glyph" aria-hidden="true">⌕</span><input type="search" name="q" value="' + esc(state.search) + '" placeholder="Search books, equipment, and more…" aria-label="Search campus resources"><button type="submit" aria-label="Submit search">Search</button></form><div class="campus-user"><span class="campus-avatar">' + esc(initials) + '</span><span class="campus-user-copy"><strong>' + esc(name) + '</strong><small>' + esc(user.branch || "Verified student") + '</small></span><button class="signout-link" type="button" data-action="logout">Sign out</button></div></header><div class="campus-layout"><aside class="campus-sidebar"><p class="sidebar-label">WORKSPACE</p><button type="button" class="sidebar-link' + (active === "home" ? " selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="sidebar-link' + (active === "explore" ? " selected" : "") + '" data-action="explore"><span>⌕</span>Explore resources</button><div class="sidebar-spacer"></div><div class="sidebar-note"><span class="sidebar-note-icon">✳</span><strong>Share more. Waste less.</strong><p>Good resources deserve more than one life.</p></div><div class="sidebar-account"><span class="account-check">✓</span><span><strong>Verified student</strong><small>' + esc(user.email || "") + '</small></span></div></aside><section class="campus-main"><div class="campus-content">' + (state.workspaceMessage ? '<div class="workspace-flash" role="status">' + esc(state.workspaceMessage) + '</div>' : '') + content + '</div></section></div><nav class="campus-mobile-nav"><button type="button" class="' + (active === "home" ? "selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="' + (active === "explore" ? "selected" : "") + '" data-action="explore"><span>⌕</span>Explore</button><button type="button" data-action="logout"><span>↗</span>Sign out</button></nav><footer class="campus-footer"><span>Gyanshala <span class="footer-dot">·</span> Built for your campus</span><span>Preview experience <span class="footer-dot">·</span> Student access</span></footer></div>';
+    root.innerHTML = '<div class="campus-app"><header class="campus-header"><a class="campus-brand" href="/gyanshala-demo/" data-action="home">' + logo + '<span>Gyanshala<small>Campus, together</small></span></a><form class="campus-search" id="search-form"><span class="search-glyph" aria-hidden="true">⌕</span><input type="search" name="q" value="' + esc(state.search) + '" placeholder="Search books, equipment, and more…" aria-label="Search campus resources"><button type="submit" aria-label="Submit search">Search</button></form><div class="campus-user"><span class="campus-avatar">' + esc(initials) + '</span><span class="campus-user-copy"><strong>' + esc(name) + '</strong><small>' + esc(user.branch || "Verified student") + '</small></span><button class="signout-link" type="button" data-action="logout">Sign out</button></div></header><div class="campus-layout"><aside class="campus-sidebar"><p class="sidebar-label">WORKSPACE</p><button type="button" class="sidebar-link' + (active === "home" ? " selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="sidebar-link' + (active === "explore" ? " selected" : "") + '" data-action="explore"><span>⌕</span>Explore resources</button><button type="button" class="sidebar-link' + (active === "list" ? " selected" : "") + '" data-action="add-resource"><span>＋</span>List a resource</button><button type="button" class="sidebar-link' + (active === "requests" ? " selected" : "") + '" data-action="my-requests"><span>▤</span>My Requests</button><button type="button" class="sidebar-link' + (active === "messages" ? " selected" : "") + '" data-action="messages"><span>◌</span>Messages</button><div class="sidebar-spacer"></div><div class="sidebar-note"><span class="sidebar-note-icon">✳</span><strong>Share more. Waste less.</strong><p>Good resources deserve more than one life.</p></div><div class="sidebar-account"><span class="account-check">✓</span><span><strong>Verified student</strong><small>' + esc(user.email || "") + '</small></span></div></aside><section class="campus-main"><div class="campus-content">' + (state.workspaceMessage ? '<div class="workspace-flash" role="status">' + esc(state.workspaceMessage) + '</div>' : '') + content + '</div></section></div><nav class="campus-mobile-nav"><button type="button" class="' + (active === "home" ? "selected" : "") + '" data-action="home"><span>⌂</span>Home</button><button type="button" class="' + (active === "explore" ? "selected" : "") + '" data-action="explore"><span>⌕</span>Explore</button><button type="button" class="' + (active === "list" ? "selected" : "") + '" data-action="add-resource"><span>＋</span>List</button><button type="button" class="' + (active === "requests" ? "selected" : "") + '" data-action="my-requests"><span>▤</span>Requests</button><button type="button" class="' + (active === "messages" ? "selected" : "") + '" data-action="messages"><span>◌</span>Messages</button></nav><footer class="campus-footer"><span>Gyanshala <span class="footer-dot">·</span> Built for your campus</span><span>Preview experience <span class="footer-dot">·</span> Student access</span></footer></div>';
     root.querySelectorAll("form").forEach(function (form) { form.addEventListener("submit", onSubmit); });
   }
   function dashboard() {
@@ -149,6 +149,140 @@
     const content = '<div class="detail-back-row"><button type="button" class="back" data-action="explore">← Back to explore</button><span class="detail-breadcrumb">Explore <span> / </span>' + esc(r.category) + '</span></div><section class="detail-layout"><div class="detail-main"><div class="detail-visual cover-' + cat + '"><span class="detail-art-orbit"></span><span class="detail-visual-icon">' + esc(r.icon || categoryIcon(r.category)) + '</span><span class="detail-visual-label">' + esc(r.category) + '</span></div><div class="detail-description"><p class="section-overline">ABOUT THIS RESOURCE</p><h2>Made to be shared.</h2><p>' + esc(r.description) + '</p><div class="detail-facts"><div><span class="fact-icon">✧</span><span><small>Condition</small><strong>' + esc(r.condition || "Good") + '</strong></span></div><div><span class="fact-icon">⌖</span><span><small>Pickup location</small><strong>' + esc(r.pickupLocation) + '</strong></span></div><div><span class="fact-icon">◷</span><span><small>Distance</small><strong>' + esc(r.distanceLabel || "On campus") + '</strong></span></div></div></div></div><aside class="detail-side"><span class="availability-badge"><i></i>Available now</span><p class="detail-category">' + esc(r.category) + '</p><h1>' + esc(r.title) + '</h1><p class="detail-price">' + esc(price) + '</p><div class="owner-card"><span class="owner-avatar">' + esc((r.ownerName || "S").split(/\s+/).map(function (x) { return x.charAt(0); }).slice(0, 2).join("").toUpperCase()) + '</span><span><small>Shared by</small><strong>' + esc(r.ownerName || "Student community") + '</strong><small>' + esc(r.ownerBranch || "Campus community") + '</small></span><span class="owner-check">✓</span></div>' + cta + '<div class="privacy-note"><span>♧</span><p>Student-to-student sharing, with campus email verification.</p></div></aside></section>';
     appShell(content, "explore");
   }
+
+  function addResourceScreen() {
+    const content = '<section class="workspace-page-heading"><p class="workspace-eyebrow">GIVE GOOD THINGS ANOTHER LIFE</p><h1>List a resource</h1><p>Share something useful with your campus community. Students will see the details before requesting it.</p></section><section class="listing-layout"><div class="listing-intro-card"><span class="listing-art-icon">＋</span><h2>Someone nearby<br>might need this.</h2><p>Books, lab essentials and everyday study tools can go further when students share them.</p><div class="listing-tip"><span>✧</span><div><strong>A little detail goes a long way</strong><p>Add a clear description and a public campus pickup point.</p></div></div><div class="listing-tip"><span>⌖</span><div><strong>Keep exchanges safe</strong><p>Use a shared campus location. Never include passwords or sensitive personal details.</p></div></div></div><form class="listing-form" id="listing-form"><div class="listing-form-header"><div><p class="section-overline">RESOURCE DETAILS</p><h2>What are you sharing?</h2></div><span class="required-note">* Required</span></div><div id="listing-message"></div><label class="field"><span>Resource title *</span><input name="title" type="text" minlength="3" maxlength="100" placeholder="e.g. Engineering Drawing Kit" required></label><div class="field-row"><label class="field"><span>Category *</span><select name="category" required><option value="">Choose a category</option><option>Books</option><option>Lab Equipment</option><option>Electronics</option><option>Stationery</option></select></label><label class="field"><span>Condition *</span><select name="condition" required><option>Good</option><option>New</option><option>Very good</option><option>Fair</option></select></label></div><label class="field"><span>Description *</span><textarea name="description" minlength="8" maxlength="1500" rows="4" placeholder="What is included? What should a student know before requesting it?" required></textarea><small>8–1,500 characters.</small></label><div class="listing-form-divider"></div><p class="section-overline">SHARING PREFERENCES</p><label class="field"><span>How would you like to share it? *</span><select name="lendingType" id="listing-lending-type" required><option value="lend">Lend · return it later</option><option value="free">Give away · free</option><option value="sell">Sell · one-time price</option></select></label><div class="field-row"><label class="field"><span>Amount (₹)</span><input name="priceAmount" id="listing-price" type="number" min="0" max="1000000" step="1" value="0" required><small>Free items are saved at ₹0.</small></label><label class="field"><span>Campus pickup point *</span><input name="pickupLocation" type="text" maxlength="120" placeholder="e.g. Central Library entrance" required><small>Use a public campus meeting point.</small></label></div><label class="field"><span>Walking distance (optional)</span><input name="distanceLabel" type="text" maxlength="60" placeholder="e.g. 5 min walk"></label><div id="listing-message-bottom"></div><button class="btn btn-primary full" type="submit">Publish listing <span class="arrow">→</span></button><p class="form-footnote">Your listing will be linked to your Gyanshala account and stored in the campus resource catalogue.</p></form></section>';
+    appShell(content, "list");
+    const typeSelect = root.querySelector("#listing-lending-type");
+    const priceInput = root.querySelector("#listing-price");
+    if (typeSelect && priceInput) {
+      const syncPrice = function () {
+        if (typeSelect.value === "free") { priceInput.value = "0"; priceInput.disabled = true; }
+        else priceInput.disabled = false;
+      };
+      typeSelect.addEventListener("change", syncPrice);
+      syncPrice();
+    }
+  }
+  function requestStatusLabel(status) {
+    return ({ pending:"Pending", approved:"Approved", declined:"Declined", active:"In progress", completed:"Completed", cancelled:"Cancelled" })[status] || "Pending";
+  }
+  function requestListCard(item) {
+    const resource = item.resource || {};
+    const hasMessages = Boolean(item.messagesAvailable);
+    const icon = resource.icon || categoryIcon(resource.category);
+    const sampleNote = hasMessages ? "" : '<p class="request-sample-note">Preview sample listing · no live owner account</p>';
+    return '<article class="request-card"><div class="request-art cover-' + esc(({Books:"books","Lab Equipment":"lab",Electronics:"electronics",Stationery:"stationery"})[resource.category] || "other") + '"><span>' + esc(icon) + '</span></div><div class="request-card-main"><div class="request-card-top"><span class="request-category">' + esc(resource.category || "Resource") + '</span><span class="request-status status-' + esc(item.status) + '">' + esc(requestStatusLabel(item.status)) + '</span></div><h3>' + esc(resource.title || "Campus resource") + '</h3><p>' + esc(resource.pickupLocation || "Campus pickup") + ' <span>·</span> ' + esc(priceLabel(resource)) + '</p><small>Requested ' + esc(new Date(item.createdAt).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})) + '</small>' + sampleNote + '</div><div class="request-card-actions">' + (hasMessages ? '<button type="button" class="btn btn-outline" data-action="open-thread" data-id="' + esc(item.requestId) + '">Message owner</button>' : '<button type="button" class="btn btn-outline" data-action="resource" data-id="' + esc(resource.id) + '">View item</button>') + '</div></article>';
+  }
+  function myRequestsScreen() {
+    const filters=["All","pending","approved","active","completed","declined"];
+    const items=state.requestFilter==="All" ? state.myRequests : state.myRequests.filter(x=>x.status===state.requestFilter);
+    const filterLabels={All:"All",pending:"Pending",approved:"Approved",active:"Active",completed:"Completed",declined:"Declined"};
+    const tabs=filters.map(function(f){return '<button type="button" class="request-filter' + (state.requestFilter===f ? ' active' : '') + '" data-action="request-filter" data-id="' + esc(f) + '">' + esc(filterLabels[f]||f) + (f==="All" ? '<span>' + state.myRequests.length + '</span>' : '') + '</button>';}).join("");
+    let body;
+    if(state.requestsLoading) body='<div class="resource-state"><span class="spinner"></span><strong>Loading your requests</strong><p>Checking your campus activity…</p></div>';
+    else if(state.requestsError) body='<div class="resource-state"><strong>Your requests didn’t load.</strong><p>' + esc(state.requestsError) + '</p><button type="button" class="btn btn-outline" data-action="my-requests">Try again</button></div>';
+    else if(!items.length) body='<div class="resource-state"><div class="empty-mark">▤</div><strong>' + (state.myRequests.length ? "No requests in this category" : "No requests yet") + '</strong><p>' + (state.myRequests.length ? "Choose another status to see your activity." : "When you request a campus resource, it will appear here with its latest status.") + '</p><button type="button" class="btn btn-primary" data-action="explore">Explore resources <span class="arrow">→</span></button></div>';
+    else body='<div class="request-list">' + items.map(requestListCard).join("") + '</div>';
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">YOUR CAMPUS ACTIVITY</p><div class="workspace-heading-row"><div><h1>My Requests</h1><p>Keep track of the resources you’ve asked to borrow or share.</p></div><span class="request-count">' + state.myRequests.length + '<small>Total</small></span></div></section><section class="request-panel"><div class="request-filters">' + tabs + '</div>' + body + '</section>';
+    appShell(content,"requests");
+  }
+  function messageThreadCard(thread) {
+    const initial=(thread.otherName || "S").trim().split(/\s+/).map(x=>x.charAt(0)).slice(0,2).join("").toUpperCase();
+    const preview=thread.lastMessage || "Start the conversation";
+    const when=thread.lastMessageAt ? new Date(thread.lastMessageAt).toLocaleDateString(undefined,{day:"numeric",month:"short"}) : requestStatusLabel(thread.status);
+    return '<button type="button" class="message-thread-card' + (state.selectedThreadId===thread.requestId ? ' selected' : '') + '" data-action="open-thread" data-id="' + esc(thread.requestId) + '"><span class="thread-avatar">' + esc(initial) + '</span><span class="thread-card-copy"><strong>' + esc(thread.otherName) + '</strong><small>' + esc(thread.resourceTitle) + '</small><span>' + esc(preview) + '</span></span><span class="thread-card-meta">' + esc(when) + (thread.unreadCount ? '<i>' + esc(thread.unreadCount) + '</i>' : '') + '</span></button>';
+  }
+  function chatMessage(message) {
+    const time=new Date(message.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+    return '<div class="chat-message-row ' + (message.isMine ? 'mine' : 'theirs') + '"><div class="chat-message"><p>' + esc(message.body) + '</p><small>' + (message.isMine ? 'You' : esc(message.senderName)) + ' · ' + esc(time) + '</small></div></div>';
+  }
+  function messagesScreen() {
+    const threads=state.messageThreads;
+    const thread=state.activeThread;
+    let sidebar;
+    if(state.threadsLoading) sidebar='<div class="thread-empty"><span class="spinner"></span><p>Loading conversations…</p></div>';
+    else if(state.threadsError) sidebar='<div class="thread-empty"><p>' + esc(state.threadsError) + '</p><button class="btn btn-outline" data-action="messages">Try again</button></div>';
+    else if(!threads.length) sidebar='<div class="thread-empty"><div class="empty-mark">◌</div><strong>No conversations yet</strong><p>Message threads appear when a student requests your listing or you request another student’s resource.</p><button type="button" class="btn btn-outline" data-action="add-resource">List a resource</button></div>';
+    else sidebar='<div class="message-thread-list">' + threads.map(messageThreadCard).join("") + '</div>';
+    let conversation;
+    if(state.threadLoading) conversation='<div class="conversation-placeholder"><span class="spinner"></span><p>Opening conversation…</p></div>';
+    else if(thread) {
+      const history=state.threadMessages.length ? state.threadMessages.map(chatMessage).join("") : '<div class="chat-empty"><span>✳</span><strong>Start with a friendly hello.</strong><p>Keep exchange details clear and meet at a public campus pickup point.</p></div>';
+      conversation='<div class="conversation-header"><button type="button" class="thread-back" data-action="close-thread">← All messages</button><span class="thread-avatar large">' + esc((thread.otherName||"S").trim().split(/\s+/).map(x=>x.charAt(0)).slice(0,2).join("").toUpperCase()) + '</span><div><strong>' + esc(thread.otherName || "Student") + '</strong><small>' + esc(thread.resourceTitle) + ' · ' + esc(requestStatusLabel(thread.status)) + '</small></div></div><div class="conversation-history" id="conversation-history">' + history + '</div><form class="message-compose" id="thread-message-form"><textarea name="body" rows="1" maxlength="1200" placeholder="Write a message…" required></textarea><button class="btn btn-primary" type="submit" ' + (state.messageSending ? 'disabled' : '') + ' aria-label="Send message">→</button></form>';
+    } else conversation='<div class="conversation-placeholder"><div class="empty-mark">◌</div><strong>Your conversations, together.</strong><p>Choose a conversation to view messages, or list a resource to start an exchange with another student.</p></div>';
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">STUDENT-TO-STUDENT</p><h1>Messages</h1><p>Coordinate the small details that make sharing simple.</p></section><section class="messages-layout"><aside class="messages-list-panel"><div class="messages-list-heading"><strong>Conversations</strong><span>' + threads.length + '</span></div>' + sidebar + '</aside><section class="conversation-panel">' + conversation + '</section></section>';
+    appShell(content,"messages");
+    const history=root.querySelector("#conversation-history");
+    if(history) history.scrollTop=history.scrollHeight;
+  }
+  async function loadMyRequests() {
+    state.screen="my-requests"; state.requestsLoading=true; state.requestsError=""; state.workspaceMessage="";
+    render();
+    try {
+      const result=await api("/my-requests",null,"GET");
+      state.myRequests=Array.isArray(result.requests)?result.requests:[];
+    } catch(e) { state.requestsError=e.message || "Please try again."; state.myRequests=[]; }
+    finally { state.requestsLoading=false; render(); }
+  }
+  async function loadMessages() {
+    state.screen="messages"; state.threadsLoading=true; state.threadsError=""; state.workspaceMessage="";
+    render();
+    try {
+      const result=await api("/messages",null,"GET");
+      state.messageThreads=Array.isArray(result.threads)?result.threads:[];
+      if(state.selectedThreadId && !state.messageThreads.some(t=>t.requestId===state.selectedThreadId)) {
+        state.selectedThreadId=""; state.activeThread=null; state.threadMessages=[];
+      }
+    } catch(e) { state.threadsError=e.message || "Please try again."; state.messageThreads=[]; }
+    finally { state.threadsLoading=false; render(); }
+  }
+  async function openMessageThread(requestId) {
+    if(!requestId) return;
+    state.screen="messages"; state.selectedThreadId=requestId; state.activeThread=null;
+    state.threadMessages=[]; state.threadLoading=true; state.workspaceMessage="";
+    render();
+    try {
+      const result=await api("/messages/"+encodeURIComponent(requestId),null,"GET");
+      state.activeThread=state.messageThreads.find(t=>t.requestId===requestId) || result.thread || null;
+      if(state.activeThread && result.thread) Object.assign(state.activeThread,result.thread);
+      state.threadMessages=Array.isArray(result.messages)?result.messages:[];
+    } catch(e) { state.workspaceMessage=e.message || "This conversation is unavailable."; }
+    finally { state.threadLoading=false; render(); }
+  }
+  async function publishResource(form) {
+    const fd=new FormData(form);
+    const payload={title:fd.get("title"),category:fd.get("category"),description:fd.get("description"),condition:fd.get("condition"),lendingType:fd.get("lendingType"),priceAmount:Number(fd.get("priceAmount")||0),pickupLocation:fd.get("pickupLocation"),distanceLabel:fd.get("distanceLabel")};
+    const submit=form.querySelector('button[type="submit"]');
+    if(submit){submit.disabled=true;submit.textContent="Publishing…";}
+    try {
+      const result=await api("/resources",payload,"POST");
+      state.workspaceMessage=result.message || "Your resource is listed.";
+      state.category="All";state.search="";
+      await refreshResources();
+      state.screen="home";render();
+    } catch(e) {
+      const slot=root.querySelector("#listing-message");
+      if(slot) slot.innerHTML='<div class="workspace-form-error" role="alert">'+esc(e.message || "We couldn’t publish this listing.")+'</div>';
+      if(submit){submit.disabled=false;submit.textContent="Publish listing →";}
+    }
+  }
+  async function sendCurrentMessage(form) {
+    if(!state.selectedThreadId || state.messageSending) return;
+    const fd=new FormData(form);
+    const textBody=String(fd.get("body")||"").trim();
+    if(!textBody) return;
+    state.messageSending=true;
+    const submit=form.querySelector('button[type="submit"]'); if(submit)submit.disabled=true;
+    try {
+      const result=await api("/messages/"+encodeURIComponent(state.selectedThreadId),{body:textBody},"POST");
+      if(result.message) state.threadMessages.push(result.message);
+      if(state.activeThread) { state.activeThread.lastMessage=textBody; state.activeThread.lastMessageAt=result.message && result.message.createdAt; }
+      state.workspaceMessage="";
+    } catch(e) { state.workspaceMessage=e.message || "Your message couldn’t be sent."; }
+    finally { state.messageSending=false; await loadMessages(); if(state.selectedThreadId) await openMessageThread(state.selectedThreadId); }
+  }
+
   async function refreshResources() {
     state.resourcesLoading = true;
     state.resourcesError = "";
@@ -192,7 +326,7 @@
       state.resources = state.resources.map(function (item) {
         return item.id === id ? Object.assign({}, item, { requestStatus: result.requestStatus || "pending" }) : item;
       });
-      state.workspaceMessage = result.alreadyRequested ? "You’ve already requested this resource." : "Request sent. You can track it in My Requests when that interface is ready.";
+      state.workspaceMessage = result.alreadyRequested ? "You’ve already requested this resource." : "Request sent. Open My Requests to track its status.";
     } catch (e) {
       state.workspaceMessage = e.message || "We couldn’t send that request. Try again.";
     }
@@ -210,6 +344,9 @@
     if (state.screen === "home") return dashboard();
     if (state.screen === "explore") return browse();
     if (state.screen === "detail") return detail();
+    if (state.screen === "listing") return addResourceScreen();
+    if (state.screen === "my-requests") return myRequestsScreen();
+    if (state.screen === "messages") return messagesScreen();
     if (state.screen === "complete") return dashboard();
     return splash();
   }
@@ -277,6 +414,10 @@
         else setMessage("Email verification was incomplete. Please request a new code.", "error");
       } catch (e) { setMessage(e.message, "error"); }
       finally { busy(form, false); }
+    } else if (form.id === "listing-form") {
+      await publishResource(form);
+    } else if (form.id === "thread-message-form") {
+      await sendCurrentMessage(form);
     } else if (form.id === "profile-form") {
       const data = { fullName: fd.get("fullName"), branch: fd.get("branch"), yearOfStudy: fd.get("yearOfStudy"), residence: fd.get("residence") };
       busy(form, true);
@@ -301,6 +442,12 @@
       navigate("splash"); return;
     }
     if (name === "explore") { state.screen = "explore"; render(); refreshResources(); return; }
+    if (name === "add-resource") { state.workspaceMessage=""; navigate("listing"); return; }
+    if (name === "my-requests") { await loadMyRequests(); return; }
+    if (name === "messages") { await loadMessages(); return; }
+    if (name === "request-filter") { state.requestFilter=id || "All"; render(); return; }
+    if (name === "open-thread") { await openMessageThread(id); return; }
+    if (name === "close-thread") { state.selectedThreadId=""; state.activeThread=null; state.threadMessages=[]; await loadMessages(); return; }
     if (name === "category") { state.search = ""; state.category = resourceCategories.includes(id) ? id : "All"; state.screen = "explore"; refreshResources(); return; }
     if (name === "resource") { await openResource(id); return; }
     if (name === "request-resource") { await requestResource(id); return; }
