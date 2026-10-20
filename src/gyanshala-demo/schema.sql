@@ -45,3 +45,44 @@ CREATE TABLE IF NOT EXISTS gyanshala_rate_limits (
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_rate_limits_sent
   ON gyanshala_rate_limits(last_sent_at);
+
+
+CREATE TABLE IF NOT EXISTS gyanshala_resources (
+  resource_id TEXT PRIMARY KEY,
+  owner_id TEXT REFERENCES gyanshala_users(user_id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  item_condition TEXT NOT NULL DEFAULT 'Good',
+  lending_type TEXT NOT NULL DEFAULT 'lend' CHECK (lending_type IN ('lend','sell','free')),
+  price_amount INTEGER NOT NULL DEFAULT 0 CHECK (price_amount >= 0),
+  pickup_location TEXT NOT NULL,
+  distance_label TEXT NOT NULL DEFAULT '',
+  owner_name TEXT NOT NULL,
+  owner_branch TEXT NOT NULL DEFAULT '',
+  icon TEXT NOT NULL DEFAULT '📦',
+  status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available','unavailable','removed')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_resources_browse
+  ON gyanshala_resources(status, category, created_at);
+
+CREATE TABLE IF NOT EXISTS gyanshala_resource_requests (
+  request_id TEXT PRIMARY KEY,
+  resource_id TEXT NOT NULL REFERENCES gyanshala_resources(resource_id) ON DELETE CASCADE,
+  requester_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  owner_id TEXT REFERENCES gyanshala_users(user_id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','declined','active','completed','cancelled')),
+  message TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(resource_id, requester_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_requests_requester
+  ON gyanshala_resource_requests(requester_id, status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_requests_owner
+  ON gyanshala_resource_requests(owner_id, status, created_at);
