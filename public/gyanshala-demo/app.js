@@ -165,7 +165,7 @@
     }
     if (name === "onboarding" || name === "signup" || name === "signin" || name === "back") {
       if (name === "back") {
-        const order = { onboarding: "splash", signup: "onboarding", signin: "splash", email: "signup", profile: "email" };
+        const order = { onboarding: "splash", signup: "onboarding", signin: "splash", email: state.mode, profile: "email" };
         navigate(order[state.screen] || "splash");
       } else navigate(name);
       return;
