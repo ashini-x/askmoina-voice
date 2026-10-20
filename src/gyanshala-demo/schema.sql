@@ -44,3 +44,11 @@ CREATE TABLE IF NOT EXISTS gyanshala_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_sessions_expiry
   ON gyanshala_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS gyanshala_rate_limits (
+  contact_hash TEXT PRIMARY KEY,
+  last_sent_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gyanshala_rate_limits_sent
+  ON gyanshala_rate_limits(last_sent_at);
