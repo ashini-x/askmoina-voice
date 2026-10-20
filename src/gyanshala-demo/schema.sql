@@ -167,3 +167,58 @@ CREATE TABLE IF NOT EXISTS gyanshala_live_locations (
 
 CREATE INDEX IF NOT EXISTS idx_gyanshala_live_locations_updated
   ON gyanshala_live_locations(request_id, updated_at);
+
+
+-- Smart Supply Locator: demo-safe hostel inventory and quantity-aware reservations.
+-- Hostel coordinates in preview rows are synthetic until verified against institute GIS data.
+CREATE TABLE IF NOT EXISTS gyanshala_supply_hostels (
+  hostel_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  latitude REAL NOT NULL CHECK(latitude BETWEEN -90 AND 90),
+  longitude REAL NOT NULL CHECK(longitude BETWEEN -180 AND 180),
+  coordinate_source TEXT NOT NULL DEFAULT 'unverified',
+  is_demo INTEGER NOT NULL DEFAULT 0 CHECK(is_demo IN (0,1)),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_hostels_status
+  ON gyanshala_supply_hostels(status,name);
+
+CREATE TABLE IF NOT EXISTS gyanshala_supply_inventory (
+  supply_id TEXT PRIMARY KEY,
+  hostel_id TEXT NOT NULL REFERENCES gyanshala_supply_hostels(hostel_id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  aliases TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  item_condition TEXT NOT NULL DEFAULT 'Good',
+  offer_type TEXT NOT NULL CHECK(offer_type IN ('donation','borrow','sell')),
+  price_amount INTEGER NOT NULL DEFAULT 0 CHECK(price_amount>=0),
+  quantity_available INTEGER NOT NULL DEFAULT 0 CHECK(quantity_available>=0),
+  status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','unavailable','removed')),
+  is_demo INTEGER NOT NULL DEFAULT 0 CHECK(is_demo IN (0,1)),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_search
+  ON gyanshala_supply_inventory(status,category,offer_type,quantity_available);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_hostel
+  ON gyanshala_supply_inventory(hostel_id,status,quantity_available);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_name
+  ON gyanshala_supply_inventory(name);
+
+CREATE TABLE IF NOT EXISTS gyanshala_supply_requests (
+  request_id TEXT PRIMARY KEY,
+  supply_id TEXT NOT NULL REFERENCES gyanshala_supply_inventory(supply_id) ON DELETE CASCADE,
+  requester_id TEXT NOT NULL REFERENCES gyanshala_users(user_id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 10),
+  status TEXT NOT NULL DEFAULT 'reserved' CHECK(status IN ('reserved','collected','cancelled')),
+  is_demo INTEGER NOT NULL DEFAULT 0 CHECK(is_demo IN (0,1)),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_requests_user
+  ON gyanshala_supply_requests(requester_id,status,created_at);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_supply_requests_supply
+  ON gyanshala_supply_requests(supply_id,status,created_at);
