@@ -1,4 +1,4 @@
-const CACHE = "gyanshala-shell-v1";
+const CACHE = "gyanshala-shell-v2";
 const SHELL = [
   "/gyanshala-demo/",
   "/gyanshala-demo/styles.css",
