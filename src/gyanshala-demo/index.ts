@@ -87,7 +87,7 @@ function e164(v: unknown): string | null {
   return /^\+[1-9]\d{7,14}$/.test(s) ? s : null;
 }
 function resendReady(e: GEnv): boolean { return Boolean(e.GYANSHALA_RESEND_API_KEY?.trim() && e.GYANSHALA_EMAIL_FROM?.trim()); }
-function twilioReady(e: GEnv): boolean { return Boolean(e.TWILIO_ACCOUNT_SID?.trim() && e.TWILIO_AUTH_TOKEN?.trim() && e.TWILIO_VERIFY_SERVICE_SID?.trim()); }
+function twilioReady(e: GEnv): boolean { return Boolean(e.TWILIO_API_KEY_SID?.trim() && e.TWILIO_API_KEY_SECRET?.trim() && e.TWILIO_VERIFY_SERVICE_SID?.trim()); }
 async function hasSchema(e: GEnv): Promise<boolean> {
   if (!e.GYANSHALA_DB) return false;
   try {
@@ -111,7 +111,7 @@ async function health(e: GEnv): Promise<Response> {
   const missing: string[] = [];
   if (!s.databaseBinding || !s.databaseSchema) missing.push("GYANSHALA_DB binding and schema");
   if (!s.emailProvider) missing.push("GYANSHALA_RESEND_API_KEY and GYANSHALA_EMAIL_FROM");
-  if (!s.phoneProvider) missing.push("TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID");
+  if (!s.phoneProvider) missing.push("TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_VERIFY_SERVICE_SID");
   if (!s.collegeDomainAllowlist) missing.push("GYANSHALA_ALLOWED_EMAIL_DOMAINS");
   if (!s.otpSecret) missing.push("GYANSHALA_OTP_SECRET");
   return reply({ ok: true, app: "gyanshala", signupReady: missing.length === 0, setup: s, requiredSettings: missing });
@@ -131,7 +131,7 @@ async function twilio(e: GEnv, endpoint: "Verifications" | "VerificationCheck", 
   if (!twilioReady(e)) return { ok: false, status: "" };
   const res = await fetch("https://verify.twilio.com/v2/Services/" + encodeURIComponent(e.TWILIO_VERIFY_SERVICE_SID || "") + "/" + endpoint, {
     method: "POST",
-    headers: { Authorization: "Basic " + btoa((e.TWILIO_ACCOUNT_SID || "") + ":" + (e.TWILIO_AUTH_TOKEN || "")), "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    headers: { Authorization: "Basic " + btoa((e.TWILIO_API_KEY_SID || "") + ":" + (e.TWILIO_API_KEY_SECRET || "")), "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body: new URLSearchParams(fields)
   }).catch(() => null);
   if (!res) return { ok: false, status: "" };
