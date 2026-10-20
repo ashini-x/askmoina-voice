@@ -454,7 +454,8 @@ async function createResource(r: Request, e: GEnv): Promise<Response> {
       description.length < 8 || description.length > 1500 ||
       !conditions.includes(itemCondition) || !["lend","sell","free"].includes(lendingType) ||
       pickupLocation.length < 2 || pickupLocation.length > 120 ||
-      !Number.isSafeInteger(priceInput) || priceInput < 0 || priceInput > 1000000) {
+      !Number.isSafeInteger(priceInput) || priceInput < 0 || priceInput > 1000000 ||
+      (lendingType === "sell" && priceInput < 1)) {
     return reply({ error: "invalid_resource", message: "Add a title, category, description, condition, pickup location, and a valid whole-rupee amount." }, 400);
   }
   const priceAmount = lendingType === "free" ? 0 : priceInput;
