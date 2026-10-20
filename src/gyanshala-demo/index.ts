@@ -228,11 +228,11 @@ async function start(r: Request, e: GEnv): Promise<Response> {
     return reply({ error: "email_delivery_failed", message: "Email delivery failed. Check the Resend key and verified sender domain." }, 502);
   }
   await markSent(e, "email", email);
+  const smsAttemptAt = new Date().toISOString();
   const sms = await twilio(e, "Verifications", { To: phone, Channel: "sms" });
-  if (sms.ok) {
-    await db.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?").bind(new Date().toISOString(), id).run();
-    await markSent(e, "phone", phone);
-  }
+  // Record an attempt even on provider failure to prevent rapid SMS abuse/retry loops.
+  await db.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?").bind(smsAttemptAt, id).run();
+  await markSent(e, "phone", phone);
   return reply({ ok: true, challengeId: id, emailSent: true, smsSent: sms.ok, expiresInSeconds: CODE_SECONDS,
     message: sms.ok ? "Verification codes sent." : "Email sent; SMS could not start. You can retry SMS on the next screen." }, 202);
 }
@@ -247,7 +247,7 @@ async function verifyEmail(r: Request, e: GEnv): Promise<Response> {
     await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET attempts=attempts+1 WHERE challenge_id=?").bind(c.challenge_id).run();
     return reply({ error: "invalid_email_code", message: "That code did not match. Check your email and try again." }, 401);
   }
-  await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET email_verified_at=? WHERE challenge_id=?").bind(new Date().toISOString(), c.challenge_id).run();
+  await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET email_verified_at=?,attempts=0 WHERE challenge_id=?").bind(new Date().toISOString(), c.challenge_id).run();
   const updated = await getChallenge(e, c.challenge_id);
   return updated?.phone_verified_at ? finish(e, updated) : reply({ ok: true, emailVerified: true, next: "phone" });
 }
@@ -275,11 +275,12 @@ async function startPhone(r: Request, e: GEnv): Promise<Response> {
   if (c.phone_verified_at) return reply({ ok: true, phoneVerified: true });
   const last = c.phone_sent_at ? Date.parse(c.phone_sent_at) : NaN;
   if (Number.isFinite(last) && Date.now() - last < COOLDOWN_MS) return reply({ error: "resend_cooldown", message: "Wait 30 seconds before requesting another SMS." }, 429);
+  const attemptedAt = new Date().toISOString();
   const sent = await twilio(e, "Verifications", { To: c.phone, Channel: "sms" });
-  if (!sent.ok) return reply({ error: "sms_delivery_failed", message: "SMS could not start. Check Twilio Verify settings and phone-number support." }, 502);
   await e.GYANSHALA_DB?.prepare("UPDATE gyanshala_signup_challenges SET phone_sent_at=? WHERE challenge_id=?")
-    .bind(new Date().toISOString(), c.challenge_id).run();
+    .bind(attemptedAt, c.challenge_id).run();
   await markSent(e, "phone", c.phone);
+  if (!sent.ok) return reply({ error: "sms_delivery_failed", message: "SMS could not start. Wait 30 seconds before retrying, then check Twilio Verify settings and phone-number support." }, 502);
   return reply({ ok: true });
 }
 async function verifyPhone(r: Request, e: GEnv): Promise<Response> {
