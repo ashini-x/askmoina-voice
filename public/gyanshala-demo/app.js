@@ -3,7 +3,7 @@
   const API = "/api/gyanshala";
   const APP = "/gyanshala-demo/";
   const root = document.getElementById("app");
-  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "", mapSearch: "", mapFocusId: "", incomingRequests: [], requestScope: "sent", trackingRequestId: "", trackingLoading: false, trackingError: "", trackingInfo: null, trackingMapInstance: null, trackingMapMarkers: {}, trackingMapRequestId: "", googleMapsPromise: null, trackingPollTimer: null, locationWatchId: null, trackingShareEnabled: false, trackingLocationError: "", trackingLocationBusy: false, campusMapInstance: null, campusMapLib: null, campusMapStylesPromise: null, campusMapLibPromise: null, campusMapGeneration: 0, campusMapView: null, campusMapMarkers: [], map3dEnabled: false, map3dAvailable: false, mapBuildingLayerId: "", supplyQuery: "", supplyHostels: [], supplyHostelsLoading: false, supplyOriginHostelId: "", supplyLatitude: null, supplyLongitude: null, supplyUsingGps: false, supplyLoading: false, supplyError: "", supplyResults: null, supplySelectedId: "", supplyBusyId: "", supplyReservations: [], supplyToast: "" };
+  const state = { screen: "splash", mode: "signup", email: "", challengeId: "", user: null, setup: null, message: "", messageType: "info", busy: false, installPrompt: null, resources: [], activeResource: null, selectedResourceId: "", search: "", category: "All", resourcesLoading: false, resourcesError: "", detailLoading: false, workspaceMessage: "", myRequests: [], requestsLoading: false, requestsError: "", requestFilter: "All", messageThreads: [], threadsLoading: false, threadsError: "", selectedThreadId: "", activeThread: null, threadMessages: [], threadLoading: false, messageSending: false, pickupPoints: [], pickupSelectedId: "", pickupsLoading: false, pickupsError: "", communityPosts: [], communityLoading: false, communityError: "", communityType: "All", communityCategory: "All", communitySearch: "", communityFormOpen: false, communitySubmitting: false, communityToast: "", mapSearch: "", mapFocusId: "", incomingRequests: [], requestScope: "sent", trackingRequestId: "", trackingLoading: false, trackingError: "", trackingInfo: null, trackingMapInstance: null, trackingMapMarkers: {}, trackingMapRequestId: "", googleMapsPromise: null, trackingPollTimer: null, locationWatchId: null, trackingShareEnabled: false, trackingLocationError: "", trackingLocationBusy: false, campusMapInstance: null, campusMapLib: null, campusMapStylesPromise: null, campusMapLibPromise: null, campusMapGeneration: 0, campusMapView: null, campusMapMarkers: [], map3dEnabled: false, map3dAvailable: false, mapBuildingLayerId: "", supplyQuery: "", supplyHostels: [], supplyHostelsLoading: false, supplyOriginHostelId: "", supplyLatitude: null, supplyLongitude: null, supplyUsingGps: false, supplyLoading: false, supplyError: "", supplyResults: null, supplySelectedId: "", supplyBusyId: "", supplyReservations: [], supplyTrackReservationId: "", supplyToast: "" };
   const esc = (value) => String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const logo = '<img src="/gyanshala-demo/icon.svg" alt="" width="36" height="36">';
   function button(label, action, cls, type) {
@@ -600,6 +600,12 @@
       const result=await api("/supply-finder/hostels",null,"GET");
       state.supplyHostels=Array.isArray(result.hostels)?result.hostels:[];
       if(!state.supplyOriginHostelId&&state.supplyHostels.length)state.supplyOriginHostelId=state.supplyHostels[0].id;
+      const reservationResult=await api("/supply-reservations",null,"GET");
+      state.supplyReservations=Array.isArray(reservationResult.reservations)?reservationResult.reservations:[];
+      if(!state.supplyReservations.some(x=>x.requestId===state.supplyTrackReservationId&&x.status==="reserved")){
+        const active=state.supplyReservations.find(x=>x.status==="reserved");
+        state.supplyTrackReservationId=active?active.requestId:"";
+      }
     } catch(e) {
       state.supplyError=e.message||"Could not load pickup locations.";
       state.supplyHostels=[];
@@ -647,9 +653,14 @@
     state.supplyBusyId=supplyId;state.supplyError="";render();
     try {
       const quantity=Number(state.supplyResults&&state.supplyResults.filters&&state.supplyResults.filters.quantity)||1;
+      const matched=state.supplyResults&&Array.isArray(state.supplyResults.results)?state.supplyResults.results.find(x=>x.id===supplyId):null;
       const result=await api("/supplies/reservations",{supplyId,quantity},"POST");
-      state.supplyReservations.unshift({requestId:result.requestId,supplyId:result.supplyId,name:result.name,quantity:result.quantity,hostelId:result.hostelId});
-      state.supplyToast="Reserved "+result.quantity+" × "+result.name+" at the "+(state.supplyHostels.find(h=>h.id===result.hostelId)||{}).name+". Demo inventory only; no real student has been contacted.";
+      state.supplyReservations.unshift({requestId:result.requestId,supplyId:result.supplyId,name:result.name,quantity:result.quantity,hostelId:result.hostelId,
+        hostelName:result.hostelName,latitude:result.latitude,longitude:result.longitude,directionsUrl:result.directionsUrl,
+        coordinateSource:result.coordinateSource,status:"reserved",distanceMeters:matched?matched.distanceMeters:null,
+        distanceType:matched?matched.distanceType:"unknown",walkingDurationSeconds:matched?matched.walkingDurationSeconds:null,createdAt:new Date().toISOString()});
+      state.supplyTrackReservationId=result.requestId;
+      state.supplyToast="Reserved "+result.quantity+" × "+result.name+" at "+result.hostelName+". The pickup map is now available below. Demo inventory only; no real student has been contacted.";
       state.supplyBusyId="";
       await searchSmartSupplies(state.supplyQuery);
       state.workspaceMessage=state.supplyToast;
@@ -661,12 +672,30 @@
     try {
       await api("/supplies/reservations/"+encodeURIComponent(requestId)+"/cancel",{},"POST");
       const old=state.supplyReservations.find(x=>x.requestId===requestId);
-      state.supplyReservations=state.supplyReservations.filter(x=>x.requestId!==requestId);
+      state.supplyReservations=state.supplyReservations.map(x=>x.requestId===requestId?Object.assign({},x,{status:"cancelled"}):x);
+      if(state.supplyTrackReservationId===requestId){
+        const next=state.supplyReservations.find(x=>x.status==="reserved");
+        state.supplyTrackReservationId=next?next.requestId:"";
+      }
       state.supplyToast="Reservation cancelled"+(old?" for "+old.name:"")+". Demo inventory has been restored.";
       state.workspaceMessage=state.supplyToast;
       await searchSmartSupplies(state.supplyQuery);
       state.workspaceMessage=state.supplyToast;
     } catch(e) {state.supplyError=e.message||"Could not cancel this reservation.";render();}
+  }
+  async function completeSmartSupplyReservation(requestId) {
+    try {
+      await api("/supply-reservations/"+encodeURIComponent(requestId)+"/complete",{},"POST");
+      state.supplyReservations=state.supplyReservations.map(x=>x.requestId===requestId?Object.assign({},x,{status:"collected"}):x);
+      if(state.supplyTrackReservationId===requestId){
+        const next=state.supplyReservations.find(x=>x.status==="reserved");
+        state.supplyTrackReservationId=next?next.requestId:"";
+      }
+      state.supplyToast="Marked collected. The pickup map is closed for this completed reservation.";
+      state.workspaceMessage=state.supplyToast;
+      await searchSmartSupplies(state.supplyQuery);
+      state.workspaceMessage=state.supplyToast;
+    } catch(e){state.supplyError=e.message||"Could not mark this reservation completed.";render();}
   }
   function supplyDistanceLabel(result) {
     if(result.distanceMeters==null)return "Choose a starting location";
@@ -686,6 +715,7 @@
     const data=state.supplyResults;
     const results=data&&Array.isArray(data.results)?data.results:[];
     const selected=results.find(x=>x.id===state.supplySelectedId)||results[0]||null;
+    const trackedReservation=state.supplyReservations.find(x=>x.requestId===state.supplyTrackReservationId&&x.status==="reserved")||state.supplyReservations.find(x=>x.status==="reserved")||null;
     const hostelOptions=state.supplyHostels.map(h=>'<option value="'+esc(h.id)+'"'+(h.id===state.supplyOriginHostelId&&!state.supplyUsingGps?' selected':'')+'>'+esc(h.name)+'</option>').join("");
     const originLabel=state.supplyUsingGps?"Current location":(state.supplyHostels.find(h=>h.id===state.supplyOriginHostelId)||{}).name||"Choose a hostel";
     let resultsContent="";
@@ -698,15 +728,19 @@
       const selectedClass=isSelected?" selected":"";
       const busy=state.supplyBusyId===item.id;
       const coordinateNote=item.coordinateSource==="demo_approximation"?"Demo coordinates": "Coordinates need verification";
-      return '<article class="supply-result-card'+selectedClass+'"><button type="button" class="supply-result-select" data-action="supply-select" data-id="'+esc(item.id)+'" aria-label="Show map for '+esc(item.name)+'"><span class="supply-result-rank">'+(index+1)+'</span><span class="supply-result-info"><span class="supply-result-kicker">'+esc(item.category)+' · '+esc(item.hostelName)+'</span><strong>'+esc(item.name)+'</strong><span class="supply-result-price">'+esc(price)+' <small>'+esc(item.condition)+'</small></span><span class="supply-result-distance">'+esc(supplyDistanceLabel(item))+'</span><small class="supply-result-stock">'+Number(item.quantityAvailable)+' available · '+esc(coordinateNote)+'</small></span><span class="supply-result-chevron">›</span></button><div class="supply-result-actions"><button class="btn btn-primary" type="button" data-action="supply-reserve" data-id="'+esc(item.id)+'"'+(busy?" disabled":"")+'>'+(busy?"Reserving…":"Reserve "+Number(data.filters.quantity||1))+'</button><a class="btn btn-outline" href="'+esc(item.directionsUrl)+'" target="_blank" rel="noopener noreferrer">Walking directions ↗</a></div></article>';
+      return '<article class="supply-result-card'+selectedClass+'"><button type="button" class="supply-result-select" data-action="supply-select" data-id="'+esc(item.id)+'" aria-label="Select '+esc(item.name)+'"><span class="supply-result-rank">'+(index+1)+'</span><span class="supply-result-info"><span class="supply-result-kicker">'+esc(item.category)+' · '+esc(item.hostelName)+'</span><strong>'+esc(item.name)+'</strong><span class="supply-result-price">'+esc(price)+' <small>'+esc(item.condition)+'</small></span><span class="supply-result-distance">'+esc(supplyDistanceLabel(item))+'</span><small class="supply-result-stock">'+Number(item.quantityAvailable)+' available · '+esc(coordinateNote)+'</small></span><span class="supply-result-chevron">›</span></button><div class="supply-result-actions"><button class="btn btn-primary" type="button" data-action="supply-reserve" data-id="'+esc(item.id)+'"'+(busy?" disabled":"")+'>'+(busy?"Reserving…":"Reserve "+Number(data.filters.quantity||1))+'</button><span class="supply-reserve-hint">Pickup map opens after reservation</span></div></article>';
     }).join("")+'</div>';
     else if(data)resultsContent='<div class="supply-state"><span class="supply-state-icon">⌕</span><strong>No matching item is in stock</strong><p>Gyanshala searched the current inventory and found no available match for that request. Try another term or a different price/offer preference.</p></div>';
     else resultsContent='<div class="supply-state"><span class="supply-state-icon">✦</span><strong>Describe what you need</strong><p>We’ll search the inventory, exclude unavailable stock, and put the closest matching pickup point first.</p></div>';
-    const mapContent=selected
-      ?'<div class="supply-map-card"><div class="supply-map-heading"><div><p class="section-overline">SELECTED PICKUP POINT</p><h2>'+esc(selected.hostelName)+'</h2><p>'+esc(selected.name)+' · '+esc(supplyDistanceLabel(selected))+'</p></div><span class="supply-map-pin">⌖</span></div><div class="supply-map-frame"><iframe title="OpenStreetMap view of '+esc(selected.hostelName)+' (demo coordinates)" loading="lazy" referrerpolicy="no-referrer" src="'+esc(supplyMapEmbedUrl(selected))+'"></iframe></div><p class="supply-map-note">The map point is for interface testing only. NIT Silchar hostel coordinates are simulated in this preview; do not use these distances for a real trip.</p><a class="supply-directions-link" href="'+esc(selected.directionsUrl)+'" target="_blank" rel="noopener noreferrer">Open walking route in Google Maps ↗</a></div>'
-      :'<div class="supply-map-card supply-map-empty"><span>⌖</span><strong>Your selected match will appear here</strong><p>Search first to see a pickup point.</p></div>';
+    const mapContent=trackedReservation
+      ?'<div class="supply-map-card"><div class="supply-map-heading"><div><p class="section-overline">RESERVED PICKUP POINT</p><h2>'+esc(trackedReservation.hostelName||"Campus pickup")+'</h2><p>'+esc(trackedReservation.name)+' · '+esc(trackedReservation.quantity)+' reserved</p></div><span class="supply-map-pin">⌖</span></div><div class="supply-map-frame"><iframe title="OpenStreetMap view of reserved pickup at '+esc(trackedReservation.hostelName||"campus")+' (demo coordinates)" loading="lazy" referrerpolicy="no-referrer" src="'+esc(supplyMapEmbedUrl(trackedReservation))+'"></iframe></div><p class="supply-map-note">This request-specific map is shown after reservation. The hostel point is synthetic demo data; it is not an official entrance. Directions can use your live location when opened in Google Maps.</p><p class="supply-map-distance">'+esc(supplyDistanceLabel(trackedReservation))+'</p><a class="supply-directions-link" href="'+esc(trackedReservation.directionsUrl||"https://www.google.com/maps")+'" target="_blank" rel="noopener noreferrer">Open walking route in Google Maps ↗</a></div>'
+      :'<div class="supply-map-card supply-map-empty"><span>⌖</span><strong>Reserve a supply to open its pickup map</strong><p>Before reservation, browse availability and distance. Once you reserve an item, its pickup map and directions appear here until you mark it collected or cancel.</p></div>';
     const reservations=state.supplyReservations.length
-      ?'<section class="supply-reservations"><div class="supply-reservations-head"><div><p class="section-overline">YOUR PREVIEW RESERVATIONS</p><h2>Reserved for you</h2></div><span>'+state.supplyReservations.length+'</span></div>'+state.supplyReservations.map(x=>'<div class="supply-reservation-row"><span class="supply-reservation-check">✓</span><div><strong>'+esc(x.name)+'</strong><p>'+Number(x.quantity)+' item(s) reserved · demo stock</p></div><button type="button" class="text-action" data-action="supply-cancel-reservation" data-id="'+esc(x.requestId)+'">Cancel</button></div>').join("")+'</section>'
+      ?'<section class="supply-reservations"><div class="supply-reservations-head"><div><p class="section-overline">YOUR SUPPLY REQUESTS</p><h2>Reservations & pickup</h2></div><span>'+state.supplyReservations.filter(x=>x.status==="reserved").length+' active</span></div>'+state.supplyReservations.map(x=>{
+        const active=x.status==="reserved";
+        const statusLabel=active?"Reserved":x.status==="collected"?"Collected":"Cancelled";
+        return '<div class="supply-reservation-row"><span class="supply-reservation-check">'+(active?"⌖":x.status==="collected"?"✓":"×")+'</span><div><strong>'+esc(x.name)+'</strong><p>'+Number(x.quantity)+' item(s) · '+esc(x.hostelName||"Campus pickup")+' · '+statusLabel+'</p></div>'+(active?'<button type="button" class="text-action" data-action="supply-track-reservation" data-id="'+esc(x.requestId)+'">Pickup map</button><button type="button" class="text-action" data-action="supply-complete-reservation" data-id="'+esc(x.requestId)+'">Collected</button><button type="button" class="text-action" data-action="supply-cancel-reservation" data-id="'+esc(x.requestId)+'">Cancel</button>':'')+'</div>';
+      }).join("")+'</section>'
       :"";
     const modeNote=data?'<span class="supply-ai-mode '+(data.usedGemini?"gemini":"fallback")+'">'+(data.usedGemini?"Gemini query parsing":"Keyword fallback")+'</span>':"";
     const content='<section class="workspace-page-heading supply-page-heading"><p class="workspace-eyebrow">GYANSHALA SMART SUPPLY LOCATOR</p><h1>Find what you need. <span>Closer.</span></h1><p>A purpose-built supply finder: natural-language item search, live database availability, nearest pickup points, and one-click preview reservations. No general chatbot.</p></section><section class="supply-search-panel"><form id="supply-finder-form" class="supply-search-form"><label for="supply-query">What do you need?</label><div class="supply-query-row"><span>✦</span><input id="supply-query" type="search" name="query" value="'+esc(state.supplyQuery)+'" placeholder="I need a scientific calculator under ₹300…" required autocomplete="off"><button type="submit" '+(state.supplyLoading?"disabled":"")+'>'+ (state.supplyLoading?"Searching…":"Find supplies")+' <span>→</span></button></div><div class="supply-origin-row"><label for="supply-origin-hostel">Starting point</label><select id="supply-origin-hostel" name="originHostelId" '+(state.supplyHostelsLoading?"disabled":"")+'>'+hostelOptions+'</select><button type="button" class="supply-location-button" data-action="supply-use-location">'+(state.supplyUsingGps?"Using my location ✓":"Use my location")+'</button></div><p class="supply-search-hint">Examples: “borrow a lab coat for tomorrow”, “free drawing kit”, “USB-C charger under ₹400”. Choose GPS only when you want to use your current location.</p></form><div class="supply-ai-status"><span>✦</span><div><strong>AI that searches, not chats</strong><p>Gemini extracts item + filters. The Worker queries D1 for real-time demo stock; Gemini cannot invent a listing.</p></div>'+modeNote+'</div></section>'+ (state.workspaceMessage?'<div class="workspace-flash" role="status">'+esc(state.workspaceMessage)+'</div>':"")+'<section class="supply-workspace"><div class="supply-results-panel">'+resultsContent+'</div><aside class="supply-map-column">'+mapContent+'</aside></section>'+reservations+'<p class="supply-demo-disclaimer">Preview dataset: 800+ synthetic listing combinations across NIT Silchar hostel names. Hostel coordinates, stock, offers, item conditions, route distances and availability are artificial and are not real student listings. Verify hostel entrances and routes before any real launch.</p>';
@@ -1134,6 +1168,8 @@ function communityCategoryChips(active) {
     if (name === "supply-select") { state.supplySelectedId=id||"";render();return; }
     if (name === "supply-reserve") { await reserveSmartSupply(id);return; }
     if (name === "supply-cancel-reservation") { await cancelSmartSupplyReservation(id);return; }
+    if (name === "supply-track-reservation") { state.supplyTrackReservationId=id||"";render();return; }
+    if (name === "supply-complete-reservation") { await completeSmartSupplyReservation(id);return; }
     if (name === "supply-retry") { await searchSmartSupplies(state.supplyQuery);return; }
     if (name === "map") { await loadTrackingHub(); return; }
     if (name === "request-scope") { state.requestScope=id==="received"?"received":"sent";state.requestFilter="All";render();return; }
