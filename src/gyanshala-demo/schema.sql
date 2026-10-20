@@ -1,9 +1,7 @@
 CREATE TABLE IF NOT EXISTS gyanshala_users (
   user_id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  phone TEXT NOT NULL UNIQUE,
   email_verified_at TEXT NOT NULL,
-  phone_verified_at TEXT NOT NULL,
   full_name TEXT,
   branch TEXT,
   year_of_study TEXT,
@@ -19,19 +17,16 @@ CREATE TABLE IF NOT EXISTS gyanshala_signup_challenges (
   mode TEXT NOT NULL CHECK (mode IN ('signup','signin')),
   user_id TEXT,
   email TEXT NOT NULL COLLATE NOCASE,
-  phone TEXT NOT NULL,
   email_code_hash TEXT NOT NULL,
   email_expires_at TEXT NOT NULL,
   email_verified_at TEXT,
-  phone_verified_at TEXT,
   email_sent_at TEXT NOT NULL,
-  phone_sent_at TEXT,
   attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
   created_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_gyanshala_challenges_email_phone
-  ON gyanshala_signup_challenges(email, phone, created_at);
+CREATE INDEX IF NOT EXISTS idx_gyanshala_challenges_email
+  ON gyanshala_signup_challenges(email, created_at);
 
 CREATE TABLE IF NOT EXISTS gyanshala_sessions (
   token_hash TEXT PRIMARY KEY,
