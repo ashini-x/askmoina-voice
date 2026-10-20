@@ -463,9 +463,14 @@ async function createResource(r: Request, e: GEnv): Promise<Response> {
   const now = new Date().toISOString();
   const icon = ({ Books: "▤", "Lab Equipment": "◒", Electronics: "▦", Stationery: "✎" } as Record<string, string>)[category] || "📦";
   try {
+    await ensurePickupPoints(e);
+    const mappedPickup=await e.GYANSHALA_DB.prepare("SELECT pickup_id,name FROM gyanshala_pickup_points WHERE name=? AND status='active' LIMIT 1")
+      .bind(pickupLocation).first<{pickup_id:string;name:string}>();
+    if(!mappedPickup) return reply({error:"invalid_pickup_location",message:"Choose a pickup point from the NIT Silchar campus map."},400);
+    const verifiedPickupLocation=mappedPickup.name;
     await e.GYANSHALA_DB.prepare(
       "INSERT INTO gyanshala_resources(resource_id,owner_id,title,category,description,item_condition,lending_type,price_amount,pickup_location,distance_label,owner_name,owner_branch,icon,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'available',?,?)"
-    ).bind(id,u.user_id,title,category,description,itemCondition,lendingType,priceAmount,pickupLocation,distanceLabel,u.full_name || "Student",u.branch || "",icon,now,now).run();
+    ).bind(id,u.user_id,title,category,description,itemCondition,lendingType,priceAmount,verifiedPickupLocation,distanceLabel,u.full_name || "Student",u.branch || "",icon,now,now).run();
     return reply({ ok: true, resourceId: id, message: "Your resource is now listed on the campus shelf." }, 201);
   } catch {
     return reply({ error: "resource_create_failed", message: "We couldn’t publish this listing. Please try again." }, 503);
@@ -587,28 +592,30 @@ async function logout(r: Request, e: GEnv): Promise<Response> {
 
 type PickupPointRow = {
   pickup_id:string; name:string; area:string; description:string; map_x:number; map_y:number;
-  walk_minutes:number; resource_count:number;
+  latitude:number; longitude:number; coordinate_source:string; walk_minutes:number; resource_count:number;
 };
-async function seedPreviewPickupPoints(e:GEnv):Promise<void> {
-  if (!previewTestMode(e) || !e.GYANSHALA_DB) return;
+async function ensurePickupPoints(e:GEnv):Promise<void> {
+  if (!e.GYANSHALA_DB) return;
   const db=e.GYANSHALA_DB;
-  const count=await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_pickup_points").first<{total:number}>();
-  if(Number(count?.total||0)>0) return;
   const now=new Date().toISOString();
+  // OpenStreetMap-mapped landmarks; coordinates are feature centres, not doorways.
   const points=[
-    ["gy-pick-central-library","Central Library","Academic core","Quiet, central meeting point near the main library entrance.",28,25,4],
-    ["gy-pick-main-library","Main Library","Academic core","A simple place to meet before or after study sessions.",44,36,5],
-    ["gy-pick-chemistry","Chemistry Block","Science zone","Use the public entrance and follow your department’s lab safety guidance.",77,24,7],
-    ["gy-pick-hostel-a","Hostel A · Block 2","Residential zone","Choose the common entrance rather than a room or private residence.",70,65,6],
-    ["gy-pick-ece","ECE Department","Engineering zone","Meet in the public department foyer before exchanging equipment.",83,45,8],
-    ["gy-pick-hostel-b","Hostel B · Common Room","Residential zone","The common room is a public campus exchange point.",48,79,9],
-    ["gy-pick-student-centre","Student Centre","Campus centre","Central public spot with space for quick handovers.",51,51,3],
-    ["gy-pick-canteen","Main Canteen","Campus centre","Meet by the public entrance, away from busy service areas.",62,62,5]
+    ["gy-map-nit-silchar","NIT Silchar Campus","University campus","Campus-level map anchor. Confirm the exact public meetup spot with your exchange partner.",50,50,24.7551,92.78682,5],
+    ["gy-map-cricket-ground","NITS Cricket Playground","Sports ground","OpenStreetMap-mapped sports ground. This pin marks the mapped feature, not an official pickup desk.",34,18,24.75731,92.78493,5],
+    ["gy-map-football-ground","NITS Football Ground","Sports ground","OpenStreetMap-mapped football ground. Agree on a safe, accessible meeting point before travelling.",16,18,24.75731,92.78317,6],
+    ["gy-map-indie-lake","Indie Lake","Natural landmark","Mapped lake landmark for orientation. Do not assume the shoreline is a suitable pickup point.",26,75,24.754,92.784,7],
+    ["gy-map-childrens-park","NITS Childrens Park","Park","OpenStreetMap-mapped park landmark. Verify local access and agree on an exact meetup spot.",88,77,24.75393,92.79044,6],
+    ["gy-map-mini-park","NITS Mini Park","Park","OpenStreetMap-mapped park landmark. Verify local access and agree on an exact meetup spot.",86,87,24.75337,92.79021,7],
+    ["gy-map-football-lake","Football Ground Lake","Natural landmark","Mapped water feature for orientation; not an official or recommended pickup station.",10,23,24.7568,92.7813,8]
   ];
+  // Retire old demo-only schematic anchors; never present their x/y positions as geography.
+  await db.prepare("UPDATE gyanshala_pickup_points SET status='inactive',updated_at=? WHERE pickup_id LIKE 'gy-pick-%'").bind(now).run();
   for(const p of points){
-    await db.prepare("INSERT INTO gyanshala_pickup_points(pickup_id,name,area,description,map_x,map_y,walk_minutes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'active',?,?) ON CONFLICT(pickup_id) DO NOTHING")
-      .bind(p[0],p[1],p[2],p[3],p[4],p[5],p[6],now,now).run();
+    await db.prepare("INSERT INTO gyanshala_pickup_points(pickup_id,name,area,description,map_x,map_y,latitude,longitude,coordinate_source,walk_minutes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'OpenStreetMap',?,'active',?,?) ON CONFLICT(pickup_id) DO UPDATE SET name=excluded.name,area=excluded.area,description=excluded.description,map_x=excluded.map_x,map_y=excluded.map_y,latitude=excluded.latitude,longitude=excluded.longitude,coordinate_source=excluded.coordinate_source,walk_minutes=excluded.walk_minutes,status='active',updated_at=excluded.updated_at")
+      .bind(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],now,now).run();
   }
+  await db.prepare("UPDATE gyanshala_resources SET pickup_location='NIT Silchar Campus',distance_label='Campus-level preview',updated_at=? WHERE owner_id IS NULL AND resource_id LIKE 'gy-rsc-%'").bind(now).run();
+  await db.prepare("UPDATE gyanshala_community_posts SET pickup_location='NIT Silchar Campus',updated_at=? WHERE owner_id IS NULL AND post_id LIKE 'gy-post-%'").bind(now).run();
 }
 async function listPickupLocations(r:Request,e:GEnv):Promise<Response>{
   const u=await getUser(r,e);
@@ -617,17 +624,17 @@ async function listPickupLocations(r:Request,e:GEnv):Promise<Response>{
   if(!e.GYANSHALA_DB) return reply({error:"database_not_configured"},503);
   try{
     await seedPreviewResources(e);
-    await seedPreviewPickupPoints(e);
+    await ensurePickupPoints(e);
     const db=e.GYANSHALA_DB;
-    const points=await db.prepare("SELECT p.pickup_id,p.name,p.area,p.description,p.map_x,p.map_y,p.walk_minutes,COUNT(r.resource_id) AS resource_count FROM gyanshala_pickup_points p LEFT JOIN gyanshala_resources r ON r.status='available' AND r.pickup_location=p.name WHERE p.status='active' GROUP BY p.pickup_id ORDER BY p.map_y,p.map_x").all<PickupPointRow>();
+    const points=await db.prepare("SELECT p.pickup_id,p.name,p.area,p.description,p.map_x,p.map_y,p.latitude,p.longitude,p.coordinate_source,p.walk_minutes,COUNT(r.resource_id) AS resource_count FROM gyanshala_pickup_points p LEFT JOIN gyanshala_resources r ON r.status='available' AND r.pickup_location=p.name WHERE p.status='active' GROUP BY p.pickup_id ORDER BY p.map_y,p.map_x").all<PickupPointRow>();
     const resources=await db.prepare("SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' ORDER BY r.created_at DESC,r.title ASC LIMIT 80").bind(u.user_id).all<ResourceRow>();
     const available=(resources.results||[]).map(resourceView);
     const locations=(points.results||[]).map(p=>({
       id:p.pickup_id,name:p.name,area:p.area,description:p.description,mapX:p.map_x,mapY:p.map_y,
-      walkMinutes:p.walk_minutes,resourceCount:Number(p.resource_count||0),
-      resources:available.filter(x=>x.pickupLocation===p.name).slice(0,4)
+      latitude:p.latitude,longitude:p.longitude,coordinateSource:p.coordinate_source,
+      resourceCount:Number(p.resource_count||0),resources:available.filter(x=>x.pickupLocation===p.name).slice(0,8)
     }));
-    return reply({ok:true,locations,total:locations.length,routeMode:"illustrative"});
+    return reply({ok:true,locations,total:locations.length,mapProvider:"OpenFreeMap",dataSource:"OpenStreetMap",routingAvailable:false});
   }catch{
     return reply({error:"pickup_locations_unavailable",message:"Campus pickup locations are temporarily unavailable. Try again."},503);
   }
