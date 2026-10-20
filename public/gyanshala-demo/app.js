@@ -1010,6 +1010,7 @@ function communityCategoryChips(active) {
     if (state.screen === "home") return dashboard();
     if (state.screen === "explore") return browse();
     if (state.screen === "detail") return detail();
+    if (state.screen === "supply-finder") return supplyFinderScreen();
     if (state.screen === "map") return trackingHubScreen();
     if (state.screen === "track") return requestTrackingScreen();
     if (state.screen === "community") return communityScreen();
@@ -1051,7 +1052,12 @@ function communityCategoryChips(active) {
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
-    if (form.id === "campus-map-search-form") {
+    if (form.id === "supply-finder-form") {
+      state.supplyQuery=String(fd.get("query")||"").trim().slice(0,500);
+      state.supplyOriginHostelId=String(fd.get("originHostelId")||state.supplyOriginHostelId);
+      state.supplyUsingGps=Boolean(state.supplyUsingGps&&Number.isFinite(state.supplyLatitude)&&Number.isFinite(state.supplyLongitude));
+      await searchSmartSupplies(state.supplyQuery);
+    } else if (form.id === "campus-map-search-form") {
       state.mapSearch=String(fd.get("q")||"").trim().slice(0,100);
       const q=state.mapSearch.toLowerCase();
       const point=state.pickupPoints.find(function(p){return p.name.toLowerCase()===q;})||state.pickupPoints.find(function(p){return (p.name+" "+p.area).toLowerCase().includes(q);});
@@ -1116,16 +1122,22 @@ function communityCategoryChips(active) {
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-  async function action(name, id) {
+  async function action(name, id, detail) {
     if (name === "home") {
       if (state.user && state.user.profileComplete) { state.category = "All"; state.search = ""; state.screen = "home"; refreshResources(); return; }
       if (state.user) { navigate("profile"); return; }
       navigate("splash"); return;
     }
 
+    if (name === "supply-finder") { await loadSupplyFinder(); return; }
+    if (name === "supply-use-location") { chooseSupplyOrigin(); return; }
+    if (name === "supply-select") { state.supplySelectedId=id||"";render();return; }
+    if (name === "supply-reserve") { await reserveSmartSupply(id);return; }
+    if (name === "supply-cancel-reservation") { await cancelSmartSupplyReservation(id);return; }
+    if (name === "supply-retry") { await searchSmartSupplies(state.supplyQuery);return; }
     if (name === "map") { await loadTrackingHub(); return; }
     if (name === "request-scope") { state.requestScope=id==="received"?"received":"sent";state.requestFilter="All";render();return; }
-    if (name === "request-status") { const target=btn.getAttribute("data-status");if(target)await changeRequestStatus(id,target);return; }
+    if (name === "request-status") { const target=detail;if(target)await changeRequestStatus(id,target);return; }
     if (name === "track-request") { await loadTrackingRequest(id);return; }
     if (name === "start-location-share") { await startLiveLocationShare();return; }
     if (name === "stop-location-share") { await stopLiveLocationShare();return; }
@@ -1217,7 +1229,16 @@ function communityCategoryChips(active) {
     const name = btn.getAttribute("data-action");
     const id = btn.getAttribute("data-id");
     if (btn.tagName === "A") e.preventDefault();
-    action(name, id);
+    action(name, id, btn.getAttribute("data-status"));
+  });
+  root.addEventListener("change",function(event){
+    const target=event.target;
+    if(target&&target.id==="supply-origin-hostel"){
+      state.supplyOriginHostelId=target.value;
+      state.supplyUsingGps=false;
+      const locate=root.querySelector('[data-action="supply-use-location"]');
+      if(locate)locate.textContent="Use my location";
+    }
   });
   async function init() {
     try { state.setup = await api("/health", null, "GET"); } catch { state.setup = null; }
