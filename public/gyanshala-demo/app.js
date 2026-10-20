@@ -304,14 +304,14 @@
         mapLoaded=true;
         state.map3dAvailable=configureCampus3DBuildings(map);
         addCampusPointMarkers(map,lib);
-        setStatus("Live vector map loaded · OpenStreetMap data","success");
+        setStatus("","success");
         const selected=state.pickupPoints.find(function(point){return point.id===state.pickupSelectedId;});
         if(state.mapFocusId&&selected) {
           map.flyTo({center:[Number(selected.longitude),Number(selected.latitude)],zoom:Math.max(17.1,map.getZoom()),duration:650});
           state.mapFocusId="";
         }
         const legend=root.querySelector(".map-loaded-indicator");
-        if(legend)legend.textContent="Interactive map";
+        if(legend)legend.innerHTML="<i></i>Interactive map";
       });
       map.on("moveend",function() {
         if(state.campusMapInstance!==map)return;
@@ -779,13 +779,6 @@
       const menu=root.querySelector("#mobile-more-menu"), control=root.querySelector('[data-action="open-more"]');
       if(menu) menu.classList.remove("open");
       if(control) control.setAttribute("aria-expanded","false");
-      return;
-    }
-    if (name === "refresh-pickups") { await loadPickupLocations(); return; }
-    if (name === "select-pickup") { state.pickupSelectedId=id||"";render();return; }
-    if (name === "browse-pickup") {
-      const point=state.pickupPoints.find(p=>p.id===state.pickupSelectedId);
-      if(point){state.search=point.name;state.category="All";state.screen="explore";refreshResources();}
       return;
     }
     if (name === "community-type") { state.communityType=id||"All";await loadCommunity();return; }
