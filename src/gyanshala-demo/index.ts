@@ -731,7 +731,7 @@ function parseSupplyQueryFallback(query:string):Record<string,unknown>{
   const category=SUPPLY_CATEGORIES.find(c=>q.includes(c.toLowerCase()))||null;
   const guessedType:SupplyType|"any"=/(donat|free|give away|no cost)/.test(q)?"donation":/(borrow|lend|loan|temporary)/.test(q)?"borrow":/(buy|purchase|for sale|under rupees|under rs|under ₹|price)/.test(q)?"sell":"any";
   const priceMatch=q.match(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?(\d{1,6})/);
-  const item=query.replace(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?\d{1,6}/ig,"").replace(/\b(please|i need|i want|find me|find|looking for|show me|near me|available|available now|under|below|for rent|to borrow|to buy|for sale)\b/ig," ").replace(/\s+/g," ").trim();
+  const item=query.replace(/\b(?:near|around|close to|at hostel|near hostel|in hostel)\b.*$/i,"").replace(/(?:under|below|max(?:imum)?|less than)\s*(?:₹|rs\.?\s*)?\d{1,6}/ig,"").replace(/\b(please|i need|i want|i am looking for|looking for|find me|find|search for|show me|can i get|can you find|near me|available|available now|under|below|for rent|to borrow|to buy|for sale|a|an|the|some|me|my)\b/ig," ").replace(/\s+/g," ").trim();
   return {isSupplySearch:true,item:item||query,aliases:[],category,offerType:guessedType,maxPrice:priceMatch?Number(priceMatch[1]):null,quantity:1,urgent:/\b(urgent|today|now|immediately|tomorrow|practical|exam)\b/.test(q)};
 }
 async function interpretSupplySearch(e:GEnv,query:string):Promise<{filters:Record<string,unknown>;usedGemini:boolean}>{
@@ -839,13 +839,14 @@ async function findSmartSupplies(r:Request,e:GEnv):Promise<Response>{
     const maxPrice=typeof filters.maxPrice==="number"?filters.maxPrice:null;
     const clauses=deduped.map(()=>"(lower(s.name) LIKE ? OR lower(s.aliases) LIKE ? OR lower(s.description) LIKE ? OR lower(s.category) LIKE ?)");
     const binds:unknown[]=[quantity];
-    if(maxPrice!==null)binds.push(maxPrice);
-    binds.push(...deduped.flatMap(t=>{const like="%"+t+"%";return[like,like,like,like];}));
     const where=["s.status='available'","s.quantity_available>=?"];
-    if(maxPrice!==null)where.push("s.price_amount<=?");
+    if(maxPrice!==null){where.push("s.price_amount<=?");binds.push(maxPrice);}
     if(offer==="donation"||offer==="borrow"||offer==="sell"){where.push("s.offer_type=?");binds.push(offer);}
     if(category){where.push("s.category=?");binds.push(category);}
-    if(clauses.length)where.push("("+clauses.join(" OR ")+")");
+    if(clauses.length){
+      where.push("("+clauses.join(" OR ")+")");
+      binds.push(...deduped.flatMap(t=>{const like="%"+t+"%";return[like,like,like,like];}));
+    }
     const result=await db.prepare(
       "SELECT s.supply_id,s.name,s.aliases,s.category,s.description,s.item_condition,s.offer_type,s.price_amount,s.quantity_available,s.is_demo,s.updated_at,h.hostel_id,h.name AS hostel_name,h.latitude,h.longitude,h.coordinate_source FROM gyanshala_supply_inventory s JOIN gyanshala_supply_hostels h ON h.hostel_id=s.hostel_id WHERE "+where.join(" AND ")+" ORDER BY s.name LIMIT 500"
     ).bind(...binds).all<{supply_id:string;name:string;aliases:string;category:string;description:string;item_condition:string;offer_type:SupplyType;price_amount:number;quantity_available:number;is_demo:number;updated_at:string;hostel_id:string;hostel_name:string;latitude:number;longitude:number;coordinate_source:string}>();
