@@ -318,6 +318,113 @@ async function saveProfile(r: Request, e: GEnv): Promise<Response> {
   const updated = await getUser(r, e);
   return reply({ ok: true, user: updated ? userView(updated) : null, next: "complete" });
 }
+
+type ResourceRow = {
+  resource_id: string;
+  owner_id: string | null;
+  title: string;
+  category: string;
+  description: string;
+  item_condition: string;
+  lending_type: "lend" | "sell" | "free";
+  price_amount: number;
+  pickup_location: string;
+  distance_label: string;
+  owner_name: string;
+  owner_branch: string;
+  icon: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  request_status?: string | null;
+};
+function resourceView(r: ResourceRow) {
+  return {
+    id: r.resource_id, title: r.title, category: r.category, description: r.description,
+    condition: r.item_condition, lendingType: r.lending_type, priceAmount: r.price_amount,
+    pickupLocation: r.pickup_location, distanceLabel: r.distance_label, ownerName: r.owner_name,
+    ownerBranch: r.owner_branch, icon: r.icon, status: r.status, createdAt: r.created_at,
+    requestStatus: r.request_status || null
+  };
+}
+async function seedPreviewResources(e: GEnv): Promise<void> {
+  if (!previewTestMode(e) || !e.GYANSHALA_DB) return;
+  const db = e.GYANSHALA_DB;
+  const count = await db.prepare("SELECT COUNT(*) AS total FROM gyanshala_resources").first<{total:number}>();
+  if (Number(count?.total || 0) > 0) return;
+  const now = new Date().toISOString();
+  const rows = [
+    ["gy-rsc-calculator","Scientific Calculator","Electronics","Scientific calculator suitable for engineering mathematics, with standard scientific functions and a clear display.","Good","lend",200,"Hostel A · Block 2","5 min walk","Rohan S.","Electronics & Communication","▦"],
+    ["gy-rsc-labcoat","Lab Coat","Lab Equipment","Clean lab coat for practical sessions. Check your lab’s required size and safety rules before borrowing.","Very good","free",0,"Chemistry Block","3 min walk","Priya M.","Chemical Engineering","◒"],
+    ["gy-rsc-drawingkit","Engineering Drawing Kit","Stationery","Drawing instruments and essentials for engineering graphics and studio work.","Good","lend",100,"Main Library","4 min walk","Arjun K.","Civil Engineering","✎"],
+    ["gy-rsc-dsa-textbook","Textbook — Data Structures","Books","A student copy of a data structures textbook for revision and semester practice.","Good","free",0,"Central Library","6 min walk","Admin Library","Computer Science","▤"],
+    ["gy-rsc-electronics-kit","Electronics Practice Kit","Lab Equipment","Starter kit with jumper wires, breadboard and basic components for supervised practice.","Good","lend",150,"ECE Department","7 min walk","Neha P.","Electronics & Communication","⌁"],
+    ["gy-rsc-engineering-books","Engineering Books Bundle","Books","A small bundle of first-year engineering reference books. Borrow the full bundle for a study week.","Fair","free",0,"Hostel B · Common Room","8 min walk","Aditi R.","Mechanical Engineering","▤"]
+  ];
+  for (const row of rows) {
+    await db.prepare("INSERT INTO gyanshala_resources(resource_id,owner_id,title,category,description,item_condition,lending_type,price_amount,pickup_location,distance_label,owner_name,owner_branch,icon,status,created_at,updated_at) VALUES(?,NULL,?,?,?,?,?,?,?,?,?,?,?,'available',?,?) ON CONFLICT(resource_id) DO NOTHING")
+      .bind(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], now, now).run();
+  }
+}
+async function listResources(r: Request, e: GEnv): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error: "authentication_required", message: "Sign in to explore campus resources." }, 401);
+  if (u.profile_complete !== 1) return reply({ error: "profile_incomplete", message: "Complete your student profile before browsing." }, 403);
+  if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
+  try {
+    await seedPreviewResources(e);
+    const url = new URL(r.url);
+    const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
+    const categoryValue = url.searchParams.get("category") || "All";
+    const categories = ["All","Books","Lab Equipment","Electronics","Stationery"];
+    const category = categories.includes(categoryValue) ? categoryValue : "All";
+    const like = "%" + q.replace(/[\\%_]/g, "\\async function logout(r: Request, e: GEnv): Promise<Response> {") + "%";
+    const rows = await e.GYANSHALA_DB.prepare(
+      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.status='available' AND (?='' OR r.title LIKE ? ESCAPE '\\\\' COLLATE NOCASE OR r.category LIKE ? ESCAPE '\\\\' COLLATE NOCASE OR r.description LIKE ? ESCAPE '\\\\' COLLATE NOCASE) AND (?='All' OR r.category=?) ORDER BY r.created_at DESC,r.title ASC LIMIT 80"
+    ).bind(u.user_id, q, like, like, like, category, category).all<ResourceRow>();
+    return reply({ ok: true, resources: (rows.results || []).map(resourceView), total: (rows.results || []).length });
+  } catch {
+    return reply({ error: "resource_store_unavailable", message: "Resource discovery is being prepared. Refresh and try again." }, 503);
+  }
+}
+async function getResource(r: Request, e: GEnv, resourceId: string): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error: "authentication_required" }, 401);
+  if (u.profile_complete !== 1) return reply({ error: "profile_incomplete", message: "Complete your student profile before browsing." }, 403);
+  if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
+  try {
+    await seedPreviewResources(e);
+    const row = await e.GYANSHALA_DB.prepare(
+      "SELECT r.*,rq.status AS request_status FROM gyanshala_resources r LEFT JOIN gyanshala_resource_requests rq ON rq.resource_id=r.resource_id AND rq.requester_id=? WHERE r.resource_id=? AND r.status='available' LIMIT 1"
+    ).bind(u.user_id, resourceId).first<ResourceRow>();
+    return row ? reply({ ok: true, resource: resourceView(row) }) : reply({ error: "resource_not_found", message: "This resource is no longer available." }, 404);
+  } catch {
+    return reply({ error: "resource_store_unavailable", message: "Resource details are temporarily unavailable." }, 503);
+  }
+}
+async function requestResource(r: Request, e: GEnv, resourceId: string): Promise<Response> {
+  const u = await getUser(r, e);
+  if (!u) return reply({ error: "authentication_required", message: "Sign in to request a resource." }, 401);
+  if (u.profile_complete !== 1) return reply({ error: "profile_incomplete" }, 403);
+  if (!e.GYANSHALA_DB) return reply({ error: "database_not_configured" }, 503);
+  try {
+    await seedPreviewResources(e);
+    const db = e.GYANSHALA_DB;
+    const resource = await db.prepare("SELECT resource_id,owner_id,status FROM gyanshala_resources WHERE resource_id=? LIMIT 1").bind(resourceId).first<{resource_id:string;owner_id:string|null;status:string}>();
+    if (!resource || resource.status !== "available") return reply({ error: "resource_not_found", message: "This resource is no longer available." }, 404);
+    if (resource.owner_id && resource.owner_id === u.user_id) return reply({ error: "cannot_request_own_item", message: "You cannot request your own listing." }, 409);
+    const existing = await db.prepare("SELECT request_id,status FROM gyanshala_resource_requests WHERE resource_id=? AND requester_id=? LIMIT 1")
+      .bind(resourceId, u.user_id).first<{request_id:string;status:string}>();
+    if (existing) return reply({ ok: true, alreadyRequested: true, requestStatus: existing.status, requestId: existing.request_id });
+    const id = "gyr_" + token(18), now = new Date().toISOString();
+    await db.prepare("INSERT INTO gyanshala_resource_requests(request_id,resource_id,requester_id,owner_id,status,message,created_at,updated_at) VALUES(?,?,?,?, 'pending','',?,?,?)")
+      .bind(id, resourceId, u.user_id, resource.owner_id, now, now).run();
+    return reply({ ok: true, requestId: id, requestStatus: "pending" }, 201);
+  } catch {
+    return reply({ error: "request_failed", message: "We could not save this request. Please try again." }, 503);
+  }
+}
+
 async function logout(r: Request, e: GEnv): Promise<Response> {
   const raw = readCookie(r, COOKIE);
   if (raw && e.GYANSHALA_DB && secret(e)) {
@@ -330,6 +437,14 @@ async function api(r: Request, e: GEnv): Promise<Response> {
   const p = new URL(r.url).pathname;
   if (r.method === "GET" && (p === API + "/health" || p === API + "/auth/config")) return health(e);
   if (p === API + "/me" && r.method === "GET") return me(r, e);
+  if (p === API + "/resources" && r.method === "GET") return listResources(r, e);
+  const resourceMatch = p.match(/^\\/api\\/gyanshala\\/resources\\/([A-Za-z0-9_-]+)$/);
+  if (resourceMatch && r.method === "GET") return getResource(r, e, resourceMatch[1]);
+  const resourceRequestMatch = p.match(/^\\/api\\/gyanshala\\/resources\\/([A-Za-z0-9_-]+)\\/request$/);
+  if (resourceRequestMatch && r.method === "POST") {
+    if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
+    return requestResource(r, e, resourceRequestMatch[1]);
+  }
   if (r.method !== "POST") return reply({ error: "method_not_allowed" }, 405, { Allow: "GET, POST" });
   if (!sameOrigin(r)) return reply({ error: "origin_rejected" }, 403);
   if (p === API + "/auth/start") return start(r, e);
