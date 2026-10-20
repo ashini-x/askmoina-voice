@@ -95,9 +95,13 @@ function validEmail(v: unknown): string | null {
   if (!p[0] || p[0].length > 64 || p[1].startsWith(".") || p[1].endsWith(".") || p[1].includes("..")) return null;
   return s;
 }
+export function isAllowedDomain(domain: string, roots: string[]): boolean {
+  const normalized = domain.trim().toLowerCase();
+  return roots.some(root => normalized === root || normalized.endsWith("." + root));
+}
 function isAllowedCollegeEmail(email: string, e: GEnv): boolean {
   const domain = email.split("@")[1] || "";
-  return allowedDomains(e).some(root => domain === root || domain.endsWith("." + root));
+  return isAllowedDomain(domain, allowedDomains(e));
 }
 function emailProviderReady(e: GEnv): boolean { return Boolean(e.GYANSHALA_RESEND_API_KEY?.trim() && e.GYANSHALA_EMAIL_FROM?.trim()); }
 
