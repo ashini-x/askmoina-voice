@@ -9,16 +9,14 @@ Gyanshala-specific assets live in public/gyanshala-demo; backend and schema live
 4. GYANSHALA_ALLOWED_EMAIL_DOMAINS as a comma-separated allowlist of the real college domains.
 5. GYANSHALA_OTP_SECRET as a dedicated long random secret.
 
-## Worker secrets
+## Worker secrets (add all in Workers & Pages → gyanshala-voice → Settings → Variables and Secrets)
 - GYANSHALA_RESEND_API_KEY
 - GYANSHALA_OTP_SECRET
 - TWILIO_ACCOUNT_SID
 - TWILIO_AUTH_TOKEN
 - TWILIO_VERIFY_SERVICE_SID
-
-## Worker variables
-- GYANSHALA_EMAIL_FROM: sender verified in Resend.
-- GYANSHALA_ALLOWED_EMAIL_DOMAINS: real college domains, comma-separated.
+- GYANSHALA_EMAIL_FROM: sender address verified in Resend, e.g. Gyanshala <verify@your-real-domain.in>
+- GYANSHALA_ALLOWED_EMAIL_DOMAINS: real college domains, comma-separated, e.g. students.college.ac.in,college.ac.in
 
 Do not enable signup until the database schema, email sender, Twilio Verify service, domain allowlist, and secret are configured and tested.
 
