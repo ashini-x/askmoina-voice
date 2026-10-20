@@ -1,5 +1,15 @@
 # Gyanshala demo — setup and cleanup
 
+## Campus interfaces 7–9
+
+The authenticated preview experience includes:
+- **Home / Dashboard:** greeting, category shortcuts, and nearby resources.
+- **Explore / Browse:** keyword search and category filters backed by the resource catalogue.
+- **Resource Details:** item information, condition, pickup point, owner details, and a saved borrow-request action.
+
+The dedicated D1 schema includes `gyanshala_resources` and `gyanshala_resource_requests`. In the guarded preview-test environment only, six sample resources are seeded into the Gyanshala preview DB when the catalogue is empty. Production never seeds sample resources. Resource reads and borrow requests require a verified Gyanshala session and a completed student profile. Borrow requests are stored with a pending state; owner approvals, messaging, the My Requests screen, and real pickup routing are separate future interfaces.
+
+
 ## Free preview verification testing
 
 The Wrangler `previews.vars` block sets `GYANSHALA_ALLOWED_EMAIL_DOMAINS=nits.ac.in` and `GYANSHALA_PREVIEW_TEST_MODE=true`. In that preview environment only, signup/sign-in verification codes are generated normally but delivery is simulated; the one-time code is returned to the preview UI so the profile/session flow can be tested without purchasing a domain or configuring Resend.
