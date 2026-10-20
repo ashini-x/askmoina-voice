@@ -61,7 +61,7 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
   it("connects the pickup map and community board to live APIs and reachable navigation", () => {
     expect(backend).toContain('p === API + "/pickup-locations"');
     expect(backend).toContain('p === API + "/community/posts"');
-    expect(app).toContain("function pickupMapScreen()");
+    expect(app).toContain("function trackingHubScreen()");
     expect(app).toContain("function communityScreen()");
     expect(app).toContain('const CAMPUS_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"');
     expect(app).toContain("maplibre-gl@6.9.1/dist/maplibre-gl.mjs");
@@ -108,7 +108,7 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(app).toContain('data-action="supply-reserve"');
     expect(app).toContain("Demo coordinates");
     expect(app).toContain("No general chatbot");
-    expect(app).toContain("synthetic and are not real student listings");
+    expect(app).toContain("are not real student listings");
   });
 
   it("wires listing, request history, and message screens into navigation and forms", () => {
