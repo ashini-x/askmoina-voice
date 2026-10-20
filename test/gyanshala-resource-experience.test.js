@@ -63,7 +63,17 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(backend).toContain('p === API + "/community/posts"');
     expect(app).toContain("function pickupMapScreen()");
     expect(app).toContain("function communityScreen()");
-    expect(app).toContain("This is an illustrative campus schematic, not live GPS navigation");
+    expect(app).toContain('const CAMPUS_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"');
+    expect(app).toContain("maplibre-gl@6.9.1/dist/maplibre-gl.mjs");
+    expect(app).toContain("const CAMPUS_CENTER = [92.78682, 24.7551]");
+    expect(app).toContain("map.queryRenderedFeatures(event.point)");
+    expect(app).toContain("new lib.GeolocateControl");
+    expect(app).toContain("fill-extrusion");
+    expect(app).not.toContain("function campusMapSvg(selected)");
+    expect(schema).toContain("latitude REAL NOT NULL");
+    expect(schema).toContain("coordinate_source TEXT NOT NULL");
+    expect(backend).toContain("https://tiles.openfreemap.org");
+    expect(backend).toContain("isGyanshalaShell");
     expect(app).toContain('form.id === "community-post-form"');
     expect(app).toContain('data-action="community-interest"');
     expect(app).toContain('data-action="close-community-post"');
