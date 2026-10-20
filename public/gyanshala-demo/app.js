@@ -278,10 +278,31 @@
       el.textContent=message;
       el.hidden=!message;
     };
-    setStatus("Loading the real campus map…","loading");
+    let mapLoaded=false;
+    let loadTimer=0;
+    const showMapFallback=function(message) {
+      if(generation!==state.campusMapGeneration||!root.contains(container)) return;
+      setStatus(message,"error");
+      const fallback=root.querySelector("#campus-map-fallback");
+      if(fallback)fallback.hidden=false;
+      const viewport=root.querySelector(".campus-map-viewport");
+      if(viewport)viewport.classList.remove("maplibre-ready");
+      const legend=root.querySelector(".map-loaded-indicator");
+      if(legend)legend.innerHTML="<i></i>Standard map";
+    };
+    setStatus("Opening campus map…","loading");
+    loadTimer=window.setTimeout(function() {
+      if(!mapLoaded) showMapFallback("The enhanced map is taking too long. The standard OpenStreetMap view is available below.");
+    },10000);
     try {
-      const cssReady=await ensureMapLibreCss();
-      const lib=await loadMapLibre();
+      const cssReady=await Promise.race([
+        ensureMapLibreCss(),
+        new Promise(function(_,reject){window.setTimeout(function(){reject(new Error("Map styles timed out"));},8000);})
+      ]);
+      const lib=await Promise.race([
+        loadMapLibre(),
+        new Promise(function(_,reject){window.setTimeout(function(){reject(new Error("Map library timed out"));},10000);})
+      ]);
       if(generation!==state.campusMapGeneration||!root.contains(container)) return;
       if(!cssReady) setStatus("Map controls may look unstyled; loading the map…","loading");
       const view=state.campusMapView||{center:CAMPUS_CENTER,zoom:16.25,pitch:0,bearing:0};
@@ -298,10 +319,14 @@
       map.addControl(new lib.AttributionControl({
         compact:true,customAttribution:'<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>'
       }),"bottom-right");
-      let mapLoaded=false;
       map.on("load",function() {
         if(generation!==state.campusMapGeneration||state.campusMapInstance!==map)return;
         mapLoaded=true;
+        if(loadTimer)window.clearTimeout(loadTimer);
+        const viewport=root.querySelector(".campus-map-viewport");
+        if(viewport)viewport.classList.add("maplibre-ready");
+        const fallback=root.querySelector("#campus-map-fallback");
+        if(fallback)fallback.hidden=true;
         state.map3dAvailable=configureCampus3DBuildings(map);
         addCampusPointMarkers(map,lib);
         setStatus("","success");
@@ -333,13 +358,12 @@
       });
       map.on("error",function() {
         if(!mapLoaded&&generation===state.campusMapGeneration)
-          setStatus("The map is taking longer than expected. Check your connection or open the map provider directly.","loading");
+          setStatus("Connecting to map tiles… the standard map remains available.","loading");
       });
     } catch {
+      if(loadTimer)window.clearTimeout(loadTimer);
       if(generation!==state.campusMapGeneration||!root.contains(container)) return;
-      setStatus("The map service could not load. The campus list is still available below.","error");
-      const fallback=root.querySelector("#campus-map-fallback");
-      if(fallback)fallback.hidden=false;
+      showMapFallback("The enhanced map could not load. You can still use the standard OpenStreetMap view below.");
     }
   }
   function pickupMapScreen() {
@@ -359,7 +383,7 @@
     const detail=selected
       ?'<section class="pickup-selected-panel"><div class="pickup-selected-heading"><span class="pickup-selected-icon">'+esc(campusPointIcon(selected))+'</span><div><p class="section-overline">SELECTED MAP FEATURE</p><h2>'+esc(selected.name)+'</h2><p>'+esc(selected.area)+' · '+Number(selected.latitude).toFixed(5)+', '+Number(selected.longitude).toFixed(5)+'</p></div><a class="btn btn-outline map-external-link" href="https://www.openstreetmap.org/?mlat='+encodeURIComponent(Number(selected.latitude))+'&mlon='+encodeURIComponent(Number(selected.longitude))+'#map=18/'+Number(selected.latitude)+'/'+Number(selected.longitude)+'" target="_blank" rel="noopener noreferrer">Open in OSM <span class="arrow">↗</span></a></div><p class="pickup-description">'+esc(selected.description)+'</p><div class="pickup-source-note"><span>ⓘ</span><p>This pin marks the OpenStreetMap feature centre, not a verified doorway or official pickup desk. Confirm access and the exact meeting spot before travelling.</p></div><div class="pickup-resources-heading"><div><p class="section-overline">GYANSHALA RESOURCES</p><h3>Listed at this map point</h3></div><span>'+Number(selected.resourceCount||0)+' listed</span></div>'+resources+'</section>'
       :'<section class="pickup-selected-panel"><strong>No mapped campus places are available.</strong><p>Try refreshing the map.</p></section>';
-    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">OPEN MAP DATA · BUILT FOR CAMPUS</p><h1>NIT Silchar, in detail.</h1><p>Explore the real mapped campus area, zoom into mapped buildings and paths, and connect Gyanshala listings to public map points.</p></section><section class="campus-map-search-panel"><form class="campus-map-search-form" id="campus-map-search-form"><span>⌕</span><input name="q" type="search" value="'+esc(state.mapSearch)+'" placeholder="Find campus landmarks, grounds, parks…" aria-label="Search mapped campus places"><button type="submit">Find place</button></form><div class="campus-map-search-tools"><span>Known places <strong>'+state.pickupPoints.length+'</strong></span><button type="button" class="map-tool-button'+(state.map3dEnabled?' active':'')+'" data-action="toggle-map-3d">▱ 3D buildings '+(state.map3dEnabled?'On':'Off')+'</button><button type="button" class="map-tool-button" data-action="reset-campus-map">↗ Reset campus view</button></div></section><section class="pickup-layout real-campus-layout"><div class="pickup-map-panel real-campus-map-panel"><div class="pickup-map-header"><div><p class="section-overline">LIVE VECTOR MAP</p><h2>NIT Silchar campus</h2></div><span class="map-preview-badge map-loaded-indicator"><i></i>Map initializing</span></div><div id="campus-real-map" class="campus-real-map" role="application" aria-label="Interactive OpenStreetMap-derived map of NIT Silchar. Use map controls to zoom, rotate, tilt, or find your location."></div><div id="campus-map-status" class="campus-map-status loading" role="status" aria-live="polite">Preparing the map…</div><div id="campus-map-fallback" class="campus-map-fallback" hidden><p>The live map service could not be reached. Check your connection and reload the map.</p><a href="https://www.openstreetmap.org/#map=16/24.7551/92.78682" target="_blank" rel="noopener noreferrer">Open NIT Silchar on OpenStreetMap ↗</a></div><div class="map-footer"><span><i class="map-footer-pin"></i>Gyanshala campus points</span><span>© OpenStreetMap contributors</span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Report a map issue</a></div><p class="map-disclaimer">MapLibre GL JS · OpenFreeMap vector tiles · OpenStreetMap data. Building outlines, labels and paths depend on source-data coverage; not every interior or entrance is mapped.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">MAPPED CAMPUS PLACES</p><h2>Explore places</h2></div><span class="pickup-total">'+filtered.length+'</span></div><div class="pickup-location-list">'+(pointList||'<div class="pickup-no-items"><strong>No places matched</strong><p>Try a campus, grounds, park or lake name.</p></div>')+'</div><p class="map-list-footnote">Select a place to focus the map. You can also click named features directly on the map.</p></aside></section>'+detail;
+    const content='<section class="workspace-page-heading"><p class="workspace-eyebrow">OPEN MAP DATA · BUILT FOR CAMPUS</p><h1>NIT Silchar, in detail.</h1><p>Explore the real mapped campus area, zoom into mapped buildings and paths, and connect Gyanshala listings to public map points.</p></section><section class="campus-map-search-panel"><form class="campus-map-search-form" id="campus-map-search-form"><span>⌕</span><input name="q" type="search" value="'+esc(state.mapSearch)+'" placeholder="Find campus landmarks, grounds, parks…" aria-label="Search mapped campus places"><button type="submit">Find place</button></form><div class="campus-map-search-tools"><span>Known places <strong>'+state.pickupPoints.length+'</strong></span><button type="button" class="map-tool-button'+(state.map3dEnabled?' active':'')+'" data-action="toggle-map-3d">▱ 3D buildings '+(state.map3dEnabled?'On':'Off')+'</button><button type="button" class="map-tool-button" data-action="reset-campus-map">↗ Reset campus view</button></div></section><section class="pickup-layout real-campus-layout"><div class="pickup-map-panel real-campus-map-panel"><div class="pickup-map-header"><div><p class="section-overline">LIVE VECTOR MAP</p><h2>NIT Silchar campus</h2></div><span class="map-preview-badge map-loaded-indicator"><i></i>Map initializing</span></div><div class="campus-map-viewport"><iframe id="campus-osm-fallback" title="Standard OpenStreetMap view of NIT Silchar campus" src="https://www.openstreetmap.org/export/embed.html?bbox=92.77682%2C24.7451%2C92.79682%2C24.7651&amp;layer=mapnik&amp;marker=24.7551%2C92.78682" loading="eager" referrerpolicy="no-referrer"></iframe><div id="campus-real-map" class="campus-real-map" role="application" aria-label="Enhanced interactive map of NIT Silchar. Use map controls to zoom, rotate, tilt, or find your location."></div></div><div id="campus-map-status" class="campus-map-status loading" role="status" aria-live="polite">Preparing the map…</div><div id="campus-map-fallback" class="campus-map-fallback" hidden><p>The enhanced map is unavailable, but the standard OpenStreetMap map remains usable above. You can also open it in a full tab.</p><a href="https://www.openstreetmap.org/#map=16/24.7551/92.78682" target="_blank" rel="noopener noreferrer">Open NIT Silchar on OpenStreetMap ↗</a> <button type="button" class="map-retry-button" data-action="retry-campus-map">Retry enhanced map</button></div><div class="map-footer"><span><i class="map-footer-pin"></i>Gyanshala campus points</span><span>© OpenStreetMap contributors</span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Report a map issue</a></div><p class="map-disclaimer">MapLibre GL JS · OpenFreeMap vector tiles · OpenStreetMap data. Building outlines, labels and paths depend on source-data coverage; not every interior or entrance is mapped.</p></div><aside class="pickup-locations-panel"><div class="pickup-list-heading"><div><p class="section-overline">MAPPED CAMPUS PLACES</p><h2>Explore places</h2></div><span class="pickup-total">'+filtered.length+'</span></div><div class="pickup-location-list">'+(pointList||'<div class="pickup-no-items"><strong>No places matched</strong><p>Try a campus, grounds, park or lake name.</p></div>')+'</div><p class="map-list-footnote">Select a place to focus the map. You can also click named features directly on the map.</p></aside></section>'+detail;
     appShell(content,"map");
     initializeCampusMap();
   }
@@ -753,6 +777,7 @@
 
     if (name === "select-pickup") { state.pickupSelectedId=id||"";state.mapFocusId=id||"";render();return; }
     if (name === "reset-campus-map") { state.campusMapView=null;state.mapFocusId="";state.mapSearch="";state.pickupSelectedId=state.pickupPoints[0]?state.pickupPoints[0].id:"";render();return; }
+    if (name === "retry-campus-map") { state.campusMapLibPromise=null;state.campusMapStylesPromise=null;render();return; }
     if (name === "toggle-map-3d") {
       state.map3dEnabled=!state.map3dEnabled;
       if(state.campusMapInstance&&state.campusMapLib&&state.campusMapInstance.isStyleLoaded()){
