@@ -67,6 +67,11 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(app).toContain("maplibre-gl@6.9.1/dist/maplibre-gl.mjs");
     expect(app).toContain("const CAMPUS_CENTER = [92.78682, 24.7551]");
     expect(app).toContain("map.queryRenderedFeatures(event.point)");
+    expect(app).toContain('id="campus-osm-fallback"');
+    expect(app).toContain("openstreetmap.org/export/embed.html");
+    expect(app).toContain("window.setTimeout(function() {");
+    expect(app).toContain("The enhanced map could not load");
+    expect(app).toContain('data-action="retry-campus-map"');
     expect(app).toContain("new lib.GeolocateControl");
     expect(app).toContain("fill-extrusion");
     expect(app).not.toContain("function campusMapSvg(selected)");
@@ -74,6 +79,7 @@ describe("Gyanshala campus workflows (interfaces 7–15)", () => {
     expect(schema).toContain("coordinate_source TEXT NOT NULL");
     expect(backend).toContain("https://tiles.openfreemap.org");
     expect(backend).toContain("isGyanshalaShell");
+    expect(backend).toContain("frame-src https://www.openstreetmap.org");
     expect(app).toContain('form.id === "community-post-form"');
     expect(app).toContain('data-action="community-interest"');
     expect(app).toContain('data-action="close-community-post"');
