@@ -177,7 +177,8 @@
       "GCP_PROJECT_ID": "askmoina-preview",
       "ANALYTICS_RAW_RETENTION_DAYS": "30",
       "VEDA_ENABLED": "false",
-      "VEDA_PORTAL_ENABLED": "true"
+      "VEDA_PORTAL_ENABLED": "true",
+      "GYANSHALA_ALLOWED_EMAIL_DOMAINS": "nits.ac.in"
     },
     "durable_objects": {
       "bindings": [
