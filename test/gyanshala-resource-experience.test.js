@@ -6,7 +6,7 @@ const schema = source("../src/gyanshala-demo/schema.sql");
 const backend = source("../src/gyanshala-demo/index.ts");
 const app = source("../public/gyanshala-demo/app.js");
 
-describe("Gyanshala campus workflows (interfaces 12–14)", () => {
+describe("Gyanshala campus workflows (interfaces 7–15)", () => {
   it("stores listings, borrow requests, and messages in separate Gyanshala tables", () => {
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_resources");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS gyanshala_resource_requests");
@@ -50,9 +50,9 @@ describe("Gyanshala campus workflows (interfaces 12–14)", () => {
   it("protects pickup and community reads and requires real account ownership for updates", () => {
     const pickup = backend.slice(backend.indexOf("async function listPickupLocations"), backend.indexOf("type CommunityPostRow"));
     const community = backend.slice(backend.indexOf("async function listCommunityPosts"), backend.indexOf("async function logout"));
-    expect(pickup).toContain("getUser(r, e)");
-    expect(pickup).toContain("profile_complete !== 1");
-    expect(community).toContain("getUser(r, e)");
+    expect(pickup).toContain("getUser(r,e)");
+    expect(pickup).toContain("profile_complete!==1");
+    expect(community).toContain("getUser(r,e)");
     expect(community).toContain("INSERT INTO gyanshala_community_posts");
     expect(community).toContain("INSERT INTO gyanshala_community_interests");
     expect(community).toContain("post.owner_id!==u.user_id");
