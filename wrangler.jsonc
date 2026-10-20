@@ -178,7 +178,8 @@
       "ANALYTICS_RAW_RETENTION_DAYS": "30",
       "VEDA_ENABLED": "false",
       "VEDA_PORTAL_ENABLED": "true",
-      "GYANSHALA_ALLOWED_EMAIL_DOMAINS": "nits.ac.in"
+      "GYANSHALA_ALLOWED_EMAIL_DOMAINS": "nits.ac.in",
+      "GYANSHALA_PREVIEW_TEST_MODE": "true"
     },
     "durable_objects": {
       "bindings": [
