@@ -143,10 +143,10 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 1 features'>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Real-time visual intelligence</span></span>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Live camera guidance</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Social intelligence copilot</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>On-device wake-up on supported browsers</span></span>
             <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Search with verified sources</span></span>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Private and secure</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Camera assistance remains available</span></span>
           </span>
         </button>
         <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, Next Release' aria-describedby='experiencePreviewNotice'>
