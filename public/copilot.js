@@ -932,6 +932,33 @@
     }
   }
 
+  function stopLocalWakeRecognitionAndWait() {
+    if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
+    socialWakeRestartTimer = null;
+    const recognition = socialWakeRecognition;
+    socialWakeRecognition = null;
+    if (!recognition) return Promise.resolve();
+    recognition.onresult = null;
+    recognition.onerror = null;
+    return new Promise((resolve) => {
+      let settled = false;
+      let fallbackTimer = null;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (fallbackTimer) window.clearTimeout(fallbackTimer);
+        recognition.onend = null;
+        resolve();
+      };
+      recognition.onend = finish;
+      // Chrome may release the microphone after onend, not synchronously from abort().
+      try { recognition.abort(); } catch (_) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      fallbackTimer = window.setTimeout(finish, 350);
+    });
+  }
+
   function startLocalWakeRecognition() {
     if (!socialStandbyEnabled || socialInputActive || !socialPrimaryMode || socialWakeRecognition) return;
     const Recognition = socialRecognitionConstructor || window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1061,7 +1088,7 @@
     }
   }
 
-  function activateSocialFromWakeWord() {
+  async function activateSocialFromWakeWord() {
     if (!socialStandbyEnabled || !socialModeActive || socialInputActive || !socialPrimaryMode) return;
     if (!socialOutputConfirmed || !socialParticipantNoticeConfirmed) {
       setSocialPanelState("standby", "Confirm privacy to wake", "Reconnect private earbuds and confirm participants have been informed before sending any audio.");
@@ -1069,11 +1096,11 @@
       return;
     }
     socialInputActive = true;
-    stopLocalWakeRecognition();
     setSocialPanelState("connecting", "Waking Moina", "Opening the microphone gate. The warm Gemini session is being checked.");
     setConnectionState("CONNECTING", "connecting");
-    // The browser releases the local recognizer microphone asynchronously.
-    window.setTimeout(() => { void beginSocialActiveAudio(); }, 120);
+    await stopLocalWakeRecognitionAndWait();
+    if (!socialStandbyEnabled || !socialModeActive || !socialInputActive) return;
+    await beginSocialActiveAudio();
   }
 
   function releaseSocialInputMedia() {
