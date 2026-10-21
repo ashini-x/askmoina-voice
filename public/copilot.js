@@ -474,6 +474,7 @@
   const socialPrivateAudioConfirm = $("#socialPrivateAudioConfirm");
   const socialParticipantNoticeConfirm = $("#socialParticipantNoticeConfirm");
   const socialErrorNote = $("#socialErrorNote");
+  const socialDeviceNote = $("#socialDeviceNote");
 
   const zoomSlider = $("#zoomSlider");
   const zoomLabel = $("#zoomLabel");
@@ -548,6 +549,8 @@
   let socialParticipantNoticeConfirmed = false;
   let socialWarmSessionError = null;
   let socialAudioOutputFingerprint = "";
+  let socialNativeWakeMode = false;
+  let socialNativeWakeServiceStarted = false;
 
   // Invalidate pending permission/preflight promises so stale starts cannot own media or sockets.
   let copilotStartGeneration = 0;
@@ -873,8 +876,14 @@
 
   function socialLocalWakeErrorText(errorCode) {
     const code = String(errorCode || "").toLowerCase();
-    if (code.includes("not-allowed") || code.includes("service-not-allowed")) {
-      return "Local microphone access was blocked. Allow microphone access for AskMoina in browser and Android settings, then try again.";
+    if (code.includes("native-permission-denied") || code.includes("not-allowed") || code.includes("service-not-allowed")) {
+      return "Allow AskMoina microphone permission and keep notifications enabled so Android can show the foreground wake status. Then try again.";
+    }
+    if (code.includes("native-wake-start-failed")) {
+      return "Android could not start the on-device wake service. Check microphone permission, notifications, the system on-device English recognizer and battery settings, then try again.";
+    }
+    if (code.includes("on_device_recognition_unavailable") || code.includes("native-wake-error") || code.includes("on_device_recognition_start_failed")) {
+      return "This device does not currently provide a working on-device English recognizer. AskMoina will not use cloud recognition for standby; use Camera Assist until a compatible offline wake engine is available.";
     }
     if (code.includes("language-not-supported") || code.includes("language")) {
       return "On-device English speech recognition is not installed or supported on this browser. Update Chrome and enable an on-device English language pack; AskMoina will not fall back to cloud recognition.";
@@ -897,6 +906,30 @@
   }
 
   async function verifyLocalWakeRecognition() {
+    const nativeWake = window.AskMoinaNativeWake;
+    socialNativeWakeMode = false;
+    if (nativeWake && typeof nativeWake.isSupported === "function" && nativeWake.isSupported()) {
+      socialNativeWakeMode = true;
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (granted) => {
+          if (settled) return;
+          settled = true;
+          if (permissionTimer) window.clearTimeout(permissionTimer);
+          window.__askMoinaNativeWakePermissionResult = null;
+          if (granted) resolve();
+          else reject(new Error("native-permission-denied"));
+        };
+        const permissionTimer = window.setTimeout(() => finish(false), 90_000);
+        window.__askMoinaNativeWakePermissionResult = finish;
+        try {
+          nativeWake.requestMicrophonePermission();
+        } catch (_) {
+          finish(false);
+        }
+      });
+      return;
+    }
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) throw new Error("local-speech-recognition-unavailable");
     const probe = new Recognition();
@@ -922,6 +955,12 @@
   function stopLocalWakeRecognition() {
     if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
     socialWakeRestartTimer = null;
+    if (socialNativeWakeMode) {
+      if (socialNativeWakeServiceStarted) {
+        try { window.AskMoinaNativeWake.stopWakeRecognizer(); } catch (_) {}
+      }
+      return;
+    }
     const recognition = socialWakeRecognition;
     socialWakeRecognition = null;
     if (recognition) {
@@ -935,6 +974,15 @@
   function stopLocalWakeRecognitionAndWait() {
     if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
     socialWakeRestartTimer = null;
+    if (socialNativeWakeMode) {
+      // Android's native recognizer is cancelled by its foreground service before it
+      // emits the wake broadcast. Allow the platform to release the input route before
+      // the WebView opens its active Gemini microphone stream.
+      if (socialNativeWakeServiceStarted) {
+        try { window.AskMoinaNativeWake.stopWakeRecognizer(); } catch (_) {}
+      }
+      return new Promise((resolve) => window.setTimeout(resolve, 550));
+    }
     const recognition = socialWakeRecognition;
     socialWakeRecognition = null;
     if (!recognition) return Promise.resolve();
@@ -961,6 +1009,33 @@
 
   function startLocalWakeRecognition() {
     if (!socialStandbyEnabled || socialInputActive || !socialPrimaryMode || socialWakeRecognition) return;
+    if (socialNativeWakeMode) {
+      const bridge = window.AskMoinaNativeWake;
+      let started = false;
+      try { started = Boolean(bridge && bridge.startWakeDetector()); } catch (_) {}
+      if (!started) {
+        socialStandbyEnabled = false;
+        socialModeActive = false;
+        socialNativeWakeServiceStarted = false;
+        try { if (bridge) bridge.stopWakeService(); } catch (_) {}
+        const message = socialLocalWakeErrorText("native-wake-start-failed");
+        setSocialPanelState("error", "Local wake-up unavailable", message, message);
+        return;
+      }
+      socialNativeWakeServiceStarted = true;
+      if (socialDeviceNote) {
+        socialDeviceNote.textContent = "Native Android on-device wake detection is enabled with a persistent notification. Screen-off behaviour, Bluetooth routing and battery use still require device validation.";
+      }
+      const warmSessionReady = Boolean(active && setupReady && socket && socket.readyState === WebSocket.OPEN);
+      setSocialPanelState(
+        warmSessionReady ? "standby" : "connecting",
+        warmSessionReady ? "On-device wake-up is listening" : "Local wake-up is ready",
+        warmSessionReady
+          ? "Say “Hey Moina” to activate your warm Gemini session. Standby audio remains on this device."
+          : "The Android recognizer listens locally while Gemini warms. No standby microphone frames are sent upstream."
+      );
+      return;
+    }
     const Recognition = socialRecognitionConstructor || window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
       socialStandbyEnabled = false;
@@ -1097,8 +1172,8 @@
 
   async function activateSocialFromWakeWord() {
     if (!socialStandbyEnabled || !socialModeActive || socialInputActive || !socialPrimaryMode) return;
-    if (!socialOutputConfirmed || !socialParticipantNoticeConfirmed) {
-      setSocialPanelState("standby", "Confirm privacy to wake", "Reconnect private earbuds and confirm participants have been informed before sending any audio.");
+    if (!isSocialPrivateOutputReady()) {
+      setSocialPanelState("standby", "Private audio isn't ready", "Connect your earbuds and reconfirm private output before AskMoina can open the Gemini microphone gate.");
       startLocalWakeRecognition();
       return;
     }
@@ -1159,6 +1234,10 @@
     socialOutputConfirmed = false;
     socialParticipantNoticeConfirmed = false;
     stopLocalWakeRecognition();
+    if (socialNativeWakeServiceStarted) {
+      try { window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    }
+    socialNativeWakeServiceStarted = false;
     if (socket || active || starting) stopCopilot(true, "", "normal", true, false, false);
     setSocialPanelState("idle", "Standby is off", "AskMoina is disconnected. Enable local wake-up whenever you're ready.");
     setConnectionState("READY", "ready");
@@ -1181,6 +1260,14 @@
       return;
     }
     socialAudioOutputFingerprint = await getSocialOutputFingerprint();
+    if (window.AskMoinaNativeWake &&
+        typeof window.AskMoinaNativeWake.isSupported === "function" &&
+        window.AskMoinaNativeWake.isSupported() &&
+        typeof window.AskMoinaNativeWake.isPrivateOutputAvailable === "function" &&
+        !window.AskMoinaNativeWake.isPrivateOutputAvailable()) {
+      setSocialPanelState("idle", "Connect private earbuds first", "Android could not confirm a headset or private audio output. Connect your earbuds, verify Android audio routing, then try again.", "Private output could not be verified by Android; standby was not started.");
+      return;
+    }
     socialOutputConfirmed = true;
     socialParticipantNoticeConfirmed = true;
     socialStandbyEnabled = true;
@@ -1205,6 +1292,37 @@
     }
   }
 
+  window.askMoinaNativeWakeDetected = () => {
+    if (!socialNativeWakeMode) return;
+    try { window.AskMoinaNativeWake.acknowledgeWake(); } catch (_) {}
+    void activateSocialFromWakeWord();
+  };
+  window.askMoinaNativeWakeError = (reason) => {
+    if (!socialStandbyEnabled) return;
+    const message = socialLocalWakeErrorText(reason || "native-wake-error");
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    stopLocalWakeRecognition();
+    socialNativeWakeServiceStarted = false;
+    try { if (window.AskMoinaNativeWake) window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    if (socket || active || starting) stopCopilot(false, message, "warning", true);
+    setSocialPanelState("error", "Local wake-up stopped", message, message);
+  };
+  window.askMoinaNativeWakeStoppedBySystem = () => {
+    if (!socialStandbyEnabled) return;
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    socialOutputConfirmed = false;
+    socialParticipantNoticeConfirmed = false;
+    socialNativeWakeServiceStarted = false;
+    stopLocalWakeRecognition();
+    if (socket || active || starting) stopCopilot(true, "", "normal", true, false, false);
+    setSocialPanelState("idle", "Standby stopped", "The native wake service was stopped from Android. Enable standby again when ready.");
+    setConnectionState("READY", "ready");
+  };
+
   function showCameraAssistantMode() {
     if (socialStandbyEnabled || socialModeActive || active || starting || socket) disarmSocialStandby();
     socialPrimaryMode = false;
@@ -1216,11 +1334,23 @@
 
   function showSocialIntelligenceMode() {
     socialPrimaryMode = true;
+    if (socialDeviceNote && window.AskMoinaNativeWake) {
+      socialDeviceNote.textContent = "The native Android app can use Android's on-device recognizer when available. Keep the foreground notification visible; screen-off and Bluetooth behaviour still require real-device verification.";
+    }
     if (active || starting || socket) stopCopilot(true, "", "normal", true, false, false);
     const app = $(".camera-app");
     if (app) app.classList.add("social-primary");
     if (socialPanel) { socialPanel.hidden = false; socialPanel.inert = false; }
     setSocialPanelState("idle", "Standby is off", "Enable local wake-up when you want hands-free activation.");
+  }
+
+  function isSocialPrivateOutputReady() {
+    if (!socialOutputConfirmed || !socialParticipantNoticeConfirmed) return false;
+    const bridge = window.AskMoinaNativeWake;
+    if (socialNativeWakeMode && bridge && typeof bridge.isPrivateOutputAvailable === "function") {
+      try { return Boolean(bridge.isPrivateOutputAvailable()); } catch (_) { return false; }
+    }
+    return true;
   }
 
   function setStatus(message, kind) {
@@ -4987,6 +5117,10 @@
     socialModeActive = false;
     socialInputActive = false;
     stopLocalWakeRecognition();
+    if (socialNativeWakeServiceStarted) {
+      try { window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    }
+    socialNativeWakeServiceStarted = false;
     if (active || starting || socket) stopCopilot(false);
     if (previewStream) {
       previewStream.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
