@@ -1,4 +1,10 @@
 const PAGE_PATHS = new Set(["/scorpio-preview", "/scorpio-preview.html"]);
+const ISOLATED_PREVIEW_HOST = "feature-scorpio-n-button-preview-askmoina-voice.thenewtongs.workers.dev";
+
+export function isScorpioPreviewRootRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  return url.pathname === "/" && url.hostname === ISOLATED_PREVIEW_HOST;
+}
 export function isScorpioPreviewRoute(pathname: string): boolean {
   return PAGE_PATHS.has(pathname) ||
     pathname === "/scorpio-preview.js" ||
@@ -22,7 +28,7 @@ const HTML = `<!doctype html>
 <body>
 <main class="shell">
   <header class="topbar">
-    <a class="back" href="/" aria-label="Back to askmoina">‹</a>
+    <a class="back" href="/scorpio-preview" aria-label="Open the standalone Scorpio preview route">‹</a>
     <span class="wordmark">askmoina</span>
     <span class="top-tag">PREVIEW</span>
   </header>
@@ -258,17 +264,21 @@ export async function handleScorpioPreviewRequest(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (!isScorpioPreviewRoute(path)) return null;
+  const rootAlias = path === "/" && url.hostname === ISOLATED_PREVIEW_HOST;
+  const isolatedPreviewHost = url.hostname === ISOLATED_PREVIEW_HOST;
+  if (!isScorpioPreviewRoute(path) && !rootAlias) return null;
 
-  const pageOrAsset = PAGE_PATHS.has(path) || path === "/scorpio-preview.js" || path === "/scorpio-preview.css";
-  if (!authorized) {
+  const pageOrAsset = PAGE_PATHS.has(path) || rootAlias || path === "/scorpio-preview.js" || path === "/scorpio-preview.css";
+  // This exact, isolated Workers Preview host is public only for the simulation UI.
+  // Its connector is hard-disabled, and no live vehicle call can be made here.
+  if (!authorized && !isolatedPreviewHost) {
     if (pageOrAsset && (request.method === "GET" || request.method === "HEAD")) {
       return new Response(null, { status: 302, headers: secureHeaders("text/plain; charset=utf-8", { Location: new URL("/", request.url).toString() }) });
     }
     return json({ ok: false, error: "authentication_required", message: "Sign in to AskMoina first." }, 401, request.method);
   }
 
-  if (PAGE_PATHS.has(path)) {
+  if (PAGE_PATHS.has(path) || rootAlias) {
     if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed(request, "GET, HEAD");
     return pageResponse(request);
   }
