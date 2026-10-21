@@ -221,7 +221,12 @@ public final class MainActivity extends Activity {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     answerNativeWakePermission(true);
                 } else {
-                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_NATIVE_WAKE_MIC);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NATIVE_WAKE_MIC);
+                    } else {
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_NATIVE_WAKE_MIC);
+                    }
                 }
             });
         }
@@ -263,14 +268,29 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean isPrivateOutputAvailable() {
+            android.media.AudioManager audioManager = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audioManager == null) return false;
+            for (android.media.AudioDeviceInfo device : audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)) {
+                switch (device.getType()) {
+                    case android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES:
+                    case android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET:
+                    case android.media.AudioDeviceInfo.TYPE_USB_HEADSET:
+                    case android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
+                    case android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
+                    case android.media.AudioDeviceInfo.TYPE_BLE_HEADSET:
+                    case android.media.AudioDeviceInfo.TYPE_HEARING_AID:
+                        return true;
+                    default:
+                        break;
+                }
+            }
+            return false;
+        }
+
+        @JavascriptInterface
         public void stopWakeService() {
-            runOnUiThread(() -> {
-                Intent intent = new Intent(MainActivity.this, LocalWakeService.class);
-                intent.setAction(LocalWakeService.ACTION_STOP);
-                intent.putExtra(LocalWakeService.EXTRA_NOTIFY_STOP, false);
-                startService(intent);
-                stopService(new Intent(MainActivity.this, LocalWakeService.class));
-            });
+            runOnUiThread(() -> stopService(new Intent(MainActivity.this, LocalWakeService.class)));
         }
 
         @JavascriptInterface
