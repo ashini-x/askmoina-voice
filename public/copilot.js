@@ -1323,6 +1323,18 @@
     setConnectionState("READY", "ready");
   };
 
+  window.askMoinaNativeWakeAudioRouteChanged = () => {
+    if (!socialStandbyEnabled || !socialNativeWakeMode) return;
+    const bridge = window.AskMoinaNativeWake;
+    let privateOutputAvailable = false;
+    try { privateOutputAvailable = Boolean(bridge && bridge.isPrivateOutputAvailable()); } catch (_) {}
+    if (privateOutputAvailable) return;
+    socialOutputConfirmed = false;
+    if (socialPrivateAudioConfirm) socialPrivateAudioConfirm.checked = false;
+    if (socialInputActive) returnSocialToStandby();
+    setSocialPanelState("standby", "Private audio disconnected", "Standby remains local, but wake cannot activate Gemini until you reconnect and reconfirm private earbuds.", "Android reported that the private audio route disappeared. AskMoina has closed active microphone input and will not play a whisper through the room speaker.");
+  };
+
   function showCameraAssistantMode() {
     if (socialStandbyEnabled || socialModeActive || active || starting || socket) disarmSocialStandby();
     socialPrimaryMode = false;
