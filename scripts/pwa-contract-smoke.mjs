@@ -209,7 +209,6 @@ for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/servi
 
 
 const embeddedAssetsSource = read("src/copilot-assets.ts");
-const workerSource = read("src/index.ts");
 const embeddedClientMatch = embeddedAssetsSource.match(/^export const COPILOT_JS = (".*");$/m);
 const embeddedHtmlMatch = embeddedAssetsSource.match(/^export const COPILOT_HTML = (".*");$/m);
 const embeddedCssMatch = embeddedAssetsSource.match(/^export const COPILOT_CSS = (".*");$/m);
