@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Script } from "node:vm";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -203,5 +204,24 @@ assert.ok(!serviceWorker.includes('"/copilot.js"'), "Co-Pilot JavaScript must no
 for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js", "public/experience-selection.js"]) {
   execFileSync(process.execPath, ["--check", resolve(root, path)], { stdio: "pipe" });
 }
+
+
+const embeddedAssetsSource = read("src/copilot-assets.ts");
+const embeddedClientMatch = embeddedAssetsSource.match(/^export const COPILOT_JS = (".*");$/m);
+const embeddedHtmlMatch = embeddedAssetsSource.match(/^export const COPILOT_HTML = (".*");$/m);
+const embeddedCssMatch = embeddedAssetsSource.match(/^export const COPILOT_CSS = (".*");$/m);
+assert.ok(embeddedClientMatch && embeddedHtmlMatch && embeddedCssMatch, "Worker's embedded copilot assets must remain valid string exports");
+const embeddedCopilotClient = JSON.parse(embeddedClientMatch[1]);
+const embeddedCopilotHtml = JSON.parse(embeddedHtmlMatch[1]);
+const embeddedCopilotCss = JSON.parse(embeddedCssMatch[1]);
+assert.doesNotThrow(() => new Script(embeddedCopilotClient, { filename: "embedded-askmoina-copilot.js" }), "Worker-served embedded copilot JavaScript must parse");
+assert.ok(embeddedCopilotHtml.includes('id="socialIntelligencePanel"'), "social intelligence must be the primary UI inside the existing Copilot route");
+assert.ok(embeddedCopilotHtml.includes('id="socialStandbyToggle"') && embeddedCopilotHtml.includes('id="socialReturnStandby"'), "social standby and return-to-standby controls must exist");
+assert.ok(embeddedCopilotCss.includes(".camera-app.social-primary .camera-stage"), "camera view must remain available but secondary in social mode");
+assert.ok(embeddedCopilotClient.includes("recognition.processLocally = true"), "wake detection must explicitly require local recognition");
+assert.ok(embeddedCopilotClient.includes("social_intelligence_mode: true"), "social mode must use the audio-only Live setup");
+assert.ok(embeddedCopilotClient.includes("if (socialModeActive && !socialInputActive) return;"), "standby must gate microphone frames before WebSocket send");
+assert.ok(embeddedCopilotClient.includes("if (socialModeActive && (!socialInputActive || !socialOutputConfirmed)) return;"), "assistant playback must remain muted until activation and private-output confirmation");
+assert.ok(embeddedAssetsSource.includes("social_intelligence_mode"), "Worker must allow the authenticated social-intelligence Live setup mode");
 
 console.log("PWA contract smoke: passed");
