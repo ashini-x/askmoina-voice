@@ -26,6 +26,8 @@ for (const path of [
 const workerSource = read("src/index.ts");
 assert.ok(workerSource.includes("withAskMoinaFontPreload"), "Worker HTML must preload the global font before first paint");
 assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated shells must load the canonical global font");
+assert.ok(workerSource.includes("<span>Social intelligence copilot</span>"), "the post-auth moinaOS selection must present social intelligence as the primary feature");
+assert.ok(workerSource.includes("<span>Camera assistance remains available</span>"), "the moinaOS selection must preserve camera assistance as a secondary capability");
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
 assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
 
