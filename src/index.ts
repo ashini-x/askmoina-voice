@@ -2161,8 +2161,8 @@ async function handleVoiceSocket(
 
     if (clientNeedsResumeSetup) {
       try {
-        const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown };
-        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || resumeSetup.copilot_mode !== true) {
+        const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown; social_intelligence_mode?: unknown };
+        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || (resumeSetup.copilot_mode !== true && resumeSetup.social_intelligence_mode !== true) || (resumeSetup.social_intelligence_mode !== undefined && typeof resumeSetup.social_intelligence_mode !== "boolean")) {
           closeBoth(1008, "Invalid Live resume setup");
           return;
         }
@@ -2191,8 +2191,8 @@ async function handleVoiceSocket(
       }
       setupInitializing = true;
       try {
-        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
-        const allowedKeys = ["setup", "memory_context", "copilot_mode"];
+        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown; social_intelligence_mode?: unknown };
+        const allowedKeys = ["setup", "memory_context", "copilot_mode", "social_intelligence_mode"];
         const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 16_000) : "";
         if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean") || (message.social_intelligence_mode !== undefined && typeof message.social_intelligence_mode !== "boolean") || (message.copilot_mode === true && message.social_intelligence_mode === true)) {
           closeBoth(1008, "First message must be a small setup object");
