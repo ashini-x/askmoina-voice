@@ -209,10 +209,12 @@ for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/servi
 
 
 const embeddedAssetsSource = read("src/copilot-assets.ts");
+const workerSource = read("src/index.ts");
 const embeddedClientMatch = embeddedAssetsSource.match(/^export const COPILOT_JS = (".*");$/m);
 const embeddedHtmlMatch = embeddedAssetsSource.match(/^export const COPILOT_HTML = (".*");$/m);
 const embeddedCssMatch = embeddedAssetsSource.match(/^export const COPILOT_CSS = (".*");$/m);
 assert.ok(embeddedClientMatch && embeddedHtmlMatch && embeddedCssMatch, "Worker's embedded copilot assets must remain valid string exports");
+assert.ok(workerSource.includes("on-device-speech-recognition=(self)"), "AskMoina routes must explicitly permit on-device wake recognition where the browser supports it");
 const embeddedCopilotClient = JSON.parse(embeddedClientMatch[1]);
 const embeddedCopilotHtml = JSON.parse(embeddedHtmlMatch[1]);
 const embeddedCopilotCss = JSON.parse(embeddedCssMatch[1]);
