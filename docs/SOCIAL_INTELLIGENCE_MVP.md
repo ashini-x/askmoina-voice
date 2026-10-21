@@ -21,7 +21,7 @@ The target standby model is:
 
 **Important distinction:** muting playback alone does not cut input cost. The cost/privacy gate is that standby audio remains local and no standby audio frames are sent to Gemini. A warm WebSocket does not guarantee unlimited connection life: Gemini Live documents a connection length of about 10 minutes and supports session resumption; the app must handle reconnects. Billing is token-based, so do not assume that a permanently connected socket is always free or immortal. Measure real standby cost and wake latency against disconnect-and-reconnect fallback. See [Live API best practices](https://ai.google.dev/gemini-api/docs/live-api/best-practices) and [session management](https://ai.google.dev/gemini-api/docs/live-api/session-management).
 
-This architecture is the target, not a claim that the current app already supports reliable warm standby or screen-off capture. Those must be proved on the target Android device. Browser/PWA lifecycle restrictions may require a native Android foreground-service implementation for background microphone use. Do not start a hidden/always-on session without clear user enablement, visible status, OS permission and appropriate participant notice.
+This architecture is the target. The current branch now contains an experimental local English on-device SpeechRecognition phrase matcher for “Hey Moina”, a warm-session UI path and upstream microphone/output gates. This is not a dedicated, optimized keyword-spotting model, does not guarantee screen-off capture, and is not yet validated on the target Android device. Browser/PWA lifecycle restrictions may require a native Android foreground-service implementation for background microphone use. The feature must remain explicitly opt-in, visibly active, OS-permission gated and participant-notice gated.
 
 ## Product invariants
 
@@ -38,7 +38,7 @@ This architecture is the target, not a claim that the current app already suppor
 - Private earbud output by default; fail safely if the route becomes unavailable.
 - User speech, stop, stale context, topic changes and disconnects cancel or suppress pending whispers.
 - Prefer silence to unsupported, stale, duplicate, weak, badly timed or intrusive output.
-- No WhatsApp delivery, PDF generation, Maps/music/calendar actions, general connector framework, or separate Veda PWA in this MVP.
+- No WhatsApp delivery, PDF generation, Maps/music/calendar actions, general connector framework, covert/unconsented wake-word listening, or separate Veda PWA in this MVP.
 
 ## Final milestones
 
@@ -185,9 +185,12 @@ This architecture is the target, not a claim that the current app already suppor
 
 ## Current implementation snapshot (2026-10-21)
 
-- Draft PR #366 contains the first deterministic whisper policy module, tests and this roadmap. CI/runtime wiring is not verified yet.
-- The existing repository's Worker contains /api/voice/socket routing to the Live Session Relay and imports a client asset bundle from the existing AskMoina source tree. The next audit must map the exact browser audio sender/playback functions inside those modules before implementing wake audio gating.
-- No wake-word model, warm-standby controller, group turn tracker or private whisper delivery should be described as implemented until code and device evidence demonstrate it.
+- Draft PR #366 contains the deterministic whisper policy, lifecycle controller and initial M2/M3 client integration. The code is not merged or deployed.
+- M0 source tracing confirmed the Worker serves its live copilot from `src/copilot-assets.ts`, `/api/voice/socket` routes through the existing Live Session Relay, the microphone sender is `sendAudioChunk`, and the browser owns PCM playback. The Worker already implements session resumption and provider rotation. No Android Gradle app project was found in the inspected paths; screen-off support therefore remains a device/platform gate, not an established capability.
+- M2 prototype: “Hey Moina” currently uses a browser SpeechRecognition API that must report on-device processing support. It fails closed instead of using cloud recognition when local mode is unavailable. This is a prototype phrase matcher, not a purpose-built low-power wake-word engine. The client gates PCM microphone frames and response playback during standby, keeps an authenticated Live session open where it survives, and relies on the existing reconnect/resumption path when it does not.
+- M3 prototype: social intelligence is the primary view in the existing copilot page, with explicit local wake enablement, participant notice and private-audio confirmation, state indicators, and a route back to the retained camera assist mode. Public `/copilot.html`, `.js`, and `.css` were synchronized with Worker-embedded assets.
+- Unit and contract validation must pass on the latest branch before this implementation is considered CI-validated. Real-device false wake/missed wake, audio routing, warm session survival/cost, screen-off behaviour, participant-notice usability, and camera regression still require evaluation.
+- M4–M9 (speaker attribution, conversation tracker, insight generation, policy-wired private whisper delivery, full reliability and pilot) remain outstanding.
 - Historical Veda files/resources may remain disabled while implementation proceeds. Do not extend the separate Veda product architecture, and do not delete historical artifacts as part of this feature unless a separate dependency/data-safe cleanup is reviewed.
 
 ## Release rule
