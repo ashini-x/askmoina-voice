@@ -39,7 +39,7 @@
       <button type="button" id="socialStop" class="social-text-action" hidden>Disable and disconnect</button>
     </div>
     <p class="social-local-note"><span aria-hidden="true">●</span> Standby detection runs locally. No standby microphone audio is sent to Gemini.</p>
-    <p class="social-device-note" id="socialDeviceNote">Requires a browser with on-device English speech recognition. Keep AskMoina open. Screen-off and background listening are not yet verified for this installation.</p>
+    <p class="social-device-note" id="socialDeviceNote">Local wake-up is browser-specific. Chrome for Android does not currently expose this on-device recognition path, so Hey Moina is unavailable there until an Android-native or bundled offline detector is integrated. AskMoina will not fall back to cloud wake detection. Screen-off and background listening are not yet verified.</p>
     <p class="social-error-note" id="socialErrorNote" role="alert" hidden></p>
   </div>
   <footer class="social-panel-footer"><span>Real-time intelligence. Quiet by default.</span><span>Camera assistance remains available.</span></footer>
