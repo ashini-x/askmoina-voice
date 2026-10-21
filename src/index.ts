@@ -3348,7 +3348,7 @@ export default {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
+        "Permissions-Policy": "microphone=(self), camera=(self), on-device-speech-recognition=(self), geolocation=(), payment=()",
         "Cross-Origin-Resource-Policy": "same-origin",
       });
       return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
@@ -3409,7 +3409,7 @@ export default {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
+        "Permissions-Policy": "microphone=(self), camera=(self), on-device-speech-recognition=(self), geolocation=(), payment=()",
         "Cross-Origin-Resource-Policy": "same-origin",
       });
       return new Response(body, { status: 200, headers });
