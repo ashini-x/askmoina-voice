@@ -7,7 +7,7 @@
  *   Service: gyanshala-smart-supply-api
  *
  * The downstream Worker continues to serve the Gyanshala UI and /api/* routes,
- * so sessions and APIs stay on the same gyanshala.pages.dev origin.
+ * so sessions and APIs stay on the assigned Pages origin.
  */
 export default {
   async fetch(request, env) {
