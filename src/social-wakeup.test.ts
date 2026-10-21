@@ -19,7 +19,9 @@ const standby = (overrides: Partial<WakeLifecycleState> = {}): WakeLifecycleStat
     ...overrides,
   });
 
-const enableStandby = (warmSessionConnected = true): WakeLifecycleEvent => ({
+type EnableStandbyEvent = Extract<WakeLifecycleEvent, { type: "ENABLE_STANDBY" }>;
+
+const enableStandby = (warmSessionConnected = true): EnableStandbyEvent => ({
   type: "ENABLE_STANDBY",
   microphonePermissionGranted: true,
   localDetectorReady: true,
