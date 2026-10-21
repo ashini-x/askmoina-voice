@@ -882,7 +882,7 @@
     if (code.includes("audio-capture")) {
       return "The device microphone is unavailable to the local wake detector. Close other microphone apps and try again.";
     }
-    return "This browser cannot safely run the local wake detector. Update Chrome on the target Android device or use Camera Assist mode for now.";
+    return "This PWA cannot safely run a verified on-device wake detector here. Chrome for Android does not currently expose this browser recognition path. AskMoina has not switched to cloud wake detection; use Camera Assist until an Android-native or bundled offline detector is integrated.";
   }
 
   async function getSocialOutputFingerprint() {
