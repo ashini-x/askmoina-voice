@@ -39,6 +39,7 @@ public final class MainActivity extends Activity {
     private boolean receiverRegistered;
     private boolean pageLoaded;
     private boolean pendingWakeEvent;
+    private boolean nativeWakeForegroundActive;
 
     private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -49,11 +50,13 @@ public final class MainActivity extends Activity {
                     deliverPendingWakeIfReady();
                     break;
                 case LocalWakeService.ACTION_WAKE_ERROR:
+                    nativeWakeForegroundActive = false;
                     String reason = intent.getStringExtra(LocalWakeService.EXTRA_REASON);
                     evaluateJs("window.askMoinaNativeWakeError && window.askMoinaNativeWakeError(" +
                             jsString(reason == null ? "native_wake_error" : reason) + ")");
                     break;
                 case LocalWakeService.ACTION_STOPPED_FROM_NOTIFICATION:
+                    nativeWakeForegroundActive = false;
                     evaluateJs("window.askMoinaNativeWakeStoppedBySystem && window.askMoinaNativeWakeStoppedBySystem()");
                     break;
             }
@@ -150,7 +153,10 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
-        if (webView != null) webView.onPause();
+        // While explicitly armed, keep the WebView's live JS client running so the
+        // warm Gemini socket and native wake-to-live handoff can work with the screen off.
+        // The foreground service owns microphone wake recognition and a partial CPU wake lock.
+        if (webView != null && !nativeWakeForegroundActive) webView.onPause();
         super.onPause();
     }
 
@@ -248,6 +254,7 @@ public final class MainActivity extends Activity {
                 intent.setAction(LocalWakeService.ACTION_START);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
                 else startService(intent);
+                nativeWakeForegroundActive = true;
                 return true;
             } catch (RuntimeException error) {
                 return false;
@@ -296,7 +303,10 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public void stopWakeService() {
-            runOnUiThread(() -> stopService(new Intent(MainActivity.this, LocalWakeService.class)));
+            runOnUiThread(() -> {
+                nativeWakeForegroundActive = false;
+                stopService(new Intent(MainActivity.this, LocalWakeService.class));
+            });
         }
 
         @JavascriptInterface
