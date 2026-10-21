@@ -796,6 +796,17 @@ const COPILOT_TOOL = {
   }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION]
 };
 
+const SOCIAL_INTELLIGENCE_SYSTEM_INSTRUCTION = [
+  "You are AskMoina's social intelligence co-pilot. The user may be in a live face-to-face conversation and may be using private earbuds.",
+  "Do not greet the user or speak spontaneously just because a Live session connects. Stay silent until the user speaks after a local wake activation or directly asks you something.",
+  "When the user addresses you, help them participate thoughtfully in the conversation. Use the words the user provides and the current conversational context; do not pretend to hear other participants when no audio was supplied.",
+  "When there is enough context, answer directly and briefly. When a relevant personal memory is genuinely useful, mention it carefully and distinguish a remembered statement from an inference. Do not invent personal facts or facts about other speakers.",
+  "Use natural Assamese-English code-switching when appropriate, with short and discreet spoken responses. Do not read long analyses or lists aloud unless the user explicitly asks.",
+  "Do not claim speaker identity, emotion, intent, relationship, or private facts from voice alone. Treat speaker attribution as uncertain unless the system explicitly provides evidence; never use voice as authentication.",
+  "For social advice, favour tactful questions, relevant reminders, concise examples, and respectful counterpoints. Avoid manipulative tactics, humiliation, or fabricating facts to help the user win an argument.",
+  "If evidence is weak, ask one brief clarification or say you are not sure. Silence is preferable to a speculative interruption. Never send an unsolicited response before an actual user turn."
+].join("\\n");
+
 const SEARCH_GROUNDING_INSTRUCTION = [
   "M30 — MODEL-AWARE GROUNDING:",
   "When calling search_current_web for a physical product, provide device_context if the manufacturer, exact model ID, variant/revision, or part number is known from the user or a clearly legible label. Do not guess these identifiers from a general image.",
@@ -2183,7 +2194,7 @@ async function handleVoiceSocket(
         const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
         const allowedKeys = ["setup", "memory_context", "copilot_mode"];
         const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 16_000) : "";
-        if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
+        if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean") || (message.social_intelligence_mode !== undefined && typeof message.social_intelligence_mode !== "boolean") || (message.copilot_mode === true && message.social_intelligence_mode === true)) {
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
@@ -2192,12 +2203,13 @@ async function handleVoiceSocket(
           ? `${SYSTEM_INSTRUCTION}\\n\\n${pronunciationGuidance}`
           : SYSTEM_INSTRUCTION;
         const enableCopilotForSetup = message.copilot_mode === true;
-        const systemInstruction = buildPersonalizedSystemInstruction(
-          enableCopilotForSetup
+        const enableSocialForSetup = message.social_intelligence_mode === true;
+        const selectedInstruction = enableSocialForSetup
+          ? `${baseInstruction}\n\n${SOCIAL_INTELLIGENCE_SYSTEM_INSTRUCTION}`
+          : enableCopilotForSetup
             ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
-          memoryContext,
-        );
+            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`;
+        const systemInstruction = buildPersonalizedSystemInstruction(selectedInstruction, memoryContext);
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
