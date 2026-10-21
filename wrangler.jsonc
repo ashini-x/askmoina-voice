@@ -26,6 +26,7 @@
       "/api/*",
       "/veda/*",
       "/veda",
+      "/scorpio-preview*",
       "/voice-lab",
       "/voice-lab.html",
       "/copilot",
