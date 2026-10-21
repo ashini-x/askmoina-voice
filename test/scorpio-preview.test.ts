@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleScorpioPreviewRequest, isScorpioPreviewRoute } from "../src/scorpio-preview";
+import { handleScorpioPreviewRequest, isScorpioPreviewRootRequest, isScorpioPreviewRoute } from "../src/scorpio-preview";
 
 const url = (path: string) => `https://askmoina.test${path}`;
 const sameOriginHeaders = { Origin: "https://askmoina.test", "Content-Type": "application/json" };
@@ -21,6 +21,26 @@ describe("Scorpio-N command preview boundary", () => {
     expect(page?.headers.get("Location")).toBe(url("/"));
     expect(api?.status).toBe(401);
     expect(await api?.json()).toMatchObject({ error: "authentication_required" });
+  });
+
+  it("serves the command tester at the isolated preview website root without login", async () => {
+    const host = "https://feature-scorpio-n-button-preview-askmoina-voice.thenewtongs.workers.dev";
+    const request = new Request(host + "/");
+    expect(isScorpioPreviewRootRequest(request)).toBe(true);
+    const response = await handleScorpioPreviewRequest(request, false);
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toContain("Scorpio-N");
+  });
+
+  it("permits only simulation commands on the isolated preview host without login", async () => {
+    const host = "https://feature-scorpio-n-button-preview-askmoina-voice.thenewtongs.workers.dev";
+    const response = await handleScorpioPreviewRequest(new Request(host + "/api/scorpio-preview/command", {
+      method: "POST",
+      headers: { Origin: host, "Content-Type": "application/json" },
+      body: JSON.stringify({ command: "windows_open", mode: "simulation" }),
+    }), false);
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ simulated: true, commandSent: false, mode: "simulation" });
   });
 
   it("states explicitly that no real connector is configured", async () => {
