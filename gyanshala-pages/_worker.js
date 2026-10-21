@@ -1,5 +1,5 @@
 /**
- * Gyanshala Pages front door (isolated from the AskMoina app).
+ * Gyanshala NITS Pages front door (isolated from the AskMoina app).
  *
  * This Pages Advanced Mode Worker forwards every request to the existing
  * Gyanshala application Worker. Configure a Pages Service binding:
