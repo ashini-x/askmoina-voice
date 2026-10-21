@@ -1012,7 +1012,14 @@
         }, 300);
       };
       recognition.start();
-      setSocialPanelState("standby", "Local wake-up is listening", "Say “Hey Moina” to activate your warm Gemini session.");
+      const warmSessionReady = Boolean(active && setupReady && socket && socket.readyState === WebSocket.OPEN);
+      setSocialPanelState(
+        warmSessionReady ? "standby" : "connecting",
+        warmSessionReady ? "Local wake-up is listening" : "Local wake-up is ready",
+        warmSessionReady
+          ? "Say “Hey Moina” to activate your warm Gemini session."
+          : "Wake detection stays on-device while Gemini warms. No standby microphone frames are sent upstream."
+      );
     } catch (error) {
       socialWakeRecognition = null;
       socialStandbyEnabled = false;
