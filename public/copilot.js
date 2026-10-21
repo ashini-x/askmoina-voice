@@ -2843,7 +2843,10 @@
   }
 
   function playPcmAudio(base64, mimeType) {
-    if (socialModeActive && (!socialInputActive || !socialOutputConfirmed)) return;
+    if (socialModeActive && (!socialInputActive || !isSocialPrivateOutputReady())) {
+      if (socialInputActive) returnSocialToStandby();
+      return;
+    }
     if (!audioContext || !base64) return;
     const match = String(mimeType || "").match(/rate=(\d+)/i);
     const sampleRate = match ? Number(match[1]) : 24000;
