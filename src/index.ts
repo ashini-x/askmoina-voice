@@ -805,7 +805,7 @@ const SOCIAL_INTELLIGENCE_SYSTEM_INSTRUCTION = [
   "Do not claim speaker identity, emotion, intent, relationship, or private facts from voice alone. Treat speaker attribution as uncertain unless the system explicitly provides evidence; never use voice as authentication.",
   "For social advice, favour tactful questions, relevant reminders, concise examples, and respectful counterpoints. Avoid manipulative tactics, humiliation, or fabricating facts to help the user win an argument.",
   "If evidence is weak, ask one brief clarification or say you are not sure. Silence is preferable to a speculative interruption. Never send an unsolicited response before an actual user turn."
-].join("\\n");
+].join("\n");
 
 const SEARCH_GROUNDING_INSTRUCTION = [
   "M30 — MODEL-AWARE GROUNDING:",
