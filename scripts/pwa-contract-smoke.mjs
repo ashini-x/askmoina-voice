@@ -152,10 +152,10 @@ assert.ok(worker.includes("CHOOSE YOUR EXPERIENCE"), "Interface 06 heading is mi
 for (const label of [
   "Early Release Access",
   "Next Release",
-  "Real-time visual intelligence",
-  "Live camera guidance",
+  "Social intelligence copilot",
+  "On-device wake-up on supported browsers",
   "Search with verified sources",
-  "Private and secure",
+  "Camera assistance remains available",
   "More powerful models",
   "Expanded real-world tools",
   "Next-generation experience",
