@@ -222,6 +222,7 @@ assert.ok(embeddedCopilotClient.includes("recognition.processLocally = true"), "
 assert.ok(embeddedCopilotClient.includes("social_intelligence_mode: true"), "social mode must use the audio-only Live setup");
 assert.ok(embeddedCopilotClient.includes("if (socialModeActive && !socialInputActive) return;"), "standby must gate microphone frames before WebSocket send");
 assert.ok(embeddedCopilotClient.includes("if (socialModeActive && (!socialInputActive || !socialOutputConfirmed)) return;"), "assistant playback must remain muted until activation and private-output confirmation");
+assert.ok(embeddedCopilotClient.includes("A warm standby session must remain silent"), "standby must ignore unsolicited model transcripts and tool calls");
 assert.ok(embeddedAssetsSource.includes("social_intelligence_mode"), "Worker must allow the authenticated social-intelligence Live setup mode");
 
 console.log("PWA contract smoke: passed");
