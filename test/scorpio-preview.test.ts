@@ -57,6 +57,27 @@ describe("Scorpio-N command preview boundary", () => {
     });
   });
 
+  it("exposes Phase 1 integration findings without claiming an API exists", async () => {
+    const response = await handleScorpioPreviewRequest(new Request(url("/api/scorpio-preview/readiness")), true);
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({
+      phase: 1,
+      status: "vendor_confirmation_required",
+      publicApiDocsFoundInReviewedSources: false,
+      liveCommandsEnabled: false,
+      commandSent: false,
+      vehicle: { modelYear: 2024, fuel: "petrol", transmission: "manual" },
+      support: { email: "customercare@mahindra.com", phone: "18002096006" },
+    });
+  });
+
+  it("does not expose readiness data on unsupported methods", async () => {
+    const response = await handleScorpioPreviewRequest(new Request(url("/api/scorpio-preview/readiness"), {
+      method: "POST",
+    }), true);
+    expect(response?.status).toBe(405);
+  });
+
   it("runs a command through simulation without sending it to the vehicle", async () => {
     const response = await handleScorpioPreviewRequest(new Request(url("/api/scorpio-preview/command"), {
       method: "POST",
