@@ -463,6 +463,19 @@
   }
 
   const muteButton = $("#muteMic");
+  const socialPanel = $("#socialIntelligencePanel");
+  const socialModeTitle = $("#socialModeTitle");
+  const socialModeDetail = $("#socialModeDetail");
+  const socialModePill = $("#socialModePill");
+  const socialStateSymbol = $("#socialStateSymbol");
+  const socialStandbyToggle = $("#socialStandbyToggle");
+  const socialReturnStandby = $("#socialReturnStandby");
+  const socialStopButton = $("#socialStop");
+  const socialPrivateAudioConfirm = $("#socialPrivateAudioConfirm");
+  const socialParticipantNoticeConfirm = $("#socialParticipantNoticeConfirm");
+  const socialErrorNote = $("#socialErrorNote");
+  const socialDeviceNote = $("#socialDeviceNote");
+
   const zoomSlider = $("#zoomSlider");
   const zoomLabel = $("#zoomLabel");
   const zoomInButton = $("#zoomIn");
@@ -522,6 +535,23 @@
   let starting = false;
   let active = false;
   let stopping = false;
+  // Social mode is independent from camera mode. In standby, the local recognizer
+  // owns wake detection and the Gemini socket receives no microphone frames.
+  let socialPrimaryMode = true;
+  let socialModeActive = false;
+  let socialStandbyEnabled = false;
+  let socialInputActive = false;
+  let socialWakeRecognition = null;
+  let socialRecognitionConstructor = null;
+  let socialWakeRestartTimer = null;
+  let socialActiveInputStarting = false;
+  let socialOutputConfirmed = false;
+  let socialParticipantNoticeConfirmed = false;
+  let socialWarmSessionError = null;
+  let socialAudioOutputFingerprint = "";
+  let socialNativeWakeMode = false;
+  let socialNativeWakeServiceStarted = false;
+
   // Invalidate pending permission/preflight promises so stale starts cannot own media or sockets.
   let copilotStartGeneration = 0;
   let forceFreshSessionOnReconnect = false;
@@ -821,6 +851,518 @@
 
   function hideSafetyPauseNotice() {
     if (safetyPauseNode) safetyPauseNode.hidden = true;
+  }
+
+
+  function setSocialPanelState(state, title, detail, errorMessage) {
+    if (socialModeTitle) socialModeTitle.textContent = String(title || "AskMoina");
+    if (socialModeDetail) socialModeDetail.textContent = String(detail || "");
+    if (socialModePill) {
+      socialModePill.textContent = state === "active" ? "ACTIVE" : state === "connecting" ? "CONNECTING" : state === "standby" ? "STANDBY" : state === "error" ? "CHECK" : "OFF";
+      socialModePill.dataset.state = state || "idle";
+    }
+    if (socialStateSymbol) socialStateSymbol.dataset.state = state || "idle";
+    if (socialErrorNote) {
+      socialErrorNote.textContent = String(errorMessage || "");
+      socialErrorNote.hidden = !errorMessage;
+    }
+    if (socialStandbyToggle) {
+      socialStandbyToggle.textContent = socialStandbyEnabled ? "Disable local wake-up" : "Enable local wake-up";
+      socialStandbyToggle.disabled = Boolean(starting && socialModeActive);
+    }
+    if (socialReturnStandby) socialReturnStandby.hidden = !socialInputActive;
+    if (socialStopButton) socialStopButton.hidden = !socialStandbyEnabled;
+  }
+
+  function socialLocalWakeErrorText(errorCode) {
+    const code = String(errorCode || "").toLowerCase();
+    if (code.includes("native-permission-denied") || code.includes("not-allowed") || code.includes("service-not-allowed")) {
+      return "Allow AskMoina microphone permission and keep notifications enabled so Android can show the foreground wake status. Then try again.";
+    }
+    if (code.includes("native-wake-start-failed")) {
+      return "Android could not start the on-device wake service. Check microphone permission, notifications, the system on-device English recognizer and battery settings, then try again.";
+    }
+    if (code.includes("on_device_recognition_unavailable") || code.includes("native-wake-error") || code.includes("on_device_recognition_start_failed")) {
+      return "This device does not currently provide a working on-device English recognizer. AskMoina will not use cloud recognition for standby; use Camera Assist until a compatible offline wake engine is available.";
+    }
+    if (code.includes("language-not-supported") || code.includes("language")) {
+      return "On-device English speech recognition is not installed or supported on this browser. Update Chrome and enable an on-device English language pack; AskMoina will not fall back to cloud recognition.";
+    }
+    if (code.includes("audio-capture")) {
+      return "The device microphone is unavailable to the local wake detector. Close other microphone apps and try again.";
+    }
+    return "This PWA cannot safely run a verified on-device wake detector here. Chrome for Android does not currently expose this browser recognition path. AskMoina has not switched to cloud wake detection; use Camera Assist until an Android-native or bundled offline detector is integrated.";
+  }
+
+  async function getSocialOutputFingerprint() {
+    try {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== "function") return "";
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((device) => device.kind === "audiooutput")
+        .map((device) => String(device.deviceId || "unidentified")).sort().join("|");
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function verifyLocalWakeRecognition() {
+    const nativeWake = window.AskMoinaNativeWake;
+    socialNativeWakeMode = false;
+    if (nativeWake && typeof nativeWake.isSupported === "function" && nativeWake.isSupported()) {
+      socialNativeWakeMode = true;
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (granted) => {
+          if (settled) return;
+          settled = true;
+          if (permissionTimer) window.clearTimeout(permissionTimer);
+          window.__askMoinaNativeWakePermissionResult = null;
+          if (granted) resolve();
+          else reject(new Error("native-permission-denied"));
+        };
+        const permissionTimer = window.setTimeout(() => finish(false), 90_000);
+        window.__askMoinaNativeWakePermissionResult = finish;
+        try {
+          nativeWake.requestMicrophonePermission();
+        } catch (_) {
+          finish(false);
+        }
+      });
+      return;
+    }
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) throw new Error("local-speech-recognition-unavailable");
+    const probe = new Recognition();
+    if (!("processLocally" in probe)) throw new Error("local-process-enforcement-unavailable");
+    if (typeof Recognition.available === "function") {
+      let availability;
+      try {
+        availability = await Recognition.available({ langs: ["en-US"], processLocally: true });
+      } catch (_) {
+        availability = "unavailable";
+      }
+      if (availability === "downloadable" && typeof Recognition.install === "function") {
+        let installed = false;
+        try { installed = await Recognition.install({ langs: ["en-US"] }); } catch (_) {}
+        if (!installed) throw new Error("local-language-pack-install-failed");
+      } else if (availability !== "available") {
+        throw new Error("local-language-pack-unavailable");
+      }
+    }
+    socialRecognitionConstructor = Recognition;
+  }
+
+  function stopLocalWakeRecognition() {
+    if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
+    socialWakeRestartTimer = null;
+    if (socialNativeWakeMode) {
+      if (socialNativeWakeServiceStarted) {
+        try { window.AskMoinaNativeWake.stopWakeRecognizer(); } catch (_) {}
+      }
+      return;
+    }
+    const recognition = socialWakeRecognition;
+    socialWakeRecognition = null;
+    if (recognition) {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try { recognition.abort(); } catch (_) { try { recognition.stop(); } catch (_) {} }
+    }
+  }
+
+  function stopLocalWakeRecognitionAndWait() {
+    if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
+    socialWakeRestartTimer = null;
+    if (socialNativeWakeMode) {
+      // Android's native recognizer is cancelled by its foreground service before it
+      // emits the wake broadcast. Allow the platform to release the input route before
+      // the WebView opens its active Gemini microphone stream.
+      if (socialNativeWakeServiceStarted) {
+        try { window.AskMoinaNativeWake.stopWakeRecognizer(); } catch (_) {}
+      }
+      return new Promise((resolve) => window.setTimeout(resolve, 550));
+    }
+    const recognition = socialWakeRecognition;
+    socialWakeRecognition = null;
+    if (!recognition) return Promise.resolve();
+    recognition.onresult = null;
+    recognition.onerror = null;
+    return new Promise((resolve) => {
+      let settled = false;
+      let fallbackTimer = null;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (fallbackTimer) window.clearTimeout(fallbackTimer);
+        recognition.onend = null;
+        resolve();
+      };
+      recognition.onend = finish;
+      // Chrome may release the microphone after onend, not synchronously from abort().
+      try { recognition.abort(); } catch (_) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      fallbackTimer = window.setTimeout(finish, 350);
+    });
+  }
+
+  function startLocalWakeRecognition() {
+    if (!socialStandbyEnabled || socialInputActive || !socialPrimaryMode || socialWakeRecognition) return;
+    if (socialNativeWakeMode) {
+      const bridge = window.AskMoinaNativeWake;
+      let started = false;
+      try { started = Boolean(bridge && bridge.startWakeDetector()); } catch (_) {}
+      if (!started) {
+        socialStandbyEnabled = false;
+        socialModeActive = false;
+        socialNativeWakeServiceStarted = false;
+        try { if (bridge) bridge.stopWakeService(); } catch (_) {}
+        const message = socialLocalWakeErrorText("native-wake-start-failed");
+        setSocialPanelState("error", "Local wake-up unavailable", message, message);
+        return;
+      }
+      socialNativeWakeServiceStarted = true;
+      if (socialDeviceNote) {
+        socialDeviceNote.textContent = "Native Android on-device wake detection is enabled with a persistent notification. Screen-off behaviour, Bluetooth routing and battery use still require device validation.";
+      }
+      const warmSessionReady = Boolean(active && setupReady && socket && socket.readyState === WebSocket.OPEN);
+      setSocialPanelState(
+        warmSessionReady ? "standby" : "connecting",
+        warmSessionReady ? "On-device wake-up is listening" : "Local wake-up is ready",
+        warmSessionReady
+          ? "Say “Hey Moina” to activate your warm Gemini session. Standby audio remains on this device."
+          : "The Android recognizer listens locally while Gemini warms. No standby microphone frames are sent upstream."
+      );
+      return;
+    }
+    const Recognition = socialRecognitionConstructor || window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      socialStandbyEnabled = false;
+      socialModeActive = false;
+      setSocialPanelState("error", "Local wake-up unavailable", "On-device speech recognition is required.", socialLocalWakeErrorText("unsupported"));
+      return;
+    }
+    const recognition = new Recognition();
+    socialWakeRecognition = recognition;
+    try {
+      recognition.processLocally = true;
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 3;
+      recognition.onresult = (event) => {
+        if (!socialStandbyEnabled || socialInputActive || socialWakeRecognition !== recognition) return;
+        for (let i = event.resultIndex || 0; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          if (!result) continue;
+          for (let j = 0; j < Math.min(3, result.length || 0); j += 1) {
+            const alternative = result[j];
+            const words = String(alternative && alternative.transcript || "")
+              .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            if (/\bhey moina\b/.test(words)) {
+              void activateSocialFromWakeWord();
+              return;
+            }
+          }
+        }
+      };
+      recognition.onerror = (event) => {
+        if (!socialStandbyEnabled || socialInputActive || socialWakeRecognition !== recognition) return;
+        if (event && event.error === "no-speech" || event && event.error === "aborted") return;
+        const message = socialLocalWakeErrorText(event && event.error);
+        socialStandbyEnabled = false;
+        socialModeActive = false;
+        stopLocalWakeRecognition();
+        if (socket || active || starting) stopCopilot(false, message, "warning", true);
+        setSocialPanelState("error", "Local wake-up stopped", message, message);
+      };
+      recognition.onend = () => {
+        if (!socialStandbyEnabled || socialInputActive || !socialPrimaryMode || socialWakeRecognition !== recognition) return;
+        socialWakeRecognition = null;
+        if (socialWakeRestartTimer) window.clearTimeout(socialWakeRestartTimer);
+        socialWakeRestartTimer = window.setTimeout(() => {
+          socialWakeRestartTimer = null;
+          startLocalWakeRecognition();
+        }, 300);
+      };
+      recognition.start();
+      const warmSessionReady = Boolean(active && setupReady && socket && socket.readyState === WebSocket.OPEN);
+      setSocialPanelState(
+        warmSessionReady ? "standby" : "connecting",
+        warmSessionReady ? "Local wake-up is listening" : "Local wake-up is ready",
+        warmSessionReady
+          ? "Say “Hey Moina” to activate your warm Gemini session."
+          : "Wake detection stays on-device while Gemini warms. No standby microphone frames are sent upstream."
+      );
+    } catch (error) {
+      socialWakeRecognition = null;
+      socialStandbyEnabled = false;
+      socialModeActive = false;
+      const message = socialLocalWakeErrorText(error && error.name || error && error.message);
+      setSocialPanelState("error", "Local wake-up unavailable", message, message);
+    }
+  }
+
+  async function beginSocialActiveAudio() {
+    if (!socialModeActive || !socialStandbyEnabled || !socialInputActive || socialActiveInputStarting) return;
+    if (processor && audioContext && microphoneStream) return;
+    socialActiveInputStarting = true;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("microphone-capture-unavailable");
+      }
+      if (!microphoneStream || !microphoneStream.getAudioTracks().some((track) => track.readyState === "live")) {
+        const captured = await navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false
+        });
+        if (!socialModeActive || !socialStandbyEnabled || !socialInputActive || stopping) {
+          captured.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
+          return;
+        }
+        microphoneStream = captured;
+      }
+      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextConstructor) throw new Error("audio-context-unavailable");
+      if (!audioContext) audioContext = new AudioContextConstructor();
+      await audioContext.resume();
+      if (!socialModeActive || !socialStandbyEnabled || !socialInputActive || stopping) {
+        releaseSocialInputMedia();
+        return;
+      }
+      if ((!socket || socket.readyState !== WebSocket.OPEN || !setupReady || !active) && !starting) {
+        setSocialPanelState("connecting", "Waking Moina", "Restoring the live session. Repeat your question when the connection is ready.");
+        void startSocialWarmSession();
+        return;
+      }
+      if (socket && socket.readyState === WebSocket.OPEN && setupReady && active && !processor) {
+        startAudioCapture();
+      }
+      setSocialPanelState("active", "I'm with you", "Gemini is listening now. Whispers will use your confirmed private audio output.");
+      setStatus("Active conversation. Speak naturally; return to standby when you want Moina to be quiet.");
+      setConnectionState("LIVE", "live");
+    } catch (error) {
+      socialInputActive = false;
+      releaseSocialInputMedia();
+      const message = socialLocalWakeErrorText(error && error.name || error && error.message);
+      setSocialPanelState("error", "Couldn't activate audio", message, message);
+      if (socialStandbyEnabled) startLocalWakeRecognition();
+    } finally {
+      socialActiveInputStarting = false;
+      // If the socket became ready while getUserMedia/AudioContext was still starting,
+      // open the upstream gate now instead of leaving the user in a false "active" state.
+      if (socialModeActive && socialStandbyEnabled && socialInputActive &&
+          active && setupReady && socket && socket.readyState === WebSocket.OPEN &&
+          microphoneStream && audioContext && !processor) {
+        try {
+          startAudioCapture();
+          setSocialPanelState("active", "I'm with you", "Gemini is listening. Microphone frames are sent only during the active conversation.");
+          setConnectionState("LIVE", "live");
+        } catch (error) {
+          socialInputActive = false;
+          releaseSocialInputMedia();
+          const message = socialLocalWakeErrorText(error && error.name || error && error.message);
+          setSocialPanelState("error", "Couldn't activate audio", message, message);
+          if (socialStandbyEnabled) startLocalWakeRecognition();
+        }
+      }
+    }
+  }
+
+  async function activateSocialFromWakeWord() {
+    if (!socialStandbyEnabled || !socialModeActive || socialInputActive || !socialPrimaryMode) return;
+    if (!isSocialPrivateOutputReady()) {
+      setSocialPanelState("standby", "Private audio isn't ready", "Connect your earbuds and reconfirm private output before AskMoina can open the Gemini microphone gate.");
+      startLocalWakeRecognition();
+      return;
+    }
+    socialInputActive = true;
+    setSocialPanelState("connecting", "Waking Moina", "Opening the microphone gate. The warm Gemini session is being checked.");
+    setConnectionState("CONNECTING", "connecting");
+    await stopLocalWakeRecognitionAndWait();
+    if (!socialStandbyEnabled || !socialModeActive || !socialInputActive) return;
+    await beginSocialActiveAudio();
+  }
+
+  function releaseSocialInputMedia() {
+    if (processor) {
+      processor.onaudioprocess = null;
+      try { processor.disconnect(); } catch (_) {}
+      processor = null;
+    }
+    if (microphoneSource) {
+      try { microphoneSource.disconnect(); } catch (_) {}
+      microphoneSource = null;
+    }
+    if (silentGain) {
+      try { silentGain.disconnect(); } catch (_) {}
+      silentGain = null;
+    }
+    if (microphoneStream) {
+      microphoneStream.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });
+      microphoneStream = null;
+    }
+    if (audioContext) {
+      const previous = audioContext;
+      audioContext = null;
+      void previous.close().catch(() => {});
+    }
+    microphoneMuted = false;
+    micNoiseCalibrationUntil = 0;
+    micSpeechCandidateAt = 0;
+    micSpeechGateActive = false;
+    lastMicVoiceAt = 0;
+  }
+
+  function returnSocialToStandby() {
+    if (!socialStandbyEnabled || !socialModeActive || !socialInputActive) return;
+    if (micSpeechGateActive) sendAudioActivityBoundary("end");
+    socialInputActive = false;
+    stopPlayback();
+    releaseSocialInputMedia();
+    startLocalWakeRecognition();
+    setSocialPanelState("standby", "Back in local standby", "No microphone audio is being sent to Gemini. Say “Hey Moina” when you need me.");
+    setConnectionState(socket && socket.readyState === WebSocket.OPEN ? "STANDBY" : "RECONNECTING", socket && socket.readyState === WebSocket.OPEN ? "ready" : "connecting");
+    setStatus("Local standby. Gemini receives no microphone frames until the next wake phrase.");
+  }
+
+  function disarmSocialStandby() {
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    socialOutputConfirmed = false;
+    socialParticipantNoticeConfirmed = false;
+    stopLocalWakeRecognition();
+    if (socialNativeWakeServiceStarted) {
+      try { window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    }
+    socialNativeWakeServiceStarted = false;
+    if (socket || active || starting) stopCopilot(true, "", "normal", true, false, false);
+    setSocialPanelState("idle", "Standby is off", "AskMoina is disconnected. Enable local wake-up whenever you're ready.");
+    setConnectionState("READY", "ready");
+    setStatus("Social intelligence is disarmed. No microphone is being captured for wake-up.");
+  }
+
+  async function enableSocialStandby() {
+    if (socialStandbyEnabled) {
+      disarmSocialStandby();
+      return;
+    }
+    const privateAudioOk = Boolean(socialPrivateAudioConfirm && socialPrivateAudioConfirm.checked);
+    const participantNoticeOk = Boolean(socialParticipantNoticeConfirm && socialParticipantNoticeConfirm.checked);
+    if (!privateAudioOk || !participantNoticeOk) {
+      setSocialPanelState("idle", "Confirm privacy before starting", "Connect private earbuds and confirm that conversation participants have been informed.", "Both confirmations are required before standby can be enabled.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setSocialPanelState("error", "You're offline", "Connect to the internet before starting the live session.", "AskMoina needs a network connection to warm the Gemini Live session.");
+      return;
+    }
+    socialAudioOutputFingerprint = await getSocialOutputFingerprint();
+    if (window.AskMoinaNativeWake &&
+        typeof window.AskMoinaNativeWake.isSupported === "function" &&
+        window.AskMoinaNativeWake.isSupported() &&
+        typeof window.AskMoinaNativeWake.isPrivateOutputAvailable === "function" &&
+        !window.AskMoinaNativeWake.isPrivateOutputAvailable()) {
+      setSocialPanelState("idle", "Connect private earbuds first", "Android could not confirm a headset or private audio output. Connect your earbuds, verify Android audio routing, then try again.", "Private output could not be verified by Android; standby was not started.");
+      return;
+    }
+    socialOutputConfirmed = true;
+    socialParticipantNoticeConfirmed = true;
+    socialStandbyEnabled = true;
+    socialModeActive = true;
+    socialInputActive = false;
+    socialWarmSessionError = null;
+    setSocialPanelState("connecting", "Preparing local wake-up", "Checking that this browser can keep recognition on-device.");
+    try {
+      await verifyLocalWakeRecognition();
+      if (!socialStandbyEnabled || !socialModeActive) return;
+      startLocalWakeRecognition();
+      if (!socialStandbyEnabled || !socialModeActive) return;
+      isAutomaticRetry = false;
+      automaticReconnectAttempts = 0;
+      void startSocialWarmSession();
+    } catch (error) {
+      socialStandbyEnabled = false;
+      socialModeActive = false;
+      stopLocalWakeRecognition();
+      const message = socialLocalWakeErrorText(error && error.name || error && error.message);
+      setSocialPanelState("error", "Local wake-up isn't available", message, message);
+    }
+  }
+
+  window.askMoinaNativeWakeDetected = () => {
+    if (!socialNativeWakeMode) return;
+    try { window.AskMoinaNativeWake.acknowledgeWake(); } catch (_) {}
+    void activateSocialFromWakeWord();
+  };
+  window.askMoinaNativeWakeError = (reason) => {
+    if (!socialStandbyEnabled) return;
+    const message = socialLocalWakeErrorText(reason || "native-wake-error");
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    stopLocalWakeRecognition();
+    socialNativeWakeServiceStarted = false;
+    try { if (window.AskMoinaNativeWake) window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    if (socket || active || starting) stopCopilot(false, message, "warning", true);
+    setSocialPanelState("error", "Local wake-up stopped", message, message);
+  };
+  window.askMoinaNativeWakeStoppedBySystem = () => {
+    if (!socialStandbyEnabled) return;
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    socialOutputConfirmed = false;
+    socialParticipantNoticeConfirmed = false;
+    socialNativeWakeServiceStarted = false;
+    stopLocalWakeRecognition();
+    if (socket || active || starting) stopCopilot(true, "", "normal", true, false, false);
+    setSocialPanelState("idle", "Standby stopped", "The native wake service was stopped from Android. Enable standby again when ready.");
+    setConnectionState("READY", "ready");
+  };
+
+  window.askMoinaNativeWakeAudioRouteChanged = () => {
+    if (!socialStandbyEnabled || !socialNativeWakeMode) return;
+    const bridge = window.AskMoinaNativeWake;
+    let privateOutputAvailable = false;
+    try { privateOutputAvailable = Boolean(bridge && bridge.isPrivateOutputAvailable()); } catch (_) {}
+    if (privateOutputAvailable) return;
+    socialOutputConfirmed = false;
+    if (socialPrivateAudioConfirm) socialPrivateAudioConfirm.checked = false;
+    if (socialInputActive) returnSocialToStandby();
+    setSocialPanelState("standby", "Private audio disconnected", "Standby remains local, but wake cannot activate Gemini until you reconnect and reconfirm private earbuds.", "Android reported that the private audio route disappeared. AskMoina has closed active microphone input and will not play a whisper through the room speaker.");
+  };
+
+  function showCameraAssistantMode() {
+    if (socialStandbyEnabled || socialModeActive || active || starting || socket) disarmSocialStandby();
+    socialPrimaryMode = false;
+    const app = $(".camera-app");
+    if (app) app.classList.remove("social-primary");
+    if (socialPanel) { socialPanel.hidden = true; socialPanel.inert = true; }
+    void prepareCameraPreview();
+  }
+
+  function showSocialIntelligenceMode() {
+    socialPrimaryMode = true;
+    if (socialDeviceNote && window.AskMoinaNativeWake) {
+      socialDeviceNote.textContent = "The native Android app can use Android's on-device recognizer when available. Keep the foreground notification visible; screen-off and Bluetooth behaviour still require real-device verification.";
+    }
+    if (active || starting || socket) stopCopilot(true, "", "normal", true, false, false);
+    const app = $(".camera-app");
+    if (app) app.classList.add("social-primary");
+    if (socialPanel) { socialPanel.hidden = false; socialPanel.inert = false; }
+    setSocialPanelState("idle", "Standby is off", "Enable local wake-up when you want hands-free activation.");
+  }
+
+  function isSocialPrivateOutputReady() {
+    if (!socialOutputConfirmed || !socialParticipantNoticeConfirmed) return false;
+    const bridge = window.AskMoinaNativeWake;
+    if (socialNativeWakeMode && bridge && typeof bridge.isPrivateOutputAvailable === "function") {
+      try { return Boolean(bridge.isPrivateOutputAvailable()); } catch (_) { return false; }
+    }
+    return true;
   }
 
   function setStatus(message, kind) {
@@ -2084,6 +2626,7 @@
   }
 
   function sendAudioChunk(input) {
+    if (socialModeActive && (!socialInputActive || !socialParticipantNoticeConfirmed)) return;
     if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady || !audioContext) return;
     // Shed stale microphone callbacks while the socket is congested; never queue seconds of old audio.
     if (socket.bufferedAmount > 96 * 1024) return;
@@ -2098,6 +2641,7 @@
   }
 
   function sendAudioActivityBoundary(kind) {
+    if (socialModeActive && !socialInputActive) return;
     if (!socket || socket.readyState !== WebSocket.OPEN || !setupReady) return;
     try {
       socket.send(JSON.stringify({
@@ -2131,6 +2675,7 @@
       for (const frame of frames) sendAudioChunk(frame);
     }
     processor.onaudioprocess = (event) => {
+      if (socialModeActive && (!socialInputActive || !socialParticipantNoticeConfirmed)) return;
       if (!active || !setupReady || stopping) return;
       const samples = event.inputBuffer.getChannelData(0);
       let sumSquares = 0;
@@ -2310,6 +2855,10 @@
   }
 
   function playPcmAudio(base64, mimeType) {
+    if (socialModeActive && (!socialInputActive || !isSocialPrivateOutputReady())) {
+      if (socialInputActive) returnSocialToStandby();
+      return;
+    }
     if (!audioContext || !base64) return;
     const match = String(mimeType || "").match(/rate=(\d+)/i);
     const sampleRate = match ? Number(match[1]) : 24000;
@@ -2718,10 +3267,12 @@
       returnToMoinaOSSelection();
       return;
     }
-    const previewRestart = prepareCameraPreview();
-    if (userInitiated) {
-      const showProblemAgain = () => window.dispatchEvent(new Event("askmoina:user-disconnected"));
-      void previewRestart.then(showProblemAgain, showProblemAgain);
+    if (!socialPrimaryMode) {
+      const previewRestart = prepareCameraPreview();
+      if (userInitiated) {
+        const showProblemAgain = () => window.dispatchEvent(new Event("askmoina:user-disconnected"));
+        void previewRestart.then(showProblemAgain, showProblemAgain);
+      }
     }
   }
 
@@ -3317,6 +3868,27 @@
       starting = false;
       if (setupTimer) window.clearTimeout(setupTimer);
       setupTimer = null;
+      if (socialModeActive) {
+        setControls("End social session", false);
+        setConnectionState(socialInputActive ? "LIVE" : "STANDBY", socialInputActive ? "live" : "ready");
+        hideConnectionNotice(true);
+        automaticReconnectAttempts = 0;
+        if (socialInputActive) {
+          setSocialPanelState("active", "I'm with you", "Gemini is ready. Microphone input is active only after wake-up.");
+          void beginSocialActiveAudio();
+        } else {
+          setSocialPanelState("standby", "Gemini session is warm", "Local wake detection is active. No microphone frames are being sent to Gemini.");
+          if (socialStandbyEnabled && !socialWakeRecognition) startLocalWakeRecognition();
+        }
+        return;
+      }
+
+      setupReady = true;
+      active = true;
+      recordRealityLoopEvent("voice_ready");
+      starting = false;
+      if (setupTimer) window.clearTimeout(setupTimer);
+      setupTimer = null;
       setControls("End Co-Pilot", false);
       setConnectionState("LIVE", "live");
       setStatus(message.resumed === true ? "Your live conversation is continuing." : "Connected. Tell Moina what you want to do in your own words.");
@@ -3335,6 +3907,23 @@
         greetingTimer = window.setTimeout(() => beginListeningAfterGreeting(), 10_000);
       }
       startVideoFrames();
+      return;
+    }
+
+    // A warm standby session must remain silent. Do not render transcripts or execute
+    // model tool calls while asleep. Only lifecycle/control messages above and below
+    // this guard are permitted to affect the client in standby.
+    if (socialModeActive && !socialInputActive) {
+      if (message.go_away || message.goAway) {
+        setConnectionState("RECONNECTING", "connecting");
+        setSocialPanelState("connecting", "Refreshing the warm session", "Gemini is reconnecting. Standby microphone audio remains local.");
+        retryConnection("The warm Gemini session is rotating. Reconnecting without sending standby audio…");
+        return;
+      }
+      if (message.error) {
+        retryConnection("The warm Gemini session reported an error. Reconnecting before opening the microphone gate…");
+        return;
+      }
       return;
     }
 
@@ -3436,7 +4025,7 @@
   }
 
   async function prepareCameraPreview() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || active || stopping) return;
+    if (socialPrimaryMode || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || active || stopping) return;
     const liveTrack = previewStream && previewStream.getVideoTracks().find((track) => track.readyState === "live");
     if (liveTrack) {
       if (video.srcObject !== previewStream) video.srcObject = previewStream;
@@ -3551,7 +4140,104 @@
     }, drainMs);
   }
 
+
+  async function startSocialWarmSession() {
+    if (!socialModeActive || !socialStandbyEnabled) return;
+    if (starting) return;
+    if (active && setupReady && socket && socket.readyState === WebSocket.OPEN) {
+      if (socialInputActive) void beginSocialActiveAudio();
+      return;
+    }
+    const startGeneration = ++copilotStartGeneration;
+    const isCurrentStart = () => startGeneration === copilotStartGeneration && starting && !stopping && socialModeActive && socialStandbyEnabled;
+    const automaticRetry = isAutomaticRetry;
+    isAutomaticRetry = false;
+    if (!automaticRetry || !liveSessionId) liveSessionId = crypto.randomUUID();
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (!automaticRetry) automaticReconnectAttempts = 0;
+    starting = true;
+    stopping = false;
+    setupReady = false;
+    active = false;
+    stage.classList.add("pre-start", "is-connecting");
+    setConnectionState("CONNECTING", "connecting");
+    setSocialPanelState("connecting", "Warming Gemini Live", "The session is connecting without sending standby audio.");
+    setStatus("Warming a private social-intelligence session.");
+    hideConnectionNotice(true);
+    let sessionSocket = null;
+    try {
+      if (!navigator.onLine) throw new Error("You're offline. Connect to the internet before activating AskMoina.");
+      const preflightResult = await refreshAvailabilityAfterRelease();
+      if (!isCurrentStart()) return;
+      if (preflightResult && preflightResult.available === false) {
+        throw new Error(preflightResult.message || "The live session is not available right now.");
+      }
+      try {
+        await Promise.all([refreshAccountMemories(), refreshCrossSessionRecallContext(true)]);
+      } catch (_) {}
+      if (!isCurrentStart()) return;
+      const wsUrl = new URL("/api/voice/socket", window.location.href);
+      wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl.searchParams.set("session_id", liveSessionId);
+      if (automaticRetry) wsUrl.searchParams.set("resume", "1");
+      sessionSocket = new WebSocket(wsUrl.toString());
+      socket = sessionSocket;
+      sessionSocket.binaryType = "arraybuffer";
+
+      sessionSocket.addEventListener("open", async () => {
+        if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
+        const setupPayload = { setup: {}, social_intelligence_mode: true };
+        try {
+          const memory = readOptedInMemoryContext();
+          if (memory) setupPayload.memory_context = memory;
+        } catch (_) {}
+        if (!isCurrentStart() || stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
+        sessionSocket.send(JSON.stringify(setupPayload));
+        startRelayKeepalive(sessionSocket);
+        setSocialPanelState("connecting", "Checking warm session", "Waiting for Gemini to confirm that the live connection is ready.");
+        setupTimer = window.setTimeout(() => {
+          if (isCurrentStart() && !setupReady && socket === sessionSocket) {
+            retryConnection("The warm Live session is taking longer than usual. Reconnecting…");
+          }
+        }, 15000);
+      });
+
+      sessionSocket.addEventListener("message", (event) => { void handleServerMessage(event.data, sessionSocket); });
+      sessionSocket.addEventListener("error", () => {
+        if (socket === sessionSocket) retryConnection("The warm live connection dropped. Reconnecting…");
+      });
+      sessionSocket.addEventListener("close", (event) => {
+        stopRelayKeepalive(sessionSocket);
+        if (socket !== sessionSocket) return;
+        socket = null;
+        lastSessionEndedAt = Date.now();
+        if (stopping) return;
+        const reason = String(event.reason || "").trim();
+        forceFreshSessionOnReconnect = event.code === 1000 || reason === "Session time limit reached" || reason === "Provider connection rotation unavailable";
+        retryConnection(reason === "Session time limit reached"
+          ? "Gemini ended the warm session. Reconnecting before opening the microphone gate…"
+          : "The warm live connection ended. Reconnecting before opening the microphone gate…");
+      });
+    } catch (error) {
+      if (sessionSocket && sessionSocket.readyState < WebSocket.CLOSING) {
+        try { sessionSocket.close(); } catch (_) {}
+      }
+      if (!isCurrentStart()) return;
+      cleanupMedia();
+      starting = false;
+      active = false;
+      socket = null;
+      const message = error && error.message ? String(error.message).slice(0, 220) : "Couldn't warm the live session. Local wake detection remains on.";
+      socialWarmSessionError = message;
+      setConnectionState("READY", "error");
+      setSocialPanelState("standby", "Local wake-up is ready", "No standby audio is sent upstream. A wake will retry the live session.", message);
+      setStatus(message, "warning");
+    }
+  }
+
   async function startCopilot() {
+    if (socialModeActive) return startSocialWarmSession();
     // Two timer/event callbacks must not cancel and restart an awaited start operation.
     if (starting || active) return;
     const startGeneration = ++copilotStartGeneration;
@@ -4363,7 +5049,7 @@
       if (active || starting) stopCopilot(false, null, null, true);
       // Re-open the camera preview in parallel with the AJAX/WebSocket retry.
       // startCopilot shares and awaits the pending preview request, so the camera appears first.
-      void prepareCameraPreview();
+      if (!socialPrimaryMode) void prepareCameraPreview();
       showConnectionNotice("Reconnecting…", "Reopening the camera and restoring your live connection…", "connecting");
       void startCopilot();
     });
@@ -4381,11 +5067,54 @@
     showConnectionNotice("You're offline", "Waiting for your network. AskMoina will not reopen the live session automatically.", "slow");
   });
   window.addEventListener("online", () => {
+    if (socialModeActive && socialStandbyEnabled && !active && !starting) {
+      isAutomaticRetry = false;
+      automaticReconnectAttempts = 0;
+      void startSocialWarmSession();
+      return;
+    }
     if (active || starting) return;
     setConnectionState("READY", "ready");
     setStatus("Network restored. Tap Reconnect now when you're ready to resume.", "normal");
     showConnectionNotice("Network restored", "Your connection is back. Tap Reconnect now to resume the live session.", "slow");
   });
+  if (socialPrivateAudioConfirm) socialPrivateAudioConfirm.addEventListener("change", async () => {
+    if (!socialPrivateAudioConfirm.checked) {
+      if (socialInputActive) returnSocialToStandby();
+      socialOutputConfirmed = false;
+      if (socialStandbyEnabled) setSocialPanelState("standby", "Private audio is not confirmed", "Connect your earbuds and confirm private audio before the next wake.");
+      return;
+    }
+    socialAudioOutputFingerprint = await getSocialOutputFingerprint();
+    if (socialStandbyEnabled) {
+      socialOutputConfirmed = true;
+      setSocialPanelState("standby", "Private audio reconfirmed", "Local wake detection remains enabled. Say “Hey Moina” when ready.");
+    }
+  });
+  if (socialParticipantNoticeConfirm) socialParticipantNoticeConfirm.addEventListener("change", () => {
+    if (!socialParticipantNoticeConfirm.checked && socialStandbyEnabled) {
+      disarmSocialStandby();
+    }
+  });
+  if (socialStandbyToggle) socialStandbyToggle.addEventListener("click", () => { void enableSocialStandby(); });
+  if (socialReturnStandby) socialReturnStandby.addEventListener("click", returnSocialToStandby);
+  if (socialStopButton) socialStopButton.addEventListener("click", disarmSocialStandby);
+  const socialCameraModeButton = $("#socialCameraMode");
+  const openSocialModeButton = $("#openSocialMode");
+  if (socialCameraModeButton) socialCameraModeButton.addEventListener("click", showCameraAssistantMode);
+  if (openSocialModeButton) openSocialModeButton.addEventListener("click", showSocialIntelligenceMode);
+  if (navigator.mediaDevices && typeof navigator.mediaDevices.addEventListener === "function") {
+    navigator.mediaDevices.addEventListener("devicechange", async () => {
+      if (!socialStandbyEnabled) return;
+      const nextFingerprint = await getSocialOutputFingerprint();
+      if (!nextFingerprint || !socialAudioOutputFingerprint || nextFingerprint === socialAudioOutputFingerprint) return;
+      socialAudioOutputFingerprint = nextFingerprint;
+      if (socialInputActive) returnSocialToStandby();
+      if (socialPrivateAudioConfirm) socialPrivateAudioConfirm.checked = false;
+      socialOutputConfirmed = false;
+      setSocialPanelState("standby", "Audio route changed", "Reconnect and reconfirm private earbuds before waking Moina again.", "The available audio outputs changed, so AskMoina muted playback and returned to standby to avoid leaking a whisper.");
+    });
+  }
   toggleButton.addEventListener("click", () => {
     if (active || starting) {
       stopCopilot(true, "", "normal", false, false, true);
@@ -4399,6 +5128,14 @@
   clearTranscriptButton.addEventListener("click", resetTranscript);
 
   window.addEventListener("pagehide", () => {
+    socialStandbyEnabled = false;
+    socialModeActive = false;
+    socialInputActive = false;
+    stopLocalWakeRecognition();
+    if (socialNativeWakeServiceStarted) {
+      try { window.AskMoinaNativeWake.stopWakeService(); } catch (_) {}
+    }
+    socialNativeWakeServiceStarted = false;
     if (active || starting || socket) stopCopilot(false);
     if (previewStream) {
       previewStream.getTracks().forEach((track) => { try { track.stop(); } catch (_) {} });

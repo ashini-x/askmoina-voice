@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Script } from "node:vm";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -25,6 +26,8 @@ for (const path of [
 const workerSource = read("src/index.ts");
 assert.ok(workerSource.includes("withAskMoinaFontPreload"), "Worker HTML must preload the global font before first paint");
 assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated shells must load the canonical global font");
+assert.ok(workerSource.includes("<span>Social intelligence copilot</span>"), "the post-auth moinaOS selection must present social intelligence as the primary feature");
+assert.ok(workerSource.includes("<span>Camera assistance remains available</span>"), "the moinaOS selection must preserve camera assistance as a secondary capability");
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
 assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
 
@@ -149,10 +152,10 @@ assert.ok(worker.includes("CHOOSE YOUR EXPERIENCE"), "Interface 06 heading is mi
 for (const label of [
   "Early Release Access",
   "Next Release",
-  "Real-time visual intelligence",
-  "Live camera guidance",
+  "Social intelligence copilot",
+  "On-device wake-up on supported browsers",
   "Search with verified sources",
-  "Private and secure",
+  "Camera assistance remains available",
   "More powerful models",
   "Expanded real-world tools",
   "Next-generation experience",
@@ -203,5 +206,41 @@ assert.ok(!serviceWorker.includes('"/copilot.js"'), "Co-Pilot JavaScript must no
 for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js", "public/experience-selection.js"]) {
   execFileSync(process.execPath, ["--check", resolve(root, path)], { stdio: "pipe" });
 }
+
+
+const embeddedAssetsSource = read("src/copilot-assets.ts");
+const embeddedClientMatch = embeddedAssetsSource.match(/^export const COPILOT_JS = (".*");$/m);
+const embeddedHtmlMatch = embeddedAssetsSource.match(/^export const COPILOT_HTML = (".*");$/m);
+const embeddedCssMatch = embeddedAssetsSource.match(/^export const COPILOT_CSS = (".*");$/m);
+assert.ok(embeddedClientMatch && embeddedHtmlMatch && embeddedCssMatch, "Worker's embedded copilot assets must remain valid string exports");
+assert.ok(workerSource.includes("on-device-speech-recognition=(self)"), "AskMoina routes must explicitly permit on-device wake recognition where the browser supports it");
+const embeddedCopilotClient = JSON.parse(embeddedClientMatch[1]);
+const embeddedCopilotHtml = JSON.parse(embeddedHtmlMatch[1]);
+const embeddedCopilotCss = JSON.parse(embeddedCssMatch[1]);
+assert.doesNotThrow(() => new Script(embeddedCopilotClient, { filename: "embedded-askmoina-copilot.js" }), "Worker-served embedded copilot JavaScript must parse");
+assert.ok(embeddedCopilotHtml.includes('id="socialIntelligencePanel"'), "social intelligence must be the primary UI inside the existing Copilot route");
+assert.ok(embeddedCopilotHtml.includes('id="socialStandbyToggle"') && embeddedCopilotHtml.includes('id="socialReturnStandby"'), "social standby and return-to-standby controls must exist");
+assert.ok(embeddedCopilotCss.includes(".camera-app.social-primary .camera-stage"), "camera view must remain available but secondary in social mode");
+assert.ok(embeddedCopilotClient.includes("recognition.processLocally = true"), "wake detection must explicitly require local recognition");
+assert.ok(embeddedCopilotClient.includes("social_intelligence_mode: true"), "social mode must use the audio-only Live setup");
+assert.ok(embeddedCopilotClient.includes("if (socialModeActive && !socialInputActive) return;"), "standby must gate microphone frames before WebSocket send");
+assert.ok(embeddedCopilotClient.includes("if (socialModeActive && (!socialInputActive || !isSocialPrivateOutputReady()))"), "assistant playback must remain muted until activation and private-output readiness");
+assert.ok(embeddedCopilotClient.includes("window.AskMoinaNativeWake.startWakeDetector()"), "native Android app must use its local wake foreground service when available");
+assert.ok(embeddedCopilotClient.includes("window.askMoinaNativeWakeAudioRouteChanged"), "private headset route loss must be handled by the social UI");
+assert.ok(embeddedCopilotClient.includes("window.AskMoinaNativeWake.acknowledgeWake()"), "native wake events must be acknowledged to prevent repeated wake delivery");
+const nativeWakeService = read("android/app/src/main/java/com/askmoina/voice/LocalWakeService.java");
+const nativeMainActivity = read("android/app/src/main/java/com/askmoina/voice/MainActivity.java");
+const nativeManifest = read("android/app/src/main/AndroidManifest.xml");
+assert.ok(nativeWakeService.includes("SpeechRecognizer.createOnDeviceSpeechRecognizer"), "Android wake detection must require on-device speech recognition");
+assert.ok(nativeWakeService.includes('Pattern.compile("\\\\bhey\\\\s+moina\\\\b"'), "Android wake detector must match the configured phrase locally");
+assert.ok(nativeWakeService.includes("FOREGROUND_SERVICE_TYPE_MICROPHONE"), "Android wake detector must run as a declared microphone foreground service");
+assert.ok(nativeWakeService.includes("PARTIAL_WAKE_LOCK"), "screen-off wake operation must keep CPU processing available while opted in");
+assert.ok(nativeMainActivity.includes("requestPermissions"), "native bridge must explicitly request Android microphone/notification permissions");
+assert.ok(nativeMainActivity.includes("isTrustedOrigin"), "native JavaScript bridge must be restricted to the configured HTTPS origin");
+assert.ok(nativeMainActivity.includes("isPrivateOutputAvailable"), "native bridge must expose private-output availability to the client");
+assert.ok(nativeManifest.includes('android:foregroundServiceType="microphone"'), "native app must declare its microphone foreground-service type");
+assert.ok(embeddedCopilotClient.includes("A warm standby session must remain silent"), "standby must ignore unsolicited model transcripts and tool calls");
+assert.ok(embeddedCopilotClient.includes("stopLocalWakeRecognitionAndWait()"), "wake activation must wait for local recognizer microphone release before capture");
+assert.ok(embeddedAssetsSource.includes("social_intelligence_mode"), "Worker must allow the authenticated social-intelligence Live setup mode");
 
 console.log("PWA contract smoke: passed");

@@ -1708,3 +1708,55 @@ h3,h4,h5,h6{letter-spacing:-.02em}
     animation: none !important;
   }
 }
+
+/* M2/M3 — social intelligence is primary; camera UI remains a secondary mode. */
+.camera-app.social-primary .camera-stage { display: none !important; }
+.social-intelligence-panel {
+  position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column;
+  overflow: auto; color: #f7f8fb; background: #080a0e; padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  font-family: var(--askmoina-global-font, -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif);
+}
+.social-intelligence-panel[hidden] { display: none !important; }
+.social-panel-edge-light { position: fixed; inset: 0; pointer-events: none; opacity: .7; background: radial-gradient(ellipse 42% 14% at 50% 0%, rgba(54,126,255,.14), transparent 82%), radial-gradient(ellipse 34% 18% at 0% 100%, rgba(73,97,255,.11), transparent 80%), radial-gradient(ellipse 34% 18% at 100% 100%, rgba(0,194,201,.08), transparent 80%); }
+.social-panel-header, .social-panel-footer { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 14px; width: min(100%, 880px); margin-inline: auto; }
+.social-panel-header { min-height: 42px; }
+.social-panel-wordmark { color: #f6f7f9; text-decoration: none; letter-spacing: -.055em; font-weight: 300; font-size: 24px; }
+.social-mode-switch { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 15px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(255,255,255,.055); color: #f4f6fa; font: inherit; font-size: 12px; letter-spacing: .01em; cursor: pointer; }
+.social-mode-switch:focus-visible, .social-intelligence-panel button:focus-visible, .social-consent-row input:focus-visible { outline: 2px solid #9ab9ff; outline-offset: 3px; }
+.social-panel-content { position: relative; width: min(100%, 520px); margin: clamp(24px, 7vh, 72px) auto 30px; }
+.social-panel-eyebrow, .social-state-eyebrow { margin: 0 0 12px; font-size: 10px; letter-spacing: .18em; color: #9aa5b6; font-weight: 650; }
+.social-panel-content h1 { margin: 0; max-width: 460px; font-size: clamp(32px, 6vw, 54px); line-height: 1.04; letter-spacing: -.055em; font-weight: 420; }
+.social-panel-lead { max-width: 420px; margin: 17px 0 28px; color: #aeb7c6; font-size: 15px; line-height: 1.65; }
+.social-state-card { display: flex; align-items: center; gap: 14px; padding: 18px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,.105); background: rgba(255,255,255,.035); }
+.social-state-symbol { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(170,190,220,.22); background: rgba(255,255,255,.025); }
+.social-state-symbol span { display: block; width: 9px; height: 9px; border-radius: 50%; background: #747d8c; }
+.social-state-symbol[data-state="standby"] span { background: #83a8ff; box-shadow: 0 0 13px rgba(105,151,255,.5); }
+.social-state-symbol[data-state="connecting"] span, .social-state-symbol[data-state="active"] span { background: #5ee5c1; box-shadow: 0 0 15px rgba(94,229,193,.55); }
+.social-state-copy { min-width: 0; flex: 1; }
+.social-state-copy .social-state-eyebrow { margin-bottom: 5px; font-size: 9px; }
+.social-state-copy h2 { margin: 0 0 5px; font-size: 15px; font-weight: 590; letter-spacing: -.01em; }
+.social-state-copy p:last-child { margin: 0; color: #9da8b7; font-size: 12px; line-height: 1.5; }
+.social-state-pill { flex: none; color: #98a2b2; font-size: 9px; letter-spacing: .12em; font-weight: 750; }
+.social-state-pill[data-state="standby"] { color: #a9c0ff; }
+.social-state-pill[data-state="active"], .social-state-pill[data-state="connecting"] { color: #7ef0ce; }
+.social-consent-options { display: grid; gap: 10px; margin-top: 16px; }
+.social-consent-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.022); cursor: pointer; }
+.social-consent-row input { flex: 0 0 auto; width: 17px; height: 17px; margin: 2px 0 0; accent-color: #a8c0ff; }
+.social-consent-row span { display: grid; gap: 3px; }
+.social-consent-row strong { font-size: 12px; font-weight: 580; }
+.social-consent-row small { color: #929dad; font-size: 11px; line-height: 1.45; }
+.social-primary-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 17px; }
+.social-primary-action, .social-secondary-action { min-height: 49px; border-radius: 15px; padding: 0 18px; font: inherit; font-size: 14px; font-weight: 620; cursor: pointer; transition: opacity .18s ease, background .18s ease; }
+.social-primary-action { border: 1px solid #e4e9f1; color: #0d121b; background: #e8edf6; }
+.social-primary-action:disabled { opacity: .45; cursor: not-allowed; }
+.social-secondary-action { border: 1px solid rgba(255,255,255,.18); color: #f4f6fa; background: rgba(255,255,255,.055); }
+.social-text-action { background: transparent; border: 0; color: #a8b9dc; min-height: 36px; font: inherit; font-size: 12px; cursor: pointer; }
+.social-local-note { margin: 15px 0 0; color: #9da8b8; font-size: 11px; line-height: 1.55; }
+.social-local-note span { display: inline-block; color: #80e7c8; font-size: 9px; margin-right: 6px; }
+.social-device-note { margin: 7px 0 0; color: #7e8898; font-size: 10px; line-height: 1.55; }
+.social-error-note { padding: 12px 14px; margin: 13px 0 0; border-radius: 12px; color: #ffd5d5; background: rgba(170,50,60,.12); border: 1px solid rgba(226,95,106,.22); font-size: 12px; line-height: 1.5; }
+.social-panel-footer { margin-top: auto; padding-top: 10px; color: #677282; font-size: 10px; line-height: 1.45; }
+.camera-social-switch { font-size: 11px; }
+@media (max-height: 760px) { .social-panel-content { margin-top: 24px; } .social-panel-content h1 { font-size: 34px; } .social-panel-lead { margin: 12px 0 18px; } .social-consent-options { gap: 7px; margin-top: 10px; } .social-consent-row { padding: 10px 12px; } }
+@media (max-width: 380px) { .social-intelligence-panel { padding-left: 14px; padding-right: 14px; } .social-panel-footer { font-size: 9px; } .social-state-card { gap: 10px; padding: 14px 12px; } .social-state-symbol { width: 36px; height: 36px; flex-basis: 36px; } }
+@media (prefers-reduced-motion: reduce) { .social-primary-action, .social-secondary-action { transition: none; } }

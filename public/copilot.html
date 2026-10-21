@@ -4,7 +4,47 @@
 <meta name="theme-color" content="#090A0D"><meta name="color-scheme" content="dark"><meta name="description" content="askmoina sees, understands, and helps with real-world problems."><link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=0.4.80"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=0.4.80">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; media-src 'self' blob:">
 <title>askmoina · Real-world co-pilot</title><link rel="stylesheet" href="/copilot.css?v=0.4.94&ambient=20261017"><link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><script src="/transcript-merge.js" defer></script><script src="/copilot.js?v=0.4.93" defer></script><script src="/session-ui.js" defer></script></head>
-<body><main class="camera-app" aria-label="Camera conversation"><section class="camera-stage pre-start initial-intro" id="cameraStage" aria-label="Live camera view">
+<body><main class="camera-app social-primary" aria-label="AskMoina Voice"><section id="socialIntelligencePanel" class="social-intelligence-panel" aria-label="Social intelligence copilot">
+  <div class="social-panel-edge-light" aria-hidden="true"></div>
+  <header class="social-panel-header">
+    <a class="social-panel-wordmark" href="/" aria-label="AskMoina home">askmoina</a>
+    <div class="social-panel-header-actions"><button type="button" id="socialCameraMode" class="social-mode-switch">Camera assist <span aria-hidden="true">↗</span></button><button type="button" data-logout class="social-mode-switch">Sign out</button></div>
+  </header>
+  <div class="social-panel-content">
+    <p class="social-panel-eyebrow">YOUR PERSONAL SOCIAL INTELLIGENCE</p>
+    <h1>Stay in the moment.</h1>
+    <p class="social-panel-lead">Moina follows along when you activate it, recalls what matters, and keeps helpful thoughts private in your earbuds.</p>
+    <section class="social-state-card" aria-labelledby="socialModeTitle">
+      <div class="social-state-symbol" id="socialStateSymbol" data-state="idle" aria-hidden="true"><span></span></div>
+      <div class="social-state-copy">
+        <p class="social-state-eyebrow">ASKMOINA LIVE</p>
+        <h2 id="socialModeTitle">Standby is off</h2>
+        <p id="socialModeDetail" role="status" aria-live="polite">Enable local wake-up when you want hands-free activation.</p>
+      </div>
+      <span class="social-state-pill" id="socialModePill" data-state="idle">OFF</span>
+    </section>
+    <div class="social-consent-options">
+      <label class="social-consent-row">
+        <input type="checkbox" id="socialPrivateAudioConfirm">
+        <span><strong>Private audio is ready</strong><small>I have connected my earbuds or headphones and will keep private audio connected.</small></span>
+      </label>
+      <label class="social-consent-row">
+        <input type="checkbox" id="socialParticipantNoticeConfirm">
+        <span><strong>Conversation notice</strong><small>I will let participants know before AskMoina processes this conversation.</small></span>
+      </label>
+    </div>
+    <div class="social-primary-actions">
+      <button type="button" id="socialStandbyToggle" class="social-primary-action">Enable local wake-up</button>
+      <button type="button" id="socialReturnStandby" class="social-secondary-action" hidden>Return to standby</button>
+      <button type="button" id="socialStop" class="social-text-action" hidden>Disable and disconnect</button>
+    </div>
+    <p class="social-local-note"><span aria-hidden="true">●</span> Standby detection runs locally. No standby microphone audio is sent to Gemini.</p>
+    <p class="social-device-note" id="socialDeviceNote">This browser/PWA needs verified on-device speech recognition for wake-up. The native Android app uses Android on-device recognition where the device supports it; keep the foreground notification visible. Screen-off behaviour, Bluetooth routing and battery use are not yet verified.</p>
+    <p class="social-error-note" id="socialErrorNote" role="alert" hidden></p>
+  </div>
+  <footer class="social-panel-footer"><span>Real-time intelligence. Quiet by default.</span><span>Camera assistance remains available.</span></footer>
+</section>
+<section class="camera-stage pre-start initial-intro" id="cameraStage" aria-label="Live camera view">
 <div class="ambient-edge-light" aria-hidden="true"></div>
 <video id="videoPreview" autoplay playsinline muted aria-label="Live camera preview"></video>
 
@@ -18,7 +58,7 @@
   <div class="connection-notice-progress" id="connectionNoticeProgress" aria-hidden="true"><span></span></div>
   <button type="button" class="connection-notice-action" id="connectionNoticeAction" hidden>Try again</button>
 </div>
-<header class="floating-top"><button type="button" id="backButton" class="back-control" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button><div class="top-actions"><button type="button" id="openLibrary" class="library-open-control" aria-label="History and Key Memories" title="History and Key Memories"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7v5l3.2 1.9"/></svg></button><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
+<header class="floating-top"><button type="button" id="backButton" class="back-control" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg></button><div class="top-actions"><button type="button" id="openSocialMode" class="social-mode-switch camera-social-switch">Social intelligence</button><button type="button" id="openLibrary" class="library-open-control" aria-label="History and Key Memories" title="History and Key Memories"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.49-6.01L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7v5l3.2 1.9"/></svg></button><button type="button" class="logout-control" data-logout aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></button></div></header>
 <section id="librarySheet" class="library-sheet" hidden aria-hidden="true">
   <button type="button" class="library-scrim" id="libraryScrim" aria-label="Close Library"></button>
   <div class="library-panel" role="dialog" aria-modal="true" aria-labelledby="libraryTitle">

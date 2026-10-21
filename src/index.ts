@@ -143,10 +143,10 @@ const POST_AUTH_ONBOARDING = `
             <svg class='experience-card-chevron' viewBox='0 0 24 24' aria-hidden='true'><path d='m9 5 7 7-7 7'/></svg>
           </span>
           <span class='experience-feature-list' aria-label='moinaOS 1 features'>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Real-time visual intelligence</span></span>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Live camera guidance</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Social intelligence copilot</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>On-device wake-up on supported browsers</span></span>
             <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Search with verified sources</span></span>
-            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Private and secure</span></span>
+            <span class='experience-feature-row'><span class='experience-feature-check' aria-hidden='true'><svg viewBox='0 0 16 16'><path d='m2.7 8.1 3.1 3.1 7.1-7.2'/></svg></span><span>Camera assistance remains available</span></span>
           </span>
         </button>
         <button type='button' class='experience-card experience-card--preview' id='experienceMoinaOS2' aria-label='moinaOS 2, Next Release' aria-describedby='experiencePreviewNotice'>
@@ -795,6 +795,17 @@ const COPILOT_TOOL = {
     }
   }, DISPLAY_RESPONSE_CARD_FUNCTION, SEARCH_WEB_FUNCTION, HISTORY_SEARCH_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION]
 };
+
+const SOCIAL_INTELLIGENCE_SYSTEM_INSTRUCTION = [
+  "You are AskMoina's social intelligence co-pilot. The user may be in a live face-to-face conversation and may be using private earbuds.",
+  "Do not greet the user or speak spontaneously just because a Live session connects. Stay silent until the user speaks after a local wake activation or directly asks you something.",
+  "When the user addresses you, help them participate thoughtfully in the conversation. Use the words the user provides and the current conversational context; do not pretend to hear other participants when no audio was supplied.",
+  "When there is enough context, answer directly and briefly. When a relevant personal memory is genuinely useful, mention it carefully and distinguish a remembered statement from an inference. Do not invent personal facts or facts about other speakers.",
+  "Use natural Assamese-English code-switching when appropriate, with short and discreet spoken responses. Do not read long analyses or lists aloud unless the user explicitly asks.",
+  "Do not claim speaker identity, emotion, intent, relationship, or private facts from voice alone. Treat speaker attribution as uncertain unless the system explicitly provides evidence; never use voice as authentication.",
+  "For social advice, favour tactful questions, relevant reminders, concise examples, and respectful counterpoints. Avoid manipulative tactics, humiliation, or fabricating facts to help the user win an argument.",
+  "If evidence is weak, ask one brief clarification or say you are not sure. Silence is preferable to a speculative interruption. Never send an unsolicited response before an actual user turn."
+].join("\n");
 
 const SEARCH_GROUNDING_INSTRUCTION = [
   "M30 — MODEL-AWARE GROUNDING:",
@@ -2150,8 +2161,8 @@ async function handleVoiceSocket(
 
     if (clientNeedsResumeSetup) {
       try {
-        const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown };
-        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || resumeSetup.copilot_mode !== true) {
+        const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown; social_intelligence_mode?: unknown };
+        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || (resumeSetup.copilot_mode !== true && resumeSetup.social_intelligence_mode !== true) || (resumeSetup.social_intelligence_mode !== undefined && typeof resumeSetup.social_intelligence_mode !== "boolean")) {
           closeBoth(1008, "Invalid Live resume setup");
           return;
         }
@@ -2180,10 +2191,10 @@ async function handleVoiceSocket(
       }
       setupInitializing = true;
       try {
-        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown };
-        const allowedKeys = ["setup", "memory_context", "copilot_mode"];
+        const message = JSON.parse(event.data) as { setup?: unknown; memory_context?: unknown; copilot_mode?: unknown; social_intelligence_mode?: unknown };
+        const allowedKeys = ["setup", "memory_context", "copilot_mode", "social_intelligence_mode"];
         const memoryContext = typeof message?.memory_context === "string" ? message.memory_context.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, 16_000) : "";
-        if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean")) {
+        if (event.data.length > 20_000 || !message || typeof message !== "object" || !message.setup || Object.keys(message).some((key) => !allowedKeys.includes(key)) || (message.memory_context !== undefined && (typeof message.memory_context !== "string" || message.memory_context.length > 16_000)) || (message.copilot_mode !== undefined && typeof message.copilot_mode !== "boolean") || (message.social_intelligence_mode !== undefined && typeof message.social_intelligence_mode !== "boolean") || (message.copilot_mode === true && message.social_intelligence_mode === true)) {
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
@@ -2192,10 +2203,14 @@ async function handleVoiceSocket(
           ? `${SYSTEM_INSTRUCTION}\\n\\n${pronunciationGuidance}`
           : SYSTEM_INSTRUCTION;
         const enableCopilotForSetup = message.copilot_mode === true;
-        const systemInstruction = buildPersonalizedSystemInstruction(
-          enableCopilotForSetup
+        const enableSocialForSetup = message.social_intelligence_mode === true;
+        const selectedInstruction = enableSocialForSetup
+          ? `${baseInstruction}\n\n${SOCIAL_INTELLIGENCE_SYSTEM_INSTRUCTION}`
+          : enableCopilotForSetup
             ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
+            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`;
+        const systemInstruction = buildPersonalizedSystemInstruction(
+          selectedInstruction,
           memoryContext,
         );
         copilotMode = enableCopilotForSetup;
@@ -3333,7 +3348,7 @@ export default {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
+        "Permissions-Policy": "microphone=(self), camera=(self), on-device-speech-recognition=(self), geolocation=(), payment=()",
         "Cross-Origin-Resource-Policy": "same-origin",
       });
       return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
@@ -3394,7 +3409,7 @@ export default {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
+        "Permissions-Policy": "microphone=(self), camera=(self), on-device-speech-recognition=(self), geolocation=(), payment=()",
         "Cross-Origin-Resource-Policy": "same-origin",
       });
       return new Response(body, { status: 200, headers });
