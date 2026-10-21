@@ -83,6 +83,8 @@ This architecture is the target. The current branch now contains an experimental
 
 **Done when:** local wake detection gates audio before the Gemini sender; tests prove no upstream audio while in standby, no duplicate session on wake, and safe fallback after a dead warm socket. Wake latency and false-activation rate must be measured on a real device.
 
+**Platform gate:** the current browser adapter uses `SpeechRecognition.processLocally` with cloud processing explicitly disallowed. MDN compatibility data currently reports this API as unsupported in Chrome for Android, so the PWA adapter must fail closed on the primary Android target. Do not count Android wake-up as complete until a native Android on-device detector or bundled, licensed offline model is integrated and tested. Do not substitute cloud transcription for standby detection.
+
 ### M3 — Existing UI integration and device-state clarity
 
 **Purpose:** make the new primary experience discoverable, explicit and controllable within AskMoina.
