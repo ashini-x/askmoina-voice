@@ -159,7 +159,10 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
         if (requestCode == REQUEST_NATIVE_WAKE_MIC) {
-            answerNativeWakePermission(granted);
+            boolean microphoneGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            boolean notificationsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+            answerNativeWakePermission(microphoneGranted && notificationsGranted);
             return;
         }
         if (requestCode == REQUEST_WEB_MEDIA) {
@@ -218,15 +221,18 @@ public final class MainActivity extends Activity {
         @JavascriptInterface
         public void requestMicrophonePermission() {
             runOnUiThread(() -> {
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                List<String> missing = new ArrayList<>();
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(Manifest.permission.RECORD_AUDIO);
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(Manifest.permission.POST_NOTIFICATIONS);
+                }
+                if (missing.isEmpty()) {
                     answerNativeWakePermission(true);
                 } else {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NATIVE_WAKE_MIC);
-                    } else {
-                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_NATIVE_WAKE_MIC);
-                    }
+                    requestPermissions(missing.toArray(new String[0]), REQUEST_NATIVE_WAKE_MIC);
                 }
             });
         }
