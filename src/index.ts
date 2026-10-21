@@ -1,6 +1,6 @@
 import type { Env } from "./config/env";
 import { handleVedaBoundaryRequest, isVedaRoutePath } from "./veda/feature-boundary";
-import { handleScorpioPreviewRequest, isScorpioPreviewRoute } from "./scorpio-preview";
+import { handleScorpioPreviewRequest, isScorpioPreviewRoute, isScorpioPreviewRootRequest } from "./scorpio-preview";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
 import { handleUserMemoryRequest } from "./user-memory";
@@ -3167,7 +3167,7 @@ export default {
 
     // The Scorpio-N button preview is isolated from the live Co-Pilot. Keep the
     // page, assets and API behind an authenticated AskMoina account/admin session.
-    if (isScorpioPreviewRoute(url.pathname)) {
+    if (isScorpioPreviewRoute(url.pathname) || isScorpioPreviewRootRequest(request)) {
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = accountId ? false : await isAdmin(request, env);
       const scorpioResponse = await handleScorpioPreviewRequest(
