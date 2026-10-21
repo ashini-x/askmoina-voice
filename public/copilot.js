@@ -3731,6 +3731,23 @@
       return;
     }
 
+    // A warm standby session must remain silent. Do not render transcripts or execute
+    // model tool calls while asleep. Only lifecycle/control messages above and below
+    // this guard are permitted to affect the client in standby.
+    if (socialModeActive && !socialInputActive) {
+      if (message.go_away || message.goAway) {
+        setConnectionState("RECONNECTING", "connecting");
+        setSocialPanelState("connecting", "Refreshing the warm session", "Gemini is reconnecting. Standby microphone audio remains local.");
+        retryConnection("The warm Gemini session is rotating. Reconnecting without sending standby audio…");
+        return;
+      }
+      if (message.error) {
+        retryConnection("The warm Gemini session reported an error. Reconnecting before opening the microphone gate…");
+        return;
+      }
+      return;
+    }
+
     const messageToolCalls = getToolCalls(message);
     const hasSearchCallOnThisMessage = messageToolCalls.some((call) => call && call.name === "search_current_web");
     if (hasSearchCallOnThisMessage) startLiveSearchProgress();
