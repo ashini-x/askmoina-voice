@@ -2209,7 +2209,10 @@ async function handleVoiceSocket(
           : enableCopilotForSetup
             ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
             : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`;
-        const systemInstruction = buildPersonalizedSystemInstruction(selectedInstruction, memoryContext);
+        const systemInstruction = buildPersonalizedSystemInstruction(
+          selectedInstruction,
+          memoryContext,
+        );
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
