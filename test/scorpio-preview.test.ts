@@ -23,6 +23,10 @@ describe("Scorpio-N command preview boundary", () => {
     expect(await api?.json()).toMatchObject({ error: "authentication_required" });
   });
 
+  it("does not override the production website root", () => {
+    expect(isScorpioPreviewRootRequest(new Request("https://askmoina-voice.thenewtongs.workers.dev/"))).toBe(false);
+  });
+
   it("serves the command tester at the isolated preview website root without login", async () => {
     const host = "https://feature-scorpio-n-button-preview-askmoina-voice.thenewtongs.workers.dev";
     const request = new Request(host + "/");
