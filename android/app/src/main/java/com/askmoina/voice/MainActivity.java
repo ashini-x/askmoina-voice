@@ -18,6 +18,11 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.media.AudioManager;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.os.Handler;
+import android.os.Looper;
 import android.webkit.WebViewClient;
 import android.graphics.Color;
 import android.view.View;
@@ -40,6 +45,8 @@ public final class MainActivity extends Activity {
     private boolean pageLoaded;
     private boolean pendingWakeEvent;
     private boolean nativeWakeForegroundActive;
+    private AudioManager outputAudioManager;
+    private AudioDeviceCallback outputDeviceCallback;
 
     private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -86,6 +93,7 @@ public final class MainActivity extends Activity {
         webView.setWebViewClient(new TrustedOriginWebViewClient());
         webView.setWebChromeClient(new TrustedMediaChromeClient());
         registerWakeReceiver();
+        registerAudioDeviceCallback();
         webView.loadUrl(BuildConfig.ASKMOINA_BASE_URL);
     }
 
@@ -103,6 +111,25 @@ public final class MainActivity extends Activity {
         String host = uri.getHost();
         return host != null && host.equalsIgnoreCase(base.getHost()) &&
                 (uri.getPort() == -1 || uri.getPort() == 443);
+    }
+
+    private void registerAudioDeviceCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        outputAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (outputAudioManager == null) return;
+        outputDeviceCallback = new AudioDeviceCallback() {
+            @Override public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                notifyWebOutputRouteChanged();
+            }
+            @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                notifyWebOutputRouteChanged();
+            }
+        };
+        outputAudioManager.registerAudioDeviceCallback(outputDeviceCallback, new Handler(Looper.getMainLooper()));
+    }
+
+    private void notifyWebOutputRouteChanged() {
+        evaluateJs("window.askMoinaNativeWakeAudioRouteChanged && window.askMoinaNativeWakeAudioRouteChanged()");
     }
 
     private void registerWakeReceiver() {
@@ -369,6 +396,11 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (outputAudioManager != null && outputDeviceCallback != null) {
+            try { outputAudioManager.unregisterAudioDeviceCallback(outputDeviceCallback); } catch (RuntimeException ignored) {}
+            outputDeviceCallback = null;
+            outputAudioManager = null;
+        }
         if (receiverRegistered) {
             try { unregisterReceiver(wakeReceiver); } catch (RuntimeException ignored) {}
         }
