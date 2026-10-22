@@ -1,1 +1,49 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin fetchpriority="high"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133"><meta http-equiv="refresh" content="0;url=/"><title>Vision</title></head><body><a href="/">Continue</a></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#212121">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Test AskMoina's voice. No signup required.">
+<link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/audio-chat.css?v=__APP_VERSION__">
+<link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133">
+<title>askmoina · Voice test</title>
+<script src="/audio-chat.js?v=__APP_VERSION__" defer></script>
+</head>
+<body>
+<main class="voice-shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
+    <span class="guest-label"><span class="status-dot"></span> Guest · Audio only</span>
+  </header>
+  <section class="conversation" aria-label="Voice test">
+    <div class="hero">
+      <p class="eyebrow">VOICE TEST</p>
+      <h1>Say “Moina”.</h1>
+      <p class="helper">The reply should be: “Yes, I am here.”</p>
+    </div>
+    <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
+      <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>
+    </section>
+  </section>
+  <footer class="composer-wrap">
+    <div class="composer" id="composer">
+      <div class="composer-copy">
+        <strong id="composerTitle">Voice test</strong>
+        <span id="status" role="status" aria-live="polite">Checking voice service…</span>
+        <span id="availability" class="availability" role="status" aria-live="polite"></span>
+      </div>
+      <div class="actions">
+        <button type="button" id="toggleVoice" class="talk-button" aria-label="Start listening" aria-pressed="false" disabled>
+          <span class="talk-icon" aria-hidden="true">●</span><span id="buttonLabel">Checking voice</span>
+        </button>
+        <button type="button" id="stopVoice" class="stop-button" aria-label="Stop assistant voice" disabled>Stop voice</button>
+      </div>
+    </div>
+    <p class="composer-note">Tap Start listening, allow microphone access, then say “Moina”.</p>
+  </footer>
+</main>
+</body>
+</html>

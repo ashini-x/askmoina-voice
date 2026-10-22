@@ -8,9 +8,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
 const globalFontCss = read("public/askmoina-global-font.css");
-const publicAudioShell = read("public/audio.html");
-assert.ok(publicAudioShell.includes('id="toggleVoice"') && publicAudioShell.includes('id="mathFundCard"') && publicAudioShell.includes('id="transcript"'), "public audio shell must expose voice controls, live fundraiser, and transcript");
-assert.ok(!publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes("Face ID") && !publicAudioShell.includes("Sign up"), "public home must stay audio-only and no-signup");
+const publicAudioShell = read("public/index.html");
+assert.ok(publicAudioShell.includes('id="toggleVoice"') && publicAudioShell.includes('id="stopVoice"') && publicAudioShell.includes('id="transcript"'), "public guest shell must expose start, stop-voice, and transcript controls");
+assert.ok(publicAudioShell.includes('Say “Moina”.') && !publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes('id="mathFundCard"') && !publicAudioShell.includes("moinaOS 2") && !publicAudioShell.includes("Sign up"), "public home must contain only the guest wake-word voice test");
 assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must reference its locally bundled typeface");
 assert.ok(globalFontCss.includes("font-display: block;"), "global font must suppress fallback-font flashes");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
@@ -74,7 +74,7 @@ assert.ok(gate.includes('window.location.replace("/install")'), "browser-tab use
 assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
-assert.ok(worker.includes('const audioUrl = new URL("/audio", request.url);'), "public audio-first home route missing");
+assert.ok(worker.includes('const audioUrl = new URL("/index.html", request.url);'), "public audio-first home route missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
 assert.ok(worker.includes('const themeColor = "#090A0D"'), "PWA theme must match the dark app shell");
 assert.ok(worker.includes('manifest.theme_color = "#090A0D"') && worker.includes('manifest.background_color = "#090A0D"'), "served manifest must force black Android system-bar colors");
@@ -85,7 +85,7 @@ assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-scree
 assert.ok(!worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "obsolete launch-overlay bypass logic must remain removed");
 assert.ok(!read("public/native-app.css").includes(".app-launch-transition"), "launch-interstitial styles must remain removed");
 assert.ok(worker.includes("const POST_AUTH_ONBOARDING = "), "post-auth screens must be present");
-assert.ok(worker.includes('new URL("/audio", request.url)'), "root must serve the no-signup audio shell");
+assert.ok(worker.includes('new URL("/index.html", request.url)'), "root must serve the no-signup audio shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
 assert.ok(worker.includes("const NATIVE_APP_MENU_SHEET") && worker.includes("native-menu-signout"), "native app menu must include app settings and sign-out");
 assert.ok(read("public/native-app.css").includes(".native-menu-sheet"), "native app menu styling is missing");
@@ -162,18 +162,19 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-const audioShell = read("public/audio.html");
+const audioShell = read("public/index.html");
 const audioClient = read("public/audio-chat.js");
 const audioStyles = read("public/audio-chat.css");
-assert.ok(worker.includes('const audioUrl = new URL("/audio", request.url)'), "Worker must serve the new audio-first public shell");
-assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="transcript"'), "audio shell must include microphone controls and transcript");
-assert.ok(audioShell.includes("moinaOS 1") && audioShell.includes("moinaOS 2") && audioShell.includes("Invite only"), "audio shell must present the two products and invite-only access");
-assert.ok(audioShell.includes('id="mathFundCard"') && audioShell.includes("₹5,00,000"), "audio shell must present the community-gated Math course");
-assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes("Face ID") && !audioShell.includes("Sign up"), "public audio shell must not expose camera or account onboarding");
-assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && audioClient.includes('window.setInterval(refreshMathFund, 10000)'), "audio client must start guest voice sessions and poll verified donations");
-assert.ok(audioStyles.includes(".product-grid") && audioStyles.includes(".composer") && audioStyles.includes(".sidebar"), "audio shell must use the ChatGPT-like product and conversation layout");
+assert.ok(worker.includes('const audioUrl = new URL("/index.html", request.url)'), "Worker must serve the static guest voice-test shell");
+assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="stopVoice"') && audioShell.includes('id="transcript"'), "guest shell must include start, stop-voice, and transcript controls");
+assert.ok(audioShell.includes('Say “Moina”.') && audioShell.includes('Yes, I am here.'), "guest shell must explain the wake-word test");
+assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes('id="mathFundCard"') && !audioShell.includes("moinaOS 1") && !audioShell.includes("moinaOS 2") && !audioShell.includes("Sign up"), "guest shell must hide products, fundraiser, camera, and signup UI");
+assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && audioClient.includes("wakeWordHeard") && audioClient.includes("assistantVoiceMuted"), "audio client must use guest access and gate speech by wake word");
+assert.ok(audioClient.includes('stopVoiceButton.addEventListener("click"') && audioClient.includes('setButton("Stop listening", false)'), "voice session must expose clear stopping controls");
+assert.ok(worker.includes("GUEST_WAKE_WORD_INSTRUCTION") && worker.includes("tools: guestSessionRequested ? []"), "server must use the quiet wake-word prompt without guest tools");
+assert.ok(audioStyles.includes(".voice-shell") && audioStyles.includes(".composer") && audioStyles.includes(".transcript"), "minimal chat-style voice layout styles are missing");
 assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned assets should use long-lived immutable caching while unversioned URLs remain revalidated");
-assert.ok(worker.includes("const isImmutableVersionedAsset") && worker.includes("max-age=31536000, immutable"), "versioned cache selection remains protected");
+
 const nativeAppCss = read("public/native-app.css");
 assert.ok(nativeAppCss.includes("@keyframes askmoina-screen-fade-up") && nativeAppCss.includes("170ms cubic-bezier(.22,1,.36,1)"), "native app screens must use the lightweight premium fade-in");
 assert.ok(nativeAppCss.includes("@media(prefers-reduced-motion:reduce)") && nativeAppCss.includes(".experience-selection-overlay:not([hidden]) .experience-selection-content"), "fade-in must respect reduced-motion preferences");

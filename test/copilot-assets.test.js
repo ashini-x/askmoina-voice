@@ -5,6 +5,7 @@ import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERI
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const audioHtml = readFileSync(new URL("../public/audio.html", import.meta.url), "utf8");
+const indexHtml = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 const audioScript = readFileSync(new URL("../public/audio-chat.js", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
@@ -526,14 +527,18 @@ describe("Live Co-Pilot browser assets", () => {
 
 
 describe("Native mobile-first AskMoina shell", () => {
-  it("serves the audio-first product shell at root", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
-    expect(workerSource).toContain('"/api/donation/status"');
-    expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
+  it("serves a minimal guest wake-word voice test at root", () => {
+    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
+    expect(audioHtml).toContain('id="stopVoice"');
+    expect(audioHtml).toContain('Say “Moina”.');
+    expect(indexHtml).toContain('id="stopVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
-    expect(workerSource).toContain("moinaOS 1");
-    expect(workerSource).toContain("moinaOS 2");
+    expect(audioHtml).not.toContain('id="mathFundCard"');
+    expect(audioHtml).not.toContain("moinaOS 2");
+    expect(audioScript).toContain("wakeWordHeard");
+    expect(audioScript).toContain("assistantVoiceMuted");
+    expect(workerSource).toContain("GUEST_WAKE_WORD_INSTRUCTION");
   });
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
@@ -550,14 +555,12 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(nativeAppScript).toContain("returnFocus.focus");
   });
 
-  it("allows only microphone access in the public app while keeping legacy camera routes gated", () => {
-    expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(), geolocation=()');
-    expect(workerSource).toContain('guestSessionRequested = url.searchParams.get("guest") === "1"');
+  it("allows guarded guest microphone testing and keeps the camera route unavailable", () => {
+    expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()');
     expect(workerSource).toContain('guestSessionRequested = requestUrl.searchParams.get("guest") === "1"');
     expect(audioScript).toContain('wsUrl.searchParams.set("guest", "1")');
     expect(workerSource).toContain('url.pathname === "/copilot" || url.pathname === "/copilot.html"');
-    expect(workerSource).toContain("There is no guest access.");
-    expect(workerSource).toContain('url.pathname === "/account"');
+    expect(workerSource).toContain("GUEST_WAKE_WORD_INSTRUCTION");
   });
   it("keeps History and Key Memories in the existing camera app and uses a mobile sheet", () => {
     expect(html).toContain('id="librarySheet"');
@@ -968,22 +971,22 @@ describe("Dark-first app shell and brand assets", () => {
 
 
 
-  it("routes the public root to the audio shell and keeps product and donation gates visible", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
+  it("routes the public root to the minimal guest voice test", () => {
+    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
+    expect(audioHtml).toContain('id="stopVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
-    expect(audioHtml).toContain("moinaOS 2");
-    expect(audioHtml).toContain("Invite only");
-    expect(workerSource).toContain('url.pathname === "/api/donation/status"');
-    expect(workerSource).toContain("math_course_donations");
+    expect(audioHtml).not.toContain('id="mathFundCard"');
+    expect(audioHtml).not.toContain('id="experienceMoinaOS2"');
+    expect(audioScript).toContain('stopVoiceButton.addEventListener("click"');
   });
-  it("removes the launch interstitial and serves the audio-first public homepage", () => {
+  it("removes the launch interstitial and serves the minimal public voice test", () => {
     expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
-    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
-    expect(workerSource).toContain('const isAuthPublicPath = url.pathname === "/"');
-    expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
-    expect(nativeAppCss).not.toContain(".app-launch-transition");
+    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
+    expect(indexHtml).toContain('id="stopVoice"');
+    expect(indexHtml).not.toContain('id="mathFundCard"');
+    expect(indexHtml).not.toContain('id="videoPreview"');
   });
 });

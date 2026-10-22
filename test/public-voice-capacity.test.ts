@@ -69,8 +69,8 @@ describe("public audio-first voice access", () => {
     env.ASSETS = {
       async fetch(request: Request) {
         const path = new URL(request.url).pathname;
-        if (path === "/audio") {
-          return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Talk</button><section id="mathFundCard"></section><div id="transcript"></div><p>moinaOS 2 · Invite only</p>', {
+        if (path === "/index.html") {
+          return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Start listening</button><button id="stopVoice">Stop voice</button><div id="transcript"></div><p>Say “Moina”.</p>', {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           });
         }
@@ -82,8 +82,8 @@ describe("public audio-first voice access", () => {
     expect(root.headers.get("Set-Cookie")).toBeNull();
     const html = await root.text();
     expect(html).toContain('id="toggleVoice"');
-    expect(html).toContain('id="mathFundCard"');
-    expect(html).toContain("moinaOS 2");
+    expect(html).toContain('id="stopVoice"');
+    expect(html).toContain("Say “Moina”.");
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain("Face ID");
     expect(objectNames).toHaveLength(0);

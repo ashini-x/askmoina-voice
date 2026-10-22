@@ -5,92 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#212121">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="askmoina — real-time voice intelligence, with no signup.">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=__APP_VERSION__">
+<meta name="description" content="Test AskMoina's voice. No signup required.">
 <link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/audio-chat.css?v=__APP_VERSION__">
 <link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133">
-<title>askmoina · Voice intelligence</title>
+<title>askmoina · Voice test</title>
 <script src="/audio-chat.js?v=__APP_VERSION__" defer></script>
 </head>
 <body>
-<div class="app-shell">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-top">
-      <a class="brand" href="/" aria-label="askmoina home"><span class="brand-mark">m</span><span>askmoina</span></a>
-      <button class="icon-button sidebar-close" id="sidebarClose" aria-label="Close sidebar">×</button>
-      <button class="new-chat" id="clearTranscript"><span class="plus-icon">＋</span><span>New chat</span><kbd>⌘ K</kbd></button>
-      <p class="sidebar-label">YOUR PRODUCTS</p>
-      <button class="sidebar-product active" type="button" id="startMoinaOS1"><span class="product-icon">m1</span><span><strong>moinaOS 1</strong><small>Voice assistant</small></span><span class="product-arrow">↗</span></button>
-      <div class="sidebar-product disabled" aria-label="moinaOS 2, invite only"><span class="product-icon muted">m2</span><span><strong>moinaOS 2</strong><small>Invite only</small></span><span class="lock-mark">⌁</span></div>
+<main class="voice-shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
+    <span class="guest-label"><span class="status-dot"></span> Guest · Audio only</span>
+  </header>
+  <section class="conversation" aria-label="Voice test">
+    <div class="hero">
+      <p class="eyebrow">VOICE TEST</p>
+      <h1>Say “Moina”.</h1>
+      <p class="helper">The reply should be: “Yes, I am here.”</p>
     </div>
-    <div class="sidebar-bottom">
-      <section class="fund-card" id="mathFundCard" data-unlocked="false" aria-labelledby="mathFundTitle">
-        <div class="fund-kicker"><span class="fund-symbol">∑</span><span>COMMUNITY GOAL</span></div>
-        <h2 id="mathFundTitle">Math course</h2>
-        <p class="fund-copy">Help unlock the course for everyone.</p>
-        <div class="fund-numbers"><strong id="fundAmount">₹0</strong><span>of ₹5,00,000</span></div>
-        <div class="fund-track" id="fundTrack" role="progressbar" aria-label="Verified donations toward the Math course" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="fundFill"></span></div>
-        <div class="fund-under"><span id="fundPercent">0%</span><span id="fundStatus">Checking verified contributions…</span></div>
-        <button class="course-button" id="mathCourseButton" type="button" disabled>Locked until ₹5 lakh</button>
-      </section>
-      <div class="sidebar-footnote"><span class="status-dot"></span><span>Audio only · no account required</span></div>
-    </div>
-  </aside>
-  <div class="mobile-scrim" id="mobileScrim" hidden></div>
-  <main class="main-panel">
-    <header class="topbar">
-      <button class="icon-button menu-button" id="menuButton" aria-label="Open sidebar"><span>☰</span></button>
-      <div class="topbar-title"><strong>moinaOS 1</strong><span class="topbar-tag">EARLY ACCESS</span></div>
-      <span class="privacy-pill"><span class="status-dot"></span> Microphone only</span>
-    </header>
-    <section class="conversation-scroll" id="conversationScroll">
-      <div class="welcome" id="welcome">
-        <div class="welcome-mark"><span>m</span><i></i></div>
-        <p class="eyebrow">REAL-TIME VOICE INTELLIGENCE</p>
-        <h1>What’s on your mind?</h1>
-        <p class="welcome-copy">Talk naturally with Moina. No camera, no signup, no setup beyond your microphone.</p>
-      </div>
-      <section class="product-grid" aria-label="AskMoina products">
-        <article class="product-card product-card-primary">
-          <div class="product-card-head"><span class="product-token">01</span><span class="availability-tag"><span class="status-dot"></span> Available now</span></div>
-          <h2>moinaOS 1</h2>
-          <p>Your real-time AI companion, powered by live audio.</p>
-          <button type="button" class="product-action" id="startMoinaOS1Secondary">Start talking <span>↗</span></button>
-        </article>
-        <article class="product-card product-card-invite">
-          <div class="product-card-head"><span class="product-token">02</span><span class="invite-tag">Invite only</span></div>
-          <h2>moinaOS 2</h2>
-          <p>A separate, invite-only product. Access is not open yet.</p>
-          <button type="button" class="product-action subdued" disabled>Invitation required <span>⌁</span></button>
-        </article>
-        <article class="product-card product-card-math">
-          <div class="product-card-head"><span class="product-token">03</span><span class="locked-tag">Goal-gated</span></div>
-          <h2>Math course</h2>
-          <p>Unlocks for everyone when the verified community fund reaches ₹5,00,000.</p>
-          <div class="mini-fund-track" aria-hidden="true"><span id="miniFundFill"></span></div>
-          <div class="mini-fund-copy"><strong id="miniFundAmount">₹0 raised</strong><span id="miniFundPercent">0%</span></div>
-          <button type="button" class="product-action subdued" disabled id="mathCourseButtonSecondary">Locked until ₹5 lakh <span>⌁</span></button>
-        </article>
-      </section>
-      <div class="conversation-divider"><span>YOUR CONVERSATION</span><span class="divider-line"></span></div>
-      <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
-        <div class="empty-state" id="emptyTranscript"><span class="empty-state-icon">◌</span><strong>Ready when you are</strong><p>Tap <b>Start talking</b>, allow microphone access, and speak naturally.</p></div>
-      </section>
-      <section id="mathUnlockedPanel" class="unlocked-panel" hidden>
-        <div class="unlocked-icon">✓</div><div><strong>Math course unlocked</strong><p id="courseUnlockMessage">The community goal has been reached.</p></div>
-      </section>
+    <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
+      <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>
     </section>
-    <footer class="composer-wrap">
-      <div class="composer" id="composer">
-        <div class="composer-leading" aria-hidden="true"><span class="mic-glyph">◖</span></div>
-        <div class="composer-copy"><strong id="composerTitle">Start a voice conversation</strong><span id="status" role="status" aria-live="polite">Checking voice service…</span><span id="availability" class="availability" role="status" aria-live="polite"></span></div>
-        <button type="button" id="toggleVoice" class="talk-button" aria-label="Start talking" aria-pressed="false" disabled><span class="talk-icon" aria-hidden="true">●</span><span id="buttonLabel">Checking voice</span></button>
+  </section>
+  <footer class="composer-wrap">
+    <div class="composer" id="composer">
+      <div class="composer-copy">
+        <strong id="composerTitle">Voice test</strong>
+        <span id="status" role="status" aria-live="polite">Checking voice service…</span>
+        <span id="availability" class="availability" role="status" aria-live="polite"></span>
       </div>
-      <p class="composer-note">Ask anything · Moina listens after you tap the microphone</p>
-    </footer>
-  </main>
-</div>
-
+      <div class="actions">
+        <button type="button" id="toggleVoice" class="talk-button" aria-label="Start listening" aria-pressed="false" disabled>
+          <span class="talk-icon" aria-hidden="true">●</span><span id="buttonLabel">Checking voice</span>
+        </button>
+        <button type="button" id="stopVoice" class="stop-button" aria-label="Stop assistant voice" disabled>Stop voice</button>
+      </div>
+    </div>
+    <p class="composer-note">Tap Start listening, allow microphone access, then say “Moina”.</p>
+  </footer>
+</main>
 </body>
 </html>

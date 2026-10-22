@@ -4,6 +4,7 @@
   const statusNode = document.querySelector("#status");
   const availabilityNode = document.querySelector("#availability");
   const toggleButton = document.querySelector("#toggleVoice");
+  const stopVoiceButton = document.querySelector("#stopVoice");
   const buttonLabel = document.querySelector("#buttonLabel");
   const transcriptNode = document.querySelector("#transcript");
   const clearButton = document.querySelector("#clearTranscript");
@@ -81,6 +82,8 @@
   let active = false;
   let stopping = false;
   let setupReady = false;
+  let wakeWordHeard = false;
+  let assistantVoiceMuted = false;
   let nextPlaybackTime = 0;
   let playbackNodes = new Set();
   let currentTranscriptNodes = { user: null, assistant: null };
@@ -118,7 +121,7 @@
       if (requestId !== availabilityCheckSequence) return result;
 
       if (result.available) {
-        setAvailability(result.message || "Voice is ready. Provider limits may apply.", "normal");
+        setAvailability("Voice service ready.", "normal");
       } else {
         setAvailability("Voice unavailable right now. See the status above for the reason.", "error");
         if (result.message) setStatus(result.message, "error");
@@ -188,6 +191,13 @@
   function updateLiveTranscript(role, incomingText) {
     const text = String(incomingText || "").trim();
     if (!text) return;
+    if (role === "user" && /\bmoina\b/i.test(text)) {
+      wakeWordHeard = true;
+      assistantVoiceMuted = false;
+      setStatus("Moina heard. Responding…");
+    }
+    // Ignore all model output until the incoming transcription confirms the wake word.
+    if (role === "assistant" && !wakeWordHeard) return;
     const entry = getTranscriptNode(role);
     if (!entry) return;
 
@@ -289,6 +299,15 @@
     }
     playbackNodes.clear();
     nextPlaybackTime = audioContext ? audioContext.currentTime : 0;
+    if (stopVoiceButton) stopVoiceButton.disabled = true;
+  }
+
+  if (stopVoiceButton) {
+    stopVoiceButton.addEventListener("click", () => {
+      assistantVoiceMuted = true;
+      stopPlayback();
+      setStatus("Voice stopped. Say “Moina” to test again.");
+    });
   }
 
   function decodePcm16(base64) {
@@ -303,7 +322,7 @@
   }
 
   function playPcmAudio(base64, mimeType) {
-    if (!audioContext || !base64) return;
+    if (!audioContext || !base64 || assistantVoiceMuted || !wakeWordHeard) return;
     const match = String(mimeType || "").match(/rate=(\d+)/i);
     const sampleRate = match ? Number(match[1]) : 24000;
     const samples = decodePcm16(base64);
@@ -319,9 +338,11 @@
     source.start(scheduledStart);
     nextPlaybackTime = scheduledStart + buffer.duration;
     playbackNodes.add(source);
+    if (stopVoiceButton) stopVoiceButton.disabled = false;
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
       try { source.disconnect(); } catch (_) { /* already disconnected */ }
+      if (playbackNodes.size === 0 && stopVoiceButton) stopVoiceButton.disabled = true;
     });
   }
 
@@ -393,8 +414,10 @@
       }
       starting = false;
       active = true;
-      setButton("End conversation", false);
-      setStatus("Connected. You can speak naturally; you may interrupt Moina at any time.");
+      setButton("Stop listening", false);
+      wakeWordHeard = false;
+      assistantVoiceMuted = false;
+      setStatus("Listening for “Moina”.");
       if (voiceAvailability && voiceAvailability.available) {
         const sessionMinutes = Math.max(1, Math.ceil((Number(voiceAvailability.maxSessionSeconds) || 540) / 60));
         setAvailability("Conversation active · up to " + sessionMinutes + " min for this session.", "normal");
@@ -419,13 +442,14 @@
         if (part.text) updateLiveTranscript("assistant", part.text);
         const inlineData = part.inline_data || part.inlineData;
         if (inlineData && inlineData.data) {
-          if (!wasInterrupted) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
+          if (!wasInterrupted && wakeWordHeard && !assistantVoiceMuted) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
         }
       }
 
       if (serverContent.turn_complete || serverContent.turnComplete) {
         finalizeTranscriptTurn();
-        if (active) setStatus("Listening — you can speak again.");
+        wakeWordHeard = false;
+        if (active) setStatus("Listening for “Moina”.");
       }
     }
 
@@ -486,7 +510,7 @@
     starting = false;
     active = false;
     stopping = false;
-    setButton("Start talking", false);
+    setButton("Start listening", false);
     if (message) setStatus(message);
     window.setTimeout(() => {
       if (!starting && !active) void refreshVoiceAvailability();
@@ -509,13 +533,16 @@
     } else if (oldSocket && oldSocket.readyState === WebSocket.CONNECTING) {
       try { oldSocket.close(); } catch (_) { /* no-op */ }
     }
-    finishStoppedState(fromServer ? "Voice session ended. Tap Start talking to reconnect." : "Conversation ended.");
+    wakeWordHeard = false;
+    finishStoppedState(fromServer ? "Voice session ended. Tap Start listening to reconnect." : "Voice test ended.");
   }
 
   async function startConversation() {
     if (starting || active) return;
     starting = true;
     stopping = false;
+    wakeWordHeard = false;
+    assistantVoiceMuted = false;
     setButton("Checking availability…", true);
     setStatus("Checking voice availability…");
     await visitorIdentityReady;
@@ -565,20 +592,10 @@
 
       sessionSocket.addEventListener("open", () => {
         if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
-        // Model and system rules stay server-controlled. Only explicitly selected memories accompany setup.
-        const setupPayload = { setup: {} };
-        let selectedMemoryContext = "";
-        try {
-          selectedMemoryContext = readOptedInMemoryContext();
-        } catch (_) {
-          // Memory context is optional; voice must work if browser storage is unavailable.
-        }
-        if (selectedMemoryContext) setupPayload.memory_context = selectedMemoryContext;
-        sessionSocket.send(JSON.stringify(setupPayload));
+        // Public wake-word test: never attach saved memories or account context.
+        sessionSocket.send(JSON.stringify({ setup: {} }));
         startRelayKeepalive(sessionSocket);
-        setStatus(selectedMemoryContext
-          ? "Connected. Applying your selected memories to this conversation…"
-          : "Connected to the relay. Setting up your conversation…");
+        setStatus("Connecting voice test…");
         setupTimer = window.setTimeout(() => {
           if (!setupReady && socket === sessionSocket) {
             stopConversation(true);
@@ -700,15 +717,15 @@
         health.status === "vertex-live-proxy-configured"
       ) {
         setButton("Start talking", false);
-        setStatus("Ready when you are. Your microphone starts only after you tap Start talking.");
+        setStatus("Ready. Tap Start listening, then say “Moina”.");
         await refreshVoiceAvailability();
         return;
       }
       setButton("Voice not ready", true);
-      setStatus("The voice backend is not configured yet. Refresh this page after the Worker deployment finishes.", "error");
+      setStatus("Voice service is not configured yet. Please try again later.", "error");
       setAvailability("Voice will become available after service setup is complete.", "error");
     } catch (_) {
-      setButton("Try voice service", false);
+      setButton("Start listening", false);
       setStatus("Could not confirm service status. You can still try connecting, or reload the page.", "error");
       await refreshVoiceAvailability();
     }
@@ -717,96 +734,5 @@
   setAvailability("Checking voice availability…");
   checkBackend();
 
-  // The fundraiser display is driven only by server-persisted, verified contributions.
-  const fundCard = document.querySelector("#mathFundCard");
-  const fundStatus = document.querySelector("#fundStatus");
-  const fundAmount = document.querySelector("#fundAmount");
-  const fundPercent = document.querySelector("#fundPercent");
-  const fundFill = document.querySelector("#fundFill");
-  const fundTrack = document.querySelector("#fundTrack");
-  const mathCourseButton = document.querySelector("#mathCourseButton");
-  const mathUnlockedPanel = document.querySelector("#mathUnlockedPanel");
-  let fundUnlocked = false;
-  async function refreshMathFund() {
-    try {
-      const response = await fetch("/api/donation/status", { cache: "no-store", headers: { Accept: "application/json" } });
-      const result = await response.json();
-      if (!response.ok || !result || result.ok !== true) throw new Error("Fundraiser status unavailable");
-      const amount = Math.max(0, Number(result.totalPaise) || 0) / 100;
-      const percent = Math.max(0, Math.min(100, Number(result.progressPercent) || 0));
-      if (fundAmount) fundAmount.textContent = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-      if (fundPercent) fundPercent.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-      if (fundFill) fundFill.style.width = percent + "%";
-      const miniFill = document.querySelector("#miniFundFill");
-      const miniAmount = document.querySelector("#miniFundAmount");
-      const miniPercent = document.querySelector("#miniFundPercent");
-      if (miniFill) miniFill.style.width = percent + "%";
-      if (miniAmount) miniAmount.textContent = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount) + " raised";
-      if (miniPercent) miniPercent.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-      if (fundTrack) fundTrack.setAttribute("aria-valuenow", String(Math.round(percent)));
-      if (fundStatus) fundStatus.textContent = result.unlocked
-        ? "Goal reached · Math course unlocked"
-        : Math.max(0, Number(result.donationCount) || 0) + " verified contribution" + (Number(result.donationCount) === 1 ? "" : "s") + " · live total";
-      const previous = fundUnlocked;
-      fundUnlocked = result.unlocked === true;
-      if (fundCard) {
-        fundCard.classList.toggle("is-unlocked", fundUnlocked);
-        fundCard.setAttribute("data-unlocked", String(fundUnlocked));
-      }
-      if (mathCourseButton) {
-        mathCourseButton.disabled = !fundUnlocked;
-        mathCourseButton.textContent = fundUnlocked ? "Open course area" : "Locked until ₹5 lakh";
-      }
-      const secondaryCourseButton = document.querySelector("#mathCourseButtonSecondary");
-      if (secondaryCourseButton) {
-        secondaryCourseButton.disabled = !fundUnlocked;
-        secondaryCourseButton.textContent = fundUnlocked ? "Course unlocked" : "Locked until ₹5 lakh";
-      }
-      if (fundUnlocked && !previous && mathUnlockedPanel) {
-        mathUnlockedPanel.hidden = false;
-        const status = document.querySelector("#courseUnlockMessage");
-        if (status) status.textContent = "The ₹5,00,000 target has been reached. The course area is now unlocked; lesson content still needs to be published.";
-      }
-    } catch (_) {
-      if (fundStatus) fundStatus.textContent = "Could not verify the live total. Retrying automatically.";
-    }
-  }
-  if (mathCourseButton) mathCourseButton.addEventListener("click", () => {
-    if (!fundUnlocked) return;
-    if (mathUnlockedPanel) {
-      mathUnlockedPanel.hidden = false;
-      mathUnlockedPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  });
-  const secondaryCourseAction = document.querySelector("#mathCourseButtonSecondary");
-  if (secondaryCourseAction) secondaryCourseAction.addEventListener("click", () => {
-    if (!fundUnlocked || !mathUnlockedPanel) return;
-    mathUnlockedPanel.hidden = false;
-    mathUnlockedPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-  if (document.querySelector("#startMoinaOS1") && toggleButton) {
-    document.querySelector("#startMoinaOS1").addEventListener("click", () => {
-      if (!toggleButton.disabled) {
-        toggleButton.scrollIntoView({ behavior: "smooth", block: "center" });
-        toggleButton.click();
-      }
-    });
-  }
-  if (clearButton) clearButton.addEventListener("click", () => {
-    if (toggleButton && toggleButton.classList.contains("is-live")) toggleButton.click();
-  });
-  const secondaryStart = document.querySelector("#startMoinaOS1Secondary");
-  if (secondaryStart && toggleButton) secondaryStart.addEventListener("click", () => { if (!toggleButton.disabled) toggleButton.click(); });
-  const menuButton = document.querySelector("#menuButton");
-  const sidebar = document.querySelector("#sidebar");
-  const mobileScrim = document.querySelector("#mobileScrim");
-  const sidebarClose = document.querySelector("#sidebarClose");
-  const closeSidebar = () => { if (sidebar) sidebar.classList.remove("is-open"); if (mobileScrim) mobileScrim.hidden = true; };
-  if (menuButton && sidebar && mobileScrim) menuButton.addEventListener("click", () => { sidebar.classList.add("is-open"); mobileScrim.hidden = false; });
-  if (sidebarClose) sidebarClose.addEventListener("click", closeSidebar);
-  if (mobileScrim) mobileScrim.addEventListener("click", closeSidebar);
-  window.addEventListener("keydown", event => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); if (toggleButton && toggleButton.classList.contains("is-live")) toggleButton.click(); if (clearButton) clearButton.click(); } });
-  void refreshMathFund();
-  window.setInterval(refreshMathFund, 10000);
 
 })();

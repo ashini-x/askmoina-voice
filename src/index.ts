@@ -1358,6 +1358,15 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   return json({ available: true, reason: "available", message: "Voice is ready. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
+const GUEST_WAKE_WORD_INSTRUCTION = [
+  "You are Moina, a live voice test.",
+  "Do not greet the user or speak at connection start. Stay completely silent unless the user clearly says the wake word Moina.",
+  "When the user says Moina, respond once with exactly this sentence and nothing else: Yes, I am here.",
+  "Do not answer other words or questions. Do not add greetings, explanations, follow-up questions, sound effects, or any other spoken words.",
+  "After the exact acknowledgement, return to silence and wait until the user says Moina again.",
+  "This is a minimal guest voice test. Do not invoke tools, searches, or memories."
+].join("\n");
+
 interface LiveRelayAttachment {
   attach(socket: WebSocket): boolean;
   isClosed(): boolean;
@@ -2248,17 +2257,21 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
-        const baseInstruction = pronunciationGuidance
-          ? `${SYSTEM_INSTRUCTION}\\n\\n${pronunciationGuidance}`
-          : SYSTEM_INSTRUCTION;
+        const pronunciationGuidance = guestSessionRequested ? "" : await buildAssamesePronunciationInstruction(env.DB);
+        const baseInstruction = guestSessionRequested
+          ? GUEST_WAKE_WORD_INSTRUCTION
+          : pronunciationGuidance
+            ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
+            : SYSTEM_INSTRUCTION;
         const enableCopilotForSetup = message.copilot_mode === true;
-        const systemInstruction = buildPersonalizedSystemInstruction(
-          enableCopilotForSetup
-            ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
-            : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
-          memoryContext,
-        );
+        const systemInstruction = guestSessionRequested
+          ? GUEST_WAKE_WORD_INSTRUCTION
+          : buildPersonalizedSystemInstruction(
+              enableCopilotForSetup
+                ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
+                : `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}`,
+              memoryContext,
+            );
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
@@ -2270,7 +2283,7 @@ async function handleVoiceSocket(
           generationConfig: configureCopilotMediaResolution(generationConfig, enableCopilotForSetup),
           // Route both modes through the same server-executed grounded search function.
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
-          tools: enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
+          tools: guestSessionRequested ? [] : enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
           // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
@@ -3367,7 +3380,7 @@ export default {
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio") && (request.method === "GET" || request.method === "HEAD")) {
-      const audioUrl = new URL("/audio", request.url);
+      const audioUrl = new URL("/index.html", request.url);
       const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
       if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.152");

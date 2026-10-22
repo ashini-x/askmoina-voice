@@ -7,7 +7,7 @@ import type { Env } from "../src/config/env";
 
 const ctx = { waitUntil(_promise: Promise<unknown>) {} } as unknown as ExecutionContext;
 const LOGIN_FIXTURE = "Face ID Touch ID Phone number + OTP backdrop-filter:blur authSheet No guest access";
-const AUDIO_FIXTURE = '<!doctype html><title>askmoina audio</title><button id="toggleVoice">Start talking</button><section id="mathFundCard">Math course</section><p>moinaOS 1 · moinaOS 2 · Invite only</p>';
+const AUDIO_FIXTURE = '<!doctype html><title>askmoina audio</title><button id="toggleVoice">Start listening</button><button id="stopVoice">Stop voice</button><p>Say “Moina”. Yes, I am here.</p>';
 
 function envMock(): Env {
   const db = { prepare(_sql: string) { return {
@@ -20,7 +20,7 @@ function envMock(): Env {
     const path = new URL(request.url).pathname;
     return new Response(path === "/login.html" ? LOGIN_FIXTURE
       : path === "/account.html" ? "Your AskMoina ID"
-      : path === "/audio" ? AUDIO_FIXTURE : "auth", { status: 200 });
+      : path === "/index.html" ? AUDIO_FIXTURE : "auth", { status: 200 });
   } };
   return { DB: db, ASSETS: assets } as unknown as Env;
 }
@@ -60,9 +60,9 @@ describe("unique account ID and no-guest access", () => {
     expect(root.headers.get("Set-Cookie")).toBeNull();
     const html = await root.text();
     expect(html).toContain('id="toggleVoice"');
-    expect(html).toContain('id="mathFundCard"');
-    expect(html).toContain("moinaOS 1");
-    expect(html).toContain("moinaOS 2");
+    expect(html).toContain('id="stopVoice"');
+    expect(html).toContain('Say “Moina”.');
+    expect(html).not.toContain("Sign up");
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain("Face ID");
     expect(html).not.toContain("Sign up");
