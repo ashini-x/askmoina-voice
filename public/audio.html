@@ -9,20 +9,25 @@
 <link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/audio-chat.css?v=__APP_VERSION__">
 <link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133">
-<title>askmoina · Voice test</title>
+<title>askmoina · Live voice assistant</title>
 <script src="/audio-chat.js?v=__APP_VERSION__" defer></script>
 </head>
 <body>
 <main class="voice-shell">
   <header class="topbar">
     <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
-    <span class="guest-label"><span class="status-dot"></span> Guest · Audio only</span>
+    <div class="topbar-meta">
+      <span class="guest-label"><span class="status-dot"></span> Guest · Live voice</span>
+      <span class="visitor-chip" title="Demo only — this changing count is simulated, not live analytics." aria-label="Simulated demo visitor count, not actual visitor analytics">
+        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">SIMULATED</span><strong id="demoVisitorCount">12,048+</strong><span>visitors</span>
+      </span>
+    </div>
   </header>
   <section class="conversation" aria-label="Voice test">
     <div class="hero">
-      <p class="eyebrow">VOICE TEST</p>
-      <h1>Say “Moina”.</h1>
-      <p class="helper">The reply should be: “Yes, I am here.”</p>
+      <p class="eyebrow">LIVE VOICE</p>
+      <h1>Talk naturally.</h1>
+      <p class="helper">Ask anything. Continue the conversation in your own words.</p>
     </div>
     <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
       <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>
@@ -31,7 +36,7 @@
   <footer class="composer-wrap">
     <div class="composer" id="composer">
       <div class="composer-copy">
-        <strong id="composerTitle">Voice test</strong>
+        <strong id="composerTitle">Voice assistant</strong>
         <span id="status" role="status" aria-live="polite">Checking voice service…</span>
         <span id="availability" class="availability" role="status" aria-live="polite"></span>
       </div>
@@ -42,7 +47,7 @@
         <button type="button" id="stopVoice" class="stop-button" aria-label="Stop assistant voice" disabled>Stop voice</button>
       </div>
     </div>
-    <p class="composer-note">Tap Start listening, allow microphone access, then say “Moina”.</p>
+    <p class="composer-note">Tap Start listening, allow microphone access, and talk naturally. No wake word needed.</p>
   </footer>
 </main>
 </body>
