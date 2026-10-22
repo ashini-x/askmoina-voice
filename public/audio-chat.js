@@ -77,8 +77,6 @@
   let socket = null;
   let activeSessionId = null;
   let resumeExistingSession = false;
-  let automaticReconnectAttempts = 0;
-  const MAX_AUTOMATIC_RECONNECTS = 1;
   let relayKeepaliveTimer = null;
 
   function startRelayKeepalive(sessionSocket) {
@@ -421,7 +419,6 @@
       // user action should start a fresh relay, rather than repeatedly attaching here.
       activeSessionId = null;
       resumeExistingSession = false;
-      automaticReconnectAttempts = 0;
       const disconnectMessage = typeof message.connection_status.message === "string"
         ? message.connection_status.message.trim().slice(0, 300)
         : "The voice connection ended. Tap Start listening to begin another conversation.";
@@ -433,7 +430,6 @@
 
     if (message.setup_complete || message.setupComplete) {
       resumeExistingSession = false;
-      automaticReconnectAttempts = 0;
       setupReady = true;
       if (setupTimer) {
         clearTimeout(setupTimer);
@@ -547,7 +543,6 @@
     if (!fromServer) {
       activeSessionId = null;
       resumeExistingSession = false;
-      automaticReconnectAttempts = 0;
     }
     stopping = true;
     const oldSocket = socket;
@@ -572,7 +567,6 @@
     if (!reconnectingExistingSession) {
       activeSessionId = crypto.randomUUID();
       resumeExistingSession = false;
-      automaticReconnectAttempts = 0;
     }
     const sessionId = activeSessionId;
     starting = true;
@@ -701,12 +695,12 @@
           } else if (event.code === 1008) {
             closeMessage = "The connection closed for a policy or audio-format check (code 1008). This is not a question-count limit. Refresh AskMoina and try again; if it repeats, the connection diagnostics can help identify why.";
           } else if (event.code === 1006) {
+            // Keep the session ID: the relay preserves an abnormal browser disconnect
+            // for 45 seconds and can resume it when the user retries.
             resumeExistingSession = Boolean(activeSessionId);
-            const canAutoReconnect = resumeExistingSession && automaticReconnectAttempts < MAX_AUTOMATIC_RECONNECTS;
-            if (canAutoReconnect) automaticReconnectAttempts += 1;
-            closeMessage = canAutoReconnect
-              ? "The live connection was interrupted. Restoring your conversation…"
-              : "The connection dropped without a clean close (code 1006). Tap Try again to restore your conversation.";
+            closeMessage = resumeExistingSession
+              ? "The connection dropped without a clean close (code 1006). Tap Try again to restore your conversation."
+              : "The connection dropped without a clean close (code 1006). Tap Try again to reconnect.";
           } else if (event.code !== 1000) {
             closeMessage = "The connection closed unexpectedly (code " + event.code + "). Tap Start listening to retry.";
           } else {
@@ -715,23 +709,9 @@
         }
         finishStoppedState(closeMessage);
         if (!wasStopping) {
-          const shouldAutoReconnect = event.code === 1006 &&
-            resumeExistingSession &&
-            automaticReconnectAttempts <= MAX_AUTOMATIC_RECONNECTS &&
-            closeMessage.includes("Restoring your conversation");
-          if (shouldAutoReconnect) {
-            setButton("Reconnecting…", true);
-            setStatus("Connection interrupted. Reconnecting to the existing live session…", "warning");
-            window.setTimeout(() => {
-              if (!starting && !active && !stopping && resumeExistingSession && activeSessionId) {
-                void startConversation();
-              }
-            }, 900);
-          } else {
-            setButton("Try again", false);
-            setStatus(closeMessage, "error");
-            setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
-          }
+          setButton("Try again", false);
+          setStatus(closeMessage, "error");
+          setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
         }
       });
 
