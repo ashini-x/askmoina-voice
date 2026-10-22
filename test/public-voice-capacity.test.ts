@@ -70,7 +70,7 @@ describe("public audio-first voice access", () => {
       async fetch(request: Request) {
         const path = new URL(request.url).pathname;
         if (path === "/") {
-          return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Start listening</button><button id="stopVoice">Stop voice</button><div id="transcript"></div><p>Say “Moina”.</p>', {
+          return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Start listening</button><button id="stopVoice">Stop voice</button><div id="transcript"></div><h1>Talk naturally.</h1><p>Ask anything.</p>', {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           });
         }
@@ -83,7 +83,7 @@ describe("public audio-first voice access", () => {
     const html = await root.text();
     expect(html).toContain('id="toggleVoice"');
     expect(html).toContain('id="stopVoice"');
-    expect(html).toContain("Say “Moina”.");
+    expect(html).toContain("Talk naturally.");
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain("Face ID");
     expect(objectNames).toHaveLength(0);
