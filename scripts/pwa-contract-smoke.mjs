@@ -162,10 +162,18 @@ for (const label of [
 ]) {
   assert.ok(worker.includes(label), `Interface 06 text is missing: ${label}`);
 }
-assert.ok(worker.includes("const experienceAssetVersion = encodeURIComponent(appVersion)"), "Interface 06 assets must use the current release version for cache busting");
-assert.ok(worker.includes("copilot.css?experience-selection=1&v=' + experienceAssetVersion") && worker.includes("copilot.js?experience-selection=1&v=' + experienceAssetVersion"), "Interface 06 CSS and JavaScript URLs must be release-versioned");
-assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned Co-Pilot assets should use long-lived immutable caching while unversioned URLs remain revalidated");
-assert.ok(worker.includes("const isImmutableVersionedAsset = /^[0-9]+\\.[0-9]+\\.[0-9]+$/"), "immutable cache selection must validate semantic version URLs exactly");
+const audioShell = read("public/audio.html");
+const audioClient = read("public/audio-chat.js");
+const audioStyles = read("public/audio-chat.css");
+assert.ok(worker.includes('const audioUrl = new URL("/audio.html", request.url)'), "Worker must serve the new audio-first public shell");
+assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="transcript"'), "audio shell must include microphone controls and transcript");
+assert.ok(audioShell.includes("moinaOS 1") && audioShell.includes("moinaOS 2") && audioShell.includes("Invite only"), "audio shell must present the two products and invite-only access");
+assert.ok(audioShell.includes('id="mathFundCard"') && audioShell.includes("₹5,00,000"), "audio shell must present the community-gated Math course");
+assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes("Face ID") && !audioShell.includes("Sign up"), "public audio shell must not expose camera or account onboarding");
+assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && audioClient.includes('window.setInterval(refreshMathFund, 10000)'), "audio client must start guest voice sessions and poll verified donations");
+assert.ok(audioStyles.includes(".product-grid") && audioStyles.includes(".composer") && audioStyles.includes(".sidebar"), "audio shell must use the ChatGPT-like product and conversation layout");
+assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned assets should use long-lived immutable caching while unversioned URLs remain revalidated");
+assert.ok(worker.includes("const isImmutableVersionedAsset = /^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$/"), "immutable cache selection must validate semantic version URLs exactly");
 const nativeAppCss = read("public/native-app.css");
 assert.ok(nativeAppCss.includes("@keyframes askmoina-screen-fade-up") && nativeAppCss.includes("170ms cubic-bezier(.22,1,.36,1)"), "native app screens must use the lightweight premium fade-in");
 assert.ok(nativeAppCss.includes("@media(prefers-reduced-motion:reduce)") && nativeAppCss.includes(".experience-selection-overlay:not([hidden]) .experience-selection-content"), "fade-in must respect reduced-motion preferences");

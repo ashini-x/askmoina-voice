@@ -778,6 +778,12 @@
       mathUnlockedPanel.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
+  const secondaryCourseAction = document.querySelector("#mathCourseButtonSecondary");
+  if (secondaryCourseAction) secondaryCourseAction.addEventListener("click", () => {
+    if (!fundUnlocked || !mathUnlockedPanel) return;
+    mathUnlockedPanel.hidden = false;
+    mathUnlockedPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
   if (document.querySelector("#startMoinaOS1") && toggleButton) {
     document.querySelector("#startMoinaOS1").addEventListener("click", () => {
       if (!toggleButton.disabled) {
