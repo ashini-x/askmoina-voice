@@ -971,7 +971,8 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
-    expect(audioHtml).toContain('id="experienceMoinaOS2"');
+    expect(audioHtml).toContain("moinaOS 2");
+    expect(audioHtml).toContain("Invite only");
     expect(workerSource).toContain('url.pathname === "/api/donation/status"');
     expect(workerSource).toContain("math_course_donations");
   });
