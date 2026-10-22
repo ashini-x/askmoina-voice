@@ -561,7 +561,7 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(workerSource).toContain('guestSessionRequested = requestUrl.searchParams.get("guest") === "1"');
     expect(audioScript).toContain('wsUrl.searchParams.set("guest", "1")');
     expect(workerSource).toContain('url.pathname === "/copilot" || url.pathname === "/copilot.html"');
-    expect(workerSource).toContain("GUEST_WAKE_WORD_INSTRUCTION");
+    expect(workerSource).toContain("GUEST_VOICE_INSTRUCTION");
   });
   it("keeps History and Key Memories in the existing camera app and uses a mobile sheet", () => {
     expect(html).toContain('id="librarySheet"');
