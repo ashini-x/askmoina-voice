@@ -2326,6 +2326,25 @@ async function handleVoiceSocket(
         return;
       }
 
+      if (parsed.kind === "interrupt") {
+        // A Live clientContent update immediately interrupts the active model generation.
+        // turnComplete:false does not ask the model to produce a new response. The browser
+        // WebSocket and realtime microphone input remain open for the next spoken request.
+        sendUpstreamMessage({
+          clientContent: {
+            turns: [{
+              role: "user",
+              parts: [{
+                text: "[The user interrupted the assistant. Stop the current response immediately, then wait silently for the next spoken input. Do not answer this control signal.]"
+              }],
+            }],
+            turnComplete: false,
+          },
+        });
+        return;
+      }
+
+
       if (parsed.kind === "initial_greeting") {
         // Legacy camera clients used this event to force a spoken greeting.
         // Guest voice stays quiet until the user starts the conversation.

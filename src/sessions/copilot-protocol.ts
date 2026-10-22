@@ -3,6 +3,7 @@ export type ParsedLiveClientInput =
   | { kind: "video"; data: string }
   | { kind: "text_input"; text: string }
   | { kind: "keepalive" }
+  | { kind: "interrupt" }
   | { kind: "initial_greeting" }
   | { kind: "target_selection"; x: number; y: number }
   | { kind: "audio_stream_end" }
@@ -27,6 +28,9 @@ export function parseLiveClientInput(value: unknown, copilotMode: boolean): Pars
   const keys = Object.keys(value);
 
   if (keys.length === 1 && value.keepalive === true) return { kind: "keepalive" };
+
+  if (keys.length === 1 && value.interrupt === true) return { kind: "interrupt" };
+
 
   if (keys.length === 1 && value.initial_greeting === true) {
     return copilotMode ? { kind: "initial_greeting" } : null;
