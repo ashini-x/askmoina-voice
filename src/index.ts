@@ -3494,7 +3494,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/public/traffic/status" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
@@ -3528,6 +3528,27 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/public/traffic/status") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+      try {
+        const activeSince = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const row = await env.DB.prepare(
+          "SELECT (SELECT COUNT(*) FROM visitor_profiles WHERE last_seen_at >= ?) AS activeVisitors, " +
+          "(SELECT COUNT(*) FROM visitor_profiles) AS totalVisitors",
+        ).bind(activeSince).first<{ activeVisitors: number; totalVisitors: number }>();
+        return json({
+          ok: true,
+          activeVisitors: Math.max(0, Number(row?.activeVisitors || 0)),
+          totalVisitors: Math.max(0, Number(row?.totalVisitors || 0)),
+          activityWindowSeconds: 300,
+          updatedAt: Date.now(),
+        }, 200, { "Cache-Control": "no-store" });
+      } catch (error) {
+        console.error("[askmoina] Public traffic status unavailable", error instanceof Error ? error.message : "unknown error");
+        return json({ ok: false, error: "traffic_status_unavailable" }, 503, { "Cache-Control": "no-store" });
+      }
+    }
+
     if (url.pathname === "/api/donation/status") {
       if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
       try {
@@ -3535,7 +3556,7 @@ export default {
           "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM math_course_donations"
         ).first<{ total_paise: number; donation_count: number }>();
         const totalPaise = Math.max(0, Number(row?.total_paise || 0));
-        const targetPaise = 50000000;
+        const targetPaise = 100000000;
         return json({
           ok: true,
           totalPaise,
