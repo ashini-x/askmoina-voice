@@ -10,7 +10,7 @@ describe("shared browser transcript helper", () => {
   it("loads the shared transcript helper before the Co-Pilot client; the legacy static home is retired", () => {
     expect(home).toContain('id="toggleVoice"');
     expect(home).toContain('id="stopVoice"');
-    expect(home).toContain('Say “Moina”.');
+    expect(home).toContain("Talk naturally.");
     expect(home).not.toContain('id="mathFundCard"');
     expect(home).not.toContain('id="videoPreview"');
     expect(home).not.toContain('/app.js');
