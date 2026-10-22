@@ -165,7 +165,7 @@ for (const label of [
 const audioShell = read("public/audio.html");
 const audioClient = read("public/audio-chat.js");
 const audioStyles = read("public/audio-chat.css");
-assert.ok(worker.includes('const audioUrl = new URL("/audio.html", request.url)'), "Worker must serve the new audio-first public shell");
+assert.ok(worker.includes('const audioUrl = new URL("/audio", request.url)'), "Worker must serve the new audio-first public shell");
 assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="transcript"'), "audio shell must include microphone controls and transcript");
 assert.ok(audioShell.includes("moinaOS 1") && audioShell.includes("moinaOS 2") && audioShell.includes("Invite only"), "audio shell must present the two products and invite-only access");
 assert.ok(audioShell.includes('id="mathFundCard"') && audioShell.includes("₹5,00,000"), "audio shell must present the community-gated Math course");
