@@ -11,27 +11,85 @@
   const emptyTranscript = document.querySelector("#emptyTranscript");
   const voicePicker = document.querySelector("#voicePicker");
 
-  // Public-facing demo metric only. The label beside this number explicitly marks it
-  // as simulated; it must never be presented as a real-time analytics measurement.
-  const demoVisitorCount = document.querySelector("#demoVisitorCount");
-  if (demoVisitorCount) {
-    let simulatedVisitors = 12048 + Math.floor(Math.random() * 180);
-    const renderSimulatedVisitors = () => {
-      demoVisitorCount.textContent = simulatedVisitors.toLocaleString("en-US") + "+";
-    };
-    const scheduleSimulatedUpdate = () => {
-      window.setTimeout(() => {
-        const movement = 1 + Math.floor(Math.random() * 3);
-        simulatedVisitors += Math.random() < 0.5 ? movement : -movement;
-        simulatedVisitors = Math.max(12000, Math.min(12399, simulatedVisitors));
-        renderSimulatedVisitors();
-        scheduleSimulatedUpdate();
-      }, 9000 + Math.floor(Math.random() * 17000));
-    };
-    renderSimulatedVisitors();
-    scheduleSimulatedUpdate();
+  const liveVisitorCountNode = document.querySelector("#liveVisitorCount");
+  const supportRaisedNode = document.querySelector("#supportRaised");
+  const supportGoalNode = document.querySelector("#supportGoal");
+  const supportPercentageNode = document.querySelector("#supportPercentage");
+  const supportProgressTrack = document.querySelector("#supportProgressTrack");
+  const supportProgressFill = document.querySelector("#supportProgressFill");
+  const supportStatusNode = document.querySelector("#supportStatus");
+  const giveDonationButton = document.querySelector("#giveDonation");
+  const supportContactNode = document.querySelector("#supportContact");
+  const closeSupportContactButton = document.querySelector("#closeSupportContact");
+
+  async function refreshLiveVisitorCount() {
+    if (!liveVisitorCountNode) return;
+    try {
+      const response = await fetch("/api/public/live-stats", {
+        method: "GET", credentials: "same-origin", cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok !== true || !Number.isSafeInteger(data.activeVisitors) || data.activeVisitors < 0) {
+        throw new Error("Live visitor stats unavailable");
+      }
+      liveVisitorCountNode.textContent = data.activeVisitors.toLocaleString("en-US");
+      liveVisitorCountNode.title = "Unique browsers active on this page in the last 90 seconds";
+      liveVisitorCountNode.dataset.state = "live";
+    } catch (_) {
+      liveVisitorCountNode.textContent = "—";
+      liveVisitorCountNode.title = "Live visitor count temporarily unavailable";
+      liveVisitorCountNode.dataset.state = "unavailable";
+    }
   }
 
+  const inrFormat = new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 2
+  });
+  async function refreshSupportProgress() {
+    if (!supportRaisedNode) return;
+    try {
+      const response = await fetch("/api/support/status", {
+        method: "GET", credentials: "same-origin", cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok !== true || !Number.isSafeInteger(data.totalPaise) ||
+          !Number.isSafeInteger(data.targetPaise) || data.totalPaise < 0 || data.targetPaise <= 0) {
+        throw new Error("Support status unavailable");
+      }
+      const totalRupees = data.totalPaise / 100;
+      const targetRupees = data.targetPaise / 100;
+      const percent = Math.min(100, Math.max(0, data.progressPercent));
+      supportRaisedNode.textContent = inrFormat.format(totalRupees);
+      supportGoalNode.textContent = "Goal " + inrFormat.format(targetRupees);
+      supportPercentageNode.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
+      supportProgressFill.style.width = percent + "%";
+      supportProgressTrack.setAttribute("aria-valuenow", String(Math.round(totalRupees)));
+      supportProgressTrack.setAttribute("aria-valuetext", inrFormat.format(totalRupees) + " of " + inrFormat.format(targetRupees) + " in verified contributions");
+      if (supportStatusNode) supportStatusNode.textContent =
+        data.donationCount === 0 ? "Progress updates when a contribution is verified." :
+        data.donationCount.toLocaleString("en-IN") + " verified contribution" + (data.donationCount === 1 ? "" : "s");
+    } catch (_) {
+      supportRaisedNode.textContent = "Unavailable";
+      if (supportStatusNode) supportStatusNode.textContent = "Support totals could not be loaded.";
+      if (supportPercentageNode) supportPercentageNode.textContent = "—";
+      supportProgressFill.style.width = "0%";
+    }
+  }
+
+  function setSupportContactOpen(open) {
+    if (!supportContactNode || !giveDonationButton) return;
+    supportContactNode.hidden = !open;
+    giveDonationButton.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+  giveDonationButton?.addEventListener("click", () => setSupportContactOpen(supportContactNode?.hidden === true));
+  closeSupportContactButton?.addEventListener("click", () => setSupportContactOpen(false));
+
+  refreshLiveVisitorCount();
+  refreshSupportProgress();
+  window.setInterval(refreshLiveVisitorCount, 20000);
+  window.setInterval(refreshSupportProgress, 30000);
 
   async function ensureVisitorIdentity() {
     const controller = new AbortController();

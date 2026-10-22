@@ -18,11 +18,30 @@
     <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
     <div class="topbar-meta">
       <span class="guest-label"><span class="status-dot"></span> Guest · Live voice</span>
-      <span class="visitor-chip" title="Demo only — this changing count is simulated, not live analytics." aria-label="Simulated demo visitor count, not actual visitor analytics">
-        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">SIMULATED</span><strong id="demoVisitorCount">12,048+</strong><span>visitors</span>
+      <span class="visitor-chip" title="Visitors active on this page in the last 90 seconds" aria-label="Active visitors in the last 90 seconds">
+        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">LIVE</span><strong id="liveVisitorCount" aria-live="polite">—</strong><span>visitors</span>
       </span>
     </div>
   </header>
+  <section class="support-card" aria-label="Support AskMoina development">
+    <div class="support-card-topline"><span class="support-live-dot" aria-hidden="true"></span><span>BUILDING THE NEXT RELEASE</span></div>
+    <div class="support-card-heading">
+      <div class="support-card-copy"><h2>Help build what comes next.</h2><p>Community support goal</p></div>
+      <div class="support-total-wrap"><strong id="supportRaised" aria-live="polite">Loading…</strong><span>verified contributions</span></div>
+    </div>
+    <div class="support-progress-track" role="progressbar" aria-label="Verified contributions toward support goal" aria-valuemin="0" aria-valuemax="1000000" aria-valuenow="0" id="supportProgressTrack">
+      <span id="supportProgressFill" class="support-progress-fill"></span>
+    </div>
+    <div class="support-progress-meta"><span id="supportGoal">Goal ₹10,00,000</span><span id="supportPercentage">0%</span></div>
+    <div class="support-card-actions">
+      <span id="supportStatus" class="support-status" role="status" aria-live="polite">Contributions are counted after verification.</span>
+      <button type="button" id="giveDonation" class="donation-button" aria-expanded="false" aria-controls="supportContact">Give donation <span aria-hidden="true">↗</span></button>
+    </div>
+    <div id="supportContact" class="support-contact" hidden>
+      <div><strong>Contact the owner</strong><p>To discuss a contribution, contact:</p><a href="mailto:ashin igogoiofficial@gmail.com">ashin igogoiofficial@gmail.com</a></div>
+      <button type="button" id="closeSupportContact" class="support-contact-close" aria-label="Close contact details">×</button>
+    </div>
+  </section>
   <section class="conversation" aria-label="Voice test">
     <div class="hero">
       <p class="eyebrow">LIVE VOICE</p>

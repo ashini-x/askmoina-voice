@@ -1,4 +1,4 @@
-:root{color-scheme:dark;--bg:#212121;--panel:#2f2f2f;--panel-hover:#383838;--line:#454545;--text:#f4f4f4;--muted:#a4a4a4;--accent:#fff;--accent-text:#1f1f1f;--error:#fca5a5;font-family:askmoina-global-font,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:root{color-scheme:dark;--bg:#090a0d;--panel:#111216;--panel-hover:#1a1b21;--line:#292b32;--text:#f5f5f7;--muted:#9699a3;--accent:#f5f5f7;--accent-text:#111216;--error:#fca5a5;font-family:askmoina-global-font,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
 body{min-height:100svh}
@@ -49,3 +49,44 @@ h1{font-size:clamp(32px,5vw,48px);font-weight:500;letter-spacing:-.045em;line-he
 .visitor-chip-label{font-size:8px;font-weight:600;letter-spacing:.11em;color:#d0b98e}
 .visitor-chip strong{font-size:11px;font-weight:600;color:#f2f2f2;font-variant-numeric:tabular-nums}
 @media(max-width:560px){.topbar-meta{gap:4px}.guest-label{font-size:10px}.visitor-chip{gap:5px;padding:5px 7px;font-size:9px}.visitor-chip-label{font-size:7px}.visitor-chip strong{font-size:10px}}
+
+
+/* Live visitor indicator: genuine recent presence, never a generated demo counter. */
+.topbar {width:min(100%,900px)}
+.visitor-chip{gap:7px;padding:7px 10px;border:1px solid rgba(69,211,130,.19);background:rgba(21,40,29,.42);border-radius:999px;color:#b5c6bb;font-size:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.visitor-chip-mark,.support-live-dot{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#38d977;box-shadow:0 0 0 0 rgba(56,217,119,.42);animation:visitor-pulse 2.1s ease-out infinite}
+.visitor-chip-label{font-size:8px;font-weight:700;letter-spacing:.12em;color:#75e69e}
+.visitor-chip strong{font-size:12px;font-weight:650;color:#f5fff8;font-variant-numeric:tabular-nums;min-width:1ch}
+.visitor-chip strong[data-state=unavailable]{color:var(--muted)}
+@keyframes visitor-pulse{0%{box-shadow:0 0 0 0 rgba(56,217,119,.35)}65%{box-shadow:0 0 0 6px rgba(56,217,119,0)}100%{box-shadow:0 0 0 0 rgba(56,217,119,0)}}
+.voice-shell{grid-template-rows:auto auto minmax(0,1fr) auto;background:radial-gradient(ellipse at 50% -20%,rgba(73,82,105,.12),transparent 45%),var(--bg)}
+.topbar{padding-top:20px}
+.support-card{width:min(100%,820px);margin:0 auto 8px;padding:17px 19px 15px;border:1px solid rgba(255,255,255,.085);border-radius:20px;background:linear-gradient(145deg,rgba(23,25,31,.97),rgba(14,15,19,.98));box-shadow:0 14px 50px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.035)}
+.support-card-topline{display:flex;align-items:center;gap:8px;color:#a6abb6;font-size:9px;font-weight:650;letter-spacing:.15em}
+.support-live-dot{width:5px;height:5px;flex-basis:5px;animation-duration:2.5s}
+.support-card-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:13px}
+.support-card-copy h2{margin:0;color:#f5f5f7;font-size:clamp(17px,2vw,21px);font-weight:550;letter-spacing:-.035em;line-height:1.25}
+.support-card-copy p{margin:5px 0 0;color:#9b9eaa;font-size:12px}
+.support-total-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.support-total-wrap strong{color:#f7f7f9;font-size:clamp(18px,2.2vw,24px);font-weight:600;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.support-total-wrap span{color:#8e929c;font-size:9px}
+.support-progress-track{height:4px;width:100%;margin-top:17px;border-radius:99px;overflow:hidden;background:#25272e}
+.support-progress-fill{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#37cc79,#88f0aa);box-shadow:0 0 14px rgba(57,214,124,.2);transition:width .6s cubic-bezier(.2,.7,.25,1)}
+.support-progress-meta{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:#969aa5;font-size:10px;font-variant-numeric:tabular-nums}
+.support-card-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.support-status{color:#8f94a0;font-size:10px;line-height:1.4}
+.donation-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:35px;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:#f5f5f7;color:#111216;font-size:11px;font-weight:650;white-space:nowrap;transition:transform .18s ease,background .18s ease}
+.donation-button:hover{background:#fff;transform:translateY(-1px)}
+.donation-button:active{transform:scale(.98)}
+.support-contact{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-top:13px;padding:13px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.09);background:rgba(5,6,9,.5);animation:support-contact-in .2s ease both}
+.support-contact[hidden]{display:none}
+.support-contact strong{font-size:12px;font-weight:600;color:#f5f5f7}
+.support-contact p{margin:4px 0 5px;color:#a1a4ae;font-size:11px}
+.support-contact a{color:#8de6ac;font-size:12px;text-decoration:none;overflow-wrap:anywhere}
+.support-contact a:hover{text-decoration:underline}
+.support-contact-close{display:grid;place-items:center;width:27px;height:27px;flex:0 0 27px;border:1px solid rgba(255,255,255,.1);border-radius:50%;background:transparent;color:#b7bac2;font-size:20px;line-height:1}
+@keyframes support-contact-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+.composer{border-color:rgba(255,255,255,.09);background:rgba(18,19,24,.95);box-shadow:0 10px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.025)}
+.stop-button{border-color:rgba(255,255,255,.13)}
+@media(max-width:560px){.voice-shell{grid-template-rows:auto auto minmax(0,1fr) auto}.topbar{padding-top:15px}.support-card{padding:14px 14px 12px;border-radius:17px;margin-bottom:6px}.support-card-heading{margin-top:11px;gap:10px}.support-card-copy h2{font-size:17px}.support-total-wrap strong{font-size:19px}.support-total-wrap span{font-size:8px}.support-card-actions{align-items:flex-end}.support-status{max-width:55%;font-size:9px}.donation-button{min-height:34px;padding:0 12px}.visitor-chip{gap:5px;padding:6px 7px}.visitor-chip strong{font-size:11px}.visitor-chip-label{font-size:7px}}
+@media(prefers-reduced-motion:reduce){.visitor-chip-mark,.support-live-dot{animation:none}.support-progress-fill{transition:none}}

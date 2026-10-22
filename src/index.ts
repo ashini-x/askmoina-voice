@@ -3494,7 +3494,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/api/public/live-stats" || url.pathname === "/api/support/status" || url.pathname === "/api/admin/support-donations" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
@@ -3512,6 +3512,96 @@ export default {
     if (conversationResponse) return conversationResponse;
     const continuityResponse = await handleContinuityRequest(request, env, ctx);
     if (continuityResponse) return await withSiteChromeResponse(continuityResponse, url.pathname, authenticatedForMenu, env.APP_VERSION || "0.4.80");
+
+    if (url.pathname === "/api/public/live-stats") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+      const cookieName = "askmoina_public_visitor";
+      const cookieHeader = request.headers.get("Cookie") || "";
+      const rawToken = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith(cookieName + "="))?.slice(cookieName.length + 1) || "";
+      const validToken = /^[a-f0-9-]{36}$/i.test(rawToken);
+      const visitorToken = validToken ? rawToken : crypto.randomUUID();
+      const now = Date.now();
+      try {
+        await env.DB.prepare(
+          "INSERT INTO askmoina_public_presence (visitor_token, first_seen_at, last_seen_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT(visitor_token) DO UPDATE SET last_seen_at=excluded.last_seen_at",
+        ).bind(visitorToken, now, now).run();
+        const row = await env.DB.prepare(
+          "SELECT COUNT(*) AS total FROM askmoina_public_presence WHERE last_seen_at >= ?",
+        ).bind(now - 90_000).first<{ total: number }>();
+        const response = json({
+          ok: true,
+          activeVisitors: Math.max(1, Number(row?.total || 1)),
+          windowSeconds: 90,
+          updatedAt: now,
+        }, 200, { "Cache-Control": "no-store" });
+        if (!validToken) response.headers.set(
+          "Set-Cookie",
+          cookieName + "=" + visitorToken + "; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax",
+        );
+        return response;
+      } catch (error) {
+        console.error("[askmoina] Live presence unavailable", error instanceof Error ? error.message : "unknown error");
+        return json({ ok: false, error: "live_stats_unavailable" }, 503, { "Cache-Control": "no-store" });
+      }
+    }
+
+    if (url.pathname === "/api/support/status") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+      try {
+        const row = await env.DB.prepare(
+          "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM askmoina_support_donations",
+        ).first<{ total_paise: number; donation_count: number }>();
+        const totalPaise = Math.max(0, Number(row?.total_paise || 0));
+        const targetPaise = 100000000;
+        return json({
+          ok: true,
+          totalPaise,
+          targetPaise,
+          donationCount: Math.max(0, Number(row?.donation_count || 0)),
+          progressPercent: Math.min(100, Math.round((totalPaise / targetPaise) * 10000) / 100),
+          updatedAt: Date.now(),
+        }, 200, { "Cache-Control": "no-store" });
+      } catch (error) {
+        console.error("[askmoina] Support status unavailable", error instanceof Error ? error.message : "unknown error");
+        return json({ ok: false, error: "support_status_unavailable" }, 503, { "Cache-Control": "no-store" });
+      }
+    }
+
+    if (url.pathname === "/api/admin/support-donations") {
+      if (!await isAdmin(request, env)) return json({ error: "admin_required" }, 403);
+      if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+      if (request.headers.get("Origin") !== new URL(request.url).origin) return json({ error: "forbidden_origin" }, 403);
+      let payload: { reference?: unknown; amountPaise?: unknown; donorLabel?: unknown };
+      try { payload = await request.json() as typeof payload; } catch { return json({ error: "invalid_json" }, 400); }
+      const reference = typeof payload.reference === "string" ? payload.reference.trim() : "";
+      const amountPaise = Number(payload.amountPaise);
+      const donorLabel = typeof payload.donorLabel === "string" ? payload.donorLabel.trim().slice(0, 80) : null;
+      if (!/^[a-zA-Z0-9._:-]{4,120}$/.test(reference) ||
+          !Number.isSafeInteger(amountPaise) || amountPaise < 1 || amountPaise > 1000000000) {
+        return json({ error: "invalid_donation", message: "Provide a unique verified payment reference and a positive amountPaise integer." }, 400);
+      }
+      try {
+        await env.DB.prepare(
+          "INSERT INTO askmoina_support_donations (payment_reference, amount_paise, donor_label, verified_at, verified_by) VALUES (?, ?, ?, ?, ?)",
+        ).bind(reference, amountPaise, donorLabel || null, Date.now(), env.ADMIN_DASHBOARD_USER?.trim() || "admin").run();
+        const row = await env.DB.prepare(
+          "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM askmoina_support_donations",
+        ).first<{ total_paise: number; donation_count: number }>();
+        const totalPaise = Math.max(0, Number(row?.total_paise || 0));
+        const targetPaise = 100000000;
+        return json({
+          ok: true, totalPaise, targetPaise,
+          donationCount: Math.max(0, Number(row?.donation_count || 0)),
+          progressPercent: Math.min(100, Math.round((totalPaise / targetPaise) * 10000) / 100),
+        }, 201, { "Cache-Control": "no-store" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        if (/unique|constraint/i.test(message)) return json({ error: "duplicate_donation_reference" }, 409);
+        console.error("[askmoina] Support donation could not be recorded", message);
+        return json({ error: "donation_record_failed" }, 500);
+      }
+    }
 
     if (url.pathname === "/api/health") {
       return json({
