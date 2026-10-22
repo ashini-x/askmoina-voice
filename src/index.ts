@@ -3494,7 +3494,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/public/traffic/status" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/identity" || url.pathname === "/api/public/traffic/status" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
@@ -3591,7 +3591,7 @@ export default {
           "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM math_course_donations"
         ).first<{ total_paise: number; donation_count: number }>();
         const totalPaise = Math.max(0, Number(row?.total_paise || 0));
-        const targetPaise = 50000000;
+        const targetPaise = 100000000;
         return json({ ok: true, totalPaise, targetPaise, donationCount: Number(row?.donation_count || 0), unlocked: totalPaise >= targetPaise }, 201, { "Cache-Control": "no-store" });
       } catch (error) {
         const message = error instanceof Error ? error.message : "unknown error";
