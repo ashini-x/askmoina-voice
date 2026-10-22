@@ -18,16 +18,17 @@ describe("static client memory handoff", () => {
     expect(worker).toContain("outputAudioTranscription: {}");
   });
 
-  it("routes the static entry to the minimal public guest voice test", () => {
+  it("routes the static entry to the public guest live voice assistant", () => {
     const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
     expect(html).toContain('id="toggleVoice"');
     expect(html).toContain('id="stopVoice"');
-    expect(html).toContain('Say “Moina”.');
+    expect(html).toContain("Talk naturally.");
+    expect(html).toContain("Ask anything.");
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain('id="mathFundCard"');
     expect(worker).toContain('const audioUrl = new URL("/", request.url)');
-    expect(worker).toContain("GUEST_WAKE_WORD_INSTRUCTION");
+    expect(worker).toContain("GUEST_VOICE_INSTRUCTION");
   });
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {
     const config = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
