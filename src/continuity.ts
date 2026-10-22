@@ -3,6 +3,8 @@ import { getAuthenticatedUserId, isAuthenticatedAccountAdmin, createAdminAccount
 
 const ADMIN_COOKIE = "moina_admin_session";
 const ADMIN_SESSION_SECONDS = 12 * 60 * 60;
+const VISITOR_COOKIE = "askmoina_visitor_id";
+const ANONYMOUS_VISITOR_PREFIX = "anon_";
 
 type VisitorContext = { visitorId: string; cookie?: string; touch: Promise<void> };
 
@@ -29,8 +31,16 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
+function validVisitorToken(token: string | null): token is string {
+  return typeof token === "string" && /^[a-f0-9-]{36}$/.test(token);
+}
+
 export async function visitorIdFromRequest(request: Request, env: Env): Promise<string | null> {
-  return getAuthenticatedUserId(request, env);
+  const userId = await getAuthenticatedUserId(request, env);
+  if (userId) return userId;
+  const token = readCookie(request, VISITOR_COOKIE);
+  if (!validVisitorToken(token)) return null;
+  return ANONYMOUS_VISITOR_PREFIX + await sha256Hex(token);
 }
 
 async function touchVisitor(env: Env, visitorId: string): Promise<void> {
@@ -43,8 +53,25 @@ async function touchVisitor(env: Env, visitorId: string): Promise<void> {
 
 export async function ensureVisitor(request: Request, env: Env): Promise<VisitorContext> {
   const userId = await getAuthenticatedUserId(request, env);
-  if (!userId) return { visitorId: "", touch: Promise.resolve() };
-  return { visitorId: userId, touch: touchVisitor(env, userId).catch(() => undefined) };
+  if (userId) {
+    return { visitorId: userId, touch: touchVisitor(env, userId).catch(() => undefined) };
+  }
+
+  let token = readCookie(request, VISITOR_COOKIE);
+  let cookie: string | undefined;
+  if (!validVisitorToken(token)) {
+    token = crypto.randomUUID();
+    const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+    cookie = VISITOR_COOKIE + "=" + token + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax" + secure;
+  }
+
+  // Store only a SHA-256 digest, never the opaque browser token itself.
+  const visitorId = ANONYMOUS_VISITOR_PREFIX + await sha256Hex(token);
+  return {
+    visitorId,
+    cookie,
+    touch: touchVisitor(env, visitorId).catch(() => undefined),
+  };
 }
 
 export async function recordSessionStart(
@@ -484,8 +511,13 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
 export async function handleContinuityRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === "/api/identity" && request.method === "GET") {
-    const visitor = await ensureVisitor(request,env); ctx.waitUntil(visitor.touch);
-    return json({ok:true,userId:visitor.visitorId,continuity:"authenticated-account"},200);
+    const visitor = await ensureVisitor(request, env);
+    await visitor.touch;
+    const continuity = visitor.visitorId.startsWith(ANONYMOUS_VISITOR_PREFIX)
+      ? "pseudonymous-browser"
+      : "authenticated-account";
+    const headers = visitor.cookie ? { "Set-Cookie": visitor.cookie } : undefined;
+    return json({ ok: true, continuity }, 200, headers);
   }
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/") || url.pathname === "/admin.js" || url.pathname === "/admin-login.js") return handleAdmin(request,env,url);
   return null;
