@@ -30,7 +30,8 @@ describe("public activity and support preview", () => {
   });
 
   it("only serves realistic support wording through the authenticated owner preview", () => {
-    expect(worker).toContain('url.searchParams.get("ownerPreview") === "1" && await isAdmin(request, env)');
+    expect(worker).toContain('const ownerPreviewRequested = url.searchParams.get("ownerPreview") === "1";');
+    expect(worker).toContain('const ownerPreview = ownerPreviewRequested && await isAdmin(request, env);');
     expect(worker).toContain('if (ownerPreviewRequested && !ownerPreview)');
     expect(worker).toContain('new URL("/admin/login", request.url)');
     expect(continuity).toContain('SameSite=Lax');
