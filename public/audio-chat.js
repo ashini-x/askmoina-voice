@@ -11,25 +11,152 @@
   const emptyTranscript = document.querySelector("#emptyTranscript");
   const voicePicker = document.querySelector("#voicePicker");
 
-  // Public-facing demo metric only. The label beside this number explicitly marks it
-  // as simulated; it must never be presented as a real-time analytics measurement.
-  const demoVisitorCount = document.querySelector("#demoVisitorCount");
-  if (demoVisitorCount) {
-    let simulatedVisitors = 12048 + Math.floor(Math.random() * 180);
-    const renderSimulatedVisitors = () => {
-      demoVisitorCount.textContent = simulatedVisitors.toLocaleString("en-US") + "+";
+  const liveVisitorCount = document.querySelector("#liveVisitorCount");
+  const totalVisitorCount = document.querySelector("#totalVisitorCount");
+  const donationTotalNode = document.querySelector("#donationTotal");
+  const donationGoalNode = document.querySelector("#donationGoal");
+  const fundProgressBar = document.querySelector("#fundProgressBar");
+  const fundProgressFill = document.querySelector("#fundProgressFill");
+  const fundContributionSummary = document.querySelector("#fundContributionSummary");
+  const fundUpdateStatus = document.querySelector("#fundUpdateStatus");
+  const openDonationContact = document.querySelector("#openDonationContact");
+  const donationContactDialog = document.querySelector("#donationContactDialog");
+  const closeDonationContact = document.querySelector("#closeDonationContact");
+  const dismissDonationContact = document.querySelector("#dismissDonationContact");
+  const FUND_STATUS_CACHE_KEY = "askmoina.verified-fund-status.v1";
+
+  function readFundStatusCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(FUND_STATUS_CACHE_KEY) || "null");
+      if (cached && Number.isSafeInteger(cached.totalPaise) && cached.totalPaise >= 0 &&
+          Number.isSafeInteger(cached.targetPaise) && cached.targetPaise > 0) return cached;
+    } catch (_) {}
+    return null;
+  }
+
+  function formatINR(paise) {
+    const safePaise = Math.max(0, Math.floor(Number(paise) || 0));
+    const rupees = Math.floor(safePaise / 100);
+    const remainder = safePaise % 100;
+    return "₹" + rupees.toLocaleString("en-IN") +
+      (remainder ? "." + String(remainder).padStart(2, "0") : "");
+  }
+
+  let fundRenderSequence = 0;
+  function renderFundStatus(status, animateFromPaise = null) {
+    const totalPaise = Math.max(0, Math.floor(Number(status.totalPaise) || 0));
+    const targetPaise = Math.max(1, Math.floor(Number(status.targetPaise) || 100000000));
+    const donationCount = Math.max(0, Math.floor(Number(status.donationCount) || 0));
+    const progressPercent = Math.min(100, Math.max(0, (totalPaise / targetPaise) * 100));
+    if (donationGoalNode) donationGoalNode.textContent = formatINR(targetPaise);
+    if (fundProgressFill) fundProgressFill.style.width = progressPercent.toFixed(2) + "%";
+    if (fundProgressBar) fundProgressBar.setAttribute("aria-valuenow", progressPercent.toFixed(2));
+    if (fundContributionSummary) {
+      fundContributionSummary.textContent = donationCount === 0
+        ? "No verified contributions recorded yet"
+        : donationCount.toLocaleString("en-IN") + (donationCount === 1 ? " verified contribution" : " verified contributions");
+    }
+
+    const sequence = ++fundRenderSequence;
+    const canAnimate = Number.isFinite(animateFromPaise) && animateFromPaise >= 0 && animateFromPaise < totalPaise;
+    if (donationTotalNode && canAnimate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const startedAt = performance.now();
+      const duration = 780;
+      const from = Math.floor(animateFromPaise);
+      const draw = (now) => {
+        if (sequence !== fundRenderSequence) return;
+        const t = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const displayed = Math.round(from + (totalPaise - from) * eased);
+        donationTotalNode.textContent = formatINR(displayed);
+        if (t < 1) window.requestAnimationFrame(draw);
+      };
+      donationTotalNode.textContent = formatINR(from);
+      window.requestAnimationFrame(draw);
+    } else if (donationTotalNode) {
+      donationTotalNode.textContent = formatINR(totalPaise);
+    }
+  }
+
+  async function refreshDonationStatus() {
+    try {
+      const response = await fetch("/api/donation/status", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error("Donation status unavailable");
+      const payload = await response.json();
+      if (!payload || payload.ok !== true ||
+          !Number.isSafeInteger(payload.totalPaise) || payload.totalPaise < 0 ||
+          !Number.isSafeInteger(payload.targetPaise) || payload.targetPaise <= 0) {
+        throw new Error("Donation status response was invalid");
+      }
+      const previous = readFundStatusCache();
+      const animateFrom = previous && payload.totalPaise >= previous.totalPaise
+        ? previous.totalPaise
+        : null;
+      renderFundStatus(payload, animateFrom);
+      try {
+        localStorage.setItem(FUND_STATUS_CACHE_KEY, JSON.stringify({
+          totalPaise: payload.totalPaise,
+          targetPaise: payload.targetPaise,
+          donationCount: Math.max(0, Number(payload.donationCount) || 0),
+          savedAt: Date.now()
+        }));
+      } catch (_) {}
+      if (fundUpdateStatus) fundUpdateStatus.textContent = "Only confirmed contributions count toward the goal.";
+    } catch (_) {
+      const cached = readFundStatusCache();
+      if (cached) {
+        renderFundStatus(cached);
+        if (fundUpdateStatus) fundUpdateStatus.textContent = "Showing the last verified total; live refresh is temporarily unavailable.";
+      } else {
+        if (donationTotalNode) donationTotalNode.textContent = "Unavailable";
+        if (fundContributionSummary) fundContributionSummary.textContent = "Verified totals could not be loaded";
+        if (fundUpdateStatus) fundUpdateStatus.textContent = "Please try again shortly.";
+      }
+    }
+  }
+
+  if (donationContactDialog && openDonationContact) {
+    openDonationContact.addEventListener("click", () => {
+      if (typeof donationContactDialog.showModal === "function") donationContactDialog.showModal();
+    });
+    const closeDialog = () => {
+      if (typeof donationContactDialog.close === "function" && donationContactDialog.open) donationContactDialog.close();
     };
-    const scheduleSimulatedUpdate = () => {
-      window.setTimeout(() => {
-        const movement = 1 + Math.floor(Math.random() * 3);
-        simulatedVisitors += Math.random() < 0.5 ? movement : -movement;
-        simulatedVisitors = Math.max(12000, Math.min(12399, simulatedVisitors));
-        renderSimulatedVisitors();
-        scheduleSimulatedUpdate();
-      }, 9000 + Math.floor(Math.random() * 17000));
-    };
-    renderSimulatedVisitors();
-    scheduleSimulatedUpdate();
+    if (closeDonationContact) closeDonationContact.addEventListener("click", closeDialog);
+    if (dismissDonationContact) dismissDonationContact.addEventListener("click", closeDialog);
+    donationContactDialog.addEventListener("click", (event) => {
+      if (event.target === donationContactDialog) closeDialog();
+    });
+  }
+
+  void refreshDonationStatus();
+  window.setInterval(() => { void refreshDonationStatus(); }, 10_000);
+
+  async function refreshPublicTraffic() {
+    try {
+      const response = await fetch("/api/public/traffic/status", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error("Traffic status unavailable");
+      const payload = await response.json();
+      const active = Number(payload.activeVisitors);
+      const total = Number(payload.totalVisitors);
+      if (payload.ok !== true || !Number.isSafeInteger(active) || active < 0 ||
+          !Number.isSafeInteger(total) || total < 0) throw new Error("Traffic status was invalid");
+      if (liveVisitorCount) liveVisitorCount.textContent = active.toLocaleString("en-IN");
+      if (totalVisitorCount) totalVisitorCount.textContent = total.toLocaleString("en-IN");
+    } catch (_) {
+      if (liveVisitorCount) liveVisitorCount.textContent = "—";
+      if (totalVisitorCount) totalVisitorCount.textContent = "—";
+    }
   }
 
 
@@ -51,7 +178,10 @@
     }
   }
 
-  const visitorIdentityReady = Promise.resolve();
+  const visitorIdentityReady = ensureVisitorIdentity().then(refreshPublicTraffic);
+  window.setInterval(() => {
+    ensureVisitorIdentity().then(refreshPublicTraffic).catch(() => undefined);
+  }, 30_000);
   const MEMORY_CONTEXT_KEY = "askmoina.memory.context";
   const MEMORY_CONSENT_KEY = "askmoina.memory.consent.v1";
 
