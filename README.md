@@ -72,11 +72,12 @@ On iPhone/iPad, open the site in Safari, choose **Share → Add to Home Screen**
 GitHub edits do not reach a user's device until they are committed to the deployed branch and the Cloudflare deployment succeeds. After deployment, the installed PWA loads the latest HTML, JavaScript, CSS, and manifest from the Worker on the next app launch or reload; the service worker precaches only the small installation/offline shell and does not cache active app code or authenticated API responses. An already-open session is not forcibly hot-reloaded mid-conversation, so users may need to close and reopen AskMoina (or reload when safe) to pick up a release. No separate app-store binary update is required for ordinary web-code changes.
 
 
-## Audio-first public release and Math course fund
+## Audio-first public release and community fund
 
-- The root product is the no-signup audio interface. It requests microphone access only after the visitor taps Start talking; the camera is disabled at the page Permissions-Policy layer.
+- The root product is the no-signup audio interface. It requests microphone access only after the visitor taps Start listening; the camera is disabled at the page Permissions-Policy layer.
 - Guest voice sockets are given a random per-session relay owner. Account-scoped conversation history and memories remain authenticated features and are not written from this public page.
-- The Math course progress bar polls `/api/donation/status` every 10 seconds and aggregates only rows in `math_course_donations`. It does not fabricate a steadily rising total.
-- The threshold is INR 500,000. After the `0012_math_course_fund.sql` migration is applied, an admin can record an externally verified contribution by POSTing to `/api/admin/math-donations` with `reference` (unique payment/receipt reference), `amountPaise` (integer in paise), and optional `donorLabel`. The admin session must be authenticated. Do not use this endpoint to record unverified pledges.
-- No payment processor/webhook is configured by this release; automatic contribution ingestion must be connected to the actual payment provider before claiming fully automatic donations. The goal bar updates after a verified record is stored.
-- The course gate UI becomes available at ₹500,000, but lesson content itself still needs to be published.
+- The public status pill reports approximate active browser profiles seen in the previous five minutes, plus a persistent total of pseudonymous browser profiles. Each anonymous profile is identified by a random first-party cookie; only its SHA-256 hash is stored server-side. The counts reflect recorded traffic, not fabricated visitor claims.
+- The community fund goal is INR 1,000,000. The progress bar polls `/api/donation/status` every 10 seconds and aggregates only rows in `math_course_donations`; its total does not auto-increase or reset on reload.
+- After the `0012_math_course_fund.sql` migration is applied, an admin can record an externally verified contribution by POSTing to `/api/admin/math-donations` with `reference` (unique payment/receipt reference), `amountPaise` (integer in paise), and optional `donorLabel`. The admin session must be authenticated. Do not use this endpoint to record unverified pledges.
+- No payment processor/webhook is configured by this release; automatic contribution ingestion must be connected to the actual payment provider before claiming fully automatic donations. The public goal bar updates after a verified record is stored.
+- Contributions can be arranged by contacting `ashinigogoiofficial@gmail.com`. The total includes confirmed records only; it must not be seeded with an unverified estimate.
