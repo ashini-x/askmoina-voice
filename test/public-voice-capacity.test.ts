@@ -69,7 +69,7 @@ describe("public audio-first voice access", () => {
     env.ASSETS = {
       async fetch(request: Request) {
         const path = new URL(request.url).pathname;
-        if (path === "/audio.html") {
+        if (path === "/audio") {
           return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Talk</button><section id="mathFundCard"></section><div id="transcript"></div><p>moinaOS 2 · Invite only</p>', {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           });

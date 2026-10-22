@@ -3366,8 +3366,8 @@ export default {
       }
     }
 
-    if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
-      const audioUrl = new URL("/audio.html", request.url);
+    if ((url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio") && (request.method === "GET" || request.method === "HEAD")) {
+      const audioUrl = new URL("/audio", request.url);
       const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
       if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.152");
@@ -3481,7 +3481,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);

@@ -24,7 +24,7 @@ describe("static client memory handoff", () => {
     const audio = readFileSync(new URL("../public/audio.html", import.meta.url), "utf8");
     expect(html).toContain("url=/");
     expect(html).not.toContain('href="/vault"');
-    expect(worker).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(worker).toContain('const audioUrl = new URL("/audio", request.url)');
     expect(worker).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(audio).toContain('id="toggleVoice"');
     expect(audio).not.toContain('id="videoPreview"');

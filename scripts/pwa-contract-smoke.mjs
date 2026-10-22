@@ -74,7 +74,7 @@ assert.ok(gate.includes('window.location.replace("/install")'), "browser-tab use
 assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
-assert.ok(worker.includes('const audioUrl = new URL("/audio.html", request.url);'), "public audio-first home route missing");
+assert.ok(worker.includes('const audioUrl = new URL("/audio", request.url);'), "public audio-first home route missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
 assert.ok(worker.includes('const themeColor = "#090A0D"'), "PWA theme must match the dark app shell");
 assert.ok(worker.includes('manifest.theme_color = "#090A0D"') && worker.includes('manifest.background_color = "#090A0D"'), "served manifest must force black Android system-bar colors");

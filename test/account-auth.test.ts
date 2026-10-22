@@ -20,7 +20,7 @@ function envMock(): Env {
     const path = new URL(request.url).pathname;
     return new Response(path === "/login.html" ? LOGIN_FIXTURE
       : path === "/account.html" ? "Your AskMoina ID"
-      : path === "/audio.html" ? AUDIO_FIXTURE : "auth", { status: 200 });
+      : path === "/audio" ? AUDIO_FIXTURE : "auth", { status: 200 });
   } };
   return { DB: db, ASSETS: assets } as unknown as Env;
 }

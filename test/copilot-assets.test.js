@@ -527,7 +527,7 @@ describe("Live Co-Pilot browser assets", () => {
 
 describe("Native mobile-first AskMoina shell", () => {
   it("serves the audio-first product shell at root", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
     expect(workerSource).toContain('"/api/donation/status"');
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
     expect(audioHtml).toContain('id="toggleVoice"');
