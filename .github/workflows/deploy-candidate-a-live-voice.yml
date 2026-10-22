@@ -404,18 +404,21 @@ jobs:
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          grep -q 'data-askmoina-pwa-gate="pending"' /tmp/moina-home.html
-          grep -q 'href="/manifest.webmanifest?v=20261018"' /tmp/moina-home.html
-          grep -q 'src="/pwa-gate.js"' /tmp/moina-home.html
-          echo "Main app standalone gate: OK"
-
-          # The legacy /login.html route now redirects into the same camera-first
-          # sign-in shell used at /. Validate the real shell instead of the retired page.
-          grep -q 'Continue with Face ID or Touch ID' /tmp/moina-home.html
-          grep -q 'OR USE YOUR PHONE' /tmp/moina-home.html
-          grep -q 'data-askmoina-pwa-gate="pending"' /tmp/moina-home.html
-          grep -q 'src="/pwa-gate.js"' /tmp/moina-home.html
-          echo "Native sign-in PWA gate: OK"
+          grep -q "What’s on your mind?" /tmp/moina-home.html
+          grep -q 'id="toggleVoice"' /tmp/moina-home.html
+          grep -q 'id="mathFundCard"' /tmp/moina-home.html
+          grep -q 'id="experienceMoinaOS2"' /tmp/moina-home.html && exit 1 || true
+          grep -q 'moinaOS 2' /tmp/moina-home.html
+          grep -q 'audio-chat.js' /tmp/moina-home.html
+          if grep -q 'id="videoPreview"' /tmp/moina-home.html; then
+            echo "::error::Audio-first home unexpectedly contains a live video preview."
+            exit 1
+          fi
+          if grep -Eq 'Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
+            echo "::error::Audio-first home unexpectedly contains a sign-up/sign-in screen."
+            exit 1
+          fi
+          echo "Public no-signup audio home, moinaOS products, and fundraiser shell: OK"
 
       - name: Synthetic live web-grounding and voice-memory verification
         shell: bash

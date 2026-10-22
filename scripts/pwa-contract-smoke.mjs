@@ -8,6 +8,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 
 const globalFontCss = read("public/askmoina-global-font.css");
+const publicAudioShell = read("public/audio.html");
+assert.ok(publicAudioShell.includes('id="toggleVoice"') && publicAudioShell.includes('id="mathFundCard"') && publicAudioShell.includes('id="transcript"'), "public audio shell must expose voice controls, live fundraiser, and transcript");
+assert.ok(!publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes("Face ID") && !publicAudioShell.includes("Sign up"), "public home must stay audio-only and no-signup");
 assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must reference its locally bundled typeface");
 assert.ok(globalFontCss.includes("font-display: block;"), "global font must suppress fallback-font flashes");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
@@ -71,7 +74,7 @@ assert.ok(gate.includes('window.location.replace("/install")'), "browser-tab use
 assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
-assert.ok(worker.includes('if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);'), "home page standalone gate missing");
+assert.ok(worker.includes('const audioUrl = new URL("/audio.html", request.url);'), "public audio-first home route missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
 assert.ok(worker.includes('const themeColor = "#090A0D"'), "PWA theme must match the dark app shell");
 assert.ok(worker.includes('manifest.theme_color = "#090A0D"') && worker.includes('manifest.background_color = "#090A0D"'), "served manifest must force black Android system-bar colors");
@@ -82,7 +85,7 @@ assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-scree
 assert.ok(!worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "obsolete launch-overlay bypass logic must remain removed");
 assert.ok(!read("public/native-app.css").includes(".app-launch-transition"), "launch-interstitial styles must remain removed");
 assert.ok(worker.includes("const POST_AUTH_ONBOARDING = "), "post-auth screens must be present");
-assert.ok(worker.includes("withNativeAppShell(html, appVersion, authenticated)"), "root must use the native app shell");
+assert.ok(worker.includes('new URL("/audio.html", request.url)'), "root must serve the no-signup audio shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
 assert.ok(worker.includes("const NATIVE_APP_MENU_SHEET") && worker.includes("native-menu-signout"), "native app menu must include app settings and sign-out");
 assert.ok(read("public/native-app.css").includes(".native-menu-sheet"), "native app menu styling is missing");
