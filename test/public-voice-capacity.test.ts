@@ -69,7 +69,7 @@ describe("public audio-first voice access", () => {
     env.ASSETS = {
       async fetch(request: Request) {
         const path = new URL(request.url).pathname;
-        if (path === "/index.html") {
+        if (path === "/") {
           return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Start listening</button><button id="stopVoice">Stop voice</button><div id="transcript"></div><p>Say “Moina”.</p>', {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           });

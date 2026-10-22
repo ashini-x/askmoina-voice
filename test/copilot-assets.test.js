@@ -528,7 +528,7 @@ describe("Live Co-Pilot browser assets", () => {
 
 describe("Native mobile-first AskMoina shell", () => {
   it("serves a minimal guest wake-word voice test at root", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
     expect(audioHtml).toContain('id="stopVoice"');
     expect(audioHtml).toContain('Say “Moina”.');
@@ -972,7 +972,7 @@ describe("Dark-first app shell and brand assets", () => {
 
 
   it("routes the public root to the minimal guest voice test", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
     expect(audioHtml).toContain('id="stopVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
@@ -984,7 +984,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
-    expect(workerSource).toContain('const audioUrl = new URL("/index.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/", request.url)');
     expect(indexHtml).toContain('id="stopVoice"');
     expect(indexHtml).not.toContain('id="mathFundCard"');
     expect(indexHtml).not.toContain('id="videoPreview"');

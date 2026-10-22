@@ -2330,6 +2330,9 @@ async function handleVoiceSocket(
       }
 
       if (parsed.kind === "initial_greeting") {
+        // Legacy camera clients used this event to force a spoken greeting.
+        // The guest MVP must never speak without the Moina wake word.
+        if (guestSessionRequested) return;
         sendUpstreamMessage({
           clientContent: {
             turns: [{ role: "user", parts: [{ text: "Begin the live camera conversation now. Say one short, warm greeting first in natural Assamese-English mixed speech, then invite the user to show you the problem or object. This is the opening turn, so speak now without waiting for user audio. Keep the greeting brief and do not mention setup, APIs, or interface mechanics." }] }],
@@ -3380,7 +3383,7 @@ export default {
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio") && (request.method === "GET" || request.method === "HEAD")) {
-      const audioUrl = new URL("/index.html", request.url);
+      const audioUrl = new URL("/", request.url);
       const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
       if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");

@@ -26,7 +26,7 @@ describe("static client memory handoff", () => {
     expect(html).toContain('Say “Moina”.');
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain('id="mathFundCard"');
-    expect(worker).toContain('const audioUrl = new URL("/index.html", request.url)');
+    expect(worker).toContain('const audioUrl = new URL("/", request.url)');
     expect(worker).toContain("GUEST_WAKE_WORD_INSTRUCTION");
   });
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {

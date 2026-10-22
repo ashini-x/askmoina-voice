@@ -74,7 +74,7 @@ assert.ok(gate.includes('window.location.replace("/install")'), "browser-tab use
 assert.ok(!gate.includes("location.search") && !gate.includes("searchParams"), "a query string must not unlock the app");
 
 const worker = read("src/index.ts");
-assert.ok(worker.includes('const audioUrl = new URL("/index.html", request.url);'), "public audio-first home route missing");
+assert.ok(worker.includes('const audioUrl = new URL("/", request.url);'), "public audio-first home route missing");
 assert.ok(worker.includes('apple-mobile-web-app-title" content="askmoina'), "iOS Home Screen app title metadata missing");
 assert.ok(worker.includes('const themeColor = "#090A0D"'), "PWA theme must match the dark app shell");
 assert.ok(worker.includes('manifest.theme_color = "#090A0D"') && worker.includes('manifest.background_color = "#090A0D"'), "served manifest must force black Android system-bar colors");
@@ -165,7 +165,7 @@ for (const label of [
 const audioShell = read("public/index.html");
 const audioClient = read("public/audio-chat.js");
 const audioStyles = read("public/audio-chat.css");
-assert.ok(worker.includes('const audioUrl = new URL("/index.html", request.url)'), "Worker must serve the static guest voice-test shell");
+assert.ok(worker.includes('const audioUrl = new URL("/", request.url)'), "Worker must serve the static guest voice-test shell");
 assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="stopVoice"') && audioShell.includes('id="transcript"'), "guest shell must include start, stop-voice, and transcript controls");
 assert.ok(audioShell.includes('Say “Moina”.') && audioShell.includes('Yes, I am here.'), "guest shell must explain the wake-word test");
 assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes('id="mathFundCard"') && !audioShell.includes("moinaOS 1") && !audioShell.includes("moinaOS 2") && !audioShell.includes("Sign up"), "guest shell must hide products, fundraiser, camera, and signup UI");
