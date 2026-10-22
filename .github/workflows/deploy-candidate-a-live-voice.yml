@@ -11,7 +11,7 @@ permissions:
 concurrency:
   # Keep production deployments serial. A prior v3 run is stuck after its deploy checks,
   # so v4 releases the new deployment without allowing it to overlap another v4 deploy.
-  group: askmoina-candidate-a-production-deploy-v6
+  group: askmoina-candidate-a-production-deploy-v7
   cancel-in-progress: false
 
 jobs:
@@ -249,7 +249,7 @@ jobs:
           NODE
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
+          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'id="osModelPicker"' 'id="tryMoinaOS1"' 'id="moinaOS2Disabled" disabled' 'moinaOS 1' 'moinaOS 2' 'Try for free' 'audio-chat.js'; do
             if ! grep -Fq "$selector" /tmp/moina-home.html; then
               echo "::error::Guest Live voice homepage is missing expected marker: $selector"
               echo "Homepage response prefix:"
@@ -262,7 +262,7 @@ jobs:
             echo "::error::Guest Live homepage must not require a wake word."
             exit 1
           fi
-          if grep -Eq 'id="videoPreview"|id="mathFundCard"|moinaOS 2|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
+          if grep -Eq 'id="videoPreview"|id="mathFundCard"|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
             echo "::error::Audio-first homepage unexpectedly exposes camera or signup UI."
             head -c 1200 /tmp/moina-home.html | tr '\n' ' '
             echo
@@ -434,7 +434,7 @@ jobs:
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
+          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'id="osModelPicker"' 'id="tryMoinaOS1"' 'id="moinaOS2Disabled" disabled' 'moinaOS 1' 'moinaOS 2' 'Try for free' 'audio-chat.js'; do
             grep -Fq "$selector" /tmp/moina-home.html || {
               echo "::error::Guest Live home is missing expected marker: $selector"
               exit 1
@@ -444,7 +444,7 @@ jobs:
             echo "::error::Guest Live home must not require a wake word."
             exit 1
           fi
-          if grep -Eq 'id="videoPreview"|id="mathFundCard"|moinaOS 2|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
+          if grep -Eq 'id="videoPreview"|id="mathFundCard"|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
             echo "::error::Guest Live home unexpectedly exposes hidden UI."
             exit 1
           fi
@@ -454,7 +454,7 @@ jobs:
           test "$status" = "200"
           grep -q 'manifest.webmanifest' /tmp/moina-install.html
           echo "Standalone install path and web manifest reference: OK"
-          for asset in "/audio-chat.css?v=${app_version}" "/audio-chat.js?v=${app_version}"; do
+          for asset in "/audio-chat.css?v=${app_version}" "/audio-chat.js?v=${app_version}" "/os-selection.js?v=${app_version}"; do
             status="$(fetch_status "$asset" /tmp/moina-audio-asset)"
             if [[ "$status" != "200" ]]; then
               echo "::error::Audio shell asset $asset returned HTTP $status"

@@ -18,6 +18,20 @@ describe("public activity and support preview", () => {
     expect(css).toContain("@keyframes preview-orbit");
   });
 
+  it("offers an available moinaOS 1 card and a disabled moinaOS 2 future card", () => {
+    expect(html).toContain('id="osModelPicker"');
+    expect(html).toContain('id="tryMoinaOS1">Try for free');
+    expect(html).toContain('id="moinaOS2Title">moinaOS 2');
+    expect(html).toContain("More advanced. Coming next.");
+    expect(html).toContain('id="moinaOS2Disabled" disabled');
+    expect(html).toContain('class="conversation" aria-label="Voice test" hidden');
+    const selection = readFileSync(new URL("../public/os-selection.js", import.meta.url), "utf8");
+    expect(selection).toContain('tryButton.addEventListener("click"');
+    expect(selection).toContain("composer.scrollIntoView");
+    expect(css).toContain(".os-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))");
+    expect(css).toContain('body[data-owner-preview="true"] .support-status{display:none}');
+  });
+
   it("keeps the illustrative support amount separate from verified contributions", () => {
     expect(html).toContain("preview total · not donations");
     expect(html).toContain("Preview figures are illustrative, not actual donations.");
@@ -38,7 +52,8 @@ describe("public activity and support preview", () => {
     expect(continuity).toContain('href="/?ownerPreview=1" target="_blank" rel="noopener">Support copy preview</a>');
     expect(worker).toContain('<body data-owner-preview="true">');
     expect(worker).toContain('headers.set("Cache-Control", "private, no-store")');
-    expect(worker).toContain("raised toward our goal");
+    expect(worker).toContain("Total donations");
+    expect(worker).toContain("['Preview figures are illustrative, not actual donations.', '']");
     expect(html).toContain("preview total · not donations");
     expect(script).toContain('document.body?.dataset.ownerPreview === "true"');
   });

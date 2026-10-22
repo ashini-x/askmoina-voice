@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133">
 <title>askmoina · Live voice assistant</title>
 <script src="/audio-chat.js?v=__APP_VERSION__" defer></script>
+<script src="/os-selection.js?v=__APP_VERSION__" defer></script>
 </head>
 <body>
 <main class="voice-shell">
@@ -23,6 +24,47 @@
       </span>
     </div>
   </header>
+  <section class="os-selector" id="osModelPicker" aria-labelledby="osPickerTitle">
+    <div class="os-selector-intro">
+      <p class="os-selector-eyebrow">ASKMOINA OS</p>
+      <h2 id="osPickerTitle">Choose your experience.</h2>
+      <p>Start with what’s ready today.</p>
+    </div>
+    <div class="os-card-grid">
+      <article class="os-model-card os-model-card--ready" aria-labelledby="moinaOS1Title">
+        <div class="os-model-card-top">
+          <span class="os-model-name" id="moinaOS1Title">moinaOS 1</span>
+          <span class="os-model-badge os-model-badge--ready"><span aria-hidden="true"></span> Available now</span>
+        </div>
+        <div class="os-model-mark os-model-mark--one" aria-hidden="true"><span>m<span>1</span></span></div>
+        <h3>Real-time intelligence.</h3>
+        <p>Talk naturally with AskMoina Live. Ask anything and keep the conversation going.</p>
+        <div class="os-model-features" aria-label="moinaOS 1 features">
+          <span>Live voice</span><span>Open-ended conversation</span>
+        </div>
+        <div class="os-model-card-bottom">
+          <span class="os-model-footnote">Ready when you are.</span>
+          <button type="button" class="os-model-cta" id="tryMoinaOS1">Try for free <span aria-hidden="true">↗</span></button>
+        </div>
+      </article>
+      <article class="os-model-card os-model-card--future" aria-labelledby="moinaOS2Title" aria-disabled="true">
+        <div class="os-model-card-top">
+          <span class="os-model-name" id="moinaOS2Title">moinaOS 2</span>
+          <span class="os-model-badge os-model-badge--future">Future release</span>
+        </div>
+        <div class="os-model-mark os-model-mark--two" aria-hidden="true"><span>m<span>2</span></span></div>
+        <h3>More advanced. Coming next.</h3>
+        <p>A planned next-generation model designed for deeper reasoning and richer multimodal understanding.</p>
+        <div class="os-model-features" aria-label="Planned moinaOS 2 direction">
+          <span>Next-generation model</span><span>Expanded capabilities</span>
+        </div>
+        <div class="os-model-card-bottom">
+          <span class="os-model-footnote">Not available yet.</span>
+          <button type="button" class="os-model-cta os-model-cta--disabled" id="moinaOS2Disabled" disabled>Coming in a future release</button>
+        </div>
+      </article>
+    </div>
+  </section>
   <section class="support-card" aria-label="Illustrative support progress preview">
     <div class="support-card-topline"><span class="support-live-dot" aria-hidden="true"></span><span>SUPPORT GOAL PREVIEW</span></div>
     <div class="support-card-heading">
@@ -43,7 +85,7 @@
       <button type="button" id="closeSupportContact" class="support-contact-close" aria-label="Close contact details">×</button>
     </div>
   </section>
-  <section class="conversation" aria-label="Voice test">
+  <section class="conversation" aria-label="Voice test" hidden>
     <div class="hero">
       <p class="eyebrow">LIVE VOICE</p>
       <h1>moinaOS 1</h1>
@@ -53,7 +95,7 @@
       <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>
     </section>
   </section>
-  <footer class="composer-wrap">
+  <footer class="composer-wrap" hidden>
     <div class="composer" id="composer">
       <div class="composer-copy">
         <strong id="composerTitle">Voice assistant</strong>

@@ -106,7 +106,7 @@
     supportProgressFill.style.width = percent + "%";
     supportProgressTrack.setAttribute("aria-valuenow", String(supportPreviewRupees));
     supportProgressTrack.setAttribute("aria-valuetext", ownerPreviewMode
-      ? inrFormat.format(supportPreviewRupees) + " raised toward " + inrFormat.format(SUPPORT_GOAL_RUPEES)
+      ? "Total donations: " + inrFormat.format(supportPreviewRupees) + " toward goal " + inrFormat.format(SUPPORT_GOAL_RUPEES)
       : inrFormat.format(supportPreviewRupees) + " illustrative preview of " + inrFormat.format(SUPPORT_GOAL_RUPEES) + "; not actual donations");
   }
   function growSupportPreview() {

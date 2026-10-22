@@ -52,6 +52,7 @@
       "/vault/",
       "/vault.js",
       "/audio-chat.js",
+      "/os-selection.js",
       "/audio-chat.css",
       "/app.js",
       "/session-ui.js",
@@ -73,7 +74,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.164",
+    "APP_VERSION": "0.4.165",
     "ENVIRONMENT": "production",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
@@ -162,7 +163,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.164-preview",
+      "APP_VERSION": "0.4.165-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",

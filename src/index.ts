@@ -3735,9 +3735,9 @@ export default {
           ['aria-label="Illustrative support progress preview"', 'aria-label="Community support progress"'],
           ['<span>SUPPORT GOAL PREVIEW</span>', '<span>COMMUNITY SUPPORT</span>'],
           ['<p>Illustrative progress preview</p>', '<p>Community contributions</p>'],
-          ['<span>preview total · not donations</span>', '<span>raised toward our goal</span>'],
+          ['<span>preview total · not donations</span>', '<span>Total donations</span>'],
           ['aria-label="Illustrative preview toward support goal; not actual donations"', 'aria-label="Community contributions toward support goal"'],
-          ['Preview figures are illustrative, not actual donations.', 'Every contribution helps build moinaOS 1.'],
+          ['Preview figures are illustrative, not actual donations.', ''],
         ];
         for (const [before, after] of ownerCopy) html = html.replace(before, after);
         headers.set("Cache-Control", "private, no-store");
