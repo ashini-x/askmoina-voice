@@ -3717,7 +3717,13 @@ export default {
     const isHome = request.method === "GET" && assetResponse.status === 200 && (url.pathname === "/" || url.pathname === "/index.html");
     if (isHome) {
       let html = await assetResponse.text();
-      const ownerPreview = url.searchParams.get("ownerPreview") === "1" && await isAdmin(request, env);
+      const ownerPreviewRequested = url.searchParams.get("ownerPreview") === "1";
+      const ownerPreview = ownerPreviewRequested && await isAdmin(request, env);
+      if (ownerPreviewRequested && !ownerPreview) {
+        // Do not silently fall back to public copy when an owner-preview link is opened
+        // without its admin cookies (e.g. from a different top-level site).
+        return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
+      }
       if (ownerPreview) {
         // Realistic copy is for the authenticated owner's private preview only.
         // Everyone else continues seeing the honest preview labels in the static shell.

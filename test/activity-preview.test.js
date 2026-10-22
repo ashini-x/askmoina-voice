@@ -31,6 +31,9 @@ describe("public activity and support preview", () => {
 
   it("only serves realistic support wording through the authenticated owner preview", () => {
     expect(worker).toContain('url.searchParams.get("ownerPreview") === "1" && await isAdmin(request, env)');
+    expect(worker).toContain('if (ownerPreviewRequested && !ownerPreview)');
+    expect(worker).toContain('new URL("/admin/login", request.url)');
+    expect(continuity).toContain('SameSite=Lax');
     expect(continuity).toContain('href="/?ownerPreview=1" target="_blank" rel="noopener">Support copy preview</a>');
     expect(worker).toContain('<body data-owner-preview="true">');
     expect(worker).toContain('headers.set("Cache-Control", "private, no-store")');

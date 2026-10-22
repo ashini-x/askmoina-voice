@@ -67,6 +67,7 @@ describe("Continuity admin access", () => {
     expect(setCookie).toContain("moina_admin_session=");
     expect(setCookie).toContain("Path=/;");
     expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
     const cookie = setCookie.split(";")[0];
     const voiceRequest = new Request("https://askmoina.test/api/voice/socket", {
       headers: { Cookie: cookie },

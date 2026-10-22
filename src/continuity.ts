@@ -164,7 +164,7 @@ function safeEqual(left: string, right: string): boolean {
 async function adminSessionCookie(env: Env): Promise<string> {
   const expiry = Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS;
   const signature = await hmac("askmoina-admin-v1:" + expiry, env.ADMIN_SESSION_SECRET || "");
-  return ADMIN_COOKIE + "=" + expiry + "." + signature + "; Max-Age=" + ADMIN_SESSION_SECONDS + "; Path=/; Secure; HttpOnly; SameSite=Strict";
+  return ADMIN_COOKIE + "=" + expiry + "." + signature + "; Max-Age=" + ADMIN_SESSION_SECONDS + "; Path=/; Secure; HttpOnly; SameSite=Lax";
 }
 
 export async function isAdmin(request: Request, env: Env): Promise<boolean> {
