@@ -6,6 +6,7 @@ describe("public activity and support preview", () => {
   const script = readFileSync(new URL("../public/audio-chat.js", import.meta.url), "utf8");
   const css = readFileSync(new URL("../public/audio-chat.css", import.meta.url), "utf8");
   const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+  const continuity = readFileSync(new URL("../src/continuity.ts", import.meta.url), "utf8");
 
   it("labels the changing visitor number as a preview and constrains it to the requested range", () => {
     expect(html).toContain('class="visitor-chip-label">PREVIEW</span>');
@@ -30,6 +31,7 @@ describe("public activity and support preview", () => {
 
   it("only serves realistic support wording through the authenticated owner preview", () => {
     expect(worker).toContain('url.searchParams.get("ownerPreview") === "1" && await isAdmin(request, env)');
+    expect(continuity).toContain('href="/?ownerPreview=1" target="_blank" rel="noopener">Support copy preview</a>');
     expect(worker).toContain('<body data-owner-preview="true">');
     expect(worker).toContain('headers.set("Cache-Control", "private, no-store")');
     expect(worker).toContain("raised toward our goal");
