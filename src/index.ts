@@ -1219,20 +1219,55 @@ interface VoiceReservation {
 }
 
 async function reserveVoiceSession(
-  _request: Request,
-  _env: Env,
+  request: Request,
+  env: Env,
   _adminDailyQuotaBypassed = false,
 ): Promise<VoiceReservation | null> {
-  return { sessionId: crypto.randomUUID(), userObjectName: "unlimited-app-quota-disabled", globalObjectName: "unlimited-app-quota-disabled", maxDurationSeconds: 0 };
+  const requestUrl = new URL(request.url);
+  const guestRequested = requestUrl.searchParams.get("guest") === "1";
+  const accountId = await getAuthenticatedUserId(request, env);
+  const admin = await isAdmin(request, env);
+  if (!guestRequested || accountId || admin) {
+    // Existing authenticated/admin service behavior is unchanged.
+    return { sessionId: crypto.randomUUID(), userObjectName: "unlimited-app-quota-disabled", globalObjectName: "unlimited-app-quota-disabled", maxDurationSeconds: 0 };
+  }
+  const clientIp = request.headers.get("CF-Connecting-IP")?.trim() || "";
+  if (!clientIp) return null;
+  const guardName = "guest-voice:" + await sha256(clientIp);
+  const sessionId = crypto.randomUUID();
+  const result = await callGuard(env, guardName, "/session/acquire", {
+    sessionId,
+    now: Date.now(),
+    maxSessionSeconds: 300,
+    maxDailySeconds: 1800,
+    maxConcurrentSessions: 1,
+    enforceRateLimit: true,
+    enforceDailyLimit: true,
+  });
+  if (!result.ok || !result.allowed) return null;
+  return {
+    sessionId,
+    userObjectName: guardName,
+    globalObjectName: guardName,
+    maxDurationSeconds: Math.max(1, Number(result.reservedSeconds) || 300),
+  };
 }
 
-async function releaseVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<void> {
-  // App-level daily and concurrency reservations are deliberately disabled.
+async function releaseVoiceSession(env: Env, reservation: VoiceReservation): Promise<void> {
+  if (reservation.userObjectName === "unlimited-app-quota-disabled") return;
+  await callGuard(env, reservation.userObjectName, "/session/release", {
+    sessionId: reservation.sessionId,
+    now: Date.now(),
+  });
 }
 
-async function heartbeatVoiceSession(_env: Env, _reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
-  // Do not stale-lock a good conversation on an app-owned heartbeat lease.
-  return { leaseLost: false };
+async function heartbeatVoiceSession(env: Env, reservation: VoiceReservation): Promise<{ leaseLost: boolean }> {
+  if (reservation.userObjectName === "unlimited-app-quota-disabled") return { leaseLost: false };
+  const result = await callGuard(env, reservation.userObjectName, "/session/heartbeat", {
+    sessionId: reservation.sessionId,
+    now: Date.now(),
+  });
+  return { leaseLost: !result.ok || result.allowed !== true };
 }
 
 
@@ -1292,7 +1327,35 @@ async function readGuardStatus(
 async function handleVoiceStatus(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
   if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
-  return json({ available: true, reason: "available", message: "Voice is ready. No account is required. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
+  const accountId = await getAuthenticatedUserId(request, env);
+  const admin = await isAdmin(request, env);
+  if (!accountId && !admin) {
+    const clientIp = request.headers.get("CF-Connecting-IP")?.trim() || "";
+    if (!clientIp) return json({ available: false, reason: "guest_guard_unavailable", message: "Guest voice safety checks could not be confirmed. Please retry shortly.", maxSessionSeconds: 300, dailyRemainingSeconds: null });
+    const guardName = "guest-voice:" + await sha256(clientIp);
+    const guard = await readGuardStatus(env, guardName, {
+      now: Date.now(),
+      maxDailySeconds: 1800,
+      maxConcurrentSessions: 1,
+      enforceRateLimit: true,
+      enforceDailyLimit: true,
+    });
+    if (!guard) return json({ available: false, reason: "guest_guard_unavailable", message: "Guest voice safety checks could not be confirmed. Please retry shortly.", maxSessionSeconds: 300, dailyRemainingSeconds: null });
+    let reason = "available";
+    let message = "Voice is ready. Guest use allows up to 5 minutes per conversation and 30 minutes per day per network, with one active session at a time.";
+    if (guard.rateLimited) {
+      reason = "rate_limited";
+      message = "Too many recent connection attempts. Please wait a minute and try again.";
+    } else if (guard.concurrencyLimited) {
+      reason = "concurrency_limited";
+      message = "A voice conversation is already active on this network. End it before starting another.";
+    } else if (guard.dailyLimitReached || guard.dailySecondsRemaining <= 0) {
+      reason = "daily_limit";
+      message = "Today's guest voice time has been used. Please try again tomorrow.";
+    }
+    return json({ available: reason === "available", reason, message, maxSessionSeconds: 300, dailyRemainingSeconds: guard.dailySecondsRemaining });
+  }
+  return json({ available: true, reason: "available", message: "Voice is ready. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
 interface LiveRelayAttachment {
