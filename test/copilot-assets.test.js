@@ -525,17 +525,15 @@ describe("Live Co-Pilot browser assets", () => {
 
 
 describe("Native mobile-first AskMoina shell", () => {
-  it("lands signed-in users on the camera instead of a website product chooser", () => {
-    expect(workerSource).toContain("withNativeAppShell(html, appVersion, authenticated)");
-    expect(workerSource).toContain("body = withNativeAppShell(body, env.APP_VERSION || \"0.4.80\", true)");
+  it("serves the audio-first product shell at root", () => {
+    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(workerSource).toContain('"/api/donation/status"');
     expect(workerSource).not.toContain("ENTRY_PRODUCTS_OVERLAY");
-    expect(workerSource).toContain('url.pathname === "/login" || url.pathname === "/login.html"');
-    expect(workerSource).toContain('authenticated ? "camera" : "login"');
-    expect(workerSource).toContain("const NATIVE_APP_HEADER_AUTH");
-    expect(workerSource).toContain("const NATIVE_APP_HEADER_GUEST");
-    expect(workerSource).toContain('else html = html.replace("</main>", "</main>" + NATIVE_APP_HEADER_GUEST)');
+    expect(audioHtml).toContain('id="toggleVoice"');
+    expect(audioHtml).not.toContain('id="videoPreview"');
+    expect(workerSource).toContain("moinaOS 1");
+    expect(workerSource).toContain("moinaOS 2");
   });
-
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
     expect(workerSource).toContain("openAppMenu");
@@ -551,18 +549,15 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(nativeAppScript).toContain("returnFocus.focus");
   });
 
-  it("keeps camera and microphone startup behind account authentication", () => {
-    expect(workerSource).toContain("removeCopilotClientScript(html)");
-    expect(workerSource).toContain('.replace(\'<script src="/session-ui.js" defer></script>\', "")');
-    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY +");
-    expect(workerSource).toContain("auth.js?v=");
-    expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(self)');
+  it("allows only microphone access in the public app while keeping legacy camera routes gated", () => {
+    expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(), geolocation=()');
+    expect(workerSource).toContain('guestSessionRequested = url.searchParams.get("guest") === "1"');
+    expect(workerSource).toContain('guestSessionRequested = requestUrl.searchParams.get("guest") === "1"');
+    expect(script).toContain('wsUrl.searchParams.set("guest", "1")');
+    expect(workerSource).toContain('url.pathname === "/copilot" || url.pathname === "/copilot.html"');
     expect(workerSource).toContain("There is no guest access.");
-    expect(workerSource).toContain("native-account-page");
-    expect(workerSource).toContain('url.pathname === "/login"');
     expect(workerSource).toContain('url.pathname === "/account"');
   });
-
   it("keeps History and Key Memories in the existing camera app and uses a mobile sheet", () => {
     expect(html).toContain('id="librarySheet"');
     expect(html).toContain('id="libraryTitle">History &amp; Key Memories');
@@ -972,73 +967,21 @@ describe("Dark-first app shell and brand assets", () => {
 
 
 
-  it("routes successful signup/sign-in directly to Interface 06 with one auth-only loader", () => {
-    expect(authScript).not.toContain('"/?onboarding=1"');
-    expect(authScript).not.toContain("/?startup=1");
-    expect(authScript).toContain("window.location.replace(destination)");
-    expect(authScript).toContain("showVerificationTransition");
-    expect(authScript).toContain("verificationInProgress");
-    expect(authScript).toContain('Starting moinaOS');
-    expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
-    expect(workerSource).toContain("const EXPERIENCE_SELECTION_ARRIVAL_CSS = ");
-    expect(workerSource).toContain("opacity: 1;");
-    expect(workerSource).toContain("animation: none !important");
-    expect(workerSource).not.toContain("askmoina-selection-arrive");
-    expect(workerSource).not.toContain("translate3d(0,16px,0) scale(.992)");
-    expect(workerSource).not.toContain("Starting MoinaOS");
-    expect(workerSource).not.toContain("moinaOSStartupOverlay");
-    expect(workerSource).not.toContain('url.searchParams.get("startup") === "1"');
-    expect(experienceSelectionCss).not.toContain(".moinaos-startup-card");
-    expect(experienceSelectionCss).not.toContain(".moinaos-startup-ring");
-    expect(entryAuthCss).toContain(".entry-auth-sheet .sheet-card {");
-    expect(entryAuthCss).toContain("min-height: clamp(300px, 43vw, 438px)");
-    expect(entryAuthCss).toContain("askmoina-auth-spinner");
-    expect(entryAuthCss).toContain("blur(36px) saturate(170%)");
-    expect(entryAuthCss).toContain("rgba(245, 248, 255, .20)");
-    expect(experienceSelectionScript).not.toContain("minimumVisibleMs");
-    expect(experienceSelectionScript).not.toContain("finishStartupWhenReady");
-    expect(experienceSelectionScript).not.toContain("Taking a little longer");
-    expect(workerSource).toContain("const POST_AUTH_ONBOARDING = ");
-    expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
-    expect(workerSource).toContain("id='experienceMoinaOS1'");
-    expect(workerSource).toContain("id='experienceMoinaOS2'");
-    expect(workerSource).toContain("<span class='experience-status-pill'>Early Release Access</span>");
-    expect(workerSource).toContain("<span class='experience-status-pill'>Next Release</span>");
-    expect(experienceSelectionCss).toContain("height: 80%;");
-    expect(experienceSelectionCss).toContain("align-self: start;");
-    expect(workerSource).toContain("moinaOS 2 is planned for the next release.");
-    expect(workerSource).toContain("const experienceAssetVersion = encodeURIComponent(appVersion)");
-    expect(workerSource).toContain("copilot.css?experience-selection=1&v=' + experienceAssetVersion");
-    expect(workerSource).toContain("copilot.js?experience-selection=1&v=' + experienceAssetVersion");
-    expect(workerSource).not.toContain('id="assistantSelectionTitle"');
-    expect(workerSource).not.toContain('id="moinaOS1DetailsTitle"');
-    expect(nativeAppScript).not.toContain('get("onboarding") === "1"');
-    expect(nativeAppScript).not.toContain('document.addEventListener("askmoina:user-disconnected"');
-    expect(experienceSelectionScript).toContain('const availableCard = document.querySelector("#experienceMoinaOS1")');
-    expect(experienceSelectionScript).toContain('const previewCard = document.querySelector("#experienceMoinaOS2")');
-    expect(experienceSelectionScript).toContain("cameraApp.inert = false");
-    expect(script).toContain('window.addEventListener("askmoina:experience-selected", () => {');
+  it("routes the public root to the audio shell and keeps product and donation gates visible", () => {
+    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(audioHtml).toContain('id="toggleVoice"');
+    expect(audioHtml).not.toContain('id="videoPreview"');
+    expect(audioHtml).toContain('id="experienceMoinaOS2"');
+    expect(workerSource).toContain('url.pathname === "/api/donation/status"');
+    expect(workerSource).toContain("math_course_donations");
   });
-
-  it("removes the launch interstitial and preserves the existing authenticated and sign-in entry flows", () => {
+  it("removes the launch interstitial and serves the audio-first public homepage", () => {
     expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
-    expect(workerSource).not.toContain("SEE · UNDERSTAND · HELP");
-    expect(workerSource).toContain("ENTRY_AUTH_OVERLAY +");
-    expect(workerSource).toContain("CHOOSE YOUR EXPERIENCE");
-    expect(workerSource).toContain("id='experienceMoinaOS1'");
-    expect(workerSource).toContain("id='experienceMoinaOS2'");
-    expect(experienceSelectionCss).toContain(".experience-card--preview");
+    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(workerSource).toContain('const isAuthPublicPath = url.pathname === "/"');
     expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
-    expect(experienceSelectionScript).toContain("window.__askmoinaFluidMotion");
-    expect(experienceSelectionScript).toContain("motion.profiles.expand");
-    expect(experienceSelectionScript).toContain("motion.profiles.exit");
-    expect(experienceSelectionScript).toContain("motion.flip(cameraApp, sourceRect, motion.profiles.expand");
-    expect(nativeAppScript).toContain("nativeMenuSheet");
-    expect(nativeAppScript).not.toContain("assistantSelectionStage");
     expect(nativeAppCss).not.toContain(".app-launch-transition");
-    expect(nativeAppCss).not.toContain(".launch-signature-orb");
-    expect(nativeAppCss).not.toContain("@keyframes launch-smoke-turn");
   });
 });
