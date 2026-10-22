@@ -1291,11 +1291,8 @@ async function readGuardStatus(
 
 async function handleVoiceStatus(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
-  const accountId = await getAuthenticatedUserId(request, env);
-  const admin = await isAdmin(request, env);
-  if (!accountId && !admin) return json({ available: false, reason: "authentication_required", message: "Sign up or log in to use askmoina. There is no guest access.", maxSessionSeconds: null, dailyRemainingSeconds: null }, 401);
   if (!hasVertexCredentials(env)) return json({ available: false, reason: "not_configured", message: "Voice is temporarily unavailable. Please try again later.", maxSessionSeconds: null, dailyRemainingSeconds: null });
-  return json({ available: true, reason: "available", message: "Voice is ready. askmoina does not impose app-level daily, per-browser, or concurrency quotas. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
+  return json({ available: true, reason: "available", message: "Voice is ready. No account is required. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
 interface LiveRelayAttachment {
@@ -1331,6 +1328,7 @@ async function handleVoiceSocket(
   if (!hasVertexCredentials(env)) return json({ error: "voice_not_configured" }, 503);
 
   const sessionUserId = await getAuthenticatedUserId(request, env);
+  const guestSessionRequested = requestUrl.searchParams.get("guest") === "1";
   // A short-lived production audition flag lets authenticated users compare native
   // prebuilt voices in their own session. Administrative preview access remains supported.
   const adminAccess = voicePreviewRequested || !sessionUserId ? await isAdmin(request, env) : false;
@@ -1347,7 +1345,7 @@ async function handleVoiceSocket(
   if (voicePreviewRequested && !voiceAuditionAccess) {
     return json({ error: "admin_required" }, 401);
   }
-  if (!sessionUserId && !adminAccess) return json({ error: "authentication_required" }, 401);
+  if (!sessionUserId && !adminAccess && !guestSessionRequested) return json({ error: "authentication_required" }, 401);
   const reservation = await reserveVoiceSession(request, env);
   if (!reservation) return json({ error: "voice_capacity_or_daily_limit_reached" }, 429);
 
@@ -3306,37 +3304,24 @@ export default {
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html") && (request.method === "GET" || request.method === "HEAD")) {
-      const accountId = await getAuthenticatedUserId(request, env);
-      const adminAccess = accountId ? false : await isAdmin(request, env);
-      const authenticated = Boolean(accountId || adminAccess);
-      let html = versionCopilotAssetUrls(COPILOT_HTML, env.APP_VERSION);
-      if (!authenticated) {
-        // Keep the visual camera shell behind secure sign-in, but never request media or start Live before authentication.
-        html = removeCopilotClientScript(html)
-          .replace('<script src="/transcript-merge.js" defer></script>', "")
-          .replace('<script src="/session-ui.js" defer></script>', "");
-      }
-      const appVersion = env.APP_VERSION || "0.4.80";
-      html = withNativeAppShell(html, appVersion, authenticated);
-      if (!authenticated) html = html.replace("</body>", ENTRY_AUTH_OVERLAY + '<script src="/auth.js?v=' + appVersion + '" defer></script></body>');
-      if (authenticated) {
-        const experienceAssetVersion = encodeURIComponent(appVersion);
-        html = html.replace("</head>", '<link rel="stylesheet" href="/copilot.css?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1"><link rel="stylesheet" href="/askmoina-liquid-system.css?v=20261019-1"></head>');
-        html = html.replace("</body>", POST_AUTH_ONBOARDING + '<script src="/copilot.js?experience-selection=1&v=' + experienceAssetVersion + '&motion=20261018-1" defer></script></body>');
-
-      }
-      if (isPwaStandaloneAppPath(url.pathname)) html = withPwaStandaloneGate(html);
-      const headers = new Headers({
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
-        "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; media-src 'self' blob:",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=(), payment=()",
-        "Cross-Origin-Resource-Policy": "same-origin",
+      const audioUrl = new URL("/audio.html", request.url);
+      const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
+      if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
+      const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.152");
+      const html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
+      return new Response(request.method === "HEAD" ? null : html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "DENY",
+          "Referrer-Policy": "no-referrer",
+          "Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        },
       });
-      return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
     }
 
     if (url.pathname === "/copilot.css") {
@@ -3427,7 +3412,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/api/health" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);
@@ -3461,20 +3446,75 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/donation/status") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+      try {
+        const row = await env.DB.prepare(
+          "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM math_course_donations"
+        ).first<{ total_paise: number; donation_count: number }>();
+        const totalPaise = Math.max(0, Number(row?.total_paise || 0));
+        const targetPaise = 50000000;
+        return json({
+          ok: true,
+          totalPaise,
+          targetPaise,
+          donationCount: Math.max(0, Number(row?.donation_count || 0)),
+          progressPercent: Math.min(100, Math.round((totalPaise / targetPaise) * 10000) / 100),
+          unlocked: totalPaise >= targetPaise,
+          updatedAt: Date.now(),
+        }, 200, { "Cache-Control": "no-store" });
+      } catch (error) {
+        console.error("[askmoina] Donation fund status unavailable", error instanceof Error ? error.message : "unknown error");
+        return json({ ok: false, error: "fund_status_unavailable" }, 503, { "Cache-Control": "no-store" });
+      }
+    }
+    if (url.pathname === "/api/admin/math-donations") {
+      if (!await isAdmin(request, env)) return json({ error: "admin_required" }, 403);
+      if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+      let payload: { reference?: unknown; amountPaise?: unknown; donorLabel?: unknown };
+      try { payload = await request.json() as typeof payload; } catch { return json({ error: "invalid_json" }, 400); }
+      const reference = typeof payload.reference === "string" ? payload.reference.trim() : "";
+      const amountPaise = Number(payload.amountPaise);
+      const donorLabel = typeof payload.donorLabel === "string" ? payload.donorLabel.trim().slice(0, 80) : null;
+      if (!/^[a-zA-Z0-9._:-]{4,120}$/.test(reference) ||
+          !Number.isSafeInteger(amountPaise) || amountPaise < 1 || amountPaise > 1000000000) {
+        return json({ error: "invalid_donation", message: "Provide a unique verified payment reference and a positive amountPaise integer." }, 400);
+      }
+      try {
+        await env.DB.prepare(
+          "INSERT INTO math_course_donations (payment_reference, amount_paise, donor_label, verified_at, verified_by) VALUES (?, ?, ?, ?, ?)"
+        ).bind(reference, amountPaise, donorLabel || null, Date.now(), env.ADMIN_DASHBOARD_USER?.trim() || "admin").run();
+        const row = await env.DB.prepare(
+          "SELECT COALESCE(SUM(amount_paise), 0) AS total_paise, COUNT(*) AS donation_count FROM math_course_donations"
+        ).first<{ total_paise: number; donation_count: number }>();
+        const totalPaise = Math.max(0, Number(row?.total_paise || 0));
+        const targetPaise = 50000000;
+        return json({ ok: true, totalPaise, targetPaise, donationCount: Number(row?.donation_count || 0), unlocked: totalPaise >= targetPaise }, 201, { "Cache-Control": "no-store" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        if (/unique|constraint/i.test(message)) return json({ error: "duplicate_donation_reference" }, 409);
+        console.error("[askmoina] Donation could not be recorded", message);
+        return json({ error: "donation_record_failed" }, 500);
+      }
+    }
+
     if (url.pathname === "/api/voice/status") return handleVoiceStatus(request, env);
     if (url.pathname === "/api/voice/socket") {
       const rawSessionId = url.searchParams.get("session_id");
       const sessionId = rawSessionId === null ? crypto.randomUUID() : normalizeLiveSessionId(rawSessionId);
       if (!sessionId) return json({ error: "invalid_live_session_id" }, 400);
 
-      // A caller-supplied UUID is only a routing key, never an auth credential.
-      // Scope it to the authenticated account so different users cannot share an owner.
+      // Authenticated sessions remain account-scoped. Guest sessions use a random
+      // per-session owner, so unauthenticated callers cannot share another user's relay.
       const accountId = await getAuthenticatedUserId(request, env);
       const adminAccess = accountId ? false : await isAdmin(request, env);
-      if (!accountId && !adminAccess) return json({ error: "authentication_required" }, 401);
+      const guestSessionRequested = url.searchParams.get("guest") === "1";
+      if (!accountId && !adminAccess && !guestSessionRequested) return json({ error: "authentication_required" }, 401);
       const owner = accountId
         ? "user:" + accountId
-        : "admin:" + (env.ADMIN_DASHBOARD_USER?.trim().toLowerCase() || "admin");
+        : adminAccess
+          ? "admin:" + (env.ADMIN_DASHBOARD_USER?.trim().toLowerCase() || "admin")
+          : "guest:" + sessionId;
       const durableId = env.LIVE_SESSION_RELAY.idFromName(liveSessionObjectName(owner, sessionId));
       return env.LIVE_SESSION_RELAY.get(durableId).fetch(request);
     }

@@ -70,3 +70,13 @@ On iPhone/iPad, open the site in Safari, choose **Share → Add to Home Screen**
 ### How updates reach the standalone app
 
 GitHub edits do not reach a user's device until they are committed to the deployed branch and the Cloudflare deployment succeeds. After deployment, the installed PWA loads the latest HTML, JavaScript, CSS, and manifest from the Worker on the next app launch or reload; the service worker precaches only the small installation/offline shell and does not cache active app code or authenticated API responses. An already-open session is not forcibly hot-reloaded mid-conversation, so users may need to close and reopen AskMoina (or reload when safe) to pick up a release. No separate app-store binary update is required for ordinary web-code changes.
+
+
+## Audio-first public release and Math course fund
+
+- The root product is the no-signup audio interface. It requests microphone access only after the visitor taps Start talking; the camera is disabled at the page Permissions-Policy layer.
+- Guest voice sockets are given a random per-session relay owner. Account-scoped conversation history and memories remain authenticated features and are not written from this public page.
+- The Math course progress bar polls `/api/donation/status` every 10 seconds and aggregates only rows in `math_course_donations`. It does not fabricate a steadily rising total.
+- The threshold is INR 500,000. After the `0012_math_course_fund.sql` migration is applied, an admin can record an externally verified contribution by POSTing to `/api/admin/math-donations` with `reference` (unique payment/receipt reference), `amountPaise` (integer in paise), and optional `donorLabel`. The admin session must be authenticated. Do not use this endpoint to record unverified pledges.
+- No payment processor/webhook is configured by this release; automatic contribution ingestion must be connected to the actual payment provider before claiming fully automatic donations. The goal bar updates after a verified record is stored.
+- The course gate UI becomes available at ₹500,000, but lesson content itself still needs to be published.
