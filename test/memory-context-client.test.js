@@ -18,17 +18,17 @@ describe("static client memory handoff", () => {
     expect(worker).toContain("outputAudioTranscription: {}");
   });
 
-  it("retires the old static homepage in favor of the Worker-controlled Co-Pilot entry", () => {
+  it("routes the static entry to the Worker-controlled public audio shell", () => {
     const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+    const audio = readFileSync(new URL("../public/audio.html", import.meta.url), "utf8");
     expect(html).toContain("url=/");
     expect(html).not.toContain('href="/vault"');
-    expect(worker).toContain("const ENTRY_AUTH_OVERLAY");
+    expect(worker).toContain('const audioUrl = new URL("/audio.html", request.url)');
     expect(worker).not.toContain("ENTRY_PRODUCTS_OVERLAY");
-    expect(worker).toContain("const NATIVE_APP_MENU_SHEET");
-    expect(worker).toContain("withNativeAppShell(html, appVersion, authenticated)");
-    expect(worker).toContain('authenticated ? "camera" : "login"');
-    expect(worker).toContain('authenticated ? "camera" : "login"');
+    expect(audio).toContain('id="toggleVoice"');
+    expect(audio).not.toContain('id="videoPreview"');
+    expect(audio).toContain('id="mathFundCard"');
   });
 
   it("routes the static homepage through the Worker for identity and memory-context setup", () => {

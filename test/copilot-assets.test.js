@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERIENCE_SELECTION_JS } from "../src/copilot-assets";
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
+const audioHtml = readFileSync(new URL("../public/audio.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");

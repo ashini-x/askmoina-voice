@@ -3387,6 +3387,12 @@ export default {
       });
     }
 
+    // The camera experience is paused while AskMoina ships its audio-first public product shell.
+    // Keep the legacy Co-Pilot handler unreachable even for previously authenticated sessions.
+    if (url.pathname === "/copilot" || url.pathname === "/copilot.html") {
+      return Response.redirect(new URL("/", request.url).toString(), 302);
+    }
+
     if (url.pathname === "/copilot.css") {
       const responseCss = url.searchParams.get("experience-selection") === "1"
         ? EXPERIENCE_SELECTION_CSS + EXPERIENCE_SELECTION_ARRIVAL_CSS
@@ -3475,7 +3481,7 @@ export default {
     }
 
 
-    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
+    const isAuthPublicPath = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio-chat.js" || url.pathname === "/audio-chat.css" || url.pathname === "/api/health" || url.pathname === "/api/voice/status" || url.pathname === "/api/voice/socket" || url.pathname === "/api/donation/status" || url.pathname === "/login" || url.pathname === "/login.html" || url.pathname === "/auth.js" || url.pathname === "/entry-menu.js" || url.pathname === "/fluid-interactivity.js" || url.pathname === "/fluid-interactivity.css" || url.pathname === "/site-chrome.css" || url.pathname === "/askmoina-global-font.css" || url.pathname === "/askmoina-global-font.woff2" || url.pathname === "/askmoina-bird-final.png" || url.pathname.startsWith("/api/auth/");
     let authenticatedForMenu = false;
     if (!isAuthPublicPath && !url.pathname.startsWith("/admin")) {
       const accountId = await getAuthenticatedUserId(request, env);

@@ -13,8 +13,8 @@ describe("Cloudflare Worker version promotion", () => {
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-512.svg"');
     expect(workflow).toContain("askmoina-pwa-shell-v19");
     expect(workflow).toContain("manifest.background_color !== \"#090A0D\" || manifest.theme_color !== \"#090A0D\"");
-    expect(workflow).toContain("manifest.webmanifest?v=20261018");
-    expect(workflow).toContain("askmoina-screen-fade-up");
+    expect(workflow).toContain("Public no-signup audio home, moinaOS products, and fundraiser shell: OK");
+    expect(workflow).toContain("Audio-only frontend assets: OK");
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-512.png"');
     expect(workflow).not.toContain("askmoina-pwa-shell-v3");
   });

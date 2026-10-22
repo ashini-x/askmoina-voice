@@ -418,6 +418,11 @@ jobs:
             exit 1
           fi
           echo "Public no-signup audio home, moinaOS products, and fundraiser shell: OK"
+          # Keep the standalone install path and its manifest separate from the public audio homepage.
+          status="$(fetch_status /install /tmp/moina-install.html)"
+          test "$status" = "200"
+          grep -q 'manifest.webmanifest' /tmp/moina-install.html
+          echo "Standalone install path and web manifest reference: OK"
           for asset in "/audio-chat.css?v=${app_version}" "/audio-chat.js?v=${app_version}"; do
             status="$(fetch_status "$asset" /tmp/moina-audio-asset)"
             if [[ "$status" != "200" ]]; then

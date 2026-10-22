@@ -7,6 +7,7 @@ import type { Env } from "../src/config/env";
 
 const ctx = { waitUntil(_promise: Promise<unknown>) {} } as unknown as ExecutionContext;
 const LOGIN_FIXTURE = "Face ID Touch ID Phone number + OTP backdrop-filter:blur authSheet No guest access";
+const AUDIO_FIXTURE = '<!doctype html><title>askmoina audio</title><button id="toggleVoice">Start talking</button><section id="mathFundCard">Math course</section><p>moinaOS 1 · moinaOS 2 · Invite only</p>';
 
 function envMock(): Env {
   const db = { prepare(_sql: string) { return {
@@ -18,7 +19,8 @@ function envMock(): Env {
   const assets = { async fetch(request: Request) {
     const path = new URL(request.url).pathname;
     return new Response(path === "/login.html" ? LOGIN_FIXTURE
-      : path === "/account.html" ? "Your AskMoina ID" : "auth", { status: 200 });
+      : path === "/account.html" ? "Your AskMoina ID"
+      : path === "/audio.html" ? AUDIO_FIXTURE : "auth", { status: 200 });
   } };
   return { DB: db, ASSETS: assets } as unknown as Env;
 }
@@ -47,42 +49,26 @@ describe("unique account ID and no-guest access", () => {
     expect(await getAuthenticatedUserId(r, envMock())).toBeNull();
   });
 
-  it("shows the sign-in overlay at root while keeping live Co-Pilot inaccessible to guests", async () => {
+  it("serves the public audio-first product home without signup while keeping the camera route gated", async () => {
     const env = envMock();
     const status = await worker.fetch(new Request("https://askmoina.test/api/voice/status"), env, ctx);
-    expect(status.status).toBe(401);
-    expect(await status.json()).toMatchObject({ error: "authentication_required" });
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({ available: false, reason: "not_configured" });
 
     const root = await worker.fetch(new Request("https://askmoina.test/"), env, ctx);
     expect(root.status).toBe(200);
     expect(root.headers.get("Set-Cookie")).toBeNull();
     const html = await root.text();
-    expect(html).toContain('data-entry-state="login"');
-    expect(html).not.toContain('class="app-launch-transition"');
-    expect(html).not.toContain("SEE · UNDERSTAND · HELP");
-    expect(html).toContain('aria-label="Secure sign in"');
-    expect(html).toContain("Continue with Face ID or Touch ID");
-    expect(html).toContain("OR USE YOUR PHONE");
-    expect(html).toContain('id="phoneCountry"');
-    expect(html).toContain('id="biometricSymbol"');
-    expect(html).not.toContain('id="biometricFaceSymbol"');
-    expect(html).not.toContain('id="biometricFingerprintSymbol"');
-    const authSource = readFileSync("public/auth.js", "utf8");
-    expect(authSource).toContain('symbol.innerHTML = isFace ? BIOMETRIC_FACE_ICON_MARKUP : BIOMETRIC_FINGERPRINT_ICON_MARKUP');
-    expect(authSource).toContain('symbol.classList.toggle("biometric-face-symbol", isFace)');
-    expect(authSource).toContain('symbol.classList.toggle("biometric-fingerprint-symbol", !isFace)');
-    expect(html).toContain('<script src="/auth.js?v=0.4.80" defer></script>');
-    expect(html).not.toContain('<script src="/copilot.js"');
-    expect(html).not.toContain('<script src="/transcript-merge.js"');
-
+    expect(html).toContain('id="toggleVoice"');
+    expect(html).toContain('id="mathFundCard"');
+    expect(html).toContain("moinaOS 1");
+    expect(html).toContain("moinaOS 2");
+    expect(html).not.toContain('id="videoPreview"');
+    expect(html).not.toContain("Face ID");
+    expect(html).not.toContain("Sign up");
     const copilot = await worker.fetch(new Request("https://askmoina.test/copilot"), env, ctx);
     expect(copilot.status).toBe(302);
     expect(copilot.headers.get("Location")).toBe("https://askmoina.test/");
-    for (const path of ["/iphone.css", "/iphone.js"]) {
-      const response = await worker.fetch(new Request("https://askmoina.test" + path), env, ctx);
-      expect(response.status).toBe(302);
-      expect(response.headers.get("Location")).toBe("https://askmoina.test/login");
-    }
   });
 
   it("logs out through the same-origin endpoint and expires the session cookie", async () => {
