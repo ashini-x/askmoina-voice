@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep production deployments serial. Use the v3 group because the current v2 run
-  # remains stuck after deployment in synthetic verification; deploys within v3 remain serialized.
-  group: askmoina-candidate-a-production-deploy-v3
+  # Keep production deployments serial. A prior v3 run is stuck after its deploy checks,
+  # so v4 releases the new deployment without allowing it to overlap another v4 deploy.
+  group: askmoina-candidate-a-production-deploy-v4
   cancel-in-progress: false
 
 jobs:
