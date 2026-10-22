@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#212121">
+<meta name="theme-color" content="#050608">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="Test AskMoina's voice. No signup required.">
+<meta name="description" content="AskMoina — real-time voice intelligence. Talk naturally, no wake word needed.">
 <link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/audio-chat.css?v=__APP_VERSION__">
 <link rel="stylesheet" href="/askmoina-global-font.css?v=0.4.133">
@@ -18,9 +18,10 @@
     <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
     <div class="topbar-meta">
       <span class="guest-label"><span class="status-dot"></span> Guest · Live voice</span>
-      <span class="visitor-chip" title="Demo only — this changing count is simulated, not live analytics." aria-label="Simulated demo visitor count, not actual visitor analytics">
-        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">SIMULATED</span><strong id="demoVisitorCount">12,048+</strong><span>visitors</span>
+      <span class="visitor-chip" title="Approximate active browser profiles seen in the last five minutes." aria-label="Live active visitor count">
+        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">LIVE</span><strong id="liveVisitorCount" aria-live="polite">—</strong><span>active</span>
       </span>
+      <span class="visitor-total"><strong id="totalVisitorCount">—</strong> total visitors</span>
     </div>
   </header>
   <section class="conversation" aria-label="Voice test">
@@ -29,6 +30,34 @@
       <h1>Talk naturally.</h1>
       <p class="helper">Ask anything. Continue the conversation in your own words.</p>
     </div>
+    <section class="fund-card" aria-labelledby="fundTitle">
+      <div class="fund-heading-row">
+        <div>
+          <p class="fund-kicker">COMMUNITY FUND</p>
+          <h2 id="fundTitle">Build what comes next.</h2>
+        </div>
+        <span class="fund-live"><span class="fund-live-dot" aria-hidden="true"></span> LIVE STATUS</span>
+      </div>
+      <p class="fund-description">Support AskMoina’s development and learning resources.</p>
+      <div class="fund-metrics">
+        <div class="fund-raised">
+          <span class="fund-label">Raised so far</span>
+          <strong id="donationTotal">—</strong>
+        </div>
+        <div class="fund-goal">
+          <span class="fund-label">Community goal</span>
+          <strong id="donationGoal">₹10,00,000</strong>
+        </div>
+      </div>
+      <div class="fund-progress-track" id="fundProgressBar" role="progressbar" aria-label="Verified contribution progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="fund-progress-fill" id="fundProgressFill"></span>
+      </div>
+      <div class="fund-footer">
+        <span id="fundContributionSummary" class="fund-contribution-summary">Loading verified total…</span>
+        <button type="button" id="openDonationContact" class="fund-cta">Give donation <span aria-hidden="true">↗</span></button>
+      </div>
+      <p id="fundUpdateStatus" class="fund-note">Only confirmed contributions count toward the goal.</p>
+    </section>
     <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
       <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>
     </section>
@@ -50,5 +79,18 @@
     <p class="composer-note">Tap Start listening, allow microphone access, and talk naturally. No wake word needed.</p>
   </footer>
 </main>
+<dialog id="donationContactDialog" class="contact-dialog" aria-labelledby="donationContactTitle">
+  <div class="contact-dialog-panel">
+    <button type="button" id="closeDonationContact" class="dialog-close" aria-label="Close contact details">×</button>
+    <p class="fund-kicker">SUPPORT ASKMOina</p>
+    <h2 id="donationContactTitle">Contact the owner</h2>
+    <p class="dialog-description">To arrange a contribution, contact the project owner directly. Contributions appear in the progress total after verification.</p>
+    <a class="owner-email" href="mailto:ashinigogoiofficial@gmail.com?subject=AskMoina%20contribution">ashinigogoiofficial@gmail.com</a>
+    <div class="dialog-actions">
+      <a class="dialog-email-cta" href="mailto:ashinigogoiofficial@gmail.com?subject=AskMoina%20contribution">Email the owner <span aria-hidden="true">↗</span></a>
+      <button type="button" id="dismissDonationContact" class="dialog-cancel">Not now</button>
+    </div>
+  </div>
+</dialog>
 </body>
 </html>
