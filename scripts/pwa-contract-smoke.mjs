@@ -85,7 +85,7 @@ assert.ok(!worker.includes("const ENTRY_LAUNCH_OVERLAY = "), "branded full-scree
 assert.ok(!worker.includes('authenticated && url.searchParams.get("onboarding") === "1"'), "obsolete launch-overlay bypass logic must remain removed");
 assert.ok(!read("public/native-app.css").includes(".app-launch-transition"), "launch-interstitial styles must remain removed");
 assert.ok(worker.includes("const POST_AUTH_ONBOARDING = "), "post-auth screens must be present");
-assert.ok(worker.includes('new URL("/index.html", request.url)'), "root must serve the no-signup audio shell");
+assert.ok(worker.includes('new URL("/", request.url)'), "root must serve the no-signup audio shell");
 assert.ok(!worker.includes("ENTRY_PRODUCTS_OVERLAY"), "legacy website product chooser must be removed");
 assert.ok(worker.includes("const NATIVE_APP_MENU_SHEET") && worker.includes("native-menu-signout"), "native app menu must include app settings and sign-out");
 assert.ok(read("public/native-app.css").includes(".native-menu-sheet"), "native app menu styling is missing");
