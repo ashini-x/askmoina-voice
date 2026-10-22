@@ -5,6 +5,7 @@ import { COPILOT_HTML, COPILOT_JS, COPILOT_CSS, EXPERIENCE_SELECTION_CSS, EXPERI
 
 const html = readFileSync(new URL("../public/copilot.html", import.meta.url), "utf8");
 const audioHtml = readFileSync(new URL("../public/audio.html", import.meta.url), "utf8");
+const audioScript = readFileSync(new URL("../public/audio-chat.js", import.meta.url), "utf8");
 const script = readFileSync(new URL("../public/copilot.js", import.meta.url), "utf8");
 const css = readFileSync(new URL("../public/copilot.css", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
@@ -553,7 +554,7 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(workerSource).toContain('Permissions-Policy": "microphone=(self), camera=(), geolocation=()');
     expect(workerSource).toContain('guestSessionRequested = url.searchParams.get("guest") === "1"');
     expect(workerSource).toContain('guestSessionRequested = requestUrl.searchParams.get("guest") === "1"');
-    expect(script).toContain('wsUrl.searchParams.set("guest", "1")');
+    expect(audioScript).toContain('wsUrl.searchParams.set("guest", "1")');
     expect(workerSource).toContain('url.pathname === "/copilot" || url.pathname === "/copilot.html"');
     expect(workerSource).toContain("There is no guest access.");
     expect(workerSource).toContain('url.pathname === "/account"');
