@@ -434,15 +434,21 @@ jobs:
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          grep -q 'id="toggleVoice"' /tmp/moina-home.html
-          grep -q 'id="stopVoice"' /tmp/moina-home.html
-          grep -q 'Say “Moina”.' /tmp/moina-home.html
-          grep -q 'audio-chat.js' /tmp/moina-home.html
-          if grep -Eq 'id="videoPreview"|id="mathFundCard"|moinaOS 1|moinaOS 2|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
-            echo "::error::Guest voice-test home unexpectedly exposes hidden UI."
+          for selector in 'id="toggleVoice"' 'id="stopVoice"' 'Talk naturally.' 'Ask anything.' 'audio-chat.js'; do
+            grep -Fq "$selector" /tmp/moina-home.html || {
+              echo "::error::Guest Live home is missing expected marker: $selector"
+              exit 1
+            }
+          done
+          if grep -Fq 'Say “Moina”.' /tmp/moina-home.html; then
+            echo "::error::Guest Live home must not require a wake word."
             exit 1
           fi
-          echo "Public guest wake-word voice test: OK"
+          if grep -Eq 'id="videoPreview"|id="mathFundCard"|moinaOS 1|moinaOS 2|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
+            echo "::error::Guest Live home unexpectedly exposes hidden UI."
+            exit 1
+          fi
+          echo "Public guest open-ended Live voice screen: OK"
           # Keep the standalone install path and its manifest separate from the public audio homepage.
           status="$(fetch_status /install /tmp/moina-install.html)"
           test "$status" = "200"
