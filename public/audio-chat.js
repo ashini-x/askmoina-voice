@@ -5,6 +5,8 @@
   const availabilityNode = document.querySelector("#availability");
   const toggleButton = document.querySelector("#toggleVoice");
   const stopVoiceButton = document.querySelector("#stopVoice");
+  const interruptButton = document.querySelector("#interruptVoice");
+  const ownerPreviewMode = document.body?.dataset.ownerPreview === "true";
   const buttonLabel = document.querySelector("#buttonLabel");
   const transcriptNode = document.querySelector("#transcript");
   const clearButton = document.querySelector("#clearTranscript");
@@ -69,12 +71,12 @@
     visitorPreviewCount += step;
     if (visitorPreviewCount < VISITOR_PREVIEW_MIN) visitorPreviewCount = VISITOR_PREVIEW_MIN + randomBetween(0, 32);
     if (visitorPreviewCount > VISITOR_PREVIEW_MAX) visitorPreviewCount = VISITOR_PREVIEW_MAX - randomBetween(0, 32);
-    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, "visitors, animated preview only");
-    visitorPreviewCountNode.title = "Animated visual preview only; not live visitor analytics";
+    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, ownerPreviewMode ? "visitors" : "visitors, animated preview only");
+    visitorPreviewCountNode.title = ownerPreviewMode ? "Visitor activity" : "Animated visual preview only; not live visitor analytics";
     window.setTimeout(animateVisitorPreview, randomBetween(900, 1800));
   }
   if (visitorPreviewCountNode) {
-    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, "visitors, animated preview only");
+    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, ownerPreviewMode ? "visitors" : "visitors, animated preview only");
     window.setTimeout(animateVisitorPreview, 1100);
   }
 
@@ -103,8 +105,9 @@
     supportPercentageNode.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
     supportProgressFill.style.width = percent + "%";
     supportProgressTrack.setAttribute("aria-valuenow", String(supportPreviewRupees));
-    supportProgressTrack.setAttribute("aria-valuetext",
-      inrFormat.format(supportPreviewRupees) + " illustrative preview of " + inrFormat.format(SUPPORT_GOAL_RUPEES) + "; not actual donations");
+    supportProgressTrack.setAttribute("aria-valuetext", ownerPreviewMode
+      ? inrFormat.format(supportPreviewRupees) + " raised toward " + inrFormat.format(SUPPORT_GOAL_RUPEES)
+      : inrFormat.format(supportPreviewRupees) + " illustrative preview of " + inrFormat.format(SUPPORT_GOAL_RUPEES) + "; not actual donations");
   }
   function growSupportPreview() {
     if (supportPreviewRupees < SUPPORT_GOAL_RUPEES - 1) {
@@ -118,7 +121,7 @@
   window.setTimeout(growSupportPreview, randomBetween(14000, 26000));
 
   async function refreshVerifiedSupport() {
-    if (!verifiedSupportRaisedNode) return;
+    if (!verifiedSupportRaisedNode || ownerPreviewMode) return;
     try {
       const response = await fetch("/api/support/status", {
         method: "GET", credentials: "same-origin", cache: "no-store",
@@ -220,6 +223,7 @@
   let stopping = false;
   let setupReady = false;
   let assistantVoiceMuted = false;
+  let interruptPending = false;
   let nextPlaybackTime = 0;
   let playbackNodes = new Set();
   let currentTranscriptNodes = { user: null, assistant: null };
@@ -431,6 +435,7 @@
     playbackNodes.clear();
     nextPlaybackTime = audioContext ? audioContext.currentTime : 0;
     if (stopVoiceButton) stopVoiceButton.disabled = true;
+    if (interruptButton) interruptButton.disabled = true;
   }
 
   if (stopVoiceButton) {
@@ -440,6 +445,26 @@
       setStatus("Assistant voice stopped. Ask another question to hear it again.");
     });
   }
+
+  function interruptAssistant() {
+    if (!active || !setupReady || !socket || socket.readyState !== WebSocket.OPEN || playbackNodes.size === 0) return;
+    // Flush scheduled audio immediately. Keep the WebSocket, audio context,
+    // microphone stream and capture processor alive for the next user utterance.
+    interruptPending = true;
+    assistantVoiceMuted = true;
+    stopPlayback();
+    setStatus("Listening — go ahead.");
+    try {
+      socket.send(JSON.stringify({ interrupt: true }));
+    } catch (_) {
+      interruptPending = false;
+      assistantVoiceMuted = false;
+      setStatus("Interrupt could not be sent. Keep speaking to interrupt naturally.", "warning");
+    }
+  }
+
+  if (interruptButton) interruptButton.addEventListener("click", interruptAssistant);
+
 
   function decodePcm16(base64) {
     const binary = atob(base64);
@@ -470,10 +495,14 @@
     nextPlaybackTime = scheduledStart + buffer.duration;
     playbackNodes.add(source);
     if (stopVoiceButton) stopVoiceButton.disabled = false;
+    if (interruptButton) interruptButton.disabled = false;
     source.addEventListener("ended", () => {
       playbackNodes.delete(source);
       try { source.disconnect(); } catch (_) { /* already disconnected */ }
-      if (playbackNodes.size === 0 && stopVoiceButton) stopVoiceButton.disabled = true;
+      if (playbackNodes.size === 0) {
+        if (stopVoiceButton) stopVoiceButton.disabled = true;
+        if (interruptButton) interruptButton.disabled = true;
+      }
     });
   }
 
@@ -544,6 +573,7 @@
     if (message.setup_complete || message.setupComplete) {
       resumeExistingSession = false;
       setupReady = true;
+      interruptPending = false;
       if (setupTimer) {
         clearTimeout(setupTimer);
         setupTimer = null;
@@ -568,6 +598,10 @@
       const wasInterrupted = serverContent.interrupted === true;
       if (wasInterrupted) {
         stopPlayback();
+        if (interruptPending) {
+          interruptPending = false;
+          assistantVoiceMuted = false;
+        }
         setStatus("Listening — go ahead.");
       }
 
@@ -582,6 +616,10 @@
       }
 
       if (serverContent.turn_complete || serverContent.turnComplete) {
+        if (interruptPending) {
+          interruptPending = false;
+          assistantVoiceMuted = false;
+        }
         finalizeTranscriptTurn();
         if (active) setStatus("Listening. Go ahead.");
       }

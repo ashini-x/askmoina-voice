@@ -32,15 +32,21 @@ h1{font-size:clamp(32px,5vw,48px);font-weight:500;letter-spacing:-.045em;line-he
 .availability{font-size:11px;color:#8f8f8f;line-height:1.4}
 .availability[data-kind=error]{color:var(--error)}
 .actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.talk-button,.stop-button{min-height:44px;border-radius:999px;padding:0 17px;border:1px solid transparent;font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s ease,transform .15s ease}
+.talk-button,.stop-button,.interrupt-button{min-height:44px;border-radius:999px;padding:0 17px;border:1px solid transparent;font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s ease,transform .15s ease}
 .talk-button{background:var(--accent);color:var(--accent-text)}
 .talk-button:not(:disabled):hover{background:#e5e5e5}
 .talk-button.is-live,.talk-button.is-starting{background:#d4d4d4;color:#171717}
 .talk-icon{font-size:10px}
 .stop-button{background:transparent;border-color:#5a5a5a;color:#ededed}
 .stop-button:not(:disabled):hover{background:var(--panel-hover)}
+.interrupt-button{background:rgba(76,25,31,.34);border-color:rgba(255,112,125,.28);color:#ffb1b8}
+.interrupt-button:not(:disabled):hover{background:rgba(94,30,38,.48)}
+.interrupt-button:not(:disabled):active{transform:scale(.97)}
+.interrupt-button:disabled{color:#787b84;border-color:rgba(255,255,255,.07);background:rgba(24,25,30,.6)}
+body[data-owner-preview="true"] .support-real-total{display:none}
+
 .composer-note{text-align:center;color:#858585;font-size:11px;margin:13px 0 0}
-@media(max-width:560px){.voice-shell{padding-left:16px;padding-right:16px}.topbar{padding:17px 0}.hero{padding-top:clamp(40px,10vh,80px)}.composer{align-items:stretch;flex-direction:column;gap:13px;padding:14px;border-radius:19px}.actions{display:grid;grid-template-columns:1fr 1fr}.talk-button,.stop-button{width:100%;padding:0 10px}.transcript{max-height:38vh}}
+@media(max-width:560px){.voice-shell{padding-left:16px;padding-right:16px}.topbar{padding:17px 0}.hero{padding-top:clamp(40px,10vh,80px)}.composer{align-items:stretch;flex-direction:column;gap:13px;padding:14px;border-radius:19px}.actions{display:grid;grid-template-columns:1.1fr .85fr 1fr}.talk-button,.stop-button,.interrupt-button{width:100%;padding:0 6px;font-size:11px}.transcript{max-height:38vh}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 
 .topbar-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
