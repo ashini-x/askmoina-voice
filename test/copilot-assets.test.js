@@ -527,18 +527,19 @@ describe("Live Co-Pilot browser assets", () => {
 
 
 describe("Native mobile-first AskMoina shell", () => {
-  it("serves a minimal guest wake-word voice test at root", () => {
+  it("serves a minimal open-ended guest voice assistant at root", () => {
     expect(workerSource).toContain('const audioUrl = new URL("/", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
     expect(audioHtml).toContain('id="stopVoice"');
-    expect(audioHtml).toContain('Say “Moina”.');
+    expect(audioHtml).toContain("Talk naturally.");
+    expect(audioHtml).toContain("Ask anything.");
     expect(indexHtml).toContain('id="stopVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
     expect(audioHtml).not.toContain('id="mathFundCard"');
     expect(audioHtml).not.toContain("moinaOS 2");
-    expect(audioScript).toContain("wakeWordHeard");
+    expect(audioScript).not.toContain("wakeWordHeard");
     expect(audioScript).toContain("assistantVoiceMuted");
-    expect(workerSource).toContain("GUEST_WAKE_WORD_INSTRUCTION");
+    expect(workerSource).toContain("GUEST_VOICE_INSTRUCTION");
   });
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
