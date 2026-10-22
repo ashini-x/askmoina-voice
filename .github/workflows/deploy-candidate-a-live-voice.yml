@@ -407,7 +407,6 @@ jobs:
           grep -q "What’s on your mind?" /tmp/moina-home.html
           grep -q 'id="toggleVoice"' /tmp/moina-home.html
           grep -q 'id="mathFundCard"' /tmp/moina-home.html
-          grep -q 'id="experienceMoinaOS2"' /tmp/moina-home.html && exit 1 || true
           grep -q 'moinaOS 2' /tmp/moina-home.html
           grep -q 'audio-chat.js' /tmp/moina-home.html
           if grep -q 'id="videoPreview"' /tmp/moina-home.html; then
@@ -419,6 +418,15 @@ jobs:
             exit 1
           fi
           echo "Public no-signup audio home, moinaOS products, and fundraiser shell: OK"
+          for asset in "/audio-chat.css?v=${app_version}" "/audio-chat.js?v=${app_version}"; do
+            status="$(fetch_status "$asset" /tmp/moina-audio-asset)"
+            if [[ "$status" != "200" ]]; then
+              echo "::error::Audio shell asset $asset returned HTTP $status"
+              head -c 500 /tmp/moina-audio-asset || true
+              exit 1
+            fi
+          done
+          echo "Audio-only frontend assets: OK"
 
       - name: Synthetic live web-grounding and voice-memory verification
         shell: bash

@@ -48,29 +48,44 @@ function testEnv(objectNames: string[]) {
   return env;
 }
 
-describe("account-only voice access", () => {
-  it("rejects voice status for guests without minting a browser identity or acquiring app quota leases", async () => {
+describe("public audio-first voice access", () => {
+  it("serves guest voice status without creating an account and checks per-network safety limits", async () => {
     const objectNames: string[] = [];
     const response = await worker.fetch(
       new Request("https://askmoina.test/api/voice/status", { headers: { "CF-Connecting-IP": "203.0.113.25" } }),
       testEnv(objectNames), ctx,
     );
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toBeNull();
-    expect(await response.json()).toMatchObject({ error: "authentication_required" });
-    expect(objectNames).toHaveLength(0);
+    expect(await response.json()).toMatchObject({ available: true, reason: "available" });
+    expect(objectNames).toHaveLength(1);
+    expect(objectNames[0]).toContain("guest-voice:");
   });
 
-  it("serves a sign-in overlay at root but does not permit guest camera sessions", async () => {
+  it("serves an audio-only no-signup home while keeping the old camera route unavailable to guests", async () => {
     const objectNames: string[] = [];
     const env = testEnv(objectNames);
+    // The root Worker route loads this public asset from the asset binding.
+    env.ASSETS = {
+      async fetch(request: Request) {
+        const path = new URL(request.url).pathname;
+        if (path === "/audio.html") {
+          return new Response('<!doctype html><title>askmoina</title><button id="toggleVoice">Talk</button><section id="mathFundCard"></section><div id="transcript"></div><p>moinaOS 2 · Invite only</p>', {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          });
+        }
+        return new Response("asset");
+      },
+    } as unknown as Fetcher;
     const root = await worker.fetch(new Request("https://askmoina.test/"), env, ctx);
     expect(root.status).toBe(200);
     expect(root.headers.get("Set-Cookie")).toBeNull();
     const html = await root.text();
-    expect(html).toContain('data-entry-state="login"');
-    expect(html).toContain('aria-label="Secure sign in"');
-    expect(html).not.toContain('<script src="/copilot.js"');
+    expect(html).toContain('id="toggleVoice"');
+    expect(html).toContain('id="mathFundCard"');
+    expect(html).toContain("moinaOS 2");
+    expect(html).not.toContain('id="videoPreview"');
+    expect(html).not.toContain("Face ID");
     expect(objectNames).toHaveLength(0);
 
     const copilot = await worker.fetch(new Request("https://askmoina.test/copilot"), env, ctx);
