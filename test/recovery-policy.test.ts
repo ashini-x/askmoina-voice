@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decideClientReattachment,
   decideProviderRotation,
+  isLiveSessionModeCompatible,
   isExpiredSessionResumptionError,
   isRecoverableLiveDisconnectCode,
   shouldAcceptBrowserReattachment,
@@ -17,6 +18,17 @@ const healthy = {
   resumeHandleAvailable: true,
   securedSetupAvailable: true,
 };
+
+describe("Live relay reattachment mode guard", () => {
+  it("allows an audio-only guest to resume an audio relay without permitting a mode switch", () => {
+    expect(isLiveSessionModeCompatible(undefined, false)).toBe(true);
+    expect(isLiveSessionModeCompatible(false, false)).toBe(true);
+    expect(isLiveSessionModeCompatible(true, true)).toBe(true);
+    expect(isLiveSessionModeCompatible(false, true)).toBe(false);
+    expect(isLiveSessionModeCompatible(true, false)).toBe(false);
+    expect(isLiveSessionModeCompatible("true", true)).toBe(false);
+  });
+});
 
 describe("deterministic Live reattachment", () => {
   it("confirms only after client setup, provider setup, and replay are complete", () => {

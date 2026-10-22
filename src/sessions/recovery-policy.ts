@@ -67,3 +67,10 @@ export function decideProviderRotation(
   if (!resumeHandleAvailable || !securedSetupAvailable) return "replace_session";
   return "resume";
 }
+
+
+/** A detached relay may be resumed only by a client requesting the same session mode. */
+export function isLiveSessionModeCompatible(requestedMode: unknown, existingCopilotMode: boolean): boolean {
+  if (requestedMode !== undefined && typeof requestedMode !== "boolean") return false;
+  return (requestedMode === true) === existingCopilotMode;
+}

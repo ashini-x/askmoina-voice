@@ -27,7 +27,7 @@ import { assessGroundedSource, normalizeGroundedDeviceContext, safeGroundedSourc
 import { SingleFlight } from "./sessions/single-flight";
 import { removeCopilotClientScript, versionCopilotAssetUrls } from "./sessions/versioned-assets";
 import { normalizeLiveSessionId, liveSessionObjectName, shouldDetachLiveSessionOnClientClose, LIVE_CLIENT_RECONNECT_CLOSE_CODE } from "./sessions/live-session-routing";
-import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError } from "./sessions/recovery-policy";
+import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserReattachment, isExpiredSessionResumptionError, isLiveSessionModeCompatible } from "./sessions/recovery-policy";
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 import { canAccessVoicePreview } from "./sessions/voice-preview-access";
@@ -2221,7 +2221,8 @@ async function handleVoiceSocket(
     if (clientNeedsResumeSetup) {
       try {
         const resumeSetup = JSON.parse(event.data) as { setup?: unknown; copilot_mode?: unknown };
-        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup || resumeSetup.copilot_mode !== true) {
+        if (!resumeSetup || typeof resumeSetup !== "object" || !resumeSetup.setup ||
+            !isLiveSessionModeCompatible(resumeSetup.copilot_mode, copilotMode)) {
           closeBoth(1008, "Invalid Live resume setup");
           return;
         }
@@ -2283,13 +2284,11 @@ async function handleVoiceSocket(
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
           tools: guestSessionRequested ? [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }] : enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
-          // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
-          // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
-          // The 800 ms server fallback is deliberately tolerant of natural speaking pauses.
-          // Co-Pilot uses explicit client-side activity boundaries and bounded speech pre-roll.
-          // This avoids a silence-only realtime stream and makes turn completion deterministic.
+          // Audio-only voice streams continuous PCM and relies on provider VAD to detect turns.
+          // Co-Pilot sends explicit activity_start/activity_end boundaries with speech pre-roll,
+          // so provider VAD is disabled only for that mode.
           realtimeInputConfig: {
-            automaticActivityDetection: { disabled: true },
+            automaticActivityDetection: { disabled: enableCopilotForSetup },
           },
           contextWindowCompression: {
             // The permanent system/personalization instructions are not sliding-window history.

@@ -10,7 +10,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const globalFontCss = read("public/askmoina-global-font.css");
 const publicAudioShell = read("public/index.html");
 assert.ok(publicAudioShell.includes('id="toggleVoice"') && publicAudioShell.includes('id="stopVoice"') && publicAudioShell.includes('id="transcript"'), "public guest shell must expose start, stop-voice, and transcript controls");
-assert.ok(publicAudioShell.includes('Say “Moina”.') && !publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes('id="mathFundCard"') && !publicAudioShell.includes("moinaOS 2") && !publicAudioShell.includes("Sign up"), "public home must contain only the guest wake-word voice test");
+assert.ok(publicAudioShell.includes("Talk naturally.") && publicAudioShell.includes("Ask anything.") && !publicAudioShell.includes('Say “Moina”.') && !publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes('id="mathFundCard"') && !publicAudioShell.includes("moinaOS 2") && !publicAudioShell.includes("Sign up"), "public home must contain the open-ended guest live voice MVP without a wake word");
 assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must reference its locally bundled typeface");
 assert.ok(globalFontCss.includes("font-display: block;"), "global font must suppress fallback-font flashes");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");

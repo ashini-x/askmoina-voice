@@ -540,6 +540,9 @@ describe("Native mobile-first AskMoina shell", () => {
     expect(audioScript).not.toContain("wakeWordHeard");
     expect(audioScript).toContain("assistantVoiceMuted");
     expect(workerSource).toContain("GUEST_VOICE_INSTRUCTION");
+    expect(workerSource).toContain("isLiveSessionModeCompatible(resumeSetup.copilot_mode, copilotMode)");
+    expect(audioScript).toContain('wsUrl.searchParams.set("resume", "1")');
+    expect(audioScript).toContain("const reconnectingExistingSession = resumeExistingSession && Boolean(activeSessionId);");
   });
   it("uses app-specific floating controls and an accessible native menu instead of the generic app header", () => {
     expect(workerSource).toContain("askmoina-bird-final.png");
@@ -890,7 +893,7 @@ describe("Live microphone explicit activity detection", () => {
     expect(script).not.toContain("function sendAudioStreamEnd()");
     expect(script).not.toContain("realtime_input: { audio_stream_end: true }");
     expect(workerSource).toContain('parsed.kind === "activity_start" || parsed.kind === "activity_end"');
-    expect(workerSource).toContain("automaticActivityDetection: { disabled: true }");
+    expect(workerSource).toContain("automaticActivityDetection: { disabled: enableCopilotForSetup }");
     expect(protocolSource).toContain('case "activity_start":');
     expect(protocolSource).toContain('case "activity_end":');
   });

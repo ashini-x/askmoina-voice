@@ -75,6 +75,10 @@
   });
 
   let socket = null;
+  let activeSessionId = null;
+  let resumeExistingSession = false;
+  let automaticReconnectAttempts = 0;
+  const MAX_AUTOMATIC_RECONNECTS = 1;
   let relayKeepaliveTimer = null;
 
   function startRelayKeepalive(sessionSocket) {
@@ -413,6 +417,11 @@
     }
 
     if (message.connection_status && message.connection_status.state === "ended") {
+      // A terminal server notice means this relay is no longer resumable. A later
+      // user action should start a fresh relay, rather than repeatedly attaching here.
+      activeSessionId = null;
+      resumeExistingSession = false;
+      automaticReconnectAttempts = 0;
       const disconnectMessage = typeof message.connection_status.message === "string"
         ? message.connection_status.message.trim().slice(0, 300)
         : "The voice connection ended. Tap Start listening to begin another conversation.";
@@ -423,6 +432,8 @@
     }
 
     if (message.setup_complete || message.setupComplete) {
+      resumeExistingSession = false;
+      automaticReconnectAttempts = 0;
       setupReady = true;
       if (setupTimer) {
         clearTimeout(setupTimer);
@@ -527,12 +538,17 @@
     setButton("Start listening", false);
     if (message) setStatus(message);
     window.setTimeout(() => {
-      if (!starting && !active) void refreshVoiceAvailability();
+      if (!starting && !active && !resumeExistingSession) void refreshVoiceAvailability();
     }, 700);
   }
 
   function stopConversation(fromServer) {
     if (!socket && !starting && !active) return;
+    if (!fromServer) {
+      activeSessionId = null;
+      resumeExistingSession = false;
+      automaticReconnectAttempts = 0;
+    }
     stopping = true;
     const oldSocket = socket;
     stopRelayKeepalive(oldSocket);
@@ -552,13 +568,22 @@
 
   async function startConversation() {
     if (starting || active) return;
+    const reconnectingExistingSession = resumeExistingSession && Boolean(activeSessionId);
+    if (!reconnectingExistingSession) {
+      activeSessionId = crypto.randomUUID();
+      resumeExistingSession = false;
+      automaticReconnectAttempts = 0;
+    }
+    const sessionId = activeSessionId;
     starting = true;
     stopping = false;
     assistantVoiceMuted = false;
     setButton("Checking availability…", true);
     setStatus("Checking voice availability…");
     await visitorIdentityReady;
-    const preflight = await refreshVoiceAvailabilityAfterRelease();
+    // A detached relay still owns its rate-limit reservation; a normal availability
+    // preflight would reject its own reconnect as a second concurrent guest session.
+    const preflight = reconnectingExistingSession ? null : await refreshVoiceAvailabilityAfterRelease();
     if (preflight && !preflight.available) {
       starting = false;
       setButton("Start listening", false);
@@ -589,8 +614,9 @@
 
       const wsUrl = new URL("/api/voice/socket", window.location.href);
       wsUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      wsUrl.searchParams.set("session_id", crypto.randomUUID());
+      wsUrl.searchParams.set("session_id", sessionId);
       wsUrl.searchParams.set("guest", "1");
+      if (reconnectingExistingSession) wsUrl.searchParams.set("resume", "1");
       if (voicePicker) {
         wsUrl.searchParams.set("voice_preview", "1");
         wsUrl.searchParams.set("voice_name", voicePicker.value);
@@ -604,8 +630,11 @@
 
       sessionSocket.addEventListener("open", () => {
         if (stopping || socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
-        // Public wake-word test: never attach saved memories or account context.
-        sessionSocket.send(JSON.stringify({ setup: {} }));
+        // Guest audio-only sessions never attach saved memories. A reconnect must
+        // explicitly request the same (non-Co-Pilot) relay mode.
+        sessionSocket.send(JSON.stringify(reconnectingExistingSession
+          ? { setup: {}, copilot_mode: false }
+          : { setup: {} }));
         startRelayKeepalive(sessionSocket);
         setStatus("Connecting voice test…");
         setupTimer = window.setTimeout(() => {
@@ -672,7 +701,12 @@
           } else if (event.code === 1008) {
             closeMessage = "The connection closed for a policy or audio-format check (code 1008). This is not a question-count limit. Refresh AskMoina and try again; if it repeats, the connection diagnostics can help identify why.";
           } else if (event.code === 1006) {
-            closeMessage = "The connection dropped without a clean close (code 1006), usually because the network or voice service interrupted it. Tap Start listening to retry.";
+            resumeExistingSession = Boolean(activeSessionId);
+            const canAutoReconnect = resumeExistingSession && automaticReconnectAttempts < MAX_AUTOMATIC_RECONNECTS;
+            if (canAutoReconnect) automaticReconnectAttempts += 1;
+            closeMessage = canAutoReconnect
+              ? "The live connection was interrupted. Restoring your conversation…"
+              : "The connection dropped without a clean close (code 1006). Tap Try again to restore your conversation.";
           } else if (event.code !== 1000) {
             closeMessage = "The connection closed unexpectedly (code " + event.code + "). Tap Start listening to retry.";
           } else {
@@ -681,9 +715,23 @@
         }
         finishStoppedState(closeMessage);
         if (!wasStopping) {
-          setButton("Try again", false);
-          setStatus(closeMessage, "error");
-          setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
+          const shouldAutoReconnect = event.code === 1006 &&
+            resumeExistingSession &&
+            automaticReconnectAttempts <= MAX_AUTOMATIC_RECONNECTS &&
+            closeMessage.includes("Restoring your conversation");
+          if (shouldAutoReconnect) {
+            setButton("Reconnecting…", true);
+            setStatus("Connection interrupted. Reconnecting to the existing live session…", "warning");
+            window.setTimeout(() => {
+              if (!starting && !active && !stopping && resumeExistingSession && activeSessionId) {
+                void startConversation();
+              }
+            }, 900);
+          } else {
+            setButton("Try again", false);
+            setStatus(closeMessage, "error");
+            setAvailability("Voice connection ended. Availability will be checked again automatically.", "warning");
+          }
         }
       });
 
