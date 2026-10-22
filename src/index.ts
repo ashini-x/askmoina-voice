@@ -3717,6 +3717,25 @@ export default {
     const isHome = request.method === "GET" && assetResponse.status === 200 && (url.pathname === "/" || url.pathname === "/index.html");
     if (isHome) {
       let html = await assetResponse.text();
+      const ownerPreview = url.searchParams.get("ownerPreview") === "1" && await isAdmin(request, env);
+      if (ownerPreview) {
+        // Realistic copy is for the authenticated owner's private preview only.
+        // Everyone else continues seeing the honest preview labels in the static shell.
+        html = html.replace("<body>", '<body data-owner-preview="true">');
+        const ownerCopy: Array<[string, string]> = [
+          ['title="Animated visual preview only; not live visitor analytics"', 'title="Visitor activity"'],
+          ['aria-label="Animated visitor activity preview, not actual visitor analytics"', 'aria-label="Visitor activity"'],
+          ['class="visitor-chip-label">PREVIEW</span>', 'class="visitor-chip-label">LIVE</span>'],
+          ['aria-label="Illustrative support progress preview"', 'aria-label="Community support progress"'],
+          ['<span>SUPPORT GOAL PREVIEW</span>', '<span>COMMUNITY SUPPORT</span>'],
+          ['<p>Illustrative progress preview</p>', '<p>Community contributions</p>'],
+          ['<span>preview total · not donations</span>', '<span>raised toward our goal</span>'],
+          ['aria-label="Illustrative preview toward support goal; not actual donations"', 'aria-label="Community contributions toward support goal"'],
+          ['Preview figures are illustrative, not actual donations.', 'Every contribution helps build moinaOS 1.'],
+        ];
+        for (const [before, after] of ownerCopy) html = html.replace(before, after);
+        headers.set("Cache-Control", "private, no-store");
+      }
       if (!html.includes('href="/copilot"') && !html.includes("href=/copilot")) {
         html = html.replace("Made for Assam</span>", "Made for Assam</span><a class=brand-location href=/copilot>Live Co-Pilot</a>");
       }
@@ -3758,7 +3777,9 @@ export default {
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=(), payment=()");
     headers.set("Cross-Origin-Resource-Policy", "same-origin");
-    headers.set("Cache-Control", "no-store");
+    if (headers.get("Cache-Control") !== "private, no-store") {
+      headers.set("Cache-Control", "no-store");
+    }
     return new Response(responseBody, {
       status: assetResponse.status,
       statusText: assetResponse.statusText,
