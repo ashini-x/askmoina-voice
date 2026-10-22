@@ -3383,7 +3383,7 @@ export default {
       const audioUrl = new URL("/index.html", request.url);
       const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
       if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
-      const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.152");
+      const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");
       const html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
       return new Response(request.method === "HEAD" ? null : html, {
         status: 200,

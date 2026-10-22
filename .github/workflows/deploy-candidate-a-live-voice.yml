@@ -430,17 +430,12 @@ jobs:
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          grep -q "What’s on your mind?" /tmp/moina-home.html
           grep -q 'id="toggleVoice"' /tmp/moina-home.html
-          grep -q 'id="mathFundCard"' /tmp/moina-home.html
-          grep -q 'moinaOS 2' /tmp/moina-home.html
+          grep -q 'id="stopVoice"' /tmp/moina-home.html
+          grep -q 'Say “Moina”.' /tmp/moina-home.html
           grep -q 'audio-chat.js' /tmp/moina-home.html
-          if grep -q 'id="videoPreview"' /tmp/moina-home.html; then
-            echo "::error::Audio-first home unexpectedly contains a live video preview."
-            exit 1
-          fi
-          if grep -Eq 'Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
-            echo "::error::Audio-first home unexpectedly contains a sign-up/sign-in screen."
+          if grep -Eq 'id="videoPreview"|id="mathFundCard"|moinaOS 1|moinaOS 2|Continue with Face ID or Touch ID|OR USE YOUR PHONE|Sign up' /tmp/moina-home.html; then
+            echo "::error::Guest voice-test home unexpectedly exposes hidden UI."
             exit 1
           fi
           echo "Public guest wake-word voice test: OK"
