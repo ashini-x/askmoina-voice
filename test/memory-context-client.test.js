@@ -23,8 +23,8 @@ describe("static client memory handoff", () => {
     const worker = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
     expect(html).toContain('id="toggleVoice"');
     expect(html).toContain('id="stopVoice"');
-    expect(html).toContain("Talk naturally.");
-    expect(html).toContain("Ask anything.");
+    expect(html).toContain("moinaOS 1");
+    expect(html).toContain("Your live voice experience.");
     expect(html).not.toContain('id="videoPreview"');
     expect(html).not.toContain('id="mathFundCard"');
     expect(worker).toContain('const audioUrl = new URL("/", request.url)');
