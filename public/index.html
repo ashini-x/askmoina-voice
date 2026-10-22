@@ -16,7 +16,12 @@
 <main class="voice-shell">
   <header class="topbar">
     <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
-    <span class="guest-label"><span class="status-dot"></span> Guest · Audio only</span>
+    <div class="topbar-meta">
+      <span class="guest-label"><span class="status-dot"></span> Guest · Live voice</span>
+      <span class="visitor-chip" title="Demo only — this changing count is simulated, not live analytics." aria-label="Simulated demo visitor count, not actual visitor analytics">
+        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">SIMULATED</span><strong id="demoVisitorCount">12,048+</strong><span>visitors</span>
+      </span>
+    </div>
   </header>
   <section class="conversation" aria-label="Voice test">
     <div class="hero">
@@ -42,7 +47,7 @@
         <button type="button" id="stopVoice" class="stop-button" aria-label="Stop assistant voice" disabled>Stop voice</button>
       </div>
     </div>
-    <p class="composer-note">Tap Start listening, allow microphone access, and start talking. The session stays active until you stop it.</p>
+    <p class="composer-note">Tap Start listening, allow microphone access, and talk naturally. No wake word needed.</p>
   </footer>
 </main>
 </body>

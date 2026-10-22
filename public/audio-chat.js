@@ -11,6 +11,26 @@
   const emptyTranscript = document.querySelector("#emptyTranscript");
   const voicePicker = document.querySelector("#voicePicker");
 
+  // Public-facing demo metric only. The label beside this number explicitly marks it
+  // as simulated; it must never be presented as a real-time analytics measurement.
+  const demoVisitorCount = document.querySelector("#demoVisitorCount");
+  if (demoVisitorCount) {
+    let simulatedVisitors = 12048 + Math.floor(Math.random() * 180);
+    const renderSimulatedVisitors = () => {
+      demoVisitorCount.textContent = simulatedVisitors.toLocaleString("en-US") + "+";
+    };
+    const scheduleSimulatedUpdate = () => {
+      window.setTimeout(() => {
+        if (Math.random() < 0.72) simulatedVisitors += 1 + Math.floor(Math.random() * 3);
+        renderSimulatedVisitors();
+        scheduleSimulatedUpdate();
+      }, 9000 + Math.floor(Math.random() * 17000));
+    };
+    renderSimulatedVisitors();
+    scheduleSimulatedUpdate();
+  }
+
+
   async function ensureVisitorIdentity() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 2500);
@@ -707,7 +727,7 @@
         health.status === "vertex-live-proxy-configured"
       ) {
         setButton("Start listening", false);
-        setStatus("Ready. Tap Start listening, then say “Moina”.");
+        setStatus("Ready. Tap Start listening and talk naturally.");
         await refreshVoiceAvailability();
         return;
       }
