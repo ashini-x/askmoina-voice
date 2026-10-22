@@ -1358,13 +1358,13 @@ async function handleVoiceStatus(request: Request, env: Env): Promise<Response> 
   return json({ available: true, reason: "available", message: "Voice is ready. Google/Gemini service limits still apply.", maxSessionSeconds: null, dailyRemainingSeconds: null });
 }
 
-const GUEST_WAKE_WORD_INSTRUCTION = [
-  "You are Moina, a live voice test.",
-  "Do not greet the user or speak at connection start. Stay completely silent unless the user clearly says the wake word Moina.",
-  "When the user says Moina, respond once with exactly this sentence and nothing else: Yes, I am here.",
-  "Do not answer other words or questions. Do not add greetings, explanations, follow-up questions, sound effects, or any other spoken words.",
-  "After the exact acknowledgement, return to silence and wait until the user says Moina again.",
-  "This is a minimal guest voice test. Do not invoke tools, searches, or memories."
+const GUEST_VOICE_INSTRUCTION = [
+  "You are AskMoina, a capable real-time, audio-only voice assistant for anonymous guest sessions.",
+  "Do not greet or speak spontaneously when the connection opens. Wait for the user to speak first, then respond naturally to whatever they say. Never require a wake word or the assistant's name.",
+  "Stay active for a natural back-and-forth conversation. Understand follow-up questions in context, answer concisely but usefully, and remain interruptible while the user speaks.",
+  "Use the AskMoina Assamese pronunciation reference supplied in the system instructions. For Assamese or Assamese-English speech, prefer natural everyday Upper Assam phrasing and pronunciation; avoid textbook Assamese. Mirror the user's language and code-switching instead of forcing Assamese into a fully English conversation.",
+  "Use the available current-web search tool when a question requires up-to-date facts or source verification. Use the Assamese reference tool for relevant pronunciation or language questions. Never claim a search or verification occurred unless the tool was actually used.",
+  "This is guest mode: do not claim to have access to saved personal memories or promise to retain this conversation after the session ends."
 ].join("\n");
 
 interface LiveRelayAttachment {
@@ -2257,15 +2257,13 @@ async function handleVoiceSocket(
           closeBoth(1008, "First message must be a small setup object");
           return;
         }
-        const pronunciationGuidance = guestSessionRequested ? "" : await buildAssamesePronunciationInstruction(env.DB);
-        const baseInstruction = guestSessionRequested
-          ? GUEST_WAKE_WORD_INSTRUCTION
-          : pronunciationGuidance
-            ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
-            : SYSTEM_INSTRUCTION;
+        const pronunciationGuidance = await buildAssamesePronunciationInstruction(env.DB);
+        const baseInstruction = pronunciationGuidance
+          ? `${SYSTEM_INSTRUCTION}\n\n${pronunciationGuidance}`
+          : SYSTEM_INSTRUCTION;
         const enableCopilotForSetup = message.copilot_mode === true;
         const systemInstruction = guestSessionRequested
-          ? GUEST_WAKE_WORD_INSTRUCTION
+          ? `${baseInstruction}\n\n${SEARCH_GROUNDING_INSTRUCTION}\n\n${GUEST_VOICE_INSTRUCTION}`
           : buildPersonalizedSystemInstruction(
               enableCopilotForSetup
                 ? `${baseInstruction}\n\n${COPILOT_SYSTEM_INSTRUCTION}`
@@ -2275,7 +2273,7 @@ async function handleVoiceSocket(
         copilotMode = enableCopilotForSetup;
         const generationConfig = voicePreviewRequested
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
-          : buildVoiceGenerationConfig(env.LIVE_VOICE_NAME);
+          : buildVoiceGenerationConfig(guestSessionRequested ? "Charon" : env.LIVE_VOICE_NAME);
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
           // High model-side media resolution is limited to camera Co-Pilot sessions;
@@ -2283,7 +2281,7 @@ async function handleVoiceSocket(
           generationConfig: configureCopilotMediaResolution(generationConfig, enableCopilotForSetup),
           // Route both modes through the same server-executed grounded search function.
           // This makes search availability explicit and lets the Worker enforce budgets and source checks.
-          tools: guestSessionRequested ? [] : enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
+          tools: guestSessionRequested ? [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }] : enableCopilotForSetup ? [COPILOT_TOOL] : [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }],
           // Automatically compact old user turns before audio/video tokens exhaust the context.
           // Keep automatic provider VAD enabled: it supplies prefix padding for speech onsets,
           // while the browser's hybrid-VAD end marker finalizes a turn after sustained silence.
@@ -2331,7 +2329,7 @@ async function handleVoiceSocket(
 
       if (parsed.kind === "initial_greeting") {
         // Legacy camera clients used this event to force a spoken greeting.
-        // The guest MVP must never speak without the Moina wake word.
+        // Guest voice stays quiet until the user starts the conversation.
         if (guestSessionRequested) return;
         sendUpstreamMessage({
           clientContent: {
