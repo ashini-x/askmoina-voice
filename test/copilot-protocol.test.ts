@@ -22,6 +22,14 @@ describe("Live Co-Pilot input protocol", () => {
     expect(parseLiveClientInput({ keepalive: true, extra: true }, true)).toBeNull();
   });
 
+  it("accepts only an exact interrupt control in voice and co-pilot sessions", () => {
+    expect(parseLiveClientInput({ interrupt: true }, false)).toEqual({ kind: "interrupt" });
+    expect(parseLiveClientInput({ interrupt: true }, true)).toEqual({ kind: "interrupt" });
+    expect(parseLiveClientInput({ interrupt: false }, false)).toBeNull();
+    expect(parseLiveClientInput({ interrupt: true, extra: true }, false)).toBeNull();
+  });
+
+
   it("accepts the one-shot initial greeting signal only in Co-Pilot mode", () => {
     expect(parseLiveClientInput({ initial_greeting: true }, true)).toEqual({ kind: "initial_greeting" });
     expect(parseLiveClientInput({ initial_greeting: true }, false)).toBeNull();

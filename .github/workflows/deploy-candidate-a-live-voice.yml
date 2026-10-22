@@ -249,7 +249,7 @@ jobs:
           NODE
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          for selector in 'id="toggleVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
+          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
             if ! grep -Fq "$selector" /tmp/moina-home.html; then
               echo "::error::Guest Live voice homepage is missing expected marker: $selector"
               echo "Homepage response prefix:"
@@ -434,7 +434,7 @@ jobs:
 
           status="$(fetch_status / /tmp/moina-home.html)"
           test "$status" = "200"
-          for selector in 'id="toggleVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
+          for selector in 'id="toggleVoice"' 'id="interruptVoice"' 'id="stopVoice"' 'moinaOS 1' 'Your live voice experience.' 'audio-chat.js'; do
             grep -Fq "$selector" /tmp/moina-home.html || {
               echo "::error::Guest Live home is missing expected marker: $selector"
               exit 1
