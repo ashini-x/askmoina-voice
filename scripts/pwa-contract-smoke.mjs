@@ -167,11 +167,11 @@ const audioClient = read("public/audio-chat.js");
 const audioStyles = read("public/audio-chat.css");
 assert.ok(worker.includes('const audioUrl = new URL("/", request.url)'), "Worker must serve the static guest voice-test shell");
 assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="stopVoice"') && audioShell.includes('id="transcript"'), "guest shell must include start, stop-voice, and transcript controls");
-assert.ok(audioShell.includes('Say “Moina”.') && audioShell.includes('Yes, I am here.'), "guest shell must explain the wake-word test");
+assert.ok(audioShell.includes('Talk naturally.') && audioShell.includes('Ask anything.') && !audioShell.includes('Say “Moina”.'), "guest shell must start an open-ended live voice conversation without a wake phrase");
 assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes('id="mathFundCard"') && !audioShell.includes("moinaOS 1") && !audioShell.includes("moinaOS 2") && !audioShell.includes("Sign up"), "guest shell must hide products, fundraiser, camera, and signup UI");
-assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && audioClient.includes("wakeWordHeard") && audioClient.includes("assistantVoiceMuted"), "audio client must use guest access and gate speech by wake word");
+assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && !audioClient.includes("wakeWordHeard") && audioClient.includes("assistantVoiceMuted"), "audio client must use guest access and play responses without a wake-word gate");
 assert.ok(audioClient.includes('stopVoiceButton.addEventListener("click"') && audioClient.includes('setButton("Stop listening", false)'), "voice session must expose clear stopping controls");
-assert.ok(worker.includes("GUEST_WAKE_WORD_INSTRUCTION") && worker.includes("tools: guestSessionRequested ? []"), "server must use the quiet wake-word prompt without guest tools");
+assert.ok(worker.includes("GUEST_VOICE_INSTRUCTION") && worker.includes("buildAssamesePronunciationInstruction(env.DB)") && worker.includes('buildVoiceGenerationConfig(guestSessionRequested ? "Charon" : env.LIVE_VOICE_NAME)') && worker.includes("tools: guestSessionRequested ? [{ functionDeclarations: [SEARCH_WEB_FUNCTION, ASSAMESE_REFERENCE_SEARCH_FUNCTION] }]"), "server must use the Assamese-English guest assistant, male-sounding voice, and guest-safe tools");
 assert.ok(audioStyles.includes(".voice-shell") && audioStyles.includes(".composer") && audioStyles.includes(".transcript"), "minimal chat-style voice layout styles are missing");
 assert.ok(worker.includes("max-age=31536000, immutable") && worker.includes("isImmutableVersionedAsset"), "versioned assets should use long-lived immutable caching while unversioned URLs remain revalidated");
 
