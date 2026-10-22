@@ -969,7 +969,7 @@ describe("Dark-first app shell and brand assets", () => {
 
 
   it("routes the public root to the audio shell and keeps product and donation gates visible", () => {
-    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
     expect(audioHtml).toContain('id="toggleVoice"');
     expect(audioHtml).not.toContain('id="videoPreview"');
     expect(audioHtml).toContain("moinaOS 2");
@@ -981,7 +981,7 @@ describe("Dark-first app shell and brand assets", () => {
     expect(workerSource).not.toContain("ENTRY_LAUNCH_OVERLAY");
     expect(workerSource).not.toContain('class="app-launch-transition"');
     expect(workerSource).not.toContain('class="launch-signature-orb"');
-    expect(workerSource).toContain('const audioUrl = new URL("/audio.html", request.url)');
+    expect(workerSource).toContain('const audioUrl = new URL("/audio", request.url)');
     expect(workerSource).toContain('const isAuthPublicPath = url.pathname === "/"');
     expect(experienceSelectionCss).toContain("prefers-reduced-motion:reduce");
     expect(nativeAppCss).not.toContain(".app-launch-transition");
