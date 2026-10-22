@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#212121">
+<meta name="theme-color" content="#090a0d">
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Test AskMoina's voice. No signup required.">
 <link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin>
@@ -18,23 +18,24 @@
     <a class="brand" href="/" aria-label="askmoina home">askmoina</a>
     <div class="topbar-meta">
       <span class="guest-label"><span class="status-dot"></span> Guest · Live voice</span>
-      <span class="visitor-chip" title="Visitors active on this page in the last 90 seconds" aria-label="Active visitors in the last 90 seconds">
-        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">LIVE</span><strong id="liveVisitorCount" aria-live="polite">—</strong><span>visitors</span>
+      <span class="visitor-chip" title="Animated visual preview only; not live visitor analytics" aria-label="Animated visitor activity preview, not actual visitor analytics">
+        <span class="visitor-chip-mark" aria-hidden="true"></span><span class="visitor-chip-label">PREVIEW</span><strong id="visitorPreviewCount" aria-live="polite">—</strong><span>visitors</span>
       </span>
     </div>
   </header>
-  <section class="support-card" aria-label="Support AskMoina development">
-    <div class="support-card-topline"><span class="support-live-dot" aria-hidden="true"></span><span>BUILDING THE NEXT RELEASE</span></div>
+  <section class="support-card" aria-label="Illustrative support progress preview">
+    <div class="support-card-topline"><span class="support-live-dot" aria-hidden="true"></span><span>SUPPORT GOAL PREVIEW</span></div>
     <div class="support-card-heading">
-      <div class="support-card-copy"><h2>Help build what comes next.</h2><p>Community support goal</p></div>
-      <div class="support-total-wrap"><strong id="supportRaised" aria-live="polite">Loading…</strong><span>verified contributions</span></div>
+      <div class="support-card-copy"><h2>Help build what comes next.</h2><p>Illustrative progress preview</p></div>
+      <div class="support-total-wrap"><strong id="supportRaised" aria-live="polite">Loading…</strong><span>preview total · not donations</span></div>
     </div>
-    <div class="support-progress-track" role="progressbar" aria-label="Verified contributions toward support goal" aria-valuemin="0" aria-valuemax="1000000" aria-valuenow="0" id="supportProgressTrack">
+    <div class="support-progress-track" role="progressbar" aria-label="Illustrative preview toward support goal; not actual donations" aria-valuemin="0" aria-valuemax="1000000" aria-valuenow="0" id="supportProgressTrack">
       <span id="supportProgressFill" class="support-progress-fill"></span>
     </div>
     <div class="support-progress-meta"><span id="supportGoal">Goal ₹10,00,000</span><span id="supportPercentage">0%</span></div>
+    <div class="support-real-total">Verified contributions recorded: <strong id="verifiedSupportRaised" aria-live="polite">Loading…</strong></div>
     <div class="support-card-actions">
-      <span id="supportStatus" class="support-status" role="status" aria-live="polite">Contributions are counted after verification.</span>
+      <span id="supportStatus" class="support-status" role="status" aria-live="polite">Preview figures are illustrative, not actual donations.</span>
       <button type="button" id="giveDonation" class="donation-button" aria-expanded="false" aria-controls="supportContact">Give donation <span aria-hidden="true">↗</span></button>
     </div>
     <div id="supportContact" class="support-contact" hidden>
@@ -45,8 +46,8 @@
   <section class="conversation" aria-label="Voice test">
     <div class="hero">
       <p class="eyebrow">LIVE VOICE</p>
-      <h1>Talk naturally.</h1>
-      <p class="helper">Ask anything. Continue the conversation in your own words.</p>
+      <h1>moinaOS 1</h1>
+      <p class="helper">Your live voice experience.</p>
     </div>
     <section class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions text">
       <div class="empty-state" id="emptyTranscript">Your conversation will appear here.</div>

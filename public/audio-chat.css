@@ -90,3 +90,23 @@ h1{font-size:clamp(32px,5vw,48px);font-weight:500;letter-spacing:-.045em;line-he
 .stop-button{border-color:rgba(255,255,255,.13)}
 @media(max-width:560px){.voice-shell{grid-template-rows:auto auto minmax(0,1fr) auto}.topbar{padding-top:15px}.support-card{padding:14px 14px 12px;border-radius:17px;margin-bottom:6px}.support-card-heading{margin-top:11px;gap:10px}.support-card-copy h2{font-size:17px}.support-total-wrap strong{font-size:19px}.support-total-wrap span{font-size:8px}.support-card-actions{align-items:flex-end}.support-status{max-width:55%;font-size:9px}.donation-button{min-height:34px;padding:0 12px}.visitor-chip{gap:5px;padding:6px 7px}.visitor-chip strong{font-size:11px}.visitor-chip-label{font-size:7px}}
 @media(prefers-reduced-motion:reduce){.visitor-chip-mark,.support-live-dot{animation:none}.support-progress-fill{transition:none}}
+
+
+/* Elegant odometer + orbital activity indicator for the explicitly labelled visual preview. */
+.visitor-chip{gap:7px}
+.visitor-chip-label{color:#75e69e}
+.visitor-chip-mark{position:relative;background:transparent;box-shadow:none;animation:none}
+.visitor-chip-mark::before{content:"";position:absolute;inset:-3px;border:1px solid rgba(70,225,133,.72);border-right-color:transparent;border-radius:50%;animation:preview-orbit 1.6s linear infinite}
+.visitor-chip-mark::after{content:"";position:absolute;inset:0;border-radius:50%;background:#38d977;box-shadow:0 0 8px rgba(56,217,119,.45)}
+@keyframes preview-orbit{to{transform:rotate(360deg)}}
+.count-digit{display:inline-block;position:relative;overflow:hidden;height:1em;line-height:1em;vertical-align:bottom}
+.count-digit-strip{display:flex;flex-direction:column;line-height:1em;will-change:transform;transition:transform .48s cubic-bezier(.2,.75,.25,1)}
+.count-digit-strip>span{display:block;height:1em;line-height:1em}
+.number-separator{display:inline-block;vertical-align:bottom}
+.support-total-wrap strong{color:#90efad;text-shadow:0 0 18px rgba(65,215,123,.13)}
+.support-progress-fill{background:linear-gradient(90deg,#23b867,#8ef4ad);box-shadow:0 0 16px rgba(57,214,124,.24)}
+.support-real-total{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.055);color:#9297a2;font-size:10px}
+.support-real-total strong{color:#f4f5f7;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+.support-status{max-width:60%}
+@media(max-width:560px){.support-real-total{font-size:9px}.support-real-total strong{font-size:10px}.support-status{max-width:56%}}
+@media(prefers-reduced-motion:reduce){.visitor-chip-mark::before,.count-digit-strip{animation:none;transition:none}}

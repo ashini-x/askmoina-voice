@@ -11,8 +11,9 @@
   const emptyTranscript = document.querySelector("#emptyTranscript");
   const voicePicker = document.querySelector("#voicePicker");
 
-  const liveVisitorCountNode = document.querySelector("#liveVisitorCount");
+  const visitorPreviewCountNode = document.querySelector("#visitorPreviewCount");
   const supportRaisedNode = document.querySelector("#supportRaised");
+  const verifiedSupportRaisedNode = document.querySelector("#verifiedSupportRaised");
   const supportGoalNode = document.querySelector("#supportGoal");
   const supportPercentageNode = document.querySelector("#supportPercentage");
   const supportProgressTrack = document.querySelector("#supportProgressTrack");
@@ -22,59 +23,116 @@
   const supportContactNode = document.querySelector("#supportContact");
   const closeSupportContactButton = document.querySelector("#closeSupportContact");
 
-  async function refreshLiveVisitorCount() {
-    if (!liveVisitorCountNode) return;
-    try {
-      const response = await fetch("/api/public/live-stats", {
-        method: "GET", credentials: "same-origin", cache: "no-store",
-        headers: { Accept: "application/json" }
-      });
-      const data = await response.json();
-      if (!response.ok || data.ok !== true || !Number.isSafeInteger(data.activeVisitors) || data.activeVisitors < 0) {
-        throw new Error("Live visitor stats unavailable");
-      }
-      liveVisitorCountNode.textContent = data.activeVisitors.toLocaleString("en-US");
-      liveVisitorCountNode.title = "Unique browsers active on this page in the last 90 seconds";
-      liveVisitorCountNode.dataset.state = "live";
-    } catch (_) {
-      liveVisitorCountNode.textContent = "—";
-      liveVisitorCountNode.title = "Live visitor count temporarily unavailable";
-      liveVisitorCountNode.dataset.state = "unavailable";
-    }
+  const inrFormat = new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR", maximumFractionDigits: 0
+  });
+  const VISITOR_PREVIEW_MIN = 9000;
+  const VISITOR_PREVIEW_MAX = 15000;
+  const SUPPORT_PREVIEW_KEY = "askmoina.support.preview.total.v1";
+  const SUPPORT_GOAL_RUPEES = 1000000;
+
+  function randomBetween(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  const inrFormat = new Intl.NumberFormat("en-IN", {
-    style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 2
-  });
-  async function refreshSupportProgress() {
+  // Odometer-style rollers keep every count legible while the digits glide vertically.
+  function renderRollingNumber(node, value, labelSuffix) {
+    if (!node) return;
+    const formatted = value.toLocaleString("en-US");
+    const previous = node.dataset.value || "";
+    if (previous.length !== formatted.length || node.children.length !== formatted.length) {
+      node.innerHTML = Array.from(formatted, (character) => {
+        if (!/\d/.test(character)) {
+          return '<span class="number-separator" aria-hidden="true">' + character + '</span>';
+        }
+        const strip = Array.from({ length: 10 }, (_, digit) => '<span>' + digit + '</span>').join("");
+        return '<span class="count-digit" aria-hidden="true"><span class="count-digit-strip" style="transform:translateY(-' +
+          Number(character) + 'em)">' + strip + '</span></span>';
+      }).join("");
+    } else {
+      const strips = node.querySelectorAll(".count-digit-strip");
+      let index = 0;
+      for (const character of formatted) {
+        if (!/\d/.test(character)) continue;
+        const strip = strips[index++];
+        if (strip) strip.style.transform = "translateY(-" + Number(character) + "em)";
+      }
+    }
+    node.dataset.value = formatted;
+    node.setAttribute("aria-label", formatted + " " + labelSuffix);
+  }
+
+  let visitorPreviewCount = randomBetween(VISITOR_PREVIEW_MIN, VISITOR_PREVIEW_MAX);
+  function animateVisitorPreview() {
+    if (!visitorPreviewCountNode) return;
+    const step = randomBetween(4, 29) * (Math.random() < 0.5 ? -1 : 1);
+    visitorPreviewCount += step;
+    if (visitorPreviewCount < VISITOR_PREVIEW_MIN) visitorPreviewCount = VISITOR_PREVIEW_MIN + randomBetween(0, 32);
+    if (visitorPreviewCount > VISITOR_PREVIEW_MAX) visitorPreviewCount = VISITOR_PREVIEW_MAX - randomBetween(0, 32);
+    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, "visitors, animated preview only");
+    visitorPreviewCountNode.title = "Animated visual preview only; not live visitor analytics";
+    window.setTimeout(animateVisitorPreview, randomBetween(900, 1800));
+  }
+  if (visitorPreviewCountNode) {
+    renderRollingNumber(visitorPreviewCountNode, visitorPreviewCount, "visitors, animated preview only");
+    window.setTimeout(animateVisitorPreview, 1100);
+  }
+
+  function loadSupportPreviewTotal() {
+    let amount;
+    try {
+      const saved = Number(window.localStorage.getItem(SUPPORT_PREVIEW_KEY));
+      if (Number.isSafeInteger(saved) && saved >= 200000 && saved < SUPPORT_GOAL_RUPEES) {
+        amount = saved;
+      } else {
+        amount = randomBetween(218000, 229999);
+        window.localStorage.setItem(SUPPORT_PREVIEW_KEY, String(amount));
+      }
+    } catch (_) {
+      amount = randomBetween(218000, 229999);
+    }
+    return amount;
+  }
+
+  let supportPreviewRupees = loadSupportPreviewTotal();
+  function renderSupportPreview() {
     if (!supportRaisedNode) return;
+    const percent = Math.min(100, (supportPreviewRupees / SUPPORT_GOAL_RUPEES) * 100);
+    supportRaisedNode.textContent = inrFormat.format(supportPreviewRupees);
+    supportGoalNode.textContent = "Goal " + inrFormat.format(SUPPORT_GOAL_RUPEES);
+    supportPercentageNode.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
+    supportProgressFill.style.width = percent + "%";
+    supportProgressTrack.setAttribute("aria-valuenow", String(supportPreviewRupees));
+    supportProgressTrack.setAttribute("aria-valuetext",
+      inrFormat.format(supportPreviewRupees) + " illustrative preview of " + inrFormat.format(SUPPORT_GOAL_RUPEES) + "; not actual donations");
+  }
+  function growSupportPreview() {
+    if (supportPreviewRupees < SUPPORT_GOAL_RUPEES - 1) {
+      supportPreviewRupees = Math.min(SUPPORT_GOAL_RUPEES - 1, supportPreviewRupees + randomBetween(3, 23));
+      renderSupportPreview();
+      try { window.localStorage.setItem(SUPPORT_PREVIEW_KEY, String(supportPreviewRupees)); } catch (_) {}
+    }
+    window.setTimeout(growSupportPreview, randomBetween(16000, 29000));
+  }
+  renderSupportPreview();
+  window.setTimeout(growSupportPreview, randomBetween(14000, 26000));
+
+  async function refreshVerifiedSupport() {
+    if (!verifiedSupportRaisedNode) return;
     try {
       const response = await fetch("/api/support/status", {
         method: "GET", credentials: "same-origin", cache: "no-store",
         headers: { Accept: "application/json" }
       });
       const data = await response.json();
-      if (!response.ok || data.ok !== true || !Number.isSafeInteger(data.totalPaise) ||
-          !Number.isSafeInteger(data.targetPaise) || data.totalPaise < 0 || data.targetPaise <= 0) {
-        throw new Error("Support status unavailable");
+      if (!response.ok || data.ok !== true || !Number.isSafeInteger(data.totalPaise) || data.totalPaise < 0) {
+        throw new Error("Verified support status unavailable");
       }
-      const totalRupees = data.totalPaise / 100;
-      const targetRupees = data.targetPaise / 100;
-      const percent = Math.min(100, Math.max(0, data.progressPercent));
-      supportRaisedNode.textContent = inrFormat.format(totalRupees);
-      supportGoalNode.textContent = "Goal " + inrFormat.format(targetRupees);
-      supportPercentageNode.textContent = percent.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + "%";
-      supportProgressFill.style.width = percent + "%";
-      supportProgressTrack.setAttribute("aria-valuenow", String(Math.round(totalRupees)));
-      supportProgressTrack.setAttribute("aria-valuetext", inrFormat.format(totalRupees) + " of " + inrFormat.format(targetRupees) + " in verified contributions");
-      if (supportStatusNode) supportStatusNode.textContent =
-        data.donationCount === 0 ? "Progress updates when a contribution is verified." :
-        data.donationCount.toLocaleString("en-IN") + " verified contribution" + (data.donationCount === 1 ? "" : "s");
+      verifiedSupportRaisedNode.textContent = inrFormat.format(data.totalPaise / 100);
+      verifiedSupportRaisedNode.title = "Sum of administrator-verified contributions stored on the server";
     } catch (_) {
-      supportRaisedNode.textContent = "Unavailable";
-      if (supportStatusNode) supportStatusNode.textContent = "Support totals could not be loaded.";
-      if (supportPercentageNode) supportPercentageNode.textContent = "—";
-      supportProgressFill.style.width = "0%";
+      verifiedSupportRaisedNode.textContent = "Unavailable";
+      verifiedSupportRaisedNode.title = "Verified support total could not be loaded";
     }
   }
 
@@ -85,11 +143,8 @@
   }
   giveDonationButton?.addEventListener("click", () => setSupportContactOpen(supportContactNode?.hidden === true));
   closeSupportContactButton?.addEventListener("click", () => setSupportContactOpen(false));
-
-  refreshLiveVisitorCount();
-  refreshSupportProgress();
-  window.setInterval(refreshLiveVisitorCount, 20000);
-  window.setInterval(refreshSupportProgress, 30000);
+  refreshVerifiedSupport();
+  window.setInterval(refreshVerifiedSupport, 30000);
 
   async function ensureVisitorIdentity() {
     const controller = new AbortController();
