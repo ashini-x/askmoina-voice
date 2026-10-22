@@ -10,7 +10,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const globalFontCss = read("public/askmoina-global-font.css");
 const publicAudioShell = read("public/index.html");
 assert.ok(publicAudioShell.includes('id="toggleVoice"') && publicAudioShell.includes('id="interruptVoice"') && publicAudioShell.includes('id="stopVoice"') && publicAudioShell.includes('id="transcript"'), "public guest shell must expose start, interrupt, stop-voice, and transcript controls");
-assert.ok(publicAudioShell.includes("moinaOS 1") && publicAudioShell.includes("Your live voice experience.") && !publicAudioShell.includes('Say “Moina”.') && !publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes('id="mathFundCard"') && !publicAudioShell.includes("moinaOS 2") && !publicAudioShell.includes("Sign up"), "public home must contain the open-ended moinaOS 1 guest live voice MVP without a wake word");
+assert.ok(publicAudioShell.includes("moinaOS 1") && publicAudioShell.includes("Your live voice experience.") && publicAudioShell.includes('id="osModelPicker"') && publicAudioShell.includes('id="tryMoinaOS1"') && publicAudioShell.includes('id="moinaOS2Disabled" disabled') && !publicAudioShell.includes('Say “Moina”.') && !publicAudioShell.includes('id="videoPreview"') && !publicAudioShell.includes('id="mathFundCard"') && !publicAudioShell.includes("Sign up"), "public home must show the moinaOS selector, keep moinaOS 2 disabled, and preserve open-ended no-wake-word voice");
 assert.ok(globalFontCss.includes("/askmoina-global-font.woff2"), "global font must reference its locally bundled typeface");
 assert.ok(globalFontCss.includes("font-display: block;"), "global font must suppress fallback-font flashes");
 assert.ok(globalFontCss.includes("--askmoina-global-font"), "canonical AskMoina global font token is missing");
@@ -168,7 +168,7 @@ const audioStyles = read("public/audio-chat.css");
 assert.ok(worker.includes('const audioUrl = new URL("/", request.url)'), "Worker must serve the static guest voice-test shell");
 assert.ok(audioShell.includes('id="toggleVoice"') && audioShell.includes('id="interruptVoice"') && audioShell.includes('id="stopVoice"') && audioShell.includes('id="transcript"'), "guest shell must include start, interrupt, stop-voice, and transcript controls");
 assert.ok(audioShell.includes('moinaOS 1') && audioShell.includes('Your live voice experience.') && !audioShell.includes('Say “Moina”.'), "guest shell must start an open-ended moinaOS 1 live voice conversation without a wake phrase");
-assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes('id="mathFundCard"') && !audioShell.includes("moinaOS 2") && !audioShell.includes("Sign up"), "guest shell must hide the camera preview, legacy fund card, next-version card, and signup UI");
+assert.ok(!audioShell.includes('id="videoPreview"') && !audioShell.includes('id="mathFundCard"') && audioShell.includes('id="moinaOS2Disabled" disabled') && !audioShell.includes("Sign up"), "guest shell must keep camera/signup UI hidden and the future moinaOS 2 card disabled");
 assert.ok(audioShell.includes('class="visitor-chip-label">PREVIEW</span>') && audioShell.includes('preview total · not donations') && audioShell.includes('id="verifiedSupportRaised"'), "public home must label illustrative previews and keep verified contributions distinct");
 assert.ok(audioClient.includes('wsUrl.searchParams.set("guest", "1")') && !audioClient.includes("wakeWordHeard") && audioClient.includes("assistantVoiceMuted"), "audio client must use guest access and play responses without a wake-word gate");
 assert.ok(audioClient.includes('stopVoiceButton.addEventListener("click"') && audioClient.includes('setButton("Stop listening", false)'), "voice session must expose clear stopping controls");
@@ -215,7 +215,7 @@ assert.ok(serviceWorker.includes('request.mode === "navigate"'), "navigation net
 assert.ok(!serviceWorker.includes('"/app.js"'), "app JavaScript must not be precached");
 assert.ok(!serviceWorker.includes('"/copilot.js"'), "Co-Pilot JavaScript must not be precached");
 
-for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js", "public/experience-selection.js"]) {
+for (const path of ["public/pwa-gate.js", "public/pwa-runtime.js", "public/service-worker.js", "public/experience-selection.js", "public/os-selection.js"]) {
   execFileSync(process.execPath, ["--check", resolve(root, path)], { stdio: "pipe" });
 }
 
