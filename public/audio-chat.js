@@ -82,7 +82,6 @@
   let active = false;
   let stopping = false;
   let setupReady = false;
-  let wakeWordHeard = false;
   let assistantVoiceMuted = false;
   let nextPlaybackTime = 0;
   let playbackNodes = new Set();
@@ -191,13 +190,8 @@
   function updateLiveTranscript(role, incomingText) {
     const text = String(incomingText || "").trim();
     if (!text) return;
-    if (role === "user" && /\bmoina\b/i.test(text)) {
-      wakeWordHeard = true;
-      assistantVoiceMuted = false;
-      setStatus("Moina heard. Responding…");
-    }
-    // Ignore all model output until the incoming transcription confirms the wake word.
-    if (role === "assistant" && !wakeWordHeard) return;
+    // A new user utterance re-enables speech after Stop Voice interrupted the previous answer.
+    if (role === "user") assistantVoiceMuted = false;
     const entry = getTranscriptNode(role);
     if (!entry) return;
 
@@ -306,7 +300,7 @@
     stopVoiceButton.addEventListener("click", () => {
       assistantVoiceMuted = true;
       stopPlayback();
-      setStatus("Voice stopped. Say “Moina” to test again.");
+      setStatus("Assistant voice stopped. Ask another question to hear it again.");
     });
   }
 
@@ -322,7 +316,7 @@
   }
 
   function playPcmAudio(base64, mimeType) {
-    if (!audioContext || !base64 || assistantVoiceMuted || !wakeWordHeard) return;
+    if (!audioContext || !base64 || assistantVoiceMuted) return;
     const match = String(mimeType || "").match(/rate=(\d+)/i);
     const sampleRate = match ? Number(match[1]) : 24000;
     const samples = decodePcm16(base64);
@@ -415,9 +409,8 @@
       starting = false;
       active = true;
       setButton("Stop listening", false);
-      wakeWordHeard = false;
       assistantVoiceMuted = false;
-      setStatus("Listening for “Moina”.");
+      setStatus("Connected. Ask me anything.");
       if (voiceAvailability && voiceAvailability.available) {
         const sessionMinutes = Math.max(1, Math.ceil((Number(voiceAvailability.maxSessionSeconds) || 540) / 60));
         setAvailability("Conversation active · up to " + sessionMinutes + " min for this session.", "normal");
@@ -442,14 +435,13 @@
         if (part.text) updateLiveTranscript("assistant", part.text);
         const inlineData = part.inline_data || part.inlineData;
         if (inlineData && inlineData.data) {
-          if (!wasInterrupted && wakeWordHeard && !assistantVoiceMuted) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
+          if (!wasInterrupted && !assistantVoiceMuted) playPcmAudio(inlineData.data, inlineData.mime_type || inlineData.mimeType);
         }
       }
 
       if (serverContent.turn_complete || serverContent.turnComplete) {
         finalizeTranscriptTurn();
-        wakeWordHeard = false;
-        if (active) setStatus("Listening for “Moina”.");
+        if (active) setStatus("Listening. Go ahead.");
       }
     }
 
@@ -533,15 +525,13 @@
     } else if (oldSocket && oldSocket.readyState === WebSocket.CONNECTING) {
       try { oldSocket.close(); } catch (_) { /* no-op */ }
     }
-    wakeWordHeard = false;
-    finishStoppedState(fromServer ? "Voice session ended. Tap Start listening to reconnect." : "Voice test ended.");
+    finishStoppedState(fromServer ? "Voice session ended. Tap Start listening to reconnect." : "Voice session ended.");
   }
 
   async function startConversation() {
     if (starting || active) return;
     starting = true;
     stopping = false;
-    wakeWordHeard = false;
     assistantVoiceMuted = false;
     setButton("Checking availability…", true);
     setStatus("Checking voice availability…");
