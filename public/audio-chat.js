@@ -21,7 +21,9 @@
     };
     const scheduleSimulatedUpdate = () => {
       window.setTimeout(() => {
-        if (Math.random() < 0.72) simulatedVisitors += 1 + Math.floor(Math.random() * 3);
+        const movement = 1 + Math.floor(Math.random() * 3);
+        simulatedVisitors += Math.random() < 0.5 ? movement : -movement;
+        simulatedVisitors = Math.max(12000, Math.min(12399, simulatedVisitors));
         renderSimulatedVisitors();
         scheduleSimulatedUpdate();
       }, 9000 + Math.floor(Math.random() * 17000));
