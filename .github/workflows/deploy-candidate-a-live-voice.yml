@@ -464,7 +464,7 @@ jobs:
           done
           echo "Audio-only frontend assets: OK"
 
-      - name: Synthetic live web-grounding and voice-memory verification
+      - name: Synthetic current Live voice, grounding, recovery, and memory verification
         shell: bash
         env:
           BASE_URL: https://askmoina-voice.thenewtongs.workers.dev

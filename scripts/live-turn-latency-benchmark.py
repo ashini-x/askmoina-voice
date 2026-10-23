@@ -182,8 +182,33 @@ def send_synthetic_turn(ws, prompt: str, turn_number: int) -> tuple[int, int]:
             completed = True
             break
 
+    # Drain any media/control frames already in flight before the next synthetic turn.
+    # The previous benchmark left queued audio to be mistaken for the next turn.
+    if completed:
+        quiet_deadline = time.monotonic() + 0.8
+        while time.monotonic() < quiet_deadline:
+            try:
+                message = receive_json(ws)
+            except websocket.WebSocketTimeoutException:
+                break
+            if message is None:
+                continue
+            if message.get("error"):
+                raise RuntimeError("provider/protocol error during end-of-turn drain")
+            count = generated_audio_bytes(message)
+            if count:
+                audio_bytes += count
+                if first_audio_at is None:
+                    first_audio_at = time.monotonic()
+            if turn_complete(message):
+                quiet_deadline = time.monotonic() + 0.25
+
     if not completed or first_audio_at is None or audio_bytes <= 0:
-        raise RuntimeError("synthetic turn did not complete with generated audio")
+        raise RuntimeError(
+            "synthetic turn " + str(turn_number) +
+            " did not complete with generated audio (completed=" + str(completed) +
+            ", audio_bytes=" + str(audio_bytes) + ")"
+        )
     latency_ms = round((first_audio_at - boundary_at) * 1000)
     # Only a turn ordinal and timings are emitted; never the prompt/transcript/audio.
     print(f"turn={turn_number:02d} boundary_to_first_audio_ms={latency_ms} audio_bytes={audio_bytes}")
@@ -223,6 +248,9 @@ def main() -> int:
         for index, prompt in enumerate(PROMPTS[:TURN_COUNT], start=1):
             latency_ms, _ = send_synthetic_turn(ws, prompt, index)
             samples.append(latency_ms)
+            # Let the provider settle before the next independent speech sample.
+            if index < TURN_COUNT:
+                time.sleep(0.75)
 
         print(json.dumps({
             "benchmark": "m1-synthetic-turn-latency-v1",
@@ -251,5 +279,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print("M1 synthetic turn-latency benchmark: FAIL (" + type(exc).__name__ + ")")
+        print("M1 synthetic turn-latency benchmark: FAIL (" + type(exc).__name__ + ": " + str(exc)[:180] + ")")
         raise SystemExit(1)

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Browser-level production smoke for the Co-Pilot's offline -> online recovery path.
- * Uses a short-lived synthetic passkey account. Never logs session cookies, audio,
- * transcript text, or search content.
+ * Production browser smoke for the current voice-first homepage's network recovery.
+ * Uses a disposable authenticated synthetic session and Chromium's fake microphone.
+ * It never logs cookies, audio, transcripts, or prompts.
  */
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -16,7 +16,8 @@ if (!match) throw new Error("A verified synthetic account cookie is required.");
 let browser;
 let context;
 let page;
-const liveSocketEvents = [];
+const sockets = [];
+const closedSockets = [];
 try {
   browser = await chromium.launch({
     headless: true,
@@ -27,7 +28,7 @@ try {
       "--autoplay-policy=no-user-gesture-required"
     ]
   });
-  context = await browser.newContext({ permissions: ["camera", "microphone"] });
+  context = await browser.newContext({ permissions: ["microphone"] });
   await context.addCookies([{
     name: "moina_session",
     value: match[1],
@@ -37,91 +38,67 @@ try {
     sameSite: "Lax"
   }]);
   page = await context.newPage();
-  await page.addInitScript(() => {
-    // This synthetic browser represents an installed PWA, not an ordinary tab.
-    Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
-  });
   page.on("websocket", (webSocket) => {
     try {
-      if (new URL(webSocket.url()).pathname === "/api/voice/socket") liveSocketEvents.push(webSocket);
-    } catch { /* Ignore unrelated/non-URL WebSocket events. */ }
+      if (new URL(webSocket.url()).pathname !== "/api/voice/socket") return;
+      sockets.push(webSocket);
+      webSocket.on("close", () => closedSockets.push(webSocket.url()));
+    } catch { /* Ignore unrelated sockets. */ }
   });
 
   const response = await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-  assert.equal(response?.status(), 200, "authenticated Co-Pilot route should load");
-  // Start from the real authenticated entry journey. The live camera controls are
-  // intentionally hidden behind the experience-selection overlay until moinaOS 1 is chosen.
-  // Selecting it triggers the normal Co-Pilot connection flow; do not bypass that UI.
-  await page.waitForSelector("#experienceMoinaOS1", { state: "visible", timeout: 15_000 });
-  await page.locator("#experienceMoinaOS1").click({ timeout: 10_000 });
-  await page.waitForFunction(
-    () => document.querySelector("#connectionPill")?.dataset.state === "live",
+  assert.equal(response?.status(), 200, "voice homepage should load");
+  await page.waitForSelector("#tryMoinaOS1", { state: "visible", timeout: 15_000 });
+  await page.locator("#tryMoinaOS1").click();
+  await page.waitForFunction(() => {
+    const button = document.querySelector("#toggleVoice");
+    return button instanceof HTMLButtonElement && !button.disabled;
+  }, null, { timeout: 20_000 });
+  await page.locator("#toggleVoice").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#status")?.textContent?.trim() === "Connected. Ask me anything." &&
+    document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "true",
     null,
     { timeout: 45_000 }
   );
-  assert.equal(liveSocketEvents.length, 1, "initial live WebSocket should be established");
-  console.log("Browser network recovery: initial authenticated Live session established.");
+  assert.equal(sockets.length, 1, "initial voice connection should use exactly one WebSocket");
+  console.log("Voice homepage network recovery: initial Live session established.");
 
-  // Use Chromium's network emulation, not a synthetic DOM event, to exercise the real
-  // navigator.onLine and browser offline/online events while a Live session is active.
   await context.setOffline(true);
   await page.waitForFunction(() => {
-    const title = document.querySelector("#connectionNoticeTitle");
-    const action = document.querySelector("#connectionNoticeAction");
-    const callButton = document.querySelector("#toggleCopilot");
-    return title?.textContent?.trim() === "You're offline" &&
-      action instanceof HTMLButtonElement && !action.hidden &&
-      callButton?.getAttribute("aria-pressed") === "false" &&
-      navigator.onLine === false;
-  }, null, { timeout: 15_000 });
-  assert.equal(await page.locator("#connectionNoticeAction").textContent(), "Reconnect now");
-  const previewDiagnostics = await page.locator("#videoPreview").evaluate((element) => ({
-    filter: getComputedStyle(element).filter,
-    inlineFilter: element.style.filter,
-    stageClass: element.parentElement?.className || "",
-    placeholderFilter: getComputedStyle(element.parentElement?.querySelector(".camera-placeholder") || document.body).filter,
-  }));
-  assert.equal(previewDiagnostics.filter, "none", "camera preview should stay clear after session stop and during user-driven recovery; " + JSON.stringify(previewDiagnostics));
-  assert.ok(previewDiagnostics.stageClass.includes("recovery-preview-clear"),
-    "the fallback scene should stay in explicit clear-preview recovery mode; " + JSON.stringify(previewDiagnostics));
-  if (!previewDiagnostics.stageClass.includes("has-camera")) {
-    assert.equal(previewDiagnostics.placeholderFilter, "none",
-      "the no-camera fallback must not remain blurred; " + JSON.stringify(previewDiagnostics));
-  }
-  console.log("Browser network recovery: active session stopped, camera preview is clear, and offline notice shown.");
-
+    const label = document.querySelector("#buttonLabel")?.textContent?.trim() || "";
+    const status = document.querySelector("#status")?.textContent || "";
+    return label === "Try again" && /connection|voice session ended/i.test(status) &&
+      document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "false";
+  }, null, { timeout: 20_000 });
+  assert.equal(closedSockets.length, 1, "offline event should terminate the existing browser WebSocket");
   await context.setOffline(false);
-  await page.waitForFunction(() => {
-    const title = document.querySelector("#connectionNoticeTitle");
-    return title?.textContent?.trim() === "Network restored" && navigator.onLine === true;
-  }, null, { timeout: 15_000 });
-  await page.waitForTimeout(900);
-  assert.equal(liveSocketEvents.length, 1, "restoring the network must not silently start a new Live session");
-  assert.equal(await page.locator("#toggleCopilot").getAttribute("aria-pressed"), "false");
-  assert.equal(await page.locator("#connectionNoticeAction").textContent(), "Reconnect now");
-  console.log("Browser network recovery: online state restored; no silent reconnection occurred.");
+  await page.waitForFunction(() => navigator.onLine === true, null, { timeout: 5_000 });
+  await page.waitForTimeout(800);
+  assert.equal(sockets.length, 1, "restoring the network must not silently start another session");
+  assert.equal(await page.locator("#buttonLabel").textContent(), "Try again");
+  console.log("Voice homepage network recovery: dropped session surfaced; online state did not reconnect silently.");
 
-  // Recovery must work when the user explicitly chooses Reconnect now.
-  await page.locator("#connectionNoticeAction").click();
-  await page.waitForFunction(
-    () => document.querySelector("#connectionPill")?.dataset.state === "live",
+  await page.locator("#toggleVoice").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#status")?.textContent?.trim() === "Connected. Ask me anything." &&
+    document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "true",
     null,
     { timeout: 45_000 }
   );
-  await page.waitForFunction(() => {
-    const stage = document.querySelector("#videoPreview")?.parentElement;
-    const notice = document.querySelector("#connectionNotice");
-    return Boolean(stage && !stage.classList.contains("recovery-preview-clear") && notice?.hidden);
-  }, null, { timeout: 10_000 });
-  assert.ok(liveSocketEvents.length >= 2, "explicit reconnect should establish a new Live WebSocket");
-  console.log("Browser network recovery: explicit Reconnect now restored a fresh Live session and cleared recovery UI.");
+  assert.ok(sockets.length >= 2, "explicit retry should establish a fresh browser WebSocket");
+  assert.ok(closedSockets.length >= 1, "the dropped WebSocket should be recorded");
+  console.log("Voice homepage network recovery synthetic test: PASS.");
 
-  await page.locator("#toggleCopilot").click();
-  await page.waitForTimeout(700);
-  console.log("Browser network recovery synthetic test: PASS.");
+  await page.locator("#toggleVoice").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "false",
+    null,
+    { timeout: 10_000 }
+  );
 } catch (error) {
   console.error("Browser network recovery synthetic test: FAIL (" +
-    (error instanceof Error ? error.message.slice(0, 220) : "unknown error") + ")");
+    (error instanceof Error ? error.message.slice(0, 260) : "unknown error") + ")");
   process.exitCode = 1;
 } finally {
   if (context) await context.close().catch(() => undefined);

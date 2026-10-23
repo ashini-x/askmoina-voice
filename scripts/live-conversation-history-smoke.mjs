@@ -48,12 +48,12 @@ try {
   const anonymousMemories = await fetch(baseUrl + "/api/memories", { cache: "no-store" });
   assert(anonymousMemories.status === 401, "anonymous preference-memory access must be denied");
 
-  const copilotPage = await fetch(baseUrl + "/copilot", { headers: { Cookie: cookieA }, cache: "no-store" });
-  assert(copilotPage.status === 200, "authenticated Co-Pilot page did not load");
-  const copilotHtml = await copilotPage.text();
-  assert(copilotHtml.includes('id="openLibrary"') && copilotHtml.includes('id="librarySheet"') &&
-    copilotHtml.includes('id="continueConversation"') && copilotHtml.includes('id="memoryEnabledSwitch"'),
-    "production Co-Pilot page is missing History, resume, or Key Memories UI");
+  const homePage = await fetch(baseUrl + "/", { headers: { Cookie: cookieA }, cache: "no-store" });
+  assert(homePage.status === 200, "authenticated voice homepage did not load");
+  const homeHtml = await homePage.text();
+  assert(homeHtml.includes('id="osModelPicker"') && homeHtml.includes('id="tryMoinaOS1"') &&
+    homeHtml.includes('id="toggleVoice"'),
+    "production voice homepage is missing the current moinaOS and Live controls");
 
   const created = await request("/api/conversations", "POST", cookieA, {
     title: "Phase 4 temporary verification " + nonce.slice(0, 8),
@@ -160,7 +160,7 @@ try {
   const memoryIdsAfterDelete = await request("/api/memories", "GET", cookieA, undefined, 200);
   assert(!memoryIdsAfterDelete.data.memories?.some((item) => item.content?.includes(nonce.slice(0, 8))),
     "memory delete did not remove the synthetic preferences");
-  console.log("Synthetic history and Key Memories: PASS (owner isolation, transcript/task restore, automatic preference capture, memory pause, manual add/edit/delete, cross-account denial, and live UI markers).");
+  console.log("Synthetic conversation history and memory APIs: PASS (owner isolation, transcript/task restore, automatic preference capture, memory pause, manual add/edit/delete, and cross-account denial).");
 } catch (error) {
   failure = error instanceof Error ? error.message : "unknown failure";
 } finally {
