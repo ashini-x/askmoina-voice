@@ -75,6 +75,14 @@ describe("public activity and support preview", () => {
     expect(script).toContain('document.body?.dataset.ownerPreview === "true"');
   });
 
+  it("preserves a live session across explicit offline recovery", () => {
+    expect(script).toContain('const LIVE_CLIENT_RECONNECT_CLOSE_CODE = 4001;');
+    expect(script).toContain('window.addEventListener("offline", handleBrowserOffline)');
+    expect(script).toContain('window.addEventListener("online", handleBrowserOnline)');
+    expect(script).toContain('previousSocket.close(');
+    expect(script).toContain('"Network restored. Tap Try again to resume your conversation."');
+  });
+
   it("has a dedicated interrupt control that flushes playback while keeping capture active", () => {
     expect(html).toContain('id="interruptVoice"');
     expect(script).toContain('interruptButton.addEventListener("click", interruptAssistant)');

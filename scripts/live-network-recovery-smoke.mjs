@@ -68,12 +68,20 @@ try {
   await page.waitForFunction(() => {
     const label = document.querySelector("#buttonLabel")?.textContent?.trim() || "";
     const status = document.querySelector("#status")?.textContent || "";
-    return label === "Try again" && /connection|voice session ended/i.test(status) &&
-      document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "false";
+    return label === "Try again" && /offline/i.test(status) &&
+      document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") === "false" &&
+      navigator.onLine === false;
   }, null, { timeout: 20_000 });
-  assert.equal(closedSockets.length, 1, "offline event should terminate the existing browser WebSocket");
+  await page.waitForTimeout(350);
+  assert.equal(closedSockets.length, 1, "offline event should detach the existing browser WebSocket while preserving the Live session");
   await context.setOffline(false);
-  await page.waitForFunction(() => navigator.onLine === true, null, { timeout: 5_000 });
+  await page.waitForFunction(() =>
+    navigator.onLine === true &&
+    /Network restored/i.test(document.querySelector("#status")?.textContent || "") &&
+    document.querySelector("#buttonLabel")?.textContent?.trim() === "Try again",
+    null,
+    { timeout: 5_000 }
+  );
   await page.waitForTimeout(800);
   assert.equal(sockets.length, 1, "restoring the network must not silently start another session");
   assert.equal(await page.locator("#buttonLabel").textContent(), "Try again");

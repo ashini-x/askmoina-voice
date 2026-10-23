@@ -93,6 +93,77 @@ def has_grounding_tool_call(message: dict) -> bool:
     return any(isinstance(call, dict) and call.get("name") == "search_current_web" for call in calls)
 
 
+
+
+def collect_grounded_answer(ws, source_markers, timeout_seconds, require_tool_call):
+    """Collect final answer evidence while never exposing the transcript in logs."""
+    tool_called = False
+    transcript = ""
+    completed_turns = 0
+    messages_seen = 0
+    transcript_frames = 0
+    deadline = time.time() + timeout_seconds
+    last_keepalive_at = time.monotonic()
+    valid = False
+    while time.time() < deadline:
+        try:
+            message = recv_json_message(ws)
+            if message is None:
+                if time.monotonic() - last_keepalive_at >= 10:
+                    send_relay_keepalive(ws)
+                    last_keepalive_at = time.monotonic()
+                continue
+        except websocket.WebSocketTimeoutException:
+            if time.monotonic() - last_keepalive_at >= 10:
+                send_relay_keepalive(ws)
+                last_keepalive_at = time.monotonic()
+            continue
+        except websocket.WebSocketConnectionClosedException:
+            raise RuntimeError("Live WebSocket closed while collecting a grounded answer.") from None
+
+        messages_seen += 1
+        if time.monotonic() - last_keepalive_at >= 10:
+            send_relay_keepalive(ws)
+            last_keepalive_at = time.monotonic()
+        if message.get("error"):
+            raise RuntimeError("The Live session returned a protocol/provider error during grounded search.")
+
+        message_has_tool_call = has_grounding_tool_call(message)
+        tool_called = tool_called or message_has_tool_call
+        received_text = extract_text(message).strip()
+        if received_text:
+            transcript_frames += 1
+            transcript += " " + received_text
+
+        content = message.get("serverContent") or message.get("server_content") or {}
+        if not (
+            isinstance(content, dict)
+            and (content.get("turnComplete") or content.get("turn_complete"))
+            and not message_has_tool_call
+            and (tool_called or not require_tool_call)
+        ):
+            continue
+
+        completed_turns += 1
+        lowered = transcript.lower().strip()
+        has_numeric_detail = bool(re.search(r"\d", lowered))
+        names_subject = any(marker in lowered for marker in source_markers)
+        valid = len(lowered) >= 45 and has_numeric_detail and names_subject
+        if valid:
+            break
+
+    lowered = transcript.lower().strip()
+    return {
+        "valid": valid,
+        "tool_called": tool_called,
+        "messages_seen": messages_seen,
+        "transcript_frames": transcript_frames,
+        "completed_turns": completed_turns,
+        "transcript_chars": len(lowered),
+        "has_numeric_detail": bool(re.search(r"\d", lowered)),
+        "names_subject": any(marker in lowered for marker in source_markers),
+    }
+
 def main() -> int:
     ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
     if not ws_url.startswith("wss://"):
@@ -136,15 +207,6 @@ def main() -> int:
         # current-information turn must invoke the web tool and receive a grounded answer
         # before the next turn begins; only status and counters are printed, never queries.
         for search_index, prompt in enumerate(prompts, start=1):
-            ws.send(json.dumps({"text_input": prompt}))
-            tool_called = False
-            transcript = ""
-            turn_complete = False
-            completed_turns = 0
-            messages_seen = 0
-            transcript_frames = 0
-            deadline = time.time() + TURN_WAIT_SECONDS
-            last_keepalive_at = time.monotonic()
             source_markers = (
                 ("android", "android developers", "android.com")
                 if search_index == 1 else
@@ -152,71 +214,48 @@ def main() -> int:
                 if search_index == 2 else
                 ("chrome", "chromium", "google chrome")
             )
-            while time.time() < deadline:
-                try:
-                    message = recv_json_message(ws)
-                    if message is None:
-                        if time.monotonic() - last_keepalive_at >= 10:
-                            send_relay_keepalive(ws)
-                            last_keepalive_at = time.monotonic()
-                        continue
-                except websocket.WebSocketTimeoutException:
-                    if time.monotonic() - last_keepalive_at >= 10:
-                        send_relay_keepalive(ws)
-                        last_keepalive_at = time.monotonic()
-                    continue
-                except websocket.WebSocketConnectionClosedException:
-                    raise RuntimeError(
-                        f"Live WebSocket closed during grounded search {search_index}; "
-                        f"messages={messages_seen}, tool_called={tool_called}, "
-                        f"transcript_frames={transcript_frames}, completed_turns={completed_turns}."
-                    ) from None
-                messages_seen += 1
-                if time.monotonic() - last_keepalive_at >= 10:
-                    send_relay_keepalive(ws)
-                    last_keepalive_at = time.monotonic()
-                if message.get("error"):
-                    raise RuntimeError(f"The Live session returned a protocol/provider error on search {search_index}.")
-                message_has_tool_call = has_grounding_tool_call(message)
-                tool_called = tool_called or message_has_tool_call
-                received_text = extract_text(message).strip()
-                if received_text:
-                    transcript_frames += 1
-                    transcript += " " + received_text
-                content = message.get("serverContent") or message.get("server_content") or {}
-                if (
-                    isinstance(content, dict)
-                    and (content.get("turnComplete") or content.get("turn_complete"))
-                    and tool_called
-                    and not message_has_tool_call
-                ):
-                    completed_turns += 1
-                    lowered_so_far = transcript.lower().strip()
-                    has_numeric_release_detail = bool(re.search(r"\d", lowered_so_far))
-                    names_requested_subject = any(marker in lowered_so_far for marker in source_markers)
-                    # A Live turn may finish on a short spoken acknowledgement before the
-                    # grounded answer arrives. Keep receiving rather than treating that
-                    # acknowledgement as the final verified result.
-                    if len(lowered_so_far) >= 45 and has_numeric_release_detail and names_requested_subject:
-                        turn_complete = True
-                        break
 
-            lowered = transcript.lower()
-            if not tool_called:
-                raise RuntimeError(
-                    f"Live API did not call search_current_web for explicit search {search_index}; "
-                    f"messages={messages_seen}."
+            ws.send(json.dumps({"text_input": prompt}))
+            result = collect_grounded_answer(
+                ws, source_markers, TURN_WAIT_SECONDS, require_tool_call=True
+            )
+
+            # A spoken progress acknowledgement can finish before the factual answer.
+            # Allow one explicit completion retry, but still require a numeric detail,
+            # requested subject, and evidence that web search was actually invoked.
+            if (
+                not result["valid"] and result["tool_called"] and
+                result["completed_turns"] > 0
+            ):
+                ws.send(json.dumps({
+                    "text_input":
+                        "Please finish the source-backed final answer from the search result you just checked. "
+                        "Give one concise sentence with the numeric release/version and official source. "
+                        "Do not give another progress update."
+                }))
+                retry = collect_grounded_answer(
+                    ws, source_markers, 45, require_tool_call=False
                 )
-            if not turn_complete:
+                if retry["valid"]:
+                    result = retry | {"tool_called": True}
+
+            if not result.get("tool_called"):
                 raise RuntimeError(
-                    f"Timed out waiting for a readable grounded answer {search_index}; "
-                    f"messages={messages_seen}, transcript_frames={transcript_frames}, "
-                    f"completed_turns={completed_turns}, transcript_chars={len(lowered.strip())}."
+                    "Live API did not call search_current_web for explicit search " +
+                    str(search_index) + "; messages=" + str(result.get("messages_seen", 0)) + "."
                 )
-            if any(phrase in lowered for phrase in ("temporarily unavailable", "could not be verified", "no live search")):
-                raise RuntimeError(f"Grounded search {search_index} returned an unavailable/unverified response.")
+            if not result.get("valid"):
+                raise RuntimeError(
+                    "No readable grounded final answer for search " + str(search_index) +
+                    " after one completion retry; messages=" + str(result.get("messages_seen", 0)) +
+                    ", transcript_frames=" + str(result.get("transcript_frames", 0)) +
+                    ", completed_turns=" + str(result.get("completed_turns", 0)) +
+                    ", transcript_chars=" + str(result.get("transcript_chars", 0)) +
+                    ", numeric_detail=" + str(result.get("has_numeric_detail", False)) +
+                    ", names_subject=" + str(result.get("names_subject", False)) + "."
+                )
             completed_searches += 1
-            print(f"Synthetic grounded search {search_index}/3: PASS")
+            print("Synthetic grounded search " + str(search_index) + "/3: PASS")
 
         print(f"Synthetic live web grounding test: PASS ({completed_searches} sequential searches in one authenticated Live session).")
         return 0

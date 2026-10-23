@@ -200,6 +200,8 @@
   let activeSessionId = null;
   let resumeExistingSession = false;
   let relayKeepaliveTimer = null;
+  // Private-use WebSocket close code: preserve the upstream Live session during explicit network retry.
+  const LIVE_CLIENT_RECONNECT_CLOSE_CODE = 4001;
 
   function startRelayKeepalive(sessionSocket) {
     if (relayKeepaliveTimer) window.clearInterval(relayKeepaliveTimer);
@@ -718,6 +720,63 @@
     finishStoppedState(fromServer ? "Voice session ended. Tap Start listening to reconnect." : "Voice session ended.");
   }
 
+  function handleBrowserOffline() {
+    const previousSocket = socket;
+    const canResume = Boolean(active && setupReady && activeSessionId &&
+      previousSocket && previousSocket.readyState === WebSocket.OPEN);
+
+    if (canResume) {
+      resumeExistingSession = true;
+    } else if (starting && !active) {
+      // A call that never completed setup has no safe provider checkpoint to resume.
+      resumeExistingSession = false;
+      activeSessionId = null;
+    }
+
+    stopRelayKeepalive(previousSocket);
+    socket = null;
+    if (previousSocket && (previousSocket.readyState === WebSocket.OPEN ||
+        previousSocket.readyState === WebSocket.CONNECTING)) {
+      try {
+        previousSocket.close(
+          LIVE_CLIENT_RECONNECT_CLOSE_CODE,
+          "Browser network unavailable; preserve session for explicit retry",
+        );
+      } catch (_) { /* Network may already have severed the socket. */ }
+    }
+
+    cleanupMedia();
+    starting = false;
+    active = false;
+    setupReady = false;
+    stopping = false;
+    const canRetrySession = Boolean(resumeExistingSession && activeSessionId);
+    setButton(canRetrySession ? "Try again" : "Start listening", false);
+    setStatus(
+      canRetrySession
+        ? "You're offline. Check your connection; tap Try again when the network returns to resume your conversation."
+        : "You're offline. Check your connection, then tap Start listening when you're back online.",
+      "error",
+    );
+    setAvailability("No internet connection detected.", "warning");
+  }
+
+  function handleBrowserOnline() {
+    if (resumeExistingSession && activeSessionId) {
+      setButton("Try again", false);
+      setStatus("Network restored. Tap Try again to resume your conversation.", "warning");
+      setAvailability("Connection restored. Ready when you are.", "normal");
+      return;
+    }
+    setButton("Start listening", false);
+    setStatus("Network restored. Tap Start listening to connect.", "normal");
+    setAvailability("Checking voice availability…");
+    void refreshVoiceAvailability();
+  }
+
+  window.addEventListener("offline", handleBrowserOffline);
+  window.addEventListener("online", handleBrowserOnline);
+
   async function startConversation() {
     if (starting || active) return;
     const reconnectingExistingSession = resumeExistingSession && Boolean(activeSessionId);
@@ -930,6 +989,7 @@
 
   setAvailability("Checking voice availability…");
   checkBackend();
+  if (!navigator.onLine) handleBrowserOffline();
 
 
 })();
