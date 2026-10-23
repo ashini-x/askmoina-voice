@@ -26,6 +26,7 @@ for (const path of [
   assert.ok(read(path).includes("/askmoina-global-font.css"), path + " must load the canonical global font");
 }
 const workerSource = read("src/index.ts");
+assert.ok(workerSource.includes('url.pathname === "/os-selection.js"'), "the no-login model selector script must be accessible to guest browsers");
 assert.ok(workerSource.includes("withAskMoinaFontPreload"), "Worker HTML must preload the global font before first paint");
 assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated shells must load the canonical global font");
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");

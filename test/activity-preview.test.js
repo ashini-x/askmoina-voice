@@ -22,13 +22,15 @@ describe("public activity and support preview", () => {
     expect(html).toContain('id="osModelPicker"');
     expect(html).toContain('id="tryMoinaOS1">Try for free');
     expect(html).toContain('id="moinaOS2Title">moinaOS 2');
-    expect(html).toContain("More advanced. Coming next.");
+    expect(html).toContain("More advanced AI.");
     expect(html).toContain('id="moinaOS2Disabled" disabled');
     expect(html).toContain('class="conversation" aria-label="Voice test" hidden');
     const selection = readFileSync(new URL("../public/os-selection.js", import.meta.url), "utf8");
     expect(selection).toContain('tryButton.addEventListener("click"');
     expect(selection).toContain("composer.scrollIntoView");
     expect(css).toContain(".os-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))");
+    expect(css).toContain("@media(max-width:620px)");
+    expect(css).toContain(".os-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}");
     expect(css).toContain('body[data-owner-preview="true"] .support-status{display:none}');
   });
 
@@ -48,6 +50,7 @@ describe("public activity and support preview", () => {
     expect(worker).toContain('const ownerPreview = ownerPreviewRequested && await isAdmin(request, env);');
     expect(worker).toContain('if (ownerPreviewRequested && !ownerPreview)');
     expect(worker).toContain('new URL("/admin/login", request.url)');
+    expect(worker).toContain('url.pathname === "/os-selection.js"');
     expect(continuity).toContain('SameSite=Lax');
     expect(continuity).toContain('href="/?ownerPreview=1" target="_blank" rel="noopener">Support copy preview</a>');
     expect(worker).toContain('<body data-owner-preview="true">');
