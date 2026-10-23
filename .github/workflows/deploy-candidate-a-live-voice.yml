@@ -11,7 +11,7 @@ permissions:
 concurrency:
   # Keep production deployments serial. A prior v3 run is stuck after its deploy checks,
   # so v4 releases the new deployment without allowing it to overlap another v4 deploy.
-  group: askmoina-candidate-a-production-deploy-v8
+  group: askmoina-candidate-a-production-deploy-v9
   cancel-in-progress: false
 
 jobs:

@@ -11,8 +11,11 @@ describe("public activity and support preview", () => {
   it("labels the changing visitor number as a preview and constrains it to the requested range", () => {
     expect(html).toContain('class="visitor-chip-label">PREVIEW</span>');
     expect(html).toContain("not actual visitor analytics");
-    expect(script).toContain("VISITOR_PREVIEW_MIN = 9000");
-    expect(script).toContain("VISITOR_PREVIEW_MAX = 15000");
+    expect(script).toContain("VISITOR_PREVIEW_MIN = ownerPreviewMode ? 73000 : 9000");
+    expect(script).toContain("VISITOR_PREVIEW_MAX = ownerPreviewMode ? 73999 : 15000");
+    expect(script).toContain('"askmoina.support.owner-preview.total.v1"');
+    expect(script).toContain("SUPPORT_PREVIEW_MIN = ownerPreviewMode ? 501000 : 218000");
+    expect(script).toContain("SUPPORT_PREVIEW_MAX = ownerPreviewMode ? 529999 : 229999");
     expect(script).toContain("setTimeout(animateVisitorPreview");
     expect(script).toContain("count-digit-strip");
     expect(css).toContain("@keyframes preview-orbit");
@@ -43,6 +46,10 @@ describe("public activity and support preview", () => {
     expect(script).toContain('fetch("/api/support/status"');
     expect(script).toContain("Verified support status unavailable");
     expect(html).toContain("<h1>moinaOS 1</h1>");
+    expect(html).toContain("<h2>Support us</h2>");
+    expect(html).not.toContain("Guest · Live voice");
+    expect(css).toContain("body[data-owner-preview=\"true\"] .support-card-topline");
+    expect(css).toContain(".os-model-card--ready{position:relative;z-index:1;transform:translateY(-4px)");
   });
 
   it("only serves realistic support wording through the authenticated owner preview", () => {

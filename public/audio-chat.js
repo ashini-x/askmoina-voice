@@ -28,10 +28,14 @@
   const inrFormat = new Intl.NumberFormat("en-IN", {
     style: "currency", currency: "INR", maximumFractionDigits: 0
   });
-  const VISITOR_PREVIEW_MIN = 9000;
-  const VISITOR_PREVIEW_MAX = 15000;
-  const SUPPORT_PREVIEW_KEY = "askmoina.support.preview.total.v1";
+  const VISITOR_PREVIEW_MIN = ownerPreviewMode ? 73000 : 9000;
+  const VISITOR_PREVIEW_MAX = ownerPreviewMode ? 73999 : 15000;
+  const SUPPORT_PREVIEW_KEY = ownerPreviewMode
+    ? "askmoina.support.owner-preview.total.v1"
+    : "askmoina.support.preview.total.v1";
   const SUPPORT_GOAL_RUPEES = 1000000;
+  const SUPPORT_PREVIEW_MIN = ownerPreviewMode ? 501000 : 218000;
+  const SUPPORT_PREVIEW_MAX = ownerPreviewMode ? 529999 : 229999;
 
   function randomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -84,14 +88,16 @@
     let amount;
     try {
       const saved = Number(window.localStorage.getItem(SUPPORT_PREVIEW_KEY));
-      if (Number.isSafeInteger(saved) && saved >= 200000 && saved < SUPPORT_GOAL_RUPEES) {
+      const savedIsUsable = Number.isSafeInteger(saved) && saved >= SUPPORT_PREVIEW_MIN && saved < SUPPORT_GOAL_RUPEES &&
+        (!ownerPreviewMode || saved <= SUPPORT_PREVIEW_MAX);
+      if (savedIsUsable) {
         amount = saved;
       } else {
-        amount = randomBetween(218000, 229999);
+        amount = randomBetween(SUPPORT_PREVIEW_MIN, SUPPORT_PREVIEW_MAX);
         window.localStorage.setItem(SUPPORT_PREVIEW_KEY, String(amount));
       }
     } catch (_) {
-      amount = randomBetween(218000, 229999);
+      amount = randomBetween(SUPPORT_PREVIEW_MIN, SUPPORT_PREVIEW_MAX);
     }
     return amount;
   }

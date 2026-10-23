@@ -147,7 +147,12 @@ body[data-owner-preview="true"] .support-real-total{display:none}
 .os-model-cta:not(:disabled):active{transform:scale(.985)}
 .os-model-cta--disabled,.os-model-cta:disabled{border-color:rgba(255,255,255,.07);background:rgba(255,255,255,.035);color:#737680;opacity:1;cursor:not-allowed}
 .voice-shell:has(#osModelPicker:not([hidden])){grid-template-rows:auto auto auto;align-content:start}
-body[data-owner-preview="true"] .support-status{display:none}
+body[data-owner-preview="true"] .support-status,
+body[data-owner-preview="true"] .support-real-total,
+body[data-owner-preview="true"] .support-card-topline,
+body[data-owner-preview="true"] .support-card-copy p{display:none}
+.os-model-card--ready{position:relative;z-index:1;transform:translateY(-4px);border-color:rgba(240,242,248,.29);box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.045)}
+@media(max-width:620px){.os-model-card--ready{transform:translateY(-3px)}}
 @media(max-width:620px){
   .voice-shell{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   .topbar{gap:8px}
