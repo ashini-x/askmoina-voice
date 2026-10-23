@@ -63,7 +63,7 @@ def synthesize_pcm_16k(text: str) -> bytes:
     if channels != 1 or sample_width != 2 or source_rate <= 0 or len(raw) < 4:
         raise RuntimeError("unsupported synthetic speech format")
     if source_rate == 16000:
-        return raw
+        return trim_encoder_tail(raw)
     source_count = len(raw) // 2
     samples = struct.unpack("<" + "h" * source_count, raw)
     target_count = max(1, round(source_count * 16000 / source_rate))
@@ -75,7 +75,37 @@ def synthesize_pcm_16k(text: str) -> bytes:
         fraction = position - left
         value = int(samples[left] * (1 - fraction) + samples[right] * fraction)
         struct.pack_into("<h", output, index * 2, max(-32768, min(32767, value)))
-    return bytes(output)
+    return trim_encoder_tail(bytes(output))
+
+
+def trim_encoder_tail(pcm: bytes) -> bytes:
+    """Remove only trailing near-silence from the synthetic voice fixture.
+
+    espeak WAVs commonly contain their own quiet tail. Keeping that tail inside
+    the measured "speech" payload can make a correct early provider response look
+    like negative latency. Keep 120 ms after the last meaningful 10 ms PCM frame,
+    then append our separately controlled silence window in send_synthetic_turn().
+    """
+    if len(pcm) < 4:
+        return pcm
+    aligned = pcm[: len(pcm) - (len(pcm) % 2)]
+    frame_bytes = 16000 * 2 // 100  # 10 ms at 16 kHz mono PCM16
+    last_active_end = 0
+    for offset in range(0, len(aligned), frame_bytes):
+        frame = aligned[offset:offset + frame_bytes]
+        if len(frame) < 2:
+            break
+        count = len(frame) // 2
+        samples = struct.unpack("<" + "h" * count, frame[:count * 2])
+        peak = max(abs(sample) for sample in samples)
+        rms = (sum(sample * sample for sample in samples) / count) ** 0.5
+        if peak >= 160 or rms >= 55:
+            last_active_end = offset + len(frame)
+    if last_active_end == 0:
+        return aligned
+    # Leave a small natural tail but remove an encoder's longer trailing silence.
+    keep_through = min(len(aligned), last_active_end + (16000 * 2 * 120 // 1000))
+    return aligned[: keep_through - (keep_through % 2)]
 
 
 def receive_json(ws):
