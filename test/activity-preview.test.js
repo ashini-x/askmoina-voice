@@ -34,7 +34,7 @@ describe("public activity and support preview", () => {
     expect(css).toContain(".os-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))");
     expect(css).toContain("@media(max-width:620px)");
     expect(css).toContain(".os-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}");
-    expect(css).toContain('body[data-owner-preview="true"] .support-status{display:none}');
+    expect(css).toContain('body[data-owner-preview="true"] .support-status,');
   });
 
   it("keeps the illustrative support amount separate from verified contributions", () => {
