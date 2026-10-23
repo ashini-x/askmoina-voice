@@ -3241,6 +3241,25 @@ export class LiveSessionRelay {
   }
 }
 
+function withOwnerPreviewHtml(html: string): string {
+  // This copy is deliberately applied only after admin authorization.
+  // The ordinary public homepage always retains its explicit illustrative labels.
+  html = html.replace("<body>", '<body data-owner-preview="true">');
+  const ownerCopy: Array<[string, string]> = [
+    ['title="Animated visual preview only; not live visitor analytics"', 'title="Visitor activity"'],
+    ['aria-label="Animated visitor activity preview, not actual visitor analytics"', 'aria-label="Visitor activity"'],
+    ['class="visitor-chip-label">PREVIEW</span>', 'class="visitor-chip-label">LIVE</span>'],
+    ['aria-label="Illustrative support progress preview"', 'aria-label="Community support progress"'],
+    ['<span>SUPPORT GOAL PREVIEW</span>', '<span>COMMUNITY SUPPORT</span>'],
+    ['<p>Illustrative progress preview</p>', '<p>Community contributions</p>'],
+    ['<span>preview total · not donations</span>', '<span>Total donations</span>'],
+    ['aria-label="Illustrative preview toward support goal; not actual donations"', 'aria-label="Community contributions toward support goal"'],
+    ['Preview figures are illustrative, not actual donations.', ''],
+  ];
+  for (const [before, after] of ownerCopy) html = html.replace(before, after);
+  return html;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -3399,23 +3418,33 @@ export default {
     }
 
     if ((url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio") && (request.method === "GET" || request.method === "HEAD")) {
+      const ownerPreviewRequested = url.searchParams.get("ownerPreview") === "1";
+      const ownerPreview = ownerPreviewRequested && await isAdmin(request, env);
+      if (ownerPreviewRequested && !ownerPreview) {
+        return Response.redirect(new URL("/admin/login", request.url).toString(), 302);
+      }
+
       const audioUrl = new URL("/", request.url);
       const assetResponse = await env.ASSETS.fetch(new Request(audioUrl.toString(), request));
       if (!assetResponse.ok) return new Response("AskMoina audio interface could not be loaded.", { status: 503 });
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");
-      const html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
+      let html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
+      if (ownerPreview) html = withOwnerPreviewHtml(html);
+
+      const responseHeaders = new Headers({
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()",
+        "Cross-Origin-Resource-Policy": "same-origin",
+      });
+      if (ownerPreview) responseHeaders.set("Cache-Control", "private, no-store");
       return new Response(request.method === "HEAD" ? null : html, {
         status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store",
-          "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' wss:; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self' blob:",
-          "X-Content-Type-Options": "nosniff",
-          "X-Frame-Options": "DENY",
-          "Referrer-Policy": "no-referrer",
-          "Permissions-Policy": "microphone=(self), camera=(), geolocation=(), payment=()",
-          "Cross-Origin-Resource-Policy": "same-origin",
-        },
+        headers: responseHeaders,
       });
     }
 
@@ -3727,19 +3756,7 @@ export default {
       if (ownerPreview) {
         // Realistic copy is for the authenticated owner's private preview only.
         // Everyone else continues seeing the honest preview labels in the static shell.
-        html = html.replace("<body>", '<body data-owner-preview="true">');
-        const ownerCopy: Array<[string, string]> = [
-          ['title="Animated visual preview only; not live visitor analytics"', 'title="Visitor activity"'],
-          ['aria-label="Animated visitor activity preview, not actual visitor analytics"', 'aria-label="Visitor activity"'],
-          ['class="visitor-chip-label">PREVIEW</span>', 'class="visitor-chip-label">LIVE</span>'],
-          ['aria-label="Illustrative support progress preview"', 'aria-label="Community support progress"'],
-          ['<span>SUPPORT GOAL PREVIEW</span>', '<span>COMMUNITY SUPPORT</span>'],
-          ['<p>Illustrative progress preview</p>', '<p>Community contributions</p>'],
-          ['<span>preview total · not donations</span>', '<span>Total donations</span>'],
-          ['aria-label="Illustrative preview toward support goal; not actual donations"', 'aria-label="Community contributions toward support goal"'],
-          ['Preview figures are illustrative, not actual donations.', ''],
-        ];
-        for (const [before, after] of ownerCopy) html = html.replace(before, after);
+        html = withOwnerPreviewHtml(html);
         headers.set("Cache-Control", "private, no-store");
       }
       if (!html.includes('href="/copilot"') && !html.includes("href=/copilot")) {

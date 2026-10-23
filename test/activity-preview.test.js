@@ -57,6 +57,13 @@ describe("public activity and support preview", () => {
     expect(worker).toContain('const ownerPreview = ownerPreviewRequested && await isAdmin(request, env);');
     expect(worker).toContain('if (ownerPreviewRequested && !ownerPreview)');
     expect(worker).toContain('new URL("/admin/login", request.url)');
+    const actualHomeRouteStart = worker.indexOf('if ((url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/audio")');
+    const actualHomeRouteEnd = worker.indexOf("// The camera experience is paused", actualHomeRouteStart);
+    const actualHomeRoute = worker.slice(actualHomeRouteStart, actualHomeRouteEnd);
+    expect(actualHomeRoute).toContain('const ownerPreviewRequested = url.searchParams.get("ownerPreview") === "1";');
+    expect(actualHomeRoute).toContain("withOwnerPreviewHtml(html)");
+    expect(actualHomeRoute).toContain('responseHeaders.set("Cache-Control", "private, no-store")');
+    expect(worker).toContain("function withOwnerPreviewHtml(html: string): string");
     expect(worker).toContain('url.pathname === "/os-selection.js"');
     expect(continuity).toContain('SameSite=Lax');
     expect(continuity).toContain('href="/?ownerPreview=1" target="_blank" rel="noopener">Support copy preview</a>');
