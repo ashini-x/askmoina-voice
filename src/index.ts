@@ -1,4 +1,5 @@
 import type { Env } from "./config/env";
+import { handleGyanshalaRequest } from "./gyanshala-demo";
 import { handleVedaBoundaryRequest, isVedaRoutePath } from "./veda/feature-boundary";
 import { handleAuthRequest, getAuthenticatedUserId } from "./auth/accounts";
 import { handleConversationRequest, searchPriorConversationHistory } from "./conversations";
@@ -3263,6 +3264,11 @@ function withOwnerPreviewHtml(html: string): string {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Temporary Gyanshala demo is isolated by route, source folder, D1 binding,
+    // and API namespace. Remove this hook when the one-day demo is retired.
+    const gyanshalaResponse = await handleGyanshalaRequest(request, env);
+    if (gyanshalaResponse) return gyanshalaResponse;
 
     // Veda is an isolated, disabled-by-default feature boundary. It is handled
     // before generic asset/auth routing so future Veda routes cannot bypass the
