@@ -22,7 +22,7 @@ This Worker has its own configuration and does not modify AskMoina Voice product
 - UI and browser controller are separate modules (`src/ui.js`, `src/app.js`).
 - Default schedule: wake at 5:30 AM, run/walk at 6:00 AM on Monday/Wednesday/Friday, brisk recovery walks on Tuesday/Thursday/Saturday, four evening strength sessions (6:00 PM Monday/Tuesday/Thursday/Friday), recovery/mobility on Wednesday/Saturday, and Sunday off. Meals are timed around the sessions. The schedule is editable in the app and existing check-ins are preserved during the one-time schedule migration.
 - Beginner guides open inside task cards: animated exercise movement demos, red target-muscle highlights, short form instructions, sets/reps/rest, run/walk progression, and food timing. Times are shown in 12-hour AM/PM format.
-- A separate stamina guide covers aerobic progression and general, non-judgmental stop–start education for ejaculation control. It distinguishes physical endurance from ejaculation control and does not promise a specific outcome or prescribe medicine.
+- The short control practice is embedded in the existing wind-down task (no extra checklist item or separate training session): slow breathing, a few gentle pelvic-floor contractions only if comfortable, full relaxation, and optional stop–start guidance. It avoids guarantees and advises clinical support for persistent distress or pain.
 - Future voice/automation features can be added as optional modules without becoming prerequisites of the core tracker.
 - PWA shell with basic offline page/app-shell caching.
 
