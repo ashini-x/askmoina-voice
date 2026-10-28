@@ -20,7 +20,7 @@ This Worker has its own configuration and does not modify AskMoina Voice product
 - Calendar history, completed/missed tasks, notes and optional body measurements.
 - Portable JSON backup/restore and 30-day calendar reminder export (.ics).
 - UI and browser controller are separate modules (`src/ui.js`, `src/app.js`).
-- Beginner guides open directly inside task cards: illustrated exercise guides with setup, step-by-step movement, sets/reps, rest, common mistakes and easier variations; run/walk progressions; and food-timing tips.
+- Beginner guides open inside task cards: animated exercise movement demos, red target-muscle highlights, short form instructions, sets/reps/rest, run/walk progression, and food timing. Times are shown in 12-hour AM/PM format.
 - A separate stamina guide covers aerobic progression and general, non-judgmental stop–start education for ejaculation control. It distinguishes physical endurance from ejaculation control and does not promise a specific outcome or prescribe medicine.
 - Future voice/automation features can be added as optional modules without becoming prerequisites of the core tracker.
 - PWA shell with basic offline page/app-shell caching.
