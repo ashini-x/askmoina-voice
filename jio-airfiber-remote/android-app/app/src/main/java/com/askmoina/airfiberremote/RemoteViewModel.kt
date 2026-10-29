@@ -22,6 +22,7 @@ data class RemoteUiState(
     val deviceName: String = "Jio AirFiber set-top box",
     val pairedHost: String = "",
     val connected: Boolean = false,
+    val bluetooth: BluetoothRemoteState = BluetoothRemoteState(),
     val code: String = "",
     val error: String? = null
 )
@@ -30,6 +31,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
     private val preferences = app.getSharedPreferences("airfiber_remote_ui", 0)
     private val discovery = TvDiscovery(app)
     private val protocol = AtvRemoteV2(app)
+    private val bluetooth = BluetoothHidRemote(app)
 
     private val _state = MutableStateFlow(RemoteUiState())
     val state: StateFlow<RemoteUiState> = _state.asStateFlow()
@@ -45,6 +47,11 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
                 deviceName = savedName,
                 stage = if (savedHost.isBlank()) CompanionStage.Finding else CompanionStage.Connecting
             )
+        }
+        viewModelScope.launch {
+            bluetooth.state.collect { bluetoothState ->
+                _state.update { it.copy(bluetooth = bluetoothState) }
+            }
         }
         viewModelScope.launch {
             protocol.connected.collect { active ->
@@ -227,11 +234,19 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         scan()
     }
 
-    fun press(keyCode: Int) = protocol.sendKey(keyCode)
+    fun startBluetoothRemote() = bluetooth.start()
 
-    fun launchApp(link: String) = protocol.launchApp(link)
+    fun press(keyCode: Int) {
+        if (_state.value.bluetooth.connected) bluetooth.sendAndroidKey(keyCode)
+        else protocol.sendKey(keyCode)
+    }
+
+    fun launchApp(link: String) {
+        if (_state.value.connected) protocol.launchApp(link)
+    }
 
     override fun onCleared() {
+        bluetooth.close()
         protocol.close()
         super.onCleared()
     }
