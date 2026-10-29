@@ -234,7 +234,14 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         scan()
     }
 
-    fun startBluetoothRemote() = bluetooth.start()
+    fun startBluetoothRemote() {
+        _state.update { it.copy(error = null, bluetooth = it.bluetooth.copy(error = null)) }
+        bluetooth.start()
+    }
+
+    fun updateBluetoothError(message: String) {
+        _state.update { it.copy(bluetooth = it.bluetooth.copy(error = message, status = message)) }
+    }
 
     fun press(keyCode: Int) {
         if (_state.value.bluetooth.connected) bluetooth.sendAndroidKey(keyCode)
