@@ -52,6 +52,8 @@
     .status-dot.status-error { background:#fb7185;box-shadow:0 0 0 3px rgba(251,113,133,.1); }
     .notice { border:1px solid rgba(251,191,36,.18);border-radius:13px;background:rgba(251,191,36,.055);color:#d8c8a4;padding:11px 12px;font-size:11px;line-height:1.55; }
     .section-title { font-size:14px;font-weight:800;color:#edf4ff;letter-spacing:-.01em; }
+    details > summary::-webkit-details-marker { display:none; }
+    details > summary { cursor:pointer; }
     .separator { height:1px;background:rgba(148,163,184,.12); }
     #toast { position:fixed;left:18px;right:18px;bottom:max(16px,env(safe-area-inset-bottom));z-index:10;width:max-content;max-width:calc(100% - 36px);margin:0 auto;padding:12px 15px;border:1px solid rgba(148,163,184,.22);border-radius:13px;background:#17243a;color:#f4f7fb;box-shadow:0 12px 40px rgba(0,0,0,.4);font-size:13px; }
     .footer-note { color:#6f829e;font-size:10px;text-align:center;line-height:1.6; }
@@ -101,7 +103,9 @@
       </div>
     </section>
 
-    <section class="panel p-4 mb-4" aria-labelledby="connection-heading">
+    <details class="panel p-4 mb-4" id="advancedBridge">
+      <summary class="section-title cursor-pointer" style="list-style:none">Advanced setup · local ADB bridge fallback <span class="muted text-xs font-normal">Tap to expand</span></summary>
+      <div class="pt-4">
       <div class="flex items-start justify-between gap-3 mb-4">
         <div>
           <p class="eyebrow mb-1">Local connection</p>
@@ -130,7 +134,8 @@
         </div>
         <p id="connectionHint" class="text-xs muted leading-relaxed" aria-live="polite">Enter your connection details to enable the buttons. Your settings are saved only in this browser.</p>
       </div>
-    </section>
+      </div>
+    </details>
 
     <section class="panel p-4 mb-4" aria-labelledby="quick-controls-heading">
       <div class="flex items-center justify-between mb-3">
