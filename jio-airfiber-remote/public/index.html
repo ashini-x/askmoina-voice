@@ -234,7 +234,7 @@
         const boxIp = validatePrivateIpv4(els.boxIp.value);
         const bridgeUrl = validateBridgeUrl(els.bridgeUrl.value);
         const token = els.bridgeToken.value.trim();
-        if (token.length < 16) throw new Error("The bridge token must be at least 16 characters.");
+        if (token.length < 24) throw new Error("The bridge token must be at least 24 characters.");
         return { boxIp, bridgeUrl, token };
       }
 
