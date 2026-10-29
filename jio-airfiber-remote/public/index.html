@@ -75,6 +75,21 @@
       <div class="status-pill whitespace-nowrap"><span id="statusDot" class="status-dot"></span><span id="statusText">Not connected</span></div>
     </header>
 
+    <section class="panel p-4 mb-4" aria-labelledby="official-remote-heading">
+      <div class="flex items-start gap-3 mb-3">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 8h8M8 12h8M8 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="eyebrow mb-1">Recommended for Jio STB</p>
+          <h2 id="official-remote-heading" class="section-title mb-1">Use your phone as the remote</h2>
+          <p class="text-xs muted leading-relaxed">Jio's official JioHome app includes an STB Remote and TV tab for browsing entertainment and casting supported content to your television.</p>
+        </div>
+      </div>
+      <a class="btn btn-primary w-full" href="https://play.google.com/store/apps/details?id=com.jio.home" target="_blank" rel="noopener noreferrer">Get official JioHome app <span aria-hidden="true">↗</span></a>
+      <p class="mt-2 text-xs muted leading-relaxed">Install or open JioHome, sign in, then choose <strong>STB Remote</strong> to control your set-top box. This route does not require the custom ADB bridge below.</p>
+    </section>
+
     <section class="panel p-4 mb-4" aria-labelledby="connection-heading">
       <div class="flex items-start justify-between gap-3 mb-4">
         <div>
@@ -155,7 +170,7 @@
 
     <div class="notice mb-4">
       <strong class="block mb-1">Connection requirement</strong>
-      This is an offline-capable remote interface, not an ADB server. Browser pages cannot open a raw TCP socket to port 5555. Commands need a trusted HTTPS bridge on your network or a secure tunnel to a local ADB bridge. Never expose ADB itself to the public internet.
+      This PWA can cache its own interface offline, but a Wi-Fi password alone does not grant set-top-box control. The custom buttons need an authorized local ADB bridge and a box that supports ADB over TCP. For the supported Jio remote experience, use JioHome above. Never expose ADB itself to the public internet.
     </div>
     <p class="footer-note">AIRFIBER REMOTE · Standalone PWA<br>Remote keys are sent only after you configure and test your bridge.</p>
   </main>
