@@ -1,7 +1,16 @@
 package com.askmoina.airfiberremote
 
+import android.Manifest
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
@@ -37,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -120,7 +130,7 @@ private fun AirFiberRoot(viewModel: RemoteViewModel) {
             }
         }
 
-        if (state.pairedHost.isNotBlank()) {
+        if (state.pairedHost.isNotBlank() || state.bluetooth.connected) {
             RemotePanel(
                 state = state,
                 onKey = viewModel::press,
@@ -136,12 +146,14 @@ private fun AirFiberRoot(viewModel: RemoteViewModel) {
                 onManualHostChange = viewModel::updateManualHost,
                 onPairManual = viewModel::pairManualAddress,
                 onCodeChange = viewModel::updateCode,
-                onSubmitCode = viewModel::submitCode
+                onSubmitCode = viewModel::submitCode,
+                onStartBluetooth = viewModel::startBluetoothRemote,
+                onBluetoothError = viewModel::updateBluetoothError
             )
         }
 
         Text(
-            "Pairing and control work only if the set-top box exposes Android TV Remote Service. Jio AirFiber compatibility has not yet been verified on the physical box.",
+            if (state.bluetooth.connected) "Bluetooth remote is connected. Some keys depend on how the set-top box handles generic Bluetooth keyboards." else "Wi-Fi pairing requires Android TV Remote Service. If the box refuses that connection, try the Bluetooth remote option.",
             fontSize = 11.sp,
             color = SoftText,
             lineHeight = 16.sp,
@@ -158,8 +170,39 @@ private fun PairingPanel(
     onManualHostChange: (String) -> Unit,
     onPairManual: () -> Unit,
     onCodeChange: (String) -> Unit,
-    onSubmitCode: () -> Unit
+    onSubmitCode: () -> Unit,
+    onStartBluetooth: () -> Unit,
+    onBluetoothError: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val enableBluetoothLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) onStartBluetooth()
+        else onBluetoothError("Turn Bluetooth on to try the Bluetooth remote.")
+    }
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        if (permissions.values.all { it }) {
+            val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+            when {
+                adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
+                !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                else -> onStartBluetooth()
+            }
+        } else {
+            onBluetoothError("Allow the Nearby devices / Bluetooth permissions, then tap Set up Bluetooth remote again.")
+        }
+    }
+    fun requestBluetoothSetup() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            bluetoothPermissionLauncher.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE))
+        } else {
+            val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+            when {
+                adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
+                !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                else -> onStartBluetooth()
+            }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PanelCard {
             Text("Connect to your TV", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
@@ -204,6 +247,30 @@ private fun PairingPanel(
                     }
                 }
             }
+        }
+
+        PanelCard {
+            Text("Try Bluetooth remote", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "This uses your phone as a generic Bluetooth keyboard/remote instead of the Wi-Fi service your box refused. Compatibility still depends on the box and phone.",
+                color = SoftText, fontSize = 12.sp, lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = { requestBluetoothSetup() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color(0xFF08201F))
+            ) { Text(if (state.bluetooth.registered) "Refresh Bluetooth remote" else "Set up Bluetooth remote") }
+            Spacer(Modifier.height(8.dp))
+            Text(state.bluetooth.status, color = SoftText, fontSize = 12.sp, lineHeight = 18.sp)
+            if (state.bluetooth.registered) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Next on the TV: Settings → Remote & Bluetooth → Add Bluetooth Accessories. Select your phone (${state.bluetooth.phoneBluetoothName}) and pair it. Keep this app open.",
+                    color = SoftText, fontSize = 12.sp, lineHeight = 18.sp
+                )
+            }
+            state.bluetooth.error?.let { ErrorCard(it) }
         }
 
         if (state.stage == CompanionStage.StartingPairing || state.stage == CompanionStage.Pairing ||
@@ -307,6 +374,8 @@ private fun RemotePanel(
     onReconnect: () -> Unit,
     onFindAnother: () -> Unit
 ) {
+    val remoteConnected = state.connected || state.bluetooth.connected
+    val remoteDeviceName = if (state.bluetooth.connected) state.bluetooth.peerName.ifBlank { "Bluetooth TV" } else state.deviceName
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PanelCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -314,18 +383,22 @@ private fun RemotePanel(
                     modifier = Modifier
                         .size(9.dp)
                         .clip(CircleShape)
-                        .background(if (state.connected) Mint else Color(0xFFFFBD59))
+                        .background(if (remoteConnected) Mint else Color(0xFFFFBD59))
                 )
                 Spacer(Modifier.width(9.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(state.deviceName, fontWeight = FontWeight.SemiBold)
+                    Text(remoteDeviceName, fontWeight = FontWeight.SemiBold)
                     Text(
-                        if (state.connected) "Connected · " + state.pairedHost else "Saved · " + state.pairedHost,
+                        when {
+                            state.bluetooth.connected -> "Bluetooth connected"
+                            state.connected -> "Wi-Fi remote · " + state.pairedHost
+                            else -> "Saved · " + state.pairedHost
+                        },
                         fontSize = 12.sp,
                         color = SoftText
                     )
                 }
-                if (!state.connected) {
+                if (!remoteConnected && state.pairedHost.isNotBlank()) {
                     Button(onClick = onReconnect, colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color(0xFF08201F))) {
                         Text("Reconnect")
                     }
@@ -335,23 +408,23 @@ private fun RemotePanel(
 
         PanelCard {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                RemoteButton("⏻", "Power", onClick = { onKey(TvKeys.POWER) }, enabled = state.connected, modifier = Modifier.weight(1f), accent = Color(0xFFFFA3A8))
+                RemoteButton("⏻", "Power", onClick = { onKey(TvKeys.POWER) }, enabled = remoteConnected, modifier = Modifier.weight(1f), accent = Color(0xFFFFA3A8))
                 RemoteButton("◖", "Mute", onClick = { onKey(TvKeys.MUTE) }, enabled = state.connected, modifier = Modifier.weight(1f))
                 RemoteButton("⋯", "Menu", onClick = { onKey(TvKeys.MENU) }, enabled = state.connected, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(18.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                RemoteButton("↑", "Up", { onKey(TvKeys.UP) }, state.connected, Modifier.size(72.dp))
+                RemoteButton("↑", "Up", { onKey(TvKeys.UP) }, remoteConnected, Modifier.size(72.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
                     RemoteButton("←", "Left", { onKey(TvKeys.LEFT) }, state.connected, Modifier.size(72.dp))
-                    RemoteButton("OK", "Select", { onKey(TvKeys.OK) }, state.connected, Modifier.size(78.dp), accent = Mint)
+                    RemoteButton("OK", "Select", { onKey(TvKeys.OK) }, remoteConnected, Modifier.size(78.dp), accent = Mint)
                     RemoteButton("→", "Right", { onKey(TvKeys.RIGHT) }, state.connected, Modifier.size(72.dp))
                 }
                 RemoteButton("↓", "Down", { onKey(TvKeys.DOWN) }, state.connected, Modifier.size(72.dp))
             }
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                RemoteButton("↶", "Back", { onKey(TvKeys.BACK) }, state.connected, Modifier.weight(1f))
+                RemoteButton("↶", "Back", { onKey(TvKeys.BACK) }, remoteConnected, Modifier.weight(1f))
                 RemoteButton("⌂", "Home", { onKey(TvKeys.HOME) }, state.connected, Modifier.weight(1f), accent = Mint)
                 RemoteButton("▶", "Play / pause", { onKey(TvKeys.PLAY_PAUSE) }, state.connected, Modifier.weight(1f))
             }
@@ -385,12 +458,14 @@ private fun RemotePanel(
 
         state.error?.let { ErrorCard(it) }
 
-        Button(
-            onClick = onFindAnother,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2B44))
-        ) {
-            Text("Find another TV / pair again")
+        if (!state.bluetooth.connected) {
+            Button(
+                onClick = onFindAnother,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2B44))
+            ) {
+                Text("Find another TV / pair again")
+            }
         }
     }
 }
