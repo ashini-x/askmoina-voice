@@ -2,6 +2,16 @@
 
 A separate static PWA under jio-airfiber-remote/ with its own Cloudflare Worker name, manifest, service worker, and local ADB bridge adapter. It does not bind to or change the AskMoina production Worker.
 
+## If you need a working remote immediately
+
+Jio's official JioHome Android app provides an STB Remote and a TV tab for entertainment discovery/casting. Start here if your goal is to use your phone to navigate YouTube, Netflix, JioTV+ and other apps installed on the Jio box:
+
+https://play.google.com/store/apps/details?id=com.jio.home
+
+Open JioHome, sign in, then select **STB Remote** and choose your set-top box. Jio's feature is implemented by Jio; this PWA does not use a public JioHome control API.
+
+The custom PWA controls in this repository are a separate experimental route. They only work where network ADB is enabled and authorized and the local bridge can reach the set-top box. A home Wi-Fi password alone is not enough to provide that control permission.
+
 ## Deploy the independent PWA Worker
 
 From the repository root, install the repository dependencies if you have not already:
