@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "Jio AirFiber Backup Remote",
+  "short_name": "AirFiber Remote",
+  "description": "Offline-capable backup remote interface for an Android TV set-top box.",
+  "lang": "en-IN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
