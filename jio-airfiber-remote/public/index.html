@@ -75,6 +75,14 @@
       <div class="status-pill whitespace-nowrap"><span id="statusDot" class="status-dot"></span><span id="statusText">Not connected</span></div>
     </header>
 
+    <section class="panel p-4 mb-4" aria-labelledby="android-companion-heading">
+      <p class="eyebrow mb-1">Recommended for Android phones</p>
+      <h2 id="android-companion-heading" class="section-title mb-2">Pair with your TV automatically</h2>
+      <p class="text-xs muted leading-relaxed mb-3">The Android companion searches your Wi-Fi and can start the TV's one-time pairing-code screen. No ADB bridge or access token is needed when the set-top box supports Android TV Remote Service.</p>
+      <a href="https://github.com/ashini-x/askmoina-voice/releases" target="_blank" rel="noopener" class="btn btn-primary w-full">Get Android companion APK <span aria-hidden="true">↗</span></a>
+      <p class="text-xs muted leading-relaxed mt-2">Jio AirFiber compatibility still needs a test on the actual set-top box.</p>
+    </section>
+
     <section class="panel p-4 mb-4" aria-labelledby="remote-overview-heading">
       <div class="flex items-start gap-3 mb-3">
         <div class="brand-mark" aria-hidden="true">
@@ -83,7 +91,7 @@
         <div class="min-w-0 flex-1">
           <p class="eyebrow mb-1">Your custom remote</p>
           <h2 id="remote-overview-heading" class="section-title mb-1">Control your TV from this phone</h2>
-          <p class="text-xs muted leading-relaxed">Power, mute, D-pad, OK, Back, Home and Menu in one installable app. Connect it to a supported, authorized control bridge for commands to reach your set-top box.</p>
+          <p class="text-xs muted leading-relaxed">Power, mute, D-pad, OK, Back, Home and Menu. For direct one-time pairing without a bridge, install the Android companion above. This browser remote remains a fallback for a separately configured ADB bridge.</p>
         </div>
       </div>
       <div class="grid grid-cols-3 gap-2">
@@ -173,9 +181,9 @@
 
     <div class="notice mb-4">
       <strong class="block mb-1">Connection requirement</strong>
-      This PWA can cache its own interface offline, but a Wi-Fi password alone does not grant set-top-box control. The custom buttons need an authorized local ADB bridge and a box that supports ADB over TCP. For the supported Jio remote experience, use JioHome above. Never expose ADB itself to the public internet.
+      This browser remote can cache its own interface offline, but it cannot initiate the TV's native pairing protocol on its own. Its buttons require an authorized local ADB bridge and a box that supports ADB over TCP. For automatic discovery and one-time pairing, install the Android companion above. Never expose ADB itself to the public internet.
     </div>
-    <p class="footer-note">AIRFIBER REMOTE · Standalone PWA<br>Remote keys are sent only after you configure and test your bridge.</p>
+    <p class="footer-note">AIRFIBER REMOTE · Standalone PWA<br>Android companion pairing is available for compatible TVs; browser bridge mode remains an advanced fallback.</p>
   </main>
 
   <div id="toast" role="status" aria-live="polite" hidden></div>
