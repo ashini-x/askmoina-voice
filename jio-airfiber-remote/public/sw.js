@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_NAME = "airfiber-remote-shell-v1";
-const APP_SHELL = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const APP_SHELL = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
