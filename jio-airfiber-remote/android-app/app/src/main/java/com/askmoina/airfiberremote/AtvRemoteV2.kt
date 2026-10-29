@@ -463,6 +463,19 @@ class AtvRemoteV2(context: Context) : Closeable {
             ProtoWriter().apply(block).toByteArray()
         )
 
+        private fun writeVarint(out: ByteArrayOutputStream, original: Long) {
+            var value = original
+            while (true) {
+                val group = (value and 0x7F).toInt()
+                value = value ushr 7
+                if (value == 0L) {
+                    out.write(group)
+                    return
+                }
+                out.write(group or 0x80)
+            }
+        }
+
         fun toByteArray(): ByteArray = output.toByteArray()
     }
 
