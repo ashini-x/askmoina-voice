@@ -409,24 +409,24 @@ private fun RemotePanel(
         PanelCard {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 RemoteButton("⏻", "Power", onClick = { onKey(TvKeys.POWER) }, enabled = remoteConnected, modifier = Modifier.weight(1f), accent = Color(0xFFFFA3A8))
-                RemoteButton("◖", "Mute", onClick = { onKey(TvKeys.MUTE) }, enabled = state.connected, modifier = Modifier.weight(1f))
-                RemoteButton("⋯", "Menu", onClick = { onKey(TvKeys.MENU) }, enabled = state.connected, modifier = Modifier.weight(1f))
+                RemoteButton("◖", "Mute", onClick = { onKey(TvKeys.MUTE) }, enabled = remoteConnected, modifier = Modifier.weight(1f))
+                RemoteButton("⋯", "Menu", onClick = { onKey(TvKeys.MENU) }, enabled = remoteConnected, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(18.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 RemoteButton("↑", "Up", { onKey(TvKeys.UP) }, remoteConnected, Modifier.size(72.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RemoteButton("←", "Left", { onKey(TvKeys.LEFT) }, state.connected, Modifier.size(72.dp))
+                    RemoteButton("←", "Left", { onKey(TvKeys.LEFT) }, remoteConnected, Modifier.size(72.dp))
                     RemoteButton("OK", "Select", { onKey(TvKeys.OK) }, remoteConnected, Modifier.size(78.dp), accent = Mint)
-                    RemoteButton("→", "Right", { onKey(TvKeys.RIGHT) }, state.connected, Modifier.size(72.dp))
+                    RemoteButton("→", "Right", { onKey(TvKeys.RIGHT) }, remoteConnected, Modifier.size(72.dp))
                 }
-                RemoteButton("↓", "Down", { onKey(TvKeys.DOWN) }, state.connected, Modifier.size(72.dp))
+                RemoteButton("↓", "Down", { onKey(TvKeys.DOWN) }, remoteConnected, Modifier.size(72.dp))
             }
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 RemoteButton("↶", "Back", { onKey(TvKeys.BACK) }, remoteConnected, Modifier.weight(1f))
-                RemoteButton("⌂", "Home", { onKey(TvKeys.HOME) }, state.connected, Modifier.weight(1f), accent = Mint)
-                RemoteButton("▶", "Play / pause", { onKey(TvKeys.PLAY_PAUSE) }, state.connected, Modifier.weight(1f))
+                RemoteButton("⌂", "Home", { onKey(TvKeys.HOME) }, remoteConnected, Modifier.weight(1f), accent = Mint)
+                RemoteButton("▶", "Play / pause", { onKey(TvKeys.PLAY_PAUSE) }, remoteConnected, Modifier.weight(1f))
             }
         }
 
@@ -449,10 +449,10 @@ private fun RemotePanel(
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                RemoteButton("＋", "Volume up", { onKey(TvKeys.VOLUME_UP) }, state.connected, Modifier.weight(1f))
-                RemoteButton("−", "Volume down", { onKey(TvKeys.VOLUME_DOWN) }, state.connected, Modifier.weight(1f))
-                RemoteButton("CH +", "Channel up", { onKey(TvKeys.CHANNEL_UP) }, state.connected, Modifier.weight(1f))
-                RemoteButton("CH −", "Channel down", { onKey(TvKeys.CHANNEL_DOWN) }, state.connected, Modifier.weight(1f))
+                RemoteButton("＋", "Volume up", { onKey(TvKeys.VOLUME_UP) }, remoteConnected, Modifier.weight(1f))
+                RemoteButton("−", "Volume down", { onKey(TvKeys.VOLUME_DOWN) }, remoteConnected, Modifier.weight(1f))
+                RemoteButton("CH +", "Channel up", { onKey(TvKeys.CHANNEL_UP) }, remoteConnected, Modifier.weight(1f))
+                RemoteButton("CH −", "Channel down", { onKey(TvKeys.CHANNEL_DOWN) }, remoteConnected, Modifier.weight(1f))
             }
         }
 
