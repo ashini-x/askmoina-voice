@@ -391,8 +391,12 @@ class AtvRemoteV2(context: Context) : Closeable {
                 runCatching { loadExisting() }.getOrNull()?.let { return it }
                 runCatching { file.delete() }
             }
+            // Use this bundled provider instance directly. Android may already register a
+            // legacy provider named "BC" that lacks SHA256withRSA; provider-name lookup
+            // can silently select that older implementation instead of this bundled one.
+            val bcProvider = BouncyCastleProvider()
             if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-                Security.addProvider(BouncyCastleProvider())
+                Security.addProvider(bcProvider)
             }
             val generator = KeyPairGenerator.getInstance("RSA")
             generator.initialize(2048, SecureRandom())
@@ -408,10 +412,10 @@ class AtvRemoteV2(context: Context) : Closeable {
                 keyPair.public
             ).addExtension(Extension.basicConstraints, false, BasicConstraints(false))
             val signer = JcaContentSignerBuilder("SHA256withRSA")
-                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .setProvider(bcProvider)
                 .build(keyPair.private)
             val certificate = JcaX509CertificateConverter()
-                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .setProvider(bcProvider)
                 .getCertificate(certificateBuilder.build(signer))
             val store = KeyStore.getInstance("PKCS12")
             store.load(null, null)
