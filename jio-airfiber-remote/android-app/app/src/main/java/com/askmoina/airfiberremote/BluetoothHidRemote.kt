@@ -107,7 +107,9 @@ class BluetoothHidRemote(context: Context) : Closeable {
             return
         }
         if (registered) {
-            makeDiscoverable()
+            _state.value = _state.value.copy(
+                status = "Bluetooth remote is registered. On the TV, open Bluetooth accessories and select this phone."
+            )
             return
         }
         if (profileRequested) return
