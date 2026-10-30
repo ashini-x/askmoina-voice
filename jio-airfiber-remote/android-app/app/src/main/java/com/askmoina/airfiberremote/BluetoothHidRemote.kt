@@ -14,7 +14,10 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.Build
@@ -59,6 +62,60 @@ class BluetoothHidRemote(context: Context) : Closeable {
     private var registered = false
     private var protocolMode: Byte = 0x01
     private val connectedDevices = linkedSetOf<BluetoothDevice>()
+    private var bondReceiverRegistered = false
+    private var bondingDevice: BluetoothDevice? = null
+    private val bondStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != BluetoothDevice.ACTION_BOND_STATE_CHANGED) return
+            val target = bondingDevice ?: return
+            @Suppress("DEPRECATION")
+            val changedDevice = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+            if (changedDevice != null && changedDevice.address != target.address) return
+
+            val newBondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
+            val previousBondState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR)
+            when (newBondState) {
+                BluetoothDevice.BOND_BONDING -> {
+                    _state.value = _state.value.copy(
+                        status = "Jio TV is completing secure Bluetooth pairing with this phone…",
+                        error = null
+                    )
+                }
+                BluetoothDevice.BOND_BONDED -> {
+                    unregisterBondReceiver()
+                    _state.value = _state.value.copy(
+                        registered = true,
+                        connected = true,
+                        peerName = safeDeviceName(target),
+                        status = "Bluetooth pairing succeeded. Reconnecting the secure HID remote…",
+                        error = null
+                    )
+                    handler.post {
+                        val server = gattServer
+                        if (server != null && hasBluetoothPermissions()) {
+                            val reconnectStarted = runCatching { server.connect(target, true) }.getOrDefault(false)
+                            if (!reconnectStarted) {
+                                _state.value = _state.value.copy(
+                                    status = "Bluetooth is paired. Keep the app open and select the remote again on the TV."
+                                )
+                            }
+                        }
+                    }
+                }
+                BluetoothDevice.BOND_NONE -> {
+                    if (previousBondState == BluetoothDevice.BOND_BONDING) {
+                        unregisterBondReceiver()
+                        _state.value = _state.value.copy(
+                            connected = false,
+                            peerName = "",
+                            status = "The TV reached the phone, but Bluetooth bonding did not complete.",
+                            error = "Android reports that BLE pairing failed. Try removing any saved realme X7 Max entry from the TV and retrying. Keep the phone unlocked during pairing."
+                        )
+                    }
+                }
+            }
+        }
+    }
     private val keyboardSubscribers = linkedSetOf<BluetoothDevice>()
     private val consumerSubscribers = linkedSetOf<BluetoothDevice>()
 
@@ -122,9 +179,16 @@ class BluetoothHidRemote(context: Context) : Closeable {
                     registered = true,
                     connected = true,
                     peerName = safeDeviceName(device),
-                    status = "BLE remote connected to " + safeDeviceName(device) + ".",
+                    status = if (safeBondState(device) == BluetoothDevice.BOND_BONDED) {
+                        "Secure Bluetooth bond already exists. TV is connected to the BLE HID remote."
+                    } else {
+                        "TV connected. Starting the secure Bluetooth bonding step…"
+                    },
                     error = null
                 )
+                if (safeBondState(device) != BluetoothDevice.BOND_BONDED) {
+                    beginBonding(device)
+                }
             } else {
                 connectedDevices.remove(device)
                 keyboardSubscribers.remove(device)
@@ -136,7 +200,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                         status = if (registered) {
                             "BLE remote is advertising. Select this phone from the TV's Bluetooth accessories list."
                         } else {
-                            "BLE remote disconnected."
+                            "BLE remote disconnected (GATT status $status)."
                         }
                     )
                     if (registered) startAdvertising()
@@ -350,6 +414,96 @@ class BluetoothHidRemote(context: Context) : Closeable {
         nextServiceIndex += 1
     }
 
+    private fun safeBondState(device: BluetoothDevice): Int {
+        if (!hasBluetoothPermissions()) return BluetoothDevice.ERROR
+        return runCatching { device.bondState }.getOrDefault(BluetoothDevice.ERROR)
+    }
+
+    private fun registerBondReceiver(device: BluetoothDevice) {
+        bondingDevice = device
+        if (bondReceiverRegistered) return
+        val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                appContext.registerReceiver(bondStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                appContext.registerReceiver(bondStateReceiver, filter)
+            }
+            bondReceiverRegistered = true
+        } catch (error: Exception) {
+            _state.value = _state.value.copy(
+                error = "Could not monitor Android Bluetooth pairing: " + (error.message ?: "receiver registration failed"),
+                status = "Bluetooth connection received, but pairing monitoring could not start."
+            )
+        }
+    }
+
+    private fun unregisterBondReceiver() {
+        if (!bondReceiverRegistered) {
+            bondingDevice = null
+            return
+        }
+        runCatching { appContext.unregisterReceiver(bondStateReceiver) }
+        bondReceiverRegistered = false
+        bondingDevice = null
+    }
+
+    /**
+     * Android's GATT server exposes encrypted HID attributes, but the phone
+     * must also start/complete the LE bond with the connecting HID Host.
+     * HOGP requires a bonded, encrypted link before HID reports are used.
+     */
+    private fun beginBonding(device: BluetoothDevice) {
+        if (!hasBluetoothPermissions()) {
+            _state.value = _state.value.copy(
+                error = "Nearby devices permission is required to complete Bluetooth pairing.",
+                status = "The TV connected, but Android Bluetooth permission is missing."
+            )
+            return
+        }
+        when (safeBondState(device)) {
+            BluetoothDevice.BOND_BONDED -> {
+                _state.value = _state.value.copy(
+                    registered = true,
+                    connected = true,
+                    status = "Secure Bluetooth bond already exists."
+                )
+                return
+            }
+            BluetoothDevice.BOND_BONDING -> {
+                registerBondReceiver(device)
+                _state.value = _state.value.copy(
+                    status = "Android is already pairing with the TV. Waiting for the secure bond…"
+                )
+                return
+            }
+        }
+
+        registerBondReceiver(device)
+        _state.value = _state.value.copy(
+            status = "Requesting a secure Bluetooth bond with " + safeDeviceName(device) + "…",
+            error = null
+        )
+        val confirmation = runCatching { device.setPairingConfirmation(true) }
+        if (confirmation.isFailure) {
+            _state.value = _state.value.copy(
+                status = "Starting Bluetooth bonding. Android confirmation may appear on the phone.",
+                error = "Could not auto-confirm the Bluetooth pairing request: " +
+                    (confirmation.exceptionOrNull()?.message ?: "system rejected confirmation")
+            )
+        }
+        val started = runCatching { device.createBond() }.getOrDefault(false)
+        if (!started) {
+            unregisterBondReceiver()
+            _state.value = _state.value.copy(
+                connected = false,
+                status = "The TV connected, but Android could not start Bluetooth bonding.",
+                error = "Android Bluetooth createBond() did not start. Remove any old saved pairing for this phone on the TV, restart Bluetooth on the phone, and retry."
+            )
+        }
+    }
+
     private fun buildHidService(): BluetoothGattService {
         val service = BluetoothGattService(HID_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
         service.addCharacteristic(hidInfo)
@@ -561,6 +715,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
     }
 
     override fun close() {
+        unregisterBondReceiver()
         if (hasBluetoothPermissions()) {
             runCatching { adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback) }
         }
