@@ -85,31 +85,23 @@ class BluetoothHidRemote(context: Context) : Closeable {
                     unregisterBondReceiver()
                     _state.value = _state.value.copy(
                         registered = true,
-                        connected = true,
+                        connected = connectedDevices.isNotEmpty(),
                         peerName = safeDeviceName(target),
-                        status = "Bluetooth pairing succeeded. Reconnecting the secure HID remote…",
+                        status = "The Jio TV completed the secure Bluetooth bond. The GATT connection remains under TV control.",
                         error = null
                     )
-                    handler.post {
-                        val server = gattServer
-                        if (server != null && hasBluetoothPermissions()) {
-                            val reconnectStarted = runCatching { server.connect(target, true) }.getOrDefault(false)
-                            if (!reconnectStarted) {
-                                _state.value = _state.value.copy(
-                                    status = "Bluetooth is paired. Keep the app open and select the remote again on the TV."
-                                )
-                            }
-                        }
-                    }
+                    // The TV is the GATT Central/Client and owns reconnection.
+                    // Do not call BluetoothGattServer.connect() from the HID peripheral.
                 }
                 BluetoothDevice.BOND_NONE -> {
                     if (previousBondState == BluetoothDevice.BOND_BONDING) {
+                        val reason = intent.getIntExtra(BluetoothDevice.EXTRA_REASON, -1)
                         unregisterBondReceiver()
                         _state.value = _state.value.copy(
                             connected = false,
                             peerName = "",
-                            status = "The TV reached the phone, but Bluetooth bonding did not complete.",
-                            error = "Android reports that BLE pairing failed. Try removing any saved realme X7 Max entry from the TV and retrying. Keep the phone unlocked during pairing."
+                            status = "The Jio TV started Bluetooth pairing, but Android reports that the bond was rejected.",
+                            error = "Android BLE bond failure reason: $reason. The Jio TV is the pairing initiator; remove any stale saved phone entry from the TV, then retry. Keep the phone unlocked."
                         )
                     }
                 }
@@ -118,6 +110,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
     }
     private val keyboardSubscribers = linkedSetOf<BluetoothDevice>()
     private val consumerSubscribers = linkedSetOf<BluetoothDevice>()
+    private val scanRefreshSubscribers = linkedSetOf<BluetoothDevice>()
+    private var scanIntervalWindow = byteArrayOf(0x10, 0x00, 0x10, 0x00)
 
     private val hidInfo = BluetoothGattCharacteristic(
         HID_INFORMATION_UUID,
@@ -145,6 +139,16 @@ class BluetoothHidRemote(context: Context) : Closeable {
 
     private val keyboardReport = createInputReport(KEYBOARD_REPORT_ID, byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0))
     private val consumerReport = createInputReport(CONSUMER_REPORT_ID, byteArrayOf(0, 0))
+    private val scanRefreshCharacteristic = BluetoothGattCharacteristic(
+        SCAN_REFRESH_UUID,
+        BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+        0
+    ).apply {
+        addDescriptor(BluetoothGattDescriptor(
+            CLIENT_CONFIGURATION_UUID,
+            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+        ).apply { value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE })
+    }
 
     private val _state = MutableStateFlow(BluetoothRemoteState())
     val state: StateFlow<BluetoothRemoteState> = _state.asStateFlow()
@@ -179,20 +183,25 @@ class BluetoothHidRemote(context: Context) : Closeable {
                     registered = true,
                     connected = true,
                     peerName = safeDeviceName(device),
-                    status = if (safeBondState(device) == BluetoothDevice.BOND_BONDED) {
-                        "Secure Bluetooth bond already exists. TV is connected to the BLE HID remote."
-                    } else {
-                        "TV connected. Starting the secure Bluetooth bonding step…"
+                    status = when (safeBondState(device)) {
+                        BluetoothDevice.BOND_BONDED ->
+                            "A secure Bluetooth bond already exists. The Jio TV is connected to the HID remote."
+                        BluetoothDevice.BOND_BONDING ->
+                            "The Jio TV has connected. Android is completing the TV-initiated Bluetooth bond…"
+                        else ->
+                            "Jio TV connected. Waiting for the TV (HID Host) to initiate secure pairing…"
                     },
                     error = null
                 )
-                if (safeBondState(device) != BluetoothDevice.BOND_BONDED) {
-                    beginBonding(device)
-                }
+                // HOGP assigns bonding initiation to the HID Host (the Jio box,
+                // which is the GATT client/central). Observe its bond process,
+                // but do not race it with a phone-side createBond() call.
+                registerBondReceiver(device)
             } else {
                 connectedDevices.remove(device)
                 keyboardSubscribers.remove(device)
                 consumerSubscribers.remove(device)
+                scanRefreshSubscribers.remove(device)
                 if (connectedDevices.isEmpty()) {
                     _state.value = _state.value.copy(
                         connected = false,
@@ -220,6 +229,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 PROTOCOL_MODE_UUID -> byteArrayOf(protocolMode)
                 BATTERY_LEVEL_UUID -> byteArrayOf(readPhoneBatteryLevel())
                 PNP_ID_UUID -> PNP_ID_VALUE
+                SCAN_REFRESH_UUID -> byteArrayOf(0x00)
                 else -> null
             } ?: when {
                 characteristic === keyboardReport -> keyboardReport.value
@@ -241,6 +251,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                     val enabled = when {
                         descriptor.characteristic === keyboardReport -> keyboardSubscribers.contains(device)
                         descriptor.characteristic === consumerReport -> consumerSubscribers.contains(device)
+                        descriptor.characteristic === scanRefreshCharacteristic -> scanRefreshSubscribers.contains(device)
                         else -> false
                     }
                     if (enabled) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -273,6 +284,9 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 }
                 descriptor.characteristic === consumerReport -> {
                     if (enabled) consumerSubscribers.add(device) else consumerSubscribers.remove(device)
+                }
+                descriptor.characteristic === scanRefreshCharacteristic -> {
+                    if (enabled) scanRefreshSubscribers.add(device) else scanRefreshSubscribers.remove(device)
                 }
                 else -> {
                     if (responseNeeded) gattServer?.sendResponse(
@@ -307,6 +321,12 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 HID_CONTROL_POINT_UUID -> {
                     if (offset == 0 && value.isNotEmpty()) BluetoothGatt.GATT_SUCCESS
                     else BluetoothGatt.GATT_INVALID_ATTRIBUTE_LENGTH
+                }
+                SCAN_INTERVAL_WINDOW_UUID -> {
+                    if (offset == 0 && value.size == 4) {
+                        scanIntervalWindow = value.copyOf()
+                        BluetoothGatt.GATT_SUCCESS
+                    } else BluetoothGatt.GATT_INVALID_ATTRIBUTE_LENGTH
                 }
                 else -> BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
             }
@@ -390,7 +410,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
             pendingServices = listOf(
                 buildHidService(),
                 buildDeviceInfoService(),
-                buildBatteryService()
+                buildBatteryService(),
+                buildScanParametersService()
             )
             nextServiceIndex = 0
             addNextGattService()
@@ -454,59 +475,6 @@ class BluetoothHidRemote(context: Context) : Closeable {
      * must also start/complete the LE bond with the connecting HID Host.
      * HOGP requires a bonded, encrypted link before HID reports are used.
      */
-    private fun beginBonding(device: BluetoothDevice) {
-        if (!hasBluetoothPermissions()) {
-            _state.value = _state.value.copy(
-                error = "Nearby devices permission is required to complete Bluetooth pairing.",
-                status = "The TV connected, but Android Bluetooth permission is missing."
-            )
-            return
-        }
-        when (safeBondState(device)) {
-            BluetoothDevice.BOND_BONDED -> {
-                _state.value = _state.value.copy(
-                    registered = true,
-                    connected = true,
-                    status = "Secure Bluetooth bond already exists."
-                )
-                return
-            }
-            BluetoothDevice.BOND_BONDING -> {
-                registerBondReceiver(device)
-                _state.value = _state.value.copy(
-                    status = "Android is already pairing with the TV. Waiting for the secure bond…"
-                )
-                return
-            }
-        }
-
-        registerBondReceiver(device)
-        _state.value = _state.value.copy(
-            status = "Requesting a secure Bluetooth bond with " + safeDeviceName(device) + "…",
-            error = null
-        )
-        // Do not call BluetoothDevice.setPairingConfirmation(): Android reserves
-        // that API for privileged/system apps. createBond() lets Android's system
-        // pairing UI handle any user confirmation required by the chosen LE method.
-        val bondRequest = runCatching { device.createBond() }
-        val started = bondRequest.getOrDefault(false)
-        if (!started) {
-            unregisterBondReceiver()
-            val detail = bondRequest.exceptionOrNull()?.message
-            _state.value = _state.value.copy(
-                connected = false,
-                status = "The TV connected, but Android could not start Bluetooth bonding.",
-                error = "Android Bluetooth createBond() did not start" +
-                    (detail?.let { ": $it" } ?: ".") +
-                    " Remove any old saved pairing for this phone on the TV, restart Bluetooth on the phone, and retry."
-            )
-        } else {
-            _state.value = _state.value.copy(
-                status = "Android has started secure Bluetooth pairing. Accept any pairing prompt shown on the phone."
-            )
-        }
-    }
-
     private fun buildHidService(): BluetoothGattService {
         val service = BluetoothGattService(HID_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
         service.addCharacteristic(hidInfo)
@@ -539,6 +507,18 @@ class BluetoothHidRemote(context: Context) : Closeable {
         )
         level.value = byteArrayOf(readPhoneBatteryLevel())
         service.addCharacteristic(level)
+        return service
+    }
+
+    private fun buildScanParametersService(): BluetoothGattService {
+        val service = BluetoothGattService(SCAN_PARAMETERS_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val intervalWindow = BluetoothGattCharacteristic(
+            SCAN_INTERVAL_WINDOW_UUID,
+            BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+            BluetoothGattCharacteristic.PERMISSION_WRITE
+        ).apply { value = scanIntervalWindow.copyOf() }
+        service.addCharacteristic(intervalWindow)
+        service.addCharacteristic(scanRefreshCharacteristic)
         return service
     }
 
@@ -727,6 +707,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         connectedDevices.clear()
         keyboardSubscribers.clear()
         consumerSubscribers.clear()
+        scanRefreshSubscribers.clear()
         runCatching { gattServer?.clearServices() }
         runCatching { gattServer?.close() }
         gattServer = null
@@ -740,11 +721,14 @@ class BluetoothHidRemote(context: Context) : Closeable {
         private val HID_SERVICE_UUID: UUID = UUID.fromString("00001812-0000-1000-8000-00805f9b34fb")
         private val BATTERY_SERVICE_UUID: UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
         private val DEVICE_INFO_SERVICE_UUID: UUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+        private val SCAN_PARAMETERS_SERVICE_UUID: UUID = UUID.fromString("00001813-0000-1000-8000-00805f9b34fb")
+        private val SCAN_INTERVAL_WINDOW_UUID: UUID = UUID.fromString("00002a4f-0000-1000-8000-00805f9b34fb")
+        private val SCAN_REFRESH_UUID: UUID = UUID.fromString("00002a31-0000-1000-8000-00805f9b34fb")
         private val BATTERY_LEVEL_UUID: UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
         private val PNP_ID_UUID: UUID = UUID.fromString("00002a50-0000-1000-8000-00805f9b34fb")
         // Bluetooth SIG-assigned Realme company identifier; product/version remain unspecified.
         private val PNP_ID_VALUE = byteArrayOf(0x01, 0xA4.toByte(), 0x08, 0x00, 0x00, 0x00, 0x00)
-        private const val REQUIRED_SERVICE_COUNT = 3
+        private const val REQUIRED_SERVICE_COUNT = 4
 
         private val HID_INFORMATION_UUID: UUID = UUID.fromString("00002a4a-0000-1000-8000-00805f9b34fb")
         private val REPORT_MAP_UUID: UUID = UUID.fromString("00002a4b-0000-1000-8000-00805f9b34fb")
