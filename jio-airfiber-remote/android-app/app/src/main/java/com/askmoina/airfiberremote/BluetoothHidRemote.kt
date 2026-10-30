@@ -95,7 +95,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 }
                 BluetoothDevice.BOND_NONE -> {
                     if (previousBondState == BluetoothDevice.BOND_BONDING) {
-                        val reason = intent.getIntExtra(BluetoothDevice.EXTRA_REASON, -1)
+                        val reason = intent.getIntExtra("android.bluetooth.device.extra.REASON", -1)
                         unregisterBondReceiver()
                         _state.value = _state.value.copy(
                             connected = false,
@@ -577,7 +577,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
             .build()
         _state.value = _state.value.copy(
             status = "Advertising a BLE HID remote. Keep this app open and select the phone from the TV's Bluetooth list.",
-            error = null
+            error = _state.value.error
         )
         runCatching {
             advertiser.startAdvertising(settings, data, scanResponse, advertiseCallback)
