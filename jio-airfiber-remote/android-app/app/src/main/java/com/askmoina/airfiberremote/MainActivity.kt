@@ -175,19 +175,9 @@ private fun PairingPanel(
     onBluetoothError: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val discoverabilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode > 0) onStartBluetooth()
-        else onBluetoothError("Allow your phone to be visible to nearby Bluetooth devices, then try again.")
-    }
-    fun requestPhoneVisibility() {
-        discoverabilityLauncher.launch(
-            Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
-                .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
-        )
-    }
     val enableBluetoothLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) requestPhoneVisibility()
-        else onBluetoothError("Turn Bluetooth on to try the Bluetooth remote.")
+        if (result.resultCode == Activity.RESULT_OK) onStartBluetooth()
+        else onBluetoothError("Turn Bluetooth on to start the BLE remote.")
     }
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         if (permissions.values.all { it }) {
@@ -195,10 +185,10 @@ private fun PairingPanel(
             when {
                 adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
                 !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                else -> requestPhoneVisibility()
+                else -> onStartBluetooth()
             }
         } else {
-            onBluetoothError("Allow the Nearby devices / Bluetooth permissions, then tap Set up Bluetooth remote again.")
+            onBluetoothError("Allow the Nearby devices / Bluetooth permissions, then tap Start BLE remote again.")
         }
     }
     fun requestBluetoothSetup() {
@@ -209,7 +199,7 @@ private fun PairingPanel(
             when {
                 adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
                 !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                else -> requestPhoneVisibility()
+                else -> onStartBluetooth()
             }
         }
     }
@@ -260,9 +250,9 @@ private fun PairingPanel(
         }
 
         PanelCard {
-            Text("Try Bluetooth remote", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text("Try BLE remote", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                "This uses your phone as a generic Bluetooth keyboard/remote instead of the Wi-Fi service your box refused. Compatibility still depends on the box and phone.",
+                "This advertises a Bluetooth Low Energy HID remote (HOGP), the profile Jio documents for its set-top box remote. It does not use the rejected Wi-Fi port or classic Bluetooth discoverability.",
                 color = SoftText, fontSize = 12.sp, lineHeight = 18.sp
             )
             Spacer(Modifier.height(8.dp))
@@ -270,13 +260,13 @@ private fun PairingPanel(
                 onClick = { requestBluetoothSetup() },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color(0xFF08201F))
-            ) { Text(if (state.bluetooth.registered) "Refresh Bluetooth remote" else "Set up Bluetooth remote") }
+            ) { Text(if (state.bluetooth.registered) "Restart BLE remote" else "Start BLE remote") }
             Spacer(Modifier.height(8.dp))
             Text(state.bluetooth.status, color = SoftText, fontSize = 12.sp, lineHeight = 18.sp)
             if (state.bluetooth.registered) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Next on the TV: Settings → Remote & Bluetooth → Add Bluetooth Accessories. Select your phone (${state.bluetooth.phoneBluetoothName}) and pair it. Keep this app open.",
+                    "On the TV: Settings → Remote & Bluetooth → Add Bluetooth Accessories. Select ${state.bluetooth.phoneBluetoothName} and pair it. Keep this app open.",
                     color = SoftText, fontSize = 12.sp, lineHeight = 18.sp
                 )
             }
