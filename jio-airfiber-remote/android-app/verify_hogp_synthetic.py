@@ -26,13 +26,13 @@ def require(condition: bool, message: str) -> None:
 
 def extract_report_descriptor(source: str) -> list[int]:
     match = re.search(
-        r"private\\s+val\\s+REPORT_DESCRIPTOR\\s*=\\s*byteArrayOf\\((.*?)\\n\\s*\\)",
+        r"private\s+val\s+REPORT_DESCRIPTOR\s*=\s*byteArrayOf\((.*?)\n\s*\)",
         source,
         flags=re.S,
     )
     require(match is not None, "REPORT_DESCRIPTOR byteArrayOf block was not found")
-    body = re.sub(r"//[^\\n]*", "", match.group(1))
-    tokens = re.findall(r"0x[0-9A-Fa-f]+(?:\\.toByte\\(\\))?|(?<![\\w.])\\d+(?:\\.toByte\\(\\))?", body)
+    body = re.sub(r"//[^\n]*", "", match.group(1))
+    tokens = re.findall(r"0x[0-9A-Fa-f]+(?:\.toByte\(\))?|(?<![\w.])\d+(?:\.toByte\(\))?", body)
     values = []
     for token in tokens:
         number = int(token.split(".")[0], 16 if token.lower().startswith("0x") else 10)
@@ -53,6 +53,7 @@ def parse_hid_descriptor(data: list[int]) -> tuple[dict[int, int], dict[int, tup
     report_bits: dict[int, int] = defaultdict(int)
     applications: dict[int, tuple[int, int]] = {}
     app_count = 0
+    current_application: tuple[int, int] | None = None
     index = 0
 
     while index < len(data):
@@ -99,14 +100,17 @@ def parse_hid_descriptor(data: list[int]) -> tuple[dict[int, int], dict[int, tup
                     app_count += 1
                     require(usage_page is not None and local_usage is not None,
                             "Top-level Application collection is missing Usage Page or Usage")
-                    applications[report_id] = (usage_page, local_usage)
+                    current_application = (usage_page, local_usage)
                 local_usage = None
             elif item_tag == 12:  # End Collection
                 require(bool(stack), "HID End Collection without matching Collection")
                 stack.pop()
+                if not stack:
+                    current_application = None
             elif item_tag == 8:  # Input
                 require(report_size > 0 and report_count > 0, "HID Input has missing Report Size or Count")
-                require(report_id in applications, f"Input report ID {report_id} is not inside a top-level Application collection")
+                require(current_application is not None, f"Input report ID {report_id} is not inside a top-level Application collection")
+                applications[report_id] = current_application
                 report_bits[report_id] += report_size * report_count
                 local_usage = None
             elif item_tag in (9, 11):  # Output / Feature
@@ -120,7 +124,7 @@ def parse_hid_descriptor(data: list[int]) -> tuple[dict[int, int], dict[int, tup
 def check_report_characteristic(source: str, object_name: str, report_id: str, report_bytes: str) -> None:
     require(
         re.search(
-            rf"private\\s+val\\s+{object_name}\\s*=\\s*createInputReport\\({report_id},\\s*ByteArray\\({report_bytes}\\)\\)",
+            rf"private\s+val\s+{object_name}\s*=\s*createInputReport\({report_id},\s*ByteArray\({report_bytes}\)\)",
             source,
         ) is not None,
         f"{object_name} is not constructed with Report ID {report_id} and {report_bytes}-byte payload",
@@ -186,7 +190,7 @@ def main() -> int:
     # 4. Verify HOGP role and notification routing.
     require("Waiting for the TV (HID Host) to initiate secure pairing" in source,
             "Phone-side HOGP implementation is not waiting for the HID Host to initiate pairing")
-    require(re.search(r"\\.createBond\\s*\\(", source) is None,
+    require(re.search(r"\.createBond\s*\(", source) is None,
             "Phone-side createBond() call would race the HID Host's pairing procedure")
     require("registerBondReceiver(device)" in source,
             "Pairing state broadcasts are not monitored")
