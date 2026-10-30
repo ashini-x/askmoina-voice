@@ -213,8 +213,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
         }, 90L)
     }
 
-    private fun makeDiscoverable() {
-        if (!hasBluetoothPermissions()) retu)) return "this phone"
+    private fun safeAdapterName(): String {
+        if (!hasBluetoothPermissions()) return "this phone"
         return runCatching { adapter?.name }.getOrNull().orEmpty().ifBlank { "this phone" }
     }
 
