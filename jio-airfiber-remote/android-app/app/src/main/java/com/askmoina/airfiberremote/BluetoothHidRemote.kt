@@ -16,6 +16,7 @@ import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -52,6 +53,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
     private var gattServer: BluetoothGattServer? = null
     private var advertiserStarted = false
     private var serviceAdded = false
+    private var servicesAddedCount = 0
     private var registered = false
     private var protocolMode: Byte = 0x01
     private val connectedDevices = linkedSetOf<BluetoothDevice>()
@@ -61,25 +63,25 @@ class BluetoothHidRemote(context: Context) : Closeable {
     private val hidInfo = BluetoothGattCharacteristic(
         HID_INFORMATION_UUID,
         BluetoothGattCharacteristic.PROPERTY_READ,
-        BluetoothGattCharacteristic.PERMISSION_READ
+        BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
     ).apply { value = byteArrayOf(0x11, 0x01, 0x00, 0x02) }
 
     private val reportMap = BluetoothGattCharacteristic(
         REPORT_MAP_UUID,
         BluetoothGattCharacteristic.PROPERTY_READ,
-        BluetoothGattCharacteristic.PERMISSION_READ
+        BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
     ).apply { value = REPORT_DESCRIPTOR }
 
     private val controlPoint = BluetoothGattCharacteristic(
         HID_CONTROL_POINT_UUID,
         BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
-        BluetoothGattCharacteristic.PERMISSION_WRITE
+        BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED
     )
 
     private val protocolModeCharacteristic = BluetoothGattCharacteristic(
         PROTOCOL_MODE_UUID,
         BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
-        BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
+        BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED or BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED
     ).apply { value = byteArrayOf(protocolMode) }
 
     private val keyboardReport = createInputReport(KEYBOARD_REPORT_ID, byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0))
@@ -90,13 +92,15 @@ class BluetoothHidRemote(context: Context) : Closeable {
 
     private val gattCallback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
-            if (service.uuid != HID_SERVICE_UUID) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                setError("Android could not add the BLE HID service (GATT status $status).")
+                setError("Android could not add a required BLE HID service (GATT status $status).")
                 return
             }
-            serviceAdded = true
-            startAdvertising()
+            servicesAddedCount += 1
+            if (servicesAddedCount == REQUIRED_SERVICE_COUNT) {
+                serviceAdded = true
+                startAdvertising()
+            }
         }
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
@@ -138,6 +142,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 HID_INFORMATION_UUID -> hidInfo.value
                 REPORT_MAP_UUID -> reportMap.value
                 PROTOCOL_MODE_UUID -> byteArrayOf(protocolMode)
+                BATTERY_LEVEL_UUID -> byteArrayOf(readPhoneBatteryLevel())
+                PNP_ID_UUID -> PNP_ID_VALUE
                 else -> null
             } ?: when {
                 characteristic === keyboardReport -> keyboardReport.value
@@ -296,14 +302,23 @@ class BluetoothHidRemote(context: Context) : Closeable {
             }
             gattServer = opened
             serviceAdded = false
+            servicesAddedCount = 0
             _state.value = _state.value.copy(
-                status = "Preparing the BLE HID service…",
+                status = "Preparing encrypted BLE HID, battery, and device-information services…",
                 phoneBluetoothName = safeAdapterName(),
                 error = null
             )
-            val added = runCatching { opened.addService(buildHidService()) }.getOrDefault(false)
-            if (!added) {
-                setError("Android refused to register the BLE HID over GATT service.")
+            val requiredServices = listOf(
+                buildHidService(),
+                buildDeviceInfoService(),
+                buildBatteryService()
+            )
+            for (service in requiredServices) {
+                val added = runCatching { opened.addService(service) }.getOrDefault(false)
+                if (!added) {
+                    setError("Android refused to register a required BLE HID service (" + service.uuid + ").")
+                    return
+                }
             }
         } else if (serviceAdded) {
             startAdvertising()
@@ -321,6 +336,38 @@ class BluetoothHidRemote(context: Context) : Closeable {
         return service
     }
 
+    private fun buildDeviceInfoService(): BluetoothGattService {
+        val service = BluetoothGattService(DEVICE_INFO_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val pnpId = BluetoothGattCharacteristic(
+            PNP_ID_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ,
+            BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
+        )
+        pnpId.value = PNP_ID_VALUE
+        service.addCharacteristic(pnpId)
+        return service
+    }
+
+    private fun buildBatteryService(): BluetoothGattService {
+        val service = BluetoothGattService(BATTERY_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val level = BluetoothGattCharacteristic(
+            BATTERY_LEVEL_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ,
+            BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
+        )
+        level.value = byteArrayOf(readPhoneBatteryLevel())
+        service.addCharacteristic(level)
+        return service
+    }
+
+    private fun readPhoneBatteryLevel(): Byte {
+        val batteryManager = appContext.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        val capacity = runCatching {
+            batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        }.getOrDefault(-1)
+        return if (capacity in 0..100) capacity.toByte() else 0xFF.toByte()
+    }
+
     private fun createInputReport(reportId: Byte, initialValue: ByteArray): BluetoothGattCharacteristic {
         val characteristic = BluetoothGattCharacteristic(
             HID_REPORT_UUID,
@@ -330,13 +377,13 @@ class BluetoothHidRemote(context: Context) : Closeable {
         characteristic.value = initialValue
         val reference = BluetoothGattDescriptor(
             REPORT_REFERENCE_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ
+            BluetoothGattDescriptor.PERMISSION_READ_ENCRYPTED
         )
         reference.value = byteArrayOf(reportId, REPORT_TYPE_INPUT)
         characteristic.addDescriptor(reference)
         val cccd = BluetoothGattDescriptor(
             CLIENT_CONFIGURATION_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+            BluetoothGattDescriptor.PERMISSION_READ_ENCRYPTED or BluetoothGattDescriptor.PERMISSION_WRITE_ENCRYPTED
         )
         cccd.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
         characteristic.addDescriptor(cccd)
@@ -501,10 +548,19 @@ class BluetoothHidRemote(context: Context) : Closeable {
         runCatching { gattServer?.close() }
         gattServer = null
         serviceAdded = false
+        servicesAddedCount = 0
     }
 
     companion object {
         private val HID_SERVICE_UUID: UUID = UUID.fromString("00001812-0000-1000-8000-00805f9b34fb")
+        private val BATTERY_SERVICE_UUID: UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
+        private val DEVICE_INFO_SERVICE_UUID: UUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+        private val BATTERY_LEVEL_UUID: UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
+        private val PNP_ID_UUID: UUID = UUID.fromString("00002a50-0000-1000-8000-00805f9b34fb")
+        // Bluetooth SIG-assigned Realme company identifier; product/version remain unspecified.
+        private val PNP_ID_VALUE = byteArrayOf(0x01, 0xA4.toByte(), 0x08, 0x00, 0x00, 0x00, 0x00)
+        private const val REQUIRED_SERVICE_COUNT = 3
+
         private val HID_INFORMATION_UUID: UUID = UUID.fromString("00002a4a-0000-1000-8000-00805f9b34fb")
         private val REPORT_MAP_UUID: UUID = UUID.fromString("00002a4b-0000-1000-8000-00805f9b34fb")
         private val HID_CONTROL_POINT_UUID: UUID = UUID.fromString("00002a4c-0000-1000-8000-00805f9b34fb")
