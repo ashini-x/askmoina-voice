@@ -106,6 +106,10 @@ class BluetoothHidRemote(context: Context) : Closeable {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevices.add(device)
+                if (advertiserStarted) {
+                    runCatching { adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback) }
+                    advertiserStarted = false
+                }
                 _state.value = _state.value.copy(
                     registered = true,
                     connected = true,
@@ -372,7 +376,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         val characteristic = BluetoothGattCharacteristic(
             HID_REPORT_UUID,
             BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothGattCharacteristic.PERMISSION_READ
+            BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
         )
         characteristic.value = initialValue
         val reference = BluetoothGattDescriptor(
