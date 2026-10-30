@@ -344,7 +344,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 registered = true,
                 phoneBluetoothName = safeAdapterName(),
                 status = "BLE HID remote is advertising. On the TV open Settings → Remote and Bluetooth → Add Bluetooth Accessories, then select this phone.",
-                error = null
+                error = _state.value.error
             )
         }
 
