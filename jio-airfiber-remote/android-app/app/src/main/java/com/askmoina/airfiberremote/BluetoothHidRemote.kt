@@ -485,21 +485,24 @@ class BluetoothHidRemote(context: Context) : Closeable {
             status = "Requesting a secure Bluetooth bond with " + safeDeviceName(device) + "…",
             error = null
         )
-        val confirmation = runCatching { device.setPairingConfirmation(true) }
-        if (confirmation.isFailure) {
-            _state.value = _state.value.copy(
-                status = "Starting Bluetooth bonding. Android confirmation may appear on the phone.",
-                error = "Could not auto-confirm the Bluetooth pairing request: " +
-                    (confirmation.exceptionOrNull()?.message ?: "system rejected confirmation")
-            )
-        }
-        val started = runCatching { device.createBond() }.getOrDefault(false)
+        // Do not call BluetoothDevice.setPairingConfirmation(): Android reserves
+        // that API for privileged/system apps. createBond() lets Android's system
+        // pairing UI handle any user confirmation required by the chosen LE method.
+        val bondRequest = runCatching { device.createBond() }
+        val started = bondRequest.getOrDefault(false)
         if (!started) {
             unregisterBondReceiver()
+            val detail = bondRequest.exceptionOrNull()?.message
             _state.value = _state.value.copy(
                 connected = false,
                 status = "The TV connected, but Android could not start Bluetooth bonding.",
-                error = "Android Bluetooth createBond() did not start. Remove any old saved pairing for this phone on the TV, restart Bluetooth on the phone, and retry."
+                error = "Android Bluetooth createBond() did not start" +
+                    (detail?.let { ": $it" } ?: ".") +
+                    " Remove any old saved pairing for this phone on the TV, restart Bluetooth on the phone, and retry."
+            )
+        } else {
+            _state.value = _state.value.copy(
+                status = "Android has started secure Bluetooth pairing. Accept any pairing prompt shown on the phone."
             )
         }
     }
