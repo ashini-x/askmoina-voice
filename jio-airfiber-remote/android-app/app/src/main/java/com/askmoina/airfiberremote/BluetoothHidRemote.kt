@@ -54,6 +54,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
     private var advertiserStarted = false
     private var serviceAdded = false
     private var servicesAddedCount = 0
+    private var pendingServices: List<BluetoothGattService> = emptyList()
+    private var nextServiceIndex = 0
     private var registered = false
     private var protocolMode: Byte = 0x01
     private val connectedDevices = linkedSetOf<BluetoothDevice>()
@@ -97,8 +99,14 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 return
             }
             servicesAddedCount += 1
-            if (servicesAddedCount == REQUIRED_SERVICE_COUNT) {
+            if (nextServiceIndex < pendingServices.size) {
+                addNextGattService()
+            } else if (servicesAddedCount == REQUIRED_SERVICE_COUNT) {
                 serviceAdded = true
+                _state.value = _state.value.copy(
+                    status = "Bluetooth services are ready. Starting BLE advertising…",
+                    error = null
+                )
                 startAdvertising()
             }
         }
@@ -312,21 +320,34 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 phoneBluetoothName = safeAdapterName(),
                 error = null
             )
-            val requiredServices = listOf(
+            // Android GATT service registration is asynchronous and permits only
+            // one outstanding addService operation at a time. Queue the services
+            // and add the next one only from onServiceAdded().
+            pendingServices = listOf(
                 buildHidService(),
                 buildDeviceInfoService(),
                 buildBatteryService()
             )
-            for (service in requiredServices) {
-                val added = runCatching { opened.addService(service) }.getOrDefault(false)
-                if (!added) {
-                    setError("Android refused to register a required BLE HID service (" + service.uuid + ").")
-                    return
-                }
-            }
+            nextServiceIndex = 0
+            addNextGattService()
         } else if (serviceAdded) {
             startAdvertising()
         }
+    }
+
+    private fun addNextGattService() {
+        val server = gattServer ?: run {
+            setError("The BLE GATT server closed before services finished registering.")
+            return
+        }
+        val service = pendingServices.getOrNull(nextServiceIndex) ?: return
+        val accepted = runCatching { server.addService(service) }.getOrDefault(false)
+        if (!accepted) {
+            setError("Android refused to register BLE service " + service.uuid +
+                " after " + servicesAddedCount + " of " + REQUIRED_SERVICE_COUNT + " services were added.")
+            return
+        }
+        nextServiceIndex += 1
     }
 
     private fun buildHidService(): BluetoothGattService {
@@ -553,6 +574,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
         gattServer = null
         serviceAdded = false
         servicesAddedCount = 0
+        pendingServices = emptyList()
+        nextServiceIndex = 0
     }
 
     companion object {
