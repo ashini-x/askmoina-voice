@@ -175,8 +175,18 @@ private fun PairingPanel(
     onBluetoothError: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val discoverabilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode > 0) onStartBluetooth()
+        else onBluetoothError("Allow your phone to be visible to nearby Bluetooth devices, then try again.")
+    }
+    fun requestPhoneVisibility() {
+        discoverabilityLauncher.launch(
+            Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+        )
+    }
     val enableBluetoothLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) onStartBluetooth()
+        if (result.resultCode == Activity.RESULT_OK) requestPhoneVisibility()
         else onBluetoothError("Turn Bluetooth on to try the Bluetooth remote.")
     }
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -185,7 +195,7 @@ private fun PairingPanel(
             when {
                 adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
                 !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                else -> onStartBluetooth()
+                else -> requestPhoneVisibility()
             }
         } else {
             onBluetoothError("Allow the Nearby devices / Bluetooth permissions, then tap Set up Bluetooth remote again.")
@@ -199,7 +209,7 @@ private fun PairingPanel(
             when {
                 adapter == null -> onBluetoothError("This phone does not have Bluetooth support.")
                 !adapter.isEnabled -> enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                else -> onStartBluetooth()
+                else -> requestPhoneVisibility()
             }
         }
     }
