@@ -108,8 +108,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
             }
         }
     }
-    private val keyboardSubscribers = linkedSetOf<BluetoothDevice>()
-    private val consumerSubscribers = linkedSetOf<BluetoothDevice>()
+    private val inputReportSubscribers = linkedSetOf<BluetoothDevice>()
     private val scanRefreshSubscribers = linkedSetOf<BluetoothDevice>()
     private var scanIntervalWindow = byteArrayOf(0x10, 0x00, 0x10, 0x00)
 
@@ -137,8 +136,10 @@ class BluetoothHidRemote(context: Context) : Closeable {
         BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED or BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED
     ).apply { value = byteArrayOf(protocolMode) }
 
-    private val keyboardReport = createInputReport(KEYBOARD_REPORT_ID, byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0))
-    private val consumerReport = createInputReport(CONSUMER_REPORT_ID, byteArrayOf(0, 0))
+    // One unique HID Report characteristic. Keyboard occupies bytes 0..7;
+    // Consumer Control occupies bytes 8..9. A single Report UUID avoids
+    // Android GATT server's duplicate-characteristic-UUID limitation.
+    private val inputReport = createInputReport(INPUT_REPORT_ID, ByteArray(10))
     private val scanRefreshCharacteristic = BluetoothGattCharacteristic(
         SCAN_REFRESH_UUID,
         BluetoothGattCharacteristic.PROPERTY_NOTIFY,
@@ -200,8 +201,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 registerBondReceiver(device)
             } else {
                 connectedDevices.remove(device)
-                keyboardSubscribers.remove(device)
-                consumerSubscribers.remove(device)
+                inputReportSubscribers.remove(device)
                 scanRefreshSubscribers.remove(device)
                 if (connectedDevices.isEmpty()) {
                     _state.value = _state.value.copy(
@@ -233,8 +233,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 SCAN_REFRESH_UUID -> byteArrayOf(0x00)
                 else -> null
             } ?: when {
-                characteristic === keyboardReport -> keyboardReport.value
-                characteristic === consumerReport -> consumerReport.value
+                characteristic === inputReport -> inputReport.value
                 else -> null
             }
             respondWithValue(device, requestId, offset, value)
@@ -250,8 +249,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 REPORT_REFERENCE_UUID -> descriptor.value
                 CLIENT_CONFIGURATION_UUID -> {
                     val enabled = when {
-                        descriptor.characteristic === keyboardReport -> keyboardSubscribers.contains(device)
-                        descriptor.characteristic === consumerReport -> consumerSubscribers.contains(device)
+                        descriptor.characteristic === inputReport -> inputReportSubscribers.contains(device)
                         descriptor.characteristic === scanRefreshCharacteristic -> scanRefreshSubscribers.contains(device)
                         else -> false
                     }
@@ -280,11 +278,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
             }
             val enabled = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             when {
-                descriptor.characteristic === keyboardReport -> {
-                    if (enabled) keyboardSubscribers.add(device) else keyboardSubscribers.remove(device)
-                }
-                descriptor.characteristic === consumerReport -> {
-                    if (enabled) consumerSubscribers.add(device) else consumerSubscribers.remove(device)
+                descriptor.characteristic === inputReport -> {
+                    if (enabled) inputReportSubscribers.add(device) else inputReportSubscribers.remove(device)
                 }
                 descriptor.characteristic === scanRefreshCharacteristic -> {
                     if (enabled) scanRefreshSubscribers.add(device) else scanRefreshSubscribers.remove(device)
@@ -483,8 +478,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         service.addCharacteristic(reportMap)
         service.addCharacteristic(controlPoint)
         service.addCharacteristic(protocolModeCharacteristic)
-        service.addCharacteristic(keyboardReport)
-        service.addCharacteristic(consumerReport)
+        service.addCharacteristic(inputReport)
         return service
     }
 
@@ -589,6 +583,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
     }
 
     fun sendAndroidKey(keyCode: Int) {
+        val report = ByteArray(10)
         val consumerUsage = when (keyCode) {
             26 -> 0x0030 // Power
             164 -> 0x00E2 // Mute
@@ -600,32 +595,26 @@ class BluetoothHidRemote(context: Context) : Closeable {
             else -> null
         }
         if (consumerUsage != null) {
-            val data = byteArrayOf(
-                (consumerUsage and 0xFF).toByte(),
-                ((consumerUsage ushr 8) and 0xFF).toByte()
-            )
-            sendInputReport(consumerReport, consumerSubscribers, data)
-            handler.postDelayed({
-                sendInputReport(consumerReport, consumerSubscribers, byteArrayOf(0, 0))
-            }, 90L)
-            return
+            report[8] = (consumerUsage and 0xFF).toByte()
+            report[9] = ((consumerUsage ushr 8) and 0xFF).toByte()
+        } else {
+            val usage = when (keyCode) {
+                19 -> 0x52 // Up
+                20 -> 0x51 // Down
+                21 -> 0x50 // Left
+                22 -> 0x4F // Right
+                23 -> 0x28 // Enter / OK
+                4 -> 0x29  // Escape / Back
+                3 -> 0x4A  // Home
+                82 -> 0x65 // Application / context menu
+                else -> null
+            } ?: return
+            report[2] = usage.toByte()
         }
-        val usage = when (keyCode) {
-            19 -> 0x52 // Up
-            20 -> 0x51 // Down
-            21 -> 0x50 // Left
-            22 -> 0x4F // Right
-            23 -> 0x28 // Enter / OK
-            4 -> 0x29  // Escape / Back
-            3 -> 0x4A  // Home
-            82 -> 0x65 // Application / context menu
-            else -> null
-        } ?: return
-        val report = ByteArray(8)
-        report[2] = usage.toByte()
-        sendInputReport(keyboardReport, keyboardSubscribers, report)
+
+        sendInputReport(inputReport, inputReportSubscribers, report)
         handler.postDelayed({
-            sendInputReport(keyboardReport, keyboardSubscribers, ByteArray(8))
+            sendInputReport(inputReport, inputReportSubscribers, ByteArray(10))
         }, 90L)
     }
 
@@ -707,8 +696,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         advertiserStarted = false
         registered = false
         connectedDevices.clear()
-        keyboardSubscribers.clear()
-        consumerSubscribers.clear()
+        inputReportSubscribers.clear()
         scanRefreshSubscribers.clear()
         runCatching { gattServer?.clearServices() }
         runCatching { gattServer?.close() }
@@ -740,12 +728,11 @@ class BluetoothHidRemote(context: Context) : Closeable {
         private val REPORT_REFERENCE_UUID: UUID = UUID.fromString("00002908-0000-1000-8000-00805f9b34fb")
         private val CLIENT_CONFIGURATION_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
-        private const val KEYBOARD_REPORT_ID: Byte = 0x01
-        private const val CONSUMER_REPORT_ID: Byte = 0x02
+        private const val INPUT_REPORT_ID: Byte = 0x01
         private const val REPORT_TYPE_INPUT: Byte = 0x01
 
         private val REPORT_DESCRIPTOR = byteArrayOf(
-            // Generic Desktop / Keyboard, report ID 1.
+            // One input report (ID 1): 8-byte keyboard + 2-byte consumer-control field.
             0x05, 0x01, 0x09, 0x06, 0xA1.toByte(), 0x01,
             0x85.toByte(), 0x01,
             0x05, 0x07, 0x19, 0xE0.toByte(), 0x29, 0xE7.toByte(),
@@ -754,13 +741,12 @@ class BluetoothHidRemote(context: Context) : Closeable {
             0x95.toByte(), 0x01, 0x75, 0x08, 0x81.toByte(), 0x01,
             0x95.toByte(), 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0x65,
             0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81.toByte(), 0x00,
-            0xC0.toByte(),
-            // Consumer Control, report ID 2.
-            0x05, 0x0C, 0x09, 0x01, 0xA1.toByte(), 0x01,
-            0x85.toByte(), 0x02,
+            // Consumer Control is included as a nested logical collection in the same report.
+            0x05, 0x0C, 0x09, 0x01, 0xA1.toByte(), 0x02,
             0x15, 0x00, 0x26, 0xFF.toByte(), 0x03,
             0x19, 0x00, 0x2A, 0xFF.toByte(), 0x03,
             0x75, 0x10, 0x95.toByte(), 0x01, 0x81.toByte(), 0x00,
+            0xC0.toByte(),
             0xC0.toByte()
         )
     }
