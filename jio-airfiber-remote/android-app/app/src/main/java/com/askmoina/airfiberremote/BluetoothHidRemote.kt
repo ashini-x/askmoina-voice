@@ -144,6 +144,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         BluetoothGattCharacteristic.PROPERTY_NOTIFY,
         0
     ).apply {
+        value = byteArrayOf(0x00)
         addDescriptor(BluetoothGattDescriptor(
             CLIENT_CONFIGURATION_UUID,
             BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
@@ -325,6 +326,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 SCAN_INTERVAL_WINDOW_UUID -> {
                     if (offset == 0 && value.size == 4) {
                         scanIntervalWindow = value.copyOf()
+                        characteristic.value = value.copyOf()
                         BluetoothGatt.GATT_SUCCESS
                     } else BluetoothGatt.GATT_INVALID_ATTRIBUTE_LENGTH
                 }
@@ -446,7 +448,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         try {
             if (Build.VERSION.SDK_INT >= 33) {
-                appContext.registerReceiver(bondStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                appContext.registerReceiver(bondStateReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 @Suppress("DEPRECATION")
                 appContext.registerReceiver(bondStateReceiver, filter)
