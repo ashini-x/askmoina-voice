@@ -138,8 +138,10 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 HID_INFORMATION_UUID -> hidInfo.value
                 REPORT_MAP_UUID -> reportMap.value
                 PROTOCOL_MODE_UUID -> byteArrayOf(protocolMode)
-                KEYBOARD_REPORT_UUID -> keyboardReport.value
-                CONSUMER_REPORT_UUID -> consumerReport.value
+                else -> null
+            } ?: when {
+                characteristic === keyboardReport -> keyboardReport.value
+                characteristic === consumerReport -> consumerReport.value
                 else -> null
             }
             respondWithValue(device, requestId, offset, value)
@@ -154,9 +156,9 @@ class BluetoothHidRemote(context: Context) : Closeable {
             val value = when (descriptor.uuid) {
                 REPORT_REFERENCE_UUID -> descriptor.value
                 CLIENT_CONFIGURATION_UUID -> {
-                    val enabled = when (descriptor.characteristic.uuid) {
-                        KEYBOARD_REPORT_UUID -> keyboardSubscribers.contains(device)
-                        CONSUMER_REPORT_UUID -> consumerSubscribers.contains(device)
+                    val enabled = when {
+                        descriptor.characteristic === keyboardReport -> keyboardSubscribers.contains(device)
+                        descriptor.characteristic === consumerReport -> consumerSubscribers.contains(device)
                         else -> false
                     }
                     if (enabled) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -183,11 +185,11 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 return
             }
             val enabled = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-            when (descriptor.characteristic.uuid) {
-                KEYBOARD_REPORT_UUID -> {
+            when {
+                descriptor.characteristic === keyboardReport -> {
                     if (enabled) keyboardSubscribers.add(device) else keyboardSubscribers.remove(device)
                 }
-                CONSUMER_REPORT_UUID -> {
+                descriptor.characteristic === consumerReport -> {
                     if (enabled) consumerSubscribers.add(device) else consumerSubscribers.remove(device)
                 }
                 else -> {
@@ -321,7 +323,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
 
     private fun createInputReport(reportId: Byte, initialValue: ByteArray): BluetoothGattCharacteristic {
         val characteristic = BluetoothGattCharacteristic(
-            if (reportId == KEYBOARD_REPORT_ID) KEYBOARD_REPORT_UUID else CONSUMER_REPORT_UUID,
+            HID_REPORT_UUID,
             BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
@@ -360,6 +362,8 @@ class BluetoothHidRemote(context: Context) : Closeable {
             .build()
         val data = AdvertiseData.Builder()
             .addServiceUuid(ParcelUuid(HID_SERVICE_UUID))
+            .build()
+        val scanResponse = AdvertiseData.Builder()
             .setIncludeDeviceName(true)
             .build()
         _state.value = _state.value.copy(
@@ -367,7 +371,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
             error = null
         )
         runCatching {
-            advertiser.startAdvertising(settings, data, advertiseCallback)
+            advertiser.startAdvertising(settings, data, scanResponse, advertiseCallback)
         }.onFailure {
             setError("Could not start BLE advertising: " + (it.message ?: "Bluetooth error"))
         }
@@ -505,8 +509,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
         private val REPORT_MAP_UUID: UUID = UUID.fromString("00002a4b-0000-1000-8000-00805f9b34fb")
         private val HID_CONTROL_POINT_UUID: UUID = UUID.fromString("00002a4c-0000-1000-8000-00805f9b34fb")
         private val PROTOCOL_MODE_UUID: UUID = UUID.fromString("00002a4e-0000-1000-8000-00805f9b34fb")
-        private val KEYBOARD_REPORT_UUID: UUID = UUID.fromString("00002a4d-0001-1000-8000-00805f9b34fb")
-        private val CONSUMER_REPORT_UUID: UUID = UUID.fromString("00002a4d-0002-1000-8000-00805f9b34fb")
+        private val HID_REPORT_UUID: UUID = UUID.fromString("00002a4d-0000-1000-8000-00805f9b34fb")
         private val REPORT_REFERENCE_UUID: UUID = UUID.fromString("00002908-0000-1000-8000-00805f9b34fb")
         private val CLIENT_CONFIGURATION_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
