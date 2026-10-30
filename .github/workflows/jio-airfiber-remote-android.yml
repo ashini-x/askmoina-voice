@@ -34,6 +34,9 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Run synthetic BLE HOGP verification
+        run: python3 jio-airfiber-remote/android-app/verify_hogp_synthetic.py
+
       - name: Build the Android APK
         run: gradle -p jio-airfiber-remote/android-app assembleDebug
 
