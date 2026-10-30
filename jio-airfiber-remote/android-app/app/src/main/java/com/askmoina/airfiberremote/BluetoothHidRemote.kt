@@ -61,9 +61,6 @@ class BluetoothHidRemote(context: Context) : Closeable {
                 },
                 error = if (isRegistered) null else _state.value.error
             )
-            if (isRegistered) {
-                makeDiscoverable()
-            }
         }
 
         override fun onConnectionStateChanged(device: BluetoothDevice, state: Int) {
@@ -217,20 +214,7 @@ class BluetoothHidRemote(context: Context) : Closeable {
     }
 
     private fun makeDiscoverable() {
-        if (!hasBluetoothPermissions()) return
-        val bluetoothAdapter = adapter ?: return
-        runCatching {
-            bluetoothAdapter.setScanMode(BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE, DISCOVERABLE_SECONDS)
-        }.onFailure {
-            _state.value = _state.value.copy(
-                status = "Bluetooth remote is registered, but Android could not make this phone discoverable.",
-                error = "Open your phone's Bluetooth settings and enable visibility if it offers that option."
-            )
-        }
-    }
-
-    private fun safeAdapterName(): String {
-        if (!hasBluetoothPermissions()) return "this phone"
+        if (!hasBluetoothPermissions()) retu)) return "this phone"
         return runCatching { adapter?.name }.getOrNull().orEmpty().ifBlank { "this phone" }
     }
 
@@ -262,7 +246,6 @@ class BluetoothHidRemote(context: Context) : Closeable {
     companion object {
         private const val KEYBOARD_REPORT_ID = 1
         private const val CONSUMER_REPORT_ID = 2
-        private const val DISCOVERABLE_SECONDS = 300
 
         private val REPORT_DESCRIPTOR = byteArrayOf(
             0x05, 0x01, 0x09, 0x06, 0xA1.toByte(), 0x01,
