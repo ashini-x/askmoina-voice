@@ -9,7 +9,7 @@
 AskMoina vendors the dependency-free BRVIN connector at `src/brvin-connector`.
 
 - Upstream repository: `ashini-x/parmar-ai`
-- Upstream source commit pinned by this copy: `e092659f352442e27df53529bd4c31ba78026541`
+- Upstream source commit pinned by this copy: `91b6a499bd782ae298b41e790157c23682f10881`
 - Upstream path: `packages/brvin-connector/src/index.ts`
 
 Update the vendored copy only through a reviewed consumer PR. Do not publish it to a public package registry or expose it to client-side JavaScript.
