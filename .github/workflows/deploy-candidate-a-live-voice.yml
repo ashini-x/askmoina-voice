@@ -57,7 +57,8 @@ jobs:
           npx wrangler d1 migrations apply VEDA_DB --local
           npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
           npx wrangler deploy --dry-run --outdir=dist
-          python3 -m py_compile scripts/live-voice-sample-capture.py scripts/live-brvin-knowledge-smoke.py
+          python3 -m py_compile scripts/live-voice-sample-capture.py scripts/live-brvin-knowledge-smoke.py scripts/live-turn-latency-benchmark.py scripts/test_live_turn_latency_boundary.py
+          python3 scripts/test_live_turn_latency_boundary.py
 
 
       - name: Validate benchmarks and release bundle contracts
