@@ -489,6 +489,7 @@ jobs:
           fi
           echo "::add-mask::$SMOKE_COOKIE"
           export ASKMOINA_SYNTHETIC_COOKIE="$SMOKE_COOKIE"
+          python scripts/live-brvin-knowledge-smoke.py
           cleanup() {
             curl --silent --show-error --max-time 12 --output /dev/null \
               --request POST "$BASE_URL/api/auth/logout" \
