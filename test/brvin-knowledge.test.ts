@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  isBrvinKnowledgeEnabled,
   retrieveAskMoinaBrvinEvidence,
 } from "../src/brvin-knowledge";
 import type {
@@ -58,6 +59,18 @@ function makeEnv(binding: BrvinV2RpcBinding | null = makeBinding()) {
 }
 
 describe("AskMoina BRVIN knowledge tool", () => {
+  it("exposes the tool only to authenticated non-guest environments with the private binding and project", () => {
+    const binding = makeBinding();
+    expect(isBrvinKnowledgeEnabled(makeEnv(binding), "uid_test_account", false)).toBe(true);
+    expect(isBrvinKnowledgeEnabled(makeEnv(binding), "uid_test_account", true)).toBe(false);
+    expect(isBrvinKnowledgeEnabled(makeEnv(binding), null, false)).toBe(false);
+    expect(isBrvinKnowledgeEnabled(makeEnv(null), "uid_test_account", false)).toBe(false);
+    expect(isBrvinKnowledgeEnabled({
+      BRVIN_SERVICE: binding,
+      BRVIN_DEFAULT_PROJECT_ID: "",
+    }, "uid_test_account", false)).toBe(false);
+  });
+
   it("requires a signed-in account before calling the private binding", async () => {
     const retrieve = vi.fn(async () => ({ ok: true as const, data }));
     const result = await retrieveAskMoinaBrvinEvidence(
