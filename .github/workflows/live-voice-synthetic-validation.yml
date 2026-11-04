@@ -3,6 +3,7 @@ name: Live Voice Synthetic Validation
 on:
   push:
     branches:
+      - main
       - "fix/live-synthetic-interaction-idle*"
   pull_request:
     branches:
