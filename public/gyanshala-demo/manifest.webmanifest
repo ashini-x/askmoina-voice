@@ -1,0 +1,15 @@
+{
+  "id": "/gyanshala-demo/",
+  "name": "Gyanshala",
+  "short_name": "Gyanshala",
+  "description": "Find it. Share it. Build a smarter campus together.",
+  "start_url": "/gyanshala-demo/",
+  "scope": "/gyanshala-demo/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#1264f5",
+  "icons": [
+    { "src": "/gyanshala-demo/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

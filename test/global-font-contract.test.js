@@ -32,8 +32,10 @@ describe("AskMoina global typography contract", () => {
     );
   });
 
-  it("loads the global font stylesheet last on every static HTML page", () => {
-    const pages = collectHtmlPages(publicRoot);
+  it("loads the global font stylesheet last on every AskMoina static HTML page", () => {
+    // Gyanshala is a deliberately isolated temporary sub-app with its own Apple-inspired system-font design.
+    // The AskMoina global typography contract applies to AskMoina pages, not this separately branded demo.
+    const pages = collectHtmlPages(publicRoot).filter(pagePath => !relative(publicRoot, pagePath).split("\\").join("/").startsWith("gyanshala-demo/"));
     expect(pages.length).toBeGreaterThan(0);
 
     for (const pagePath of pages) {
