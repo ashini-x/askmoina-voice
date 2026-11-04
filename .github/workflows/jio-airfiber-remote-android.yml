@@ -1,0 +1,67 @@
+name: Jio AirFiber Remote Android APK
+
+on:
+  push:
+    branches:
+      - feature/jio-airfiber-remote-pwa
+    paths:
+      - "jio-airfiber-remote/android-app/**"
+      - ".github/workflows/jio-airfiber-remote-android.yml"
+  pull_request:
+    paths:
+      - "jio-airfiber-remote/android-app/**"
+      - ".github/workflows/jio-airfiber-remote-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Run synthetic BLE HOGP verification
+        run: python3 jio-airfiber-remote/android-app/verify_hogp_synthetic.py
+
+      - name: Build the Android APK
+        run: gradle -p jio-airfiber-remote/android-app assembleDebug
+
+      - name: Name the installable APK
+        run: cp jio-airfiber-remote/android-app/app/build/outputs/apk/debug/app-debug.apk jio-airfiber-remote.apk
+
+      - name: Upload APK as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jio-airfiber-remote-apk
+          path: jio-airfiber-remote.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish preview download
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/jio-airfiber-remote-pwa'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jio-airfiber-remote-build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: AirFiber Remote preview build ${{ github.run_number }}
+          body: |
+            Preview APK built from the AskMoina repository.
+
+            Compatibility with Jio AirFiber set-top boxes is not yet confirmed on real hardware. The phone and TV must be on the same Wi-Fi, and the box must expose Android TV Remote Service v2. Pairing uses the code shown on the TV. This is not an official Jio app.
+          prerelease: true
+          make_latest: false
+          files: jio-airfiber-remote.apk
