@@ -157,6 +157,7 @@ def main() -> int:
         ws.send(json.dumps({"text_input": PROMPT}))
 
         complete_and_idle = False
+        saw_turn_complete = False
         deadline = time.monotonic() + 95
         while time.monotonic() < deadline:
             try:
@@ -177,9 +178,11 @@ def main() -> int:
             audio_total += get_audio_bytes(message)
             content = message.get("serverContent") or message.get("server_content") or {}
             if isinstance(content, dict):
-                last_status = content.get("interactionStatus") or content.get("interaction_status")
+                last_status = content.get("interactionStatus") or content.get("interaction_status") or last_status
                 turn_complete = content.get("turnComplete") or content.get("turn_complete")
-                if turn_complete and str(last_status).upper() == "IDLE":
+                if turn_complete:
+                    saw_turn_complete = True
+                if saw_turn_complete and str(last_status).upper() == "IDLE":
                     complete_and_idle = True
                     break
 
