@@ -17,6 +17,7 @@ AskMoina is a voice-first AI companion for Assam, built on Cloudflare Workers an
 - Optional `Use these memories in AskMoina on this browser tab`. Only selected notes are passed to Gemini at the start of the next voice session after explicit user opt-in.
 - A protected operations dashboard at `/admin`, with aggregate visitor/session metrics and recent session outcomes. It does not expose memory contents, transcripts or audio.
 - Pseudonymous continuity identifiers and operational session telemetry. Analytics tables do not store raw audio or conversation text; finalized conversation turns live in the separate account-owned History tables.
+- BRVIN source-grounded knowledge lookup is being integrated through a private server-side Service Binding and the existing Gemini Live function-call path. It returns bounded book passages with PDF-page citations; Gemini Live still generates and speaks the answer. The initial grant is limited to the Fatman project and shares its existing monthly BRVIN allowance. Browser clients cannot call BRVIN directly; public Worker Previews have no BRVIN binding. See [BRVIN_INTEGRATION.md](docs/BRVIN_INTEGRATION.md).
 
 ## Conversation history and memory
 
