@@ -28,7 +28,7 @@ BRVIN_TEST_ACCESS_TOKEN=replace-with-a-local-test-token
 Then run:
 
 ```bash
-npm run dev:brvin-test
+npx wrangler dev --config wrangler.brvin-test-client.jsonc
 ```
 
 The interface will be available at the local Wrangler URL. It will initially
@@ -41,7 +41,7 @@ To deploy this Worker independently (not as part of the AskMoina Voice release):
 
 ```bash
 npx wrangler secret put BRVIN_TEST_ACCESS_TOKEN --config wrangler.brvin-test-client.jsonc
-npm run deploy:brvin-test
+npx wrangler deploy --config wrangler.brvin-test-client.jsonc
 ```
 
 Do not run the deployment until the tester access boundary and Cloudflare
