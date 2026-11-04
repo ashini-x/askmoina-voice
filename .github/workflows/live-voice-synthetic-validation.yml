@@ -10,6 +10,8 @@ on:
       - ".github/workflows/release-validation.yml"
       - ".github/workflows/live-voice-synthetic-validation.yml"
       - ".github/workflows/production-health-smoke.yml"
+      - ".github/workflows/deploy-brvin-test-client.yml"
+      - "src/brvin-connector/**"
       - "workers/brvin-test-client/**"
       - "wrangler.brvin-test-client.jsonc"
       - "tsconfig.brvin-test-client.json"
@@ -34,6 +36,7 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/live-synthetic-interaction-idle'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -10,10 +10,5 @@
   "vars": {
     "ENVIRONMENT": "test",
     "BRVIN_CONNECTOR_TIMEOUT_MS": "15000"
-  },
-  "secrets": {
-    "required": [
-      "BRVIN_TEST_ACCESS_TOKEN"
-    ]
   }
 }

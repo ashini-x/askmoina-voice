@@ -19,8 +19,11 @@ describe("isolated BRVIN test-client Worker configuration", () => {
     expect(config.services).toBeUndefined();
   });
 
-  it("requires a private tester token but does not hard-code one", () => {
-    expect(config.secrets?.required).toEqual(["BRVIN_TEST_ACCESS_TOKEN"]);
+  it("keeps the runtime tester gate closed until the Connect wizard provisions its secret", () => {
+    const workerSource = readFileSync(new URL("../workers/brvin-test-client/src/index.ts", import.meta.url), "utf8");
+    expect(config.secrets?.required ?? []).not.toContain("BRVIN_TEST_ACCESS_TOKEN");
+    expect(workerSource).toContain("BRVIN_TEST_ACCESS_TOKEN");
+    expect(workerSource).toContain("TEST_ACCESS_NOT_CONFIGURED");
     expect(JSON.stringify(config)).not.toMatch(/Bearer\s+[A-Za-z0-9_-]{20,}/u);
   });
 });

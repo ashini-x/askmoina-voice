@@ -8,6 +8,8 @@ on:
       - ".github/workflows/release-validation.yml"
       - ".github/workflows/live-voice-synthetic-validation.yml"
       - ".github/workflows/production-health-smoke.yml"
+      - ".github/workflows/deploy-brvin-test-client.yml"
+      - "src/brvin-connector/**"
       - "workers/brvin-test-client/**"
       - "wrangler.brvin-test-client.jsonc"
       - "tsconfig.brvin-test-client.json"
@@ -25,6 +27,7 @@ concurrency:
 
 jobs:
   production-health:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
