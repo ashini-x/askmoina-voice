@@ -160,6 +160,11 @@ def chunk_reaches_speech_end(offset: int, chunk_length: int, speech_end_offset: 
     return offset < speech_end_offset <= offset + chunk_length
 
 
+def speech_end_to_first_audio_ms(first_audio_at: float, speech_end_at: float) -> int:
+    """Return signed latency; negative means assistant audio began before user speech ended."""
+    return round((first_audio_at - speech_end_at) * 1000)
+
+
 def percentile(values: list[int], fraction: float):
     if not values:
         return None
@@ -241,7 +246,9 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
         count = generated_audio_bytes(message)
         if count:
             audio_bytes += count
-            if received_at >= speech_end_at and first_audio_at is None:
+            if first_audio_at is None:
+                # Keep early audio too: Live may begin responding during a natural
+                # VAD pause before the last meaningful input frame has been sent.
                 first_audio_at = received_at
         if turn_complete(message):
             completed = True
@@ -249,11 +256,11 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
 
     if not completed or audio_bytes <= 0 or first_audio_at is None:
         raise RuntimeError(
-            "synthetic turn " + str(turn_number) + " did not complete with post-speech audio " +
+            "synthetic turn " + str(turn_number) + " did not complete with generated audio " +
             "(completed=" + str(completed) + ", audio_bytes=" + str(audio_bytes) +
             ", messages=" + str(messages_seen) + ")"
         )
-    latency_ms = max(0, round((first_audio_at - speech_end_at) * 1000))
+    latency_ms = speech_end_to_first_audio_ms(first_audio_at, speech_end_at)
     print("turn=" + str(turn_number).zfill(2) +
           " speech_end_to_first_audio_ms=" + str(latency_ms) +
           " audio_bytes=" + str(audio_bytes))
@@ -309,7 +316,8 @@ def main() -> int:
                 "min": min(samples) if samples else None,
                 "max": max(samples) if samples else None,
             },
-            "note": "Synthetic English PCM turns with provider VAD; frame arrival is timestamped concurrently. This is not an Assamese naturalness score.",
+            "early_response_turns": sum(1 for value in samples if value < 0),
+            "note": "Synthetic English PCM turns with provider VAD; negative latency means the assistant began speaking before the final meaningful PCM frame. This is not an Assamese naturalness score.",
         }, sort_keys=True))
         if len(samples) != TURN_COUNT:
             raise RuntimeError("incomplete benchmark sample set")
