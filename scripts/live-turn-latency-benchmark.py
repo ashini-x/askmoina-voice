@@ -155,6 +155,11 @@ def generated_audio_bytes(message: dict) -> int:
     return total
 
 
+def chunk_reaches_speech_end(offset: int, chunk_length: int, speech_end_offset: int) -> bool:
+    """True for the chunk containing the last meaningful speech sample."""
+    return offset < speech_end_offset <= offset + chunk_length
+
+
 def percentile(values: list[int], fraction: float):
     if not values:
         return None
@@ -203,7 +208,7 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
         # Timestamp the last meaningful speech sample, not the preserved 120 ms
         # quiet tail. Set the timestamp before send so the reader thread cannot
         # record a valid first-audio frame before this boundary due to a race.
-        if speech_end_at is None and offset < speech_end_offset <= offset + len(chunk):
+        if speech_end_at is None and chunk_reaches_speech_end(offset, len(chunk), speech_end_offset):
             speech_end_at = time.monotonic()
         ws.send(json.dumps({
             "realtime_input": {
