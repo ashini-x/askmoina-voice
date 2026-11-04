@@ -122,6 +122,7 @@ def main() -> int:
         transcript = ""
         total_audio_bytes = 0
         interaction_idle = False
+        saw_turn_complete = False
         last_interaction_status = None
         deadline = time.monotonic() + MAX_WAIT_SECONDS
         last_keepalive_at = time.monotonic()
@@ -144,9 +145,11 @@ def main() -> int:
             total_audio_bytes += get_audio_payload_bytes(msg)
             content = msg.get("serverContent") or msg.get("server_content") or {}
             if isinstance(content, dict):
-                last_interaction_status = content.get("interactionStatus") or content.get("interaction_status")
+                last_interaction_status = content.get("interactionStatus") or content.get("interaction_status") or last_interaction_status
                 turn_complete = content.get("turnComplete") or content.get("turn_complete")
-                if turn_complete and str(last_interaction_status).upper() == "IDLE":
+                if turn_complete:
+                    saw_turn_complete = True
+                if saw_turn_complete and str(last_interaction_status).upper() == "IDLE":
                     interaction_idle = True
                     break
 
