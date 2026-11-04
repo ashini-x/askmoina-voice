@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           npx tsc --noEmit --project tsconfig.brvin-test-client.json
-          npm test -- --run
+          npm test
           npx wrangler deploy --config wrangler.brvin-test-client.jsonc --dry-run --outdir=dist-brvin-test
 
       - name: Deploy only brvin-test-client
