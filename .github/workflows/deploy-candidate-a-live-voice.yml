@@ -9,6 +9,7 @@ on:
       - ".github/workflows/live-voice-synthetic-validation.yml"
       - ".github/workflows/production-health-smoke.yml"
       - ".github/workflows/deploy-brvin-test-client.yml"
+      - "src/brvin-connector/**"
       - "workers/brvin-test-client/**"
       - "wrangler.brvin-test-client.jsonc"
       - "tsconfig.brvin-test-client.json"
