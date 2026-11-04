@@ -489,7 +489,6 @@ jobs:
           fi
           echo "::add-mask::$SMOKE_COOKIE"
           export ASKMOINA_SYNTHETIC_COOKIE="$SMOKE_COOKIE"
-          python scripts/live-brvin-knowledge-smoke.py
           cleanup() {
             curl --silent --show-error --max-time 12 --output /dev/null \
               --request POST "$BASE_URL/api/auth/logout" \
@@ -498,6 +497,7 @@ jobs:
               --header "Content-Type: application/json" --data '{}' || true
           }
           trap cleanup EXIT
+          python scripts/live-brvin-knowledge-smoke.py
           # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
