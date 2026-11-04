@@ -2309,7 +2309,7 @@ async function handleVoiceSocket(
           ? buildVoiceGenerationConfig(requestedPreviewVoice)
           : buildVoiceGenerationConfig(guestSessionRequested ? "Charon" : env.LIVE_VOICE_NAME);
         const finalSystemInstruction = brvinKnowledgeEnabled
-          ? systemInstruction + "\\n\\n" + BRVIN_KNOWLEDGE_INSTRUCTION
+          ? systemInstruction + "\n\n" + BRVIN_KNOWLEDGE_INSTRUCTION
           : systemInstruction;
         const securedSetup = {
           model: `projects/${projectId}/locations/${location}/publishers/google/models/${model}`,
@@ -2924,7 +2924,7 @@ async function handleVoiceSocket(
               responses.push({ id: call.id, name: "search_past_conversations", response: { result: historyResult }, scheduling: "WHEN_IDLE" });
               continue;
             }
-            if (call?.name === "display_response_card" && copilotMode && !searchCallsPresent &&
+            if (call?.name === "display_response_card" && copilotMode && !searchCallsPresent && !brvinKnowledgeCallsPresent &&
                 latestUserRequestNeedsGrounding && getRequestedRankedListCount(latestUserRequestText) !== null &&
                 isLikelyRankedTableSearchQuery(latestUserRequestText) && Date.now() - latestUserRequestAt < 120_000 &&
                 typeof call.id === "string" && call.id) {
