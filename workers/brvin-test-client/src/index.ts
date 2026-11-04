@@ -268,7 +268,7 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
   });
 }
 
-const HTML = String.raw\`<!doctype html>
+const HTML = String.raw`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
