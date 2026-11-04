@@ -139,9 +139,9 @@ def interaction_status(message: dict) -> str | None:
     return value.upper() if isinstance(value, str) else None
 
 
-def turn_is_idle(message: dict) -> bool:
-    """A completed generation may still be processing; wait for Live's IDLE status."""
-    return turn_complete(message) and interaction_status(message) == "IDLE"
+def turn_is_idle(message: dict, turn_complete_seen: bool = False) -> bool:
+    """Wait for IDLE even when Live emits it in a later serverContent message."""
+    return (turn_complete(message) or turn_complete_seen) and interaction_status(message) == "IDLE"
 
 
 def generated_audio_bytes(message: dict) -> int:
@@ -247,6 +247,7 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     completed = False
     messages_seen = 0
     last_interaction_status = None
+    saw_turn_complete = False
     while time.monotonic() < deadline:
         try:
             received_at, message = events.get(timeout=0.5)
@@ -265,12 +266,13 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
                 # VAD pause before the last meaningful input frame has been sent.
                 first_audio_at = received_at
         if turn_complete(message):
-            last_interaction_status = interaction_status(message)
-            # Live can close generation while background reasoning or tool work continues.
-            # Do not inject the next audio utterance until the interaction is truly IDLE.
-            if turn_is_idle(message):
-                completed = True
-                break
+            saw_turn_complete = True
+        last_interaction_status = interaction_status(message) or last_interaction_status
+        # turnComplete and IDLE may arrive in separate serverContent messages.
+        # Do not inject the next utterance until the complete interaction is idle.
+        if turn_is_idle(message, turn_complete_seen=saw_turn_complete):
+            completed = True
+            break
 
     if not completed or audio_bytes <= 0 or first_audio_at is None:
         raise RuntimeError(
