@@ -158,6 +158,7 @@ def main() -> int:
 
         complete_and_idle = False
         saw_turn_complete = False
+        saw_generation_complete = False
         deadline = time.monotonic() + 95
         while time.monotonic() < deadline:
             try:
@@ -183,9 +184,15 @@ def main() -> int:
             if isinstance(content, dict):
                 last_status = content.get("interactionStatus") or content.get("interaction_status") or last_status
                 turn_complete = content.get("turnComplete") or content.get("turn_complete")
+                generation_complete = content.get("generationComplete") or content.get("generation_complete")
                 if turn_complete:
                     saw_turn_complete = True
-                if saw_turn_complete and str(last_status).upper() == "IDLE":
+                if generation_complete:
+                    saw_generation_complete = True
+                # The camera prompt is a discrete text turn; Vertex Live may omit
+                # interactionStatus in this mode. Require an explicit completed
+                # generation signal, then separately validate transcript and audio.
+                if saw_generation_complete or (saw_turn_complete and last_status in (None, "IDLE")):
                     complete_and_idle = True
                     break
 
@@ -194,7 +201,13 @@ def main() -> int:
         has_book_citation = "fatman" in normalized
         has_page_citation = bool(re.search(r"(pdf\s*)?page\s*14\b", normalized))
         if not complete_and_idle:
-            raise RuntimeError("Camera BRVIN response did not reach IDLE (status=" + str(last_status) + ").")
+            raise RuntimeError(
+                "Camera BRVIN response did not emit a terminal generation signal "
+                "(turnComplete=" + str(saw_turn_complete) +
+                ", generationComplete=" + str(saw_generation_complete) +
+                ", status=" + str(last_status) +
+                ", audioBytes=" + str(audio_total) + ")."
+            )
         if not has_camera_marker or not has_book_citation or not has_page_citation or audio_total <= 0:
             raise RuntimeError(
                 "Camera BRVIN acceptance incomplete (cameraMarker=" + str(has_camera_marker) +
