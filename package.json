@@ -10,9 +10,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run && node scripts/pwa-contract-smoke.mjs",
     "test:watch": "vitest",
-    "benchmark:validate": "node scripts/reality-benchmark.mjs --validate",
-    "dev:brvin-test": "wrangler dev --config wrangler.brvin-test-client.jsonc",
-    "deploy:brvin-test": "wrangler deploy --config wrangler.brvin-test-client.jsonc"
+    "benchmark:validate": "node scripts/reality-benchmark.mjs --validate"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260914.1",
