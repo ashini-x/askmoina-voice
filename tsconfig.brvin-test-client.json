@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "workers/brvin-test-client/**/*.ts",
+    "test/brvin-test-client.test.ts"
+  ]
+}
