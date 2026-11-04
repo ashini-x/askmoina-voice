@@ -1,7 +1,7 @@
 # AskMoina Voice — BRVIN 2 integration
 
 **Milestone:** BRVIN 2 M4  
-**Status:** Implementation in review branch  
+**Status:** M4 consumer implementation merged and live; production synthetic acceptance is finishing  
 **Date:** 4 November 2026
 
 ## Connector source
@@ -48,10 +48,12 @@ This initial connector forwards searchable passage text and physical PDF-page pr
 
 ## Production release order
 
-1. Merge and deploy BRVIN PR #64, then verify AskMoina app, production/preview environments and the Fatman grant in D1.
-2. Merge and deploy the AskMoina M4 PR only after the production environment ID is present.
-3. Verify the production Worker binding points to the correct private service and trusted environment ID.
-4. Test a semantic SSC question, an exact physical PDF page, no-result behavior, project denial/revocation, shared monthly quota exhaustion and BRVIN outage.
-5. Confirm AskMoina's own history, memory, session-resumption and voice/video flows remain unchanged.
+1. BRVIN PR #63 (connector) is merged as `91b6a499bd782ae298b41e790157c23682f10881`.
+2. BRVIN PR #65 (AskMoina application identities) is merged as `0b3c621b83a28de2f4ca5da95db349b364558a60`; its D1 migration marker, application, production/preview environments, active Fatman grant and empty foreign-key check were verified.
+3. AskMoina PR #370 is merged as `ce725d33df452de0e9df2f4613c70ec89592251e` and is deployed at 100% on Worker version `6cf38308-cb52-4745-8a14-be7678862730` (release version `0.4.170`).
+4. Cloudflare settings confirm the private `BRVIN_SERVICE` → `brvin-service` / `BrvinRetrievalApi` binding and trusted `applicationEnvironmentId=00000000-0000-4000-8000-000000000202`; `BRVIN_DEFAULT_PROJECT_ID=fatman`. The preview configuration has no BRVIN binding or default project.
+5. The production exact-page synthetic requested physical PDF page 14 through Gemini Live. Telemetry confirms `retrieveProjectContextV2` returned success for AskMoina production → Fatman with one source (about 6.7 seconds), and the smoke script progressed beyond this first command into the remaining voice/recovery/memory suite. The overall deployment workflow is still running; do not mark complete until it finishes.
+6. The handler and unit tests cover authenticated-only exposure, exact-page citations, no result, image-only pages, project denial, quota exhaustion, and unavailable/missing binding. Fatman's monthly quota remains shared with other authorised consumers; no quota increase was made.
+7. After the synthetic workflow completes, record its final result and then close M4 only if the remaining spoken-turn, network recovery, Live continuity, memory and history checks pass.
 
 No preview binding or production D1 write is included in this consumer PR.
