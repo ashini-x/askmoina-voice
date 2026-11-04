@@ -1,0 +1,59 @@
+name: Deploy BRVIN text test client
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wrangler.brvin-test-client.jsonc"
+      - "workers/brvin-test-client/**"
+      - "src/brvin-connector/**"
+      - "tsconfig.brvin-test-client.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brvin-test-client-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy isolated BRVIN text test Worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: b34a6c0b7221454c5db977fe61ddf759
+    steps:
+      - name: Check out validated test-client release
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Confirm Cloudflare deployment credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not configured. The isolated BRVIN test Worker was not deployed."
+            exit 1
+          fi
+          echo "Cloudflare deployment credential is present."
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Validate the isolated Worker and shared connector
+        run: |
+          set -euo pipefail
+          npx tsc --noEmit --project tsconfig.brvin-test-client.json
+          npm test -- --run
+          npx wrangler deploy --config wrangler.brvin-test-client.jsonc --dry-run --outdir=dist-brvin-test
+
+      - name: Deploy only brvin-test-client
+        run: npx wrangler deploy --config wrangler.brvin-test-client.jsonc
