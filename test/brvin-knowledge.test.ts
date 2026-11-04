@@ -191,7 +191,7 @@ describe("AskMoina BRVIN knowledge tool", () => {
       "uid_test_account",
       { query: "explain separation of powers" },
     );
-    expect(deniedResult).toContain("not currently authorised");
+    expect(deniedResult).toContain("not available to this AskMoina application");
 
     const quota = vi.fn(async () => ({
       ok: false as const,
