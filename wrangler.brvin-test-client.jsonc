@@ -11,9 +11,4 @@
     "ENVIRONMENT": "test",
     "BRVIN_CONNECTOR_TIMEOUT_MS": "15000"
   },
-  "secrets": {
-    "required": [
-      "BRVIN_TEST_ACCESS_TOKEN"
-    ]
-  }
-}
+  // BRVIN_TEST_ACCESS_TOKEN is installed as a Worker secret by the admin connection step}
