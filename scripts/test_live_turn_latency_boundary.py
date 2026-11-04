@@ -67,6 +67,29 @@ class SpeechBoundaryTests(unittest.TestCase):
         self.assertEqual(BENCHMARK.send_relay_keepalive_if_due(ws, 100.0, now=108.0), 108.0)
         self.assertEqual(ws.sent, ['{"keepalive": true}'])
 
+    def test_generation_complete_is_recognized_in_both_protocol_casings(self):
+        self.assertTrue(BENCHMARK.generation_complete({"serverContent": {"generationComplete": True}}))
+        self.assertTrue(BENCHMARK.generation_complete({"server_content": {"generation_complete": True}}))
+        self.assertFalse(BENCHMARK.generation_complete({"serverContent": {"turnComplete": True}}))
+
+    def test_generation_complete_finishes_generated_audio_without_playback_idle(self):
+        message = {"serverContent": {"generationComplete": True}}
+        self.assertTrue(BENCHMARK.response_generation_finished(message))
+
+    def test_turn_complete_without_interaction_status_is_a_valid_terminal_signal(self):
+        message = {"serverContent": {"turnComplete": True}}
+        self.assertTrue(BENCHMARK.response_generation_finished(message))
+
+    def test_turn_complete_waits_when_provider_explicitly_reports_in_progress(self):
+        message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        self.assertFalse(BENCHMARK.response_generation_finished(message))
+
+    def test_turn_complete_seen_then_idle_in_a_later_frame_finishes_response(self):
+        completed = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        idle = {"serverContent": {"interactionStatus": "IDLE"}}
+        self.assertFalse(BENCHMARK.response_generation_finished(completed))
+        self.assertTrue(BENCHMARK.response_generation_finished(idle, turn_complete_seen=True))
+
     def test_turn_complete_is_not_final_while_interaction_is_in_progress(self):
         message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
         self.assertTrue(BENCHMARK.turn_complete(message))
