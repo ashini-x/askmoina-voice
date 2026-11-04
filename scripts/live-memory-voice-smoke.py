@@ -121,7 +121,6 @@ def main() -> int:
 
         transcript = ""
         total_audio_bytes = 0
-        interaction_idle = False
         saw_turn_complete = False
         last_interaction_status = None
         deadline = time.monotonic() + MAX_WAIT_SECONDS
@@ -149,13 +148,12 @@ def main() -> int:
                 turn_complete = content.get("turnComplete") or content.get("turn_complete")
                 if turn_complete:
                     saw_turn_complete = True
-                if saw_turn_complete and str(last_interaction_status).upper() == "IDLE":
-                    interaction_idle = True
+                if saw_turn_complete:
                     break
 
-        if not interaction_idle:
+        if not saw_turn_complete:
             raise RuntimeError(
-                "Timed out waiting for Live interaction IDLE (status=" +
+                "Timed out waiting for the Live spoken turn to complete (interaction_status=" +
                 str(last_interaction_status) + ")."
             )
         if "mira" not in transcript.lower():

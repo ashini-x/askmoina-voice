@@ -163,13 +163,16 @@ def main() -> int:
             try:
                 message = recv_json_message(ws)
             except websocket.WebSocketTimeoutException:
-                if time.monotonic() - last_keepalive_at >= 10:
+                if time.monotonic() - last_keepalive_at >= 8:
                     ws.send(json.dumps({"keepalive": True}))
                     last_keepalive_at = time.monotonic()
                 continue
             if message is None:
+                if time.monotonic() - last_keepalive_at >= 8:
+                    ws.send(json.dumps({"keepalive": True}))
+                    last_keepalive_at = time.monotonic()
                 continue
-            if time.monotonic() - last_keepalive_at >= 10:
+            if time.monotonic() - last_keepalive_at >= 8:
                 ws.send(json.dumps({"keepalive": True}))
                 last_keepalive_at = time.monotonic()
             if message.get("error"):

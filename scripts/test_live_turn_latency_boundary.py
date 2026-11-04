@@ -53,6 +53,20 @@ class SpeechBoundaryTests(unittest.TestCase):
     def test_post_speech_audio_is_reported_as_positive_latency(self):
         self.assertEqual(BENCHMARK.speech_end_to_first_audio_ms(10.25, 10.0), 250)
 
+    def test_relay_keepalive_is_sent_before_the_idle_watchdog_deadline(self):
+        class FakeWebSocket:
+            def __init__(self):
+                self.sent = []
+
+            def send(self, value):
+                self.sent.append(value)
+
+        ws = FakeWebSocket()
+        self.assertEqual(BENCHMARK.send_relay_keepalive_if_due(ws, 100.0, now=107.9), 100.0)
+        self.assertEqual(ws.sent, [])
+        self.assertEqual(BENCHMARK.send_relay_keepalive_if_due(ws, 100.0, now=108.0), 108.0)
+        self.assertEqual(ws.sent, ['{"keepalive": true}'])
+
     def test_turn_complete_is_not_final_while_interaction_is_in_progress(self):
         message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
         self.assertTrue(BENCHMARK.turn_complete(message))

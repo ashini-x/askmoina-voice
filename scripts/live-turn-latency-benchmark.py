@@ -22,6 +22,7 @@ BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.worker
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 SETUP_TIMEOUT_SECONDS = 18
 TURN_TIMEOUT_SECONDS = 60
+KEEPALIVE_INTERVAL_SECONDS = 8
 TURN_COUNT = 20
 CHUNK_BYTES = 1280
 TRAILING_SILENCE_MILLISECONDS = 1_000
@@ -213,6 +214,15 @@ def drain_until_quiet(events: queue.Queue, quiet_seconds: float = 0.65):
             raise RuntimeError("Live WebSocket reader failed while draining a completed turn")
 
 
+def send_relay_keepalive_if_due(ws, last_keepalive_at: float, now: float | None = None) -> float:
+    """Refresh the Worker idle watchdog during provider-side response generation."""
+    current = time.monotonic() if now is None else now
+    if current - last_keepalive_at < KEEPALIVE_INTERVAL_SECONDS:
+        return last_keepalive_at
+    ws.send(json.dumps({"keepalive": True}))
+    return current
+
+
 def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) -> tuple[int, int]:
     speech, speech_end_offset = synthesize_pcm_16k(prompt)
     if not speech or speech_end_offset <= 0 or speech_end_offset > len(speech):
@@ -248,11 +258,14 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     messages_seen = 0
     last_interaction_status = None
     saw_turn_complete = False
+    last_keepalive_at = time.monotonic()
     while time.monotonic() < deadline:
         try:
             received_at, message = events.get(timeout=0.5)
         except queue.Empty:
+            last_keepalive_at = send_relay_keepalive_if_due(ws, last_keepalive_at)
             continue
+        last_keepalive_at = send_relay_keepalive_if_due(ws, last_keepalive_at)
         if "__reader_error" in message:
             raise RuntimeError("Live WebSocket closed during synthetic turn " + str(turn_number))
         messages_seen += 1
@@ -303,13 +316,17 @@ def main() -> int:
         ws.settimeout(0.5)
         ws.send(json.dumps({"setup": {}}))
         deadline = time.monotonic() + SETUP_TIMEOUT_SECONDS
+        last_keepalive_at = time.monotonic()
         while time.monotonic() < deadline:
             try:
                 message = receive_json(ws)
             except websocket.WebSocketTimeoutException:
+                last_keepalive_at = send_relay_keepalive_if_due(ws, last_keepalive_at)
                 continue
             if message is None:
+                last_keepalive_at = send_relay_keepalive_if_due(ws, last_keepalive_at)
                 continue
+            last_keepalive_at = send_relay_keepalive_if_due(ws, last_keepalive_at)
             if message.get("error"):
                 raise RuntimeError("provider rejected synthetic benchmark setup")
             if message.get("setupComplete") or message.get("setup_complete"):

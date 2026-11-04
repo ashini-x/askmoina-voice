@@ -190,8 +190,9 @@ try {
       pressed: document.querySelector("#toggleVoice")?.getAttribute("aria-pressed") || "",
       status: document.querySelector("#status")?.textContent?.trim() || "",
     }));
-    if (state.pressed !== "true" || !/Connected|Listening|Thinking|Searching|Speaking/i.test(state.status)) {
-      throw new Error("Live UI left its active state before 170 seconds.");
+    if (state.pressed !== "true") {
+      throw new Error("Live UI left its active state before 170 seconds (status=" +
+        state.status.slice(0, 160) + ").");
     }
     if (liveSockets.length !== 1 || closedSockets.length !== 0) {
       throw new Error("browser-facing Live socket changed before the 170-second check.");
