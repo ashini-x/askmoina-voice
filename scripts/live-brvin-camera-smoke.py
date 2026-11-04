@@ -15,6 +15,8 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 import websocket
 
+from live_turn_boundary import interaction_status, response_turn_finished, turn_complete
+
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
@@ -159,6 +161,8 @@ def main() -> int:
         complete_and_idle = False
         saw_turn_complete = False
         saw_generation_complete = False
+        interaction_in_progress_seen = False
+        message_count = 0
         deadline = time.monotonic() + 95
         while time.monotonic() < deadline:
             try:
@@ -178,23 +182,37 @@ def main() -> int:
                 last_keepalive_at = time.monotonic()
             if message.get("error"):
                 raise RuntimeError("The camera Live session returned a provider error.")
-            transcript.append(get_text(message))
+            message_count += 1
+            received_text = get_text(message)
+            if received_text:
+                transcript.append(received_text)
             audio_total += get_audio_bytes(message)
+
+            status = interaction_status(message)
+            if status is not None:
+                last_status = status
+            if status == "IN_PROGRESS":
+                interaction_in_progress_seen = True
+            elif status in ("IDLE", "REQUIRES_ACTION"):
+                interaction_in_progress_seen = False
+            if turn_complete(message):
+                saw_turn_complete = True
             content = message.get("serverContent") or message.get("server_content") or {}
-            if isinstance(content, dict):
-                last_status = content.get("interactionStatus") or content.get("interaction_status") or last_status
-                turn_complete = content.get("turnComplete") or content.get("turn_complete")
-                generation_complete = content.get("generationComplete") or content.get("generation_complete")
-                if turn_complete:
-                    saw_turn_complete = True
-                if generation_complete:
-                    saw_generation_complete = True
-                # The camera prompt is a discrete text turn; Vertex Live may omit
-                # interactionStatus in this mode. Require an explicit completed
-                # generation signal, then separately validate transcript and audio.
-                if saw_generation_complete or (saw_turn_complete and last_status in (None, "IDLE")):
-                    complete_and_idle = True
-                    break
+            if isinstance(content, dict) and (
+                content.get("generationComplete") or content.get("generation_complete")
+            ):
+                saw_generation_complete = True
+
+            # generationComplete is not the logical end of the Live turn. A tool
+            # call may be followed by its response and a second spoken generation.
+            # Wait for turnComplete and any final IDLE state before judging output.
+            if response_turn_finished(
+                message,
+                turn_complete_seen=saw_turn_complete,
+                interaction_in_progress_seen=interaction_in_progress_seen,
+            ):
+                complete_and_idle = True
+                break
 
         normalized = re.sub(r"\s+", " ", " ".join(transcript)).lower()
         has_camera_marker = "camera brvin test" in normalized
@@ -202,10 +220,13 @@ def main() -> int:
         has_page_citation = bool(re.search(r"(pdf\s*)?page\s*14\b", normalized))
         if not complete_and_idle:
             raise RuntimeError(
-                "Camera BRVIN response did not emit a terminal generation signal "
+                "Camera BRVIN response did not reach the final Live turn boundary "
                 "(turnComplete=" + str(saw_turn_complete) +
                 ", generationComplete=" + str(saw_generation_complete) +
+                ", interactionInProgressSeen=" + str(interaction_in_progress_seen) +
                 ", status=" + str(last_status) +
+                ", messages=" + str(message_count) +
+                ", transcriptChars=" + str(len(" ".join(transcript))) +
                 ", audioBytes=" + str(audio_total) + ")."
             )
         if not has_camera_marker or not has_book_citation or not has_page_citation or audio_total <= 0:
@@ -213,7 +234,8 @@ def main() -> int:
                 "Camera BRVIN acceptance incomplete (cameraMarker=" + str(has_camera_marker) +
                 ", bookCitation=" + str(has_book_citation) +
                 ", page14Citation=" + str(has_page_citation) +
-                ", generatedAudioBytes=" + str(audio_total) + ")."
+                ", generatedAudioBytes=" + str(audio_total) +
+                ", messages=" + str(message_count) + ")."
             )
         print(json.dumps({
             "synthetic": "brvin_camera_copilot",
