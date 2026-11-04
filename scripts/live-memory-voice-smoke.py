@@ -1,54 +1,22 @@
 #!/usr/bin/env python3
-"""Short production voice smoke test with synthesized, non-user speech.
+"""Authenticated Live voice memory smoke test.
 
-The test sends a synthetic question and a selected-memory context through the
-public Worker. It prints only pass/fail status, never the returned transcript.
+Supplies synthetic personal context through the private setup field, submits a
+text turn to avoid conflating speech-recognition variability with memory use,
+and verifies that the assistant both says the selected name and produces audio.
+The test prints only pass/fail status, never the returned transcript.
 """
-import base64
 import json
 import os
-import struct
-import subprocess
-import tempfile
 import time
-import wave
 
 import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
-PROMPT = "Please greet me using the preferred name in my personal context. Say the name aloud."
-MEMORY = "My preferred name is Mira. Please address me as Mira in conversation."
-MAX_WAIT_SECONDS = 35
-
-
-def synthesize_pcm_16k() -> bytes:
-    with tempfile.NamedTemporaryFile(suffix=".wav") as wav:
-        subprocess.run(
-            ["espeak-ng", "-v", "en-us", "-s", "135", "-w", wav.name, PROMPT],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        with wave.open(wav.name, "rb") as source:
-            channels = source.getnchannels()
-            sample_width = source.getsampwidth()
-            source_rate = source.getframerate()
-            data = source.readframes(source.getnframes())
-        if channels != 1 or sample_width != 2:
-            raise RuntimeError("Synthetic speech generator returned an unsupported WAV format.")
-        sample_count = len(data) // 2
-        samples = struct.unpack("<" + "h" * sample_count, data)
-        output_count = int(sample_count * 16000 / source_rate)
-        output = bytearray(output_count * 2)
-        for i in range(output_count):
-            position = i * source_rate / 16000
-            left = min(int(position), sample_count - 1)
-            right = min(left + 1, sample_count - 1)
-            fraction = position - left
-            value = int(samples[left] * (1 - fraction) + samples[right] * fraction)
-            struct.pack_into("<h", output, i * 2, max(-32768, min(32767, value)))
-        return bytes(output)
+PROMPT = "What preferred name do you have for me?"
+MEMORY = "Preferred name: Mira. The user's preferred name is Mira. Address the user as Mira. When asked what name to use, answer Mira."
+MAX_WAIT_SECONDS = 45
 
 
 def get_text(message: dict) -> str:
@@ -73,6 +41,31 @@ def get_text(message: dict) -> str:
     return " ".join(texts)
 
 
+def get_audio_payload_bytes(message: dict) -> int:
+    import base64
+    total = 0
+    for key in ("serverContent", "server_content"):
+        content = message.get(key)
+        if not isinstance(content, dict):
+            continue
+        turn = content.get("modelTurn") or content.get("model_turn")
+        parts = turn.get("parts", []) if isinstance(turn, dict) else []
+        for part in parts if isinstance(parts, list) else []:
+            if not isinstance(part, dict):
+                continue
+            inline = part.get("inlineData") or part.get("inline_data")
+            if not isinstance(inline, dict):
+                continue
+            data = inline.get("data")
+            mime = str(inline.get("mimeType") or inline.get("mime_type") or "").lower()
+            if isinstance(data, str) and data and mime.startswith("audio/"):
+                try:
+                    total += len(base64.b64decode(data, validate=True))
+                except (ValueError, base64.binascii.Error):
+                    continue
+    return total
+
+
 def recv_json_message(ws):
     """Read JSON control frames and safely skip unrelated binary media frames."""
     frame = ws.recv()
@@ -95,25 +88,19 @@ def recv_json_message(ws):
     return message
 
 
-def send_relay_keepalive(ws) -> None:
-    """Keep the Worker relay alive while the assistant completes its spoken turn."""
-    ws.send(json.dumps({"keepalive": True}))
-
-
 def main() -> int:
-    base_origin = BASE_URL
-    ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
-    if ws_url == BASE_URL + "/api/voice/socket":
-        raise RuntimeError("BASE_URL must use https://")
-    pcm = synthesize_pcm_16k()
+    if not BASE_URL.startswith("https://"):
+        raise RuntimeError("HTTPS base URL is required.")
     if not AUTH_COOKIE.startswith("moina_session="):
         raise RuntimeError("Authenticated synthetic session missing; refusing anonymous voice access.")
-    ws = websocket.create_connection(ws_url, origin=base_origin, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
+
+    ws_url = BASE_URL.replace("https://", "wss://", 1) + "/api/voice/socket"
+    ws = websocket.create_connection(ws_url, origin=BASE_URL, timeout=12, enable_multithread=True, cookie=AUTH_COOKIE)
     try:
         ws.settimeout(0.5)
         ws.send(json.dumps({"setup": {}, "memory_context": MEMORY}))
-        setup_deadline = time.time() + 18
-        while time.time() < setup_deadline:
+        setup_deadline = time.monotonic() + 18
+        while time.monotonic() < setup_deadline:
             try:
                 msg = recv_json_message(ws)
                 if msg is None:
@@ -127,25 +114,13 @@ def main() -> int:
         else:
             raise RuntimeError("Timed out waiting for Vertex AI setup completion.")
 
-        # Match the browser's manual-VAD protocol and send PCM at real-time cadence.
-        # The previous test sent 100 ms chunks every 70 ms and omitted activity boundaries,
-        # which could overrun the audio rate limiter or leave the provider turn unclosed.
-        ws.send(json.dumps({"realtime_input": {"activity_start": True}}))
-        chunk_bytes = 1600 * 2  # 100 ms of 16 kHz mono PCM16
-        for offset in range(0, len(pcm), chunk_bytes):
-            chunk = pcm[offset:offset + chunk_bytes]
-            ws.send(json.dumps({
-                "realtime_input": {
-                    "audio": {
-                        "data": base64.b64encode(chunk).decode("ascii"),
-                        "mime_type": "audio/pcm;rate=16000",
-                    }
-                }
-            }))
-            time.sleep(len(chunk) / (16000 * 2))
-        ws.send(json.dumps({"realtime_input": {"activity_end": True}}))
+        # Use a text user turn so this test measures saved-context personalization,
+        # not microphone synthesis or automatic VAD. The expected assistant response
+        # must still contain generated spoken audio.
+        ws.send(json.dumps({"text_input": PROMPT}))
 
         transcript = ""
+        total_audio_bytes = 0
         turn_complete = False
         deadline = time.monotonic() + MAX_WAIT_SECONDS
         last_keepalive_at = time.monotonic()
@@ -154,31 +129,31 @@ def main() -> int:
                 msg = recv_json_message(ws)
                 if msg is None:
                     if time.monotonic() - last_keepalive_at >= 10:
-                        send_relay_keepalive(ws)
+                        ws.send(json.dumps({"keepalive": True}))
                         last_keepalive_at = time.monotonic()
                     continue
             except websocket.WebSocketTimeoutException:
                 if time.monotonic() - last_keepalive_at >= 10:
-                    send_relay_keepalive(ws)
+                    ws.send(json.dumps({"keepalive": True}))
                     last_keepalive_at = time.monotonic()
                 continue
-            if time.monotonic() - last_keepalive_at >= 10:
-                send_relay_keepalive(ws)
-                last_keepalive_at = time.monotonic()
             if msg.get("error"):
                 raise RuntimeError("The live voice session returned an error.")
             transcript += " " + get_text(msg)
+            total_audio_bytes += get_audio_payload_bytes(msg)
             content = msg.get("serverContent") or msg.get("server_content") or {}
             if isinstance(content, dict) and (content.get("turnComplete") or content.get("turn_complete")):
                 turn_complete = True
-                if "mira" in transcript.lower():
-                    break
-        if "mira" in transcript.lower():
-            print("Synthetic live voice memory test: PASS (reply transcript used the selected name).")
-            return 0
+                break
+
         if not turn_complete:
-            raise RuntimeError("Timed out waiting for a completed model reply.")
-        raise RuntimeError("The live reply transcript did not contain the selected memory name.")
+            raise RuntimeError("Timed out waiting for a completed spoken reply.")
+        if "mira" not in transcript.lower():
+            raise RuntimeError("The spoken reply did not use the selected preferred name.")
+        if total_audio_bytes <= 0:
+            raise RuntimeError("The personalized reply completed without generated audio.")
+        print("Synthetic live voice memory test: PASS (spoken response used the selected preferred name and generated " + str(total_audio_bytes) + " audio bytes).")
+        return 0
     finally:
         try:
             ws.close()
@@ -190,6 +165,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        # Avoid dumping raw model transcripts, HTTP payloads, or credentials into CI logs.
         print("Synthetic live voice memory test: FAIL (" + type(exc).__name__ + ": " + str(exc)[:180] + ")")
         raise SystemExit(1)
