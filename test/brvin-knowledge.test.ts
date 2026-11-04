@@ -49,9 +49,9 @@ function makeBinding(
   };
 }
 
-function makeEnv(binding: BrvinV2RpcBinding | undefined = makeBinding()) {
+function makeEnv(binding: BrvinV2RpcBinding | null = makeBinding()) {
   return {
-    BRVIN_SERVICE: binding,
+    BRVIN_SERVICE: binding ?? undefined,
     BRVIN_DEFAULT_PROJECT_ID: "fatman",
     BRVIN_CONNECTOR_TIMEOUT_MS: "15000",
   };
@@ -123,7 +123,7 @@ describe("AskMoina BRVIN knowledge tool", () => {
 
   it("does not invent an alternate project when the binding is missing", async () => {
     const result = await retrieveAskMoinaBrvinEvidence(
-      makeEnv(undefined),
+      makeEnv(null),
       "uid_test_account",
       { query: "explain separation of powers" },
     );
