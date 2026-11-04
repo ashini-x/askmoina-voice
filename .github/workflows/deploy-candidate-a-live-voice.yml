@@ -18,7 +18,8 @@ jobs:
   deploy:
     # This is the single production deploy path: every validated main push, or an explicit manual run.
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 does not bundle Chromium for ubuntu26.04; pin to a supported LTS runner for the production browser synthetic.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -56,7 +57,7 @@ jobs:
           npx wrangler d1 migrations apply VEDA_DB --local
           npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
           npx wrangler deploy --dry-run --outdir=dist
-          python3 -m py_compile scripts/live-voice-sample-capture.py
+          python3 -m py_compile scripts/live-voice-sample-capture.py scripts/live-brvin-knowledge-smoke.py
 
 
       - name: Validate benchmarks and release bundle contracts
@@ -496,6 +497,7 @@ jobs:
               --header "Content-Type: application/json" --data '{}' || true
           }
           trap cleanup EXIT
+          python scripts/live-brvin-knowledge-smoke.py
           # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
