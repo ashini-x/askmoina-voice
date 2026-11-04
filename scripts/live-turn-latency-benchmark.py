@@ -140,6 +140,31 @@ def interaction_status(message: dict) -> str | None:
     return value.upper() if isinstance(value, str) else None
 
 
+def generation_complete(message: dict) -> bool:
+    content = message.get("serverContent") or message.get("server_content") or {}
+    return isinstance(content, dict) and bool(
+        content.get("generationComplete") or content.get("generation_complete")
+    )
+
+
+def response_generation_finished(
+    message: dict,
+    turn_complete_seen: bool = False,
+    generation_complete_seen: bool = False,
+) -> bool:
+    """Accept a completed generated response without requiring a playback IDLE frame.
+
+    A provider generationComplete signal means model output generation is finished.
+    turnComplete is also terminal when the API omits interactionStatus; if the
+    provider explicitly reports IN_PROGRESS, wait for IDLE before starting another turn.
+    """
+    if generation_complete(message) or generation_complete_seen:
+        return True
+    if not (turn_complete(message) or turn_complete_seen):
+        return False
+    return interaction_status(message) in (None, "IDLE")
+
+
 def turn_is_idle(message: dict, turn_complete_seen: bool = False) -> bool:
     """Wait for IDLE even when Live emits it in a later serverContent message."""
     return (turn_complete(message) or turn_complete_seen) and interaction_status(message) == "IDLE"
@@ -248,6 +273,11 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
         }))
         time.sleep(len(chunk) / (16000 * 2))
 
+    # This benchmark sends a finite synthetic microphone clip rather than a
+    # continuously open capture device. Explicitly close the input stream so
+    # provider VAD can finalize the user turn without guessing from the quiet tail.
+    ws.send(json.dumps({"realtime_input": {"audio_stream_end": True}}))
+
     if speech_end_at is None:
         raise RuntimeError("synthetic speech boundary was not observed")
 
@@ -258,6 +288,7 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     messages_seen = 0
     last_interaction_status = None
     saw_turn_complete = False
+    saw_generation_complete = False
     last_keepalive_at = time.monotonic()
     while time.monotonic() < deadline:
         try:
@@ -280,10 +311,14 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
                 first_audio_at = received_at
         if turn_complete(message):
             saw_turn_complete = True
+        if generation_complete(message):
+            saw_generation_complete = True
         last_interaction_status = interaction_status(message) or last_interaction_status
-        # turnComplete and IDLE may arrive in separate serverContent messages.
-        # Do not inject the next utterance until the complete interaction is idle.
-        if turn_is_idle(message, turn_complete_seen=saw_turn_complete):
+        if response_generation_finished(
+            message,
+            turn_complete_seen=saw_turn_complete,
+            generation_complete_seen=saw_generation_complete,
+        ):
             completed = True
             break
 
