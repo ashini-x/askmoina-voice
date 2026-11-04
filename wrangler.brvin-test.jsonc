@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "brvin-text-test",
+  "main": "src/brvin-test/index.ts",
+  "compatibility_date": "2026-10-09",
+  "workers_dev": false,
+  "assets": {
+    "directory": "./brvin-test/public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
