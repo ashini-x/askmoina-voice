@@ -2829,6 +2829,9 @@ async function handleVoiceSocket(
           const contextualReferenceCallsPresent = calls.some((call) =>
             call?.name === "retrieve_assamese_conversation_reference" && typeof call.id === "string" && Boolean(call.id)
           );
+          const brvinKnowledgeCallsPresent = calls.some((call) =>
+            call?.name === "search_brvin_knowledge" && typeof call.id === "string" && Boolean(call.id)
+          );
           // Mark every valid lookup pending before awaiting any external retrieval, in both voice modes.
           // Otherwise silent-turn recovery can mistake the tool-only turn for a dead spoken reply.
           pendingGroundedSearches = addPendingGroundedSearches(pendingGroundedSearches, calls);
@@ -2839,17 +2842,17 @@ async function handleVoiceSocket(
           // Forward the search event immediately, so the browser can show its loader
           // before retrieval begins. Withhold any card from the same frame until the
           // source results arrive; a pre-search card would be premature/unverifiable.
-          if ((searchCallsPresent || contextualReferenceCallsPresent) && clientFrameText && !closed) {
+          if ((searchCallsPresent || contextualReferenceCallsPresent || brvinKnowledgeCallsPresent) && clientFrameText && !closed) {
             if (searchCallsPresent && copilotMode) {
               try { sendClientFrame(JSON.stringify({ live_search_status: { state: "started" } })); } catch (_) {}
             }
             const immediateToolFrame = JSON.parse(JSON.stringify(toolFrame)) as typeof toolFrame;
             if (immediateToolFrame.toolCall && Array.isArray(immediateToolFrame.toolCall.functionCalls)) {
               immediateToolFrame.toolCall.functionCalls = immediateToolFrame.toolCall.functionCalls
-                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference");
+                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference" && call?.name !== "search_brvin_knowledge");
             } else if (immediateToolFrame.tool_call && Array.isArray(immediateToolFrame.tool_call.function_calls)) {
               immediateToolFrame.tool_call.function_calls = immediateToolFrame.tool_call.function_calls
-                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference");
+                .filter((call) => call?.name !== "display_response_card" && call?.name !== "search_past_conversations" && call?.name !== "retrieve_assamese_conversation_reference" && call?.name !== "search_brvin_knowledge");
             }
             const immediateCalls = immediateToolFrame.toolCall?.functionCalls || immediateToolFrame.tool_call?.function_calls || [];
             if (immediateCalls.length) {
@@ -2870,6 +2873,25 @@ async function handleVoiceSocket(
           }
 
           for (const call of calls) {
+            if (call?.name === "search_brvin_knowledge" && typeof call.id === "string" && call.id) {
+              let evidenceResult = "The BRVIN lookup could not complete. Do not guess or claim the source was checked.";
+              try {
+                const ownerId = await getAuthenticatedUserId(request, env);
+                evidenceResult = await retrieveAskMoinaBrvinEvidence(env, ownerId, call.args);
+              } catch (error) {
+                console.warn("[askmoina] BRVIN knowledge lookup failed", error instanceof Error ? error.name : "unknown");
+              } finally {
+                pendingGroundedSearches = completePendingGroundedSearch(pendingGroundedSearches);
+                if (pendingGroundedSearches === 0) liveSearchProgressCuePending = false;
+              }
+              responses.push({
+                id: call.id,
+                name: "search_brvin_knowledge",
+                response: { result: evidenceResult },
+                scheduling: "WHEN_IDLE",
+              });
+              continue;
+            }
             if (call?.name === "retrieve_assamese_conversation_reference" && typeof call.id === "string" && call.id) {
               const args = call.args && typeof call.args === "object" ? call.args as Record<string, unknown> : {};
               const query = typeof args.query === "string" ? args.query.trim().slice(0, 180) : "";
@@ -2918,11 +2940,11 @@ async function handleVoiceSocket(
             if (call?.name === "display_response_card") {
               // If a search is in this same tool frame, do not render its preliminary card.
               // Verified results are delivered as a grounded_response_card or a later card call.
-              if (searchCallsPresent && typeof call.id === "string" && call.id) {
+              if ((searchCallsPresent || brvinKnowledgeCallsPresent) && typeof call.id === "string" && call.id) {
                 responses.push({
                   id: call.id,
                   name: "display_response_card",
-                  response: { result: "The live lookup is still running. Wait for verified search results and then create the information card with supporting source URLs." },
+                  response: { result: "The source lookup is still running. Wait for the verified tool results and then create an information card with book and PDF-page citations where available." },
                   scheduling: "WHEN_IDLE",
                 });
               }
@@ -2977,12 +2999,13 @@ async function handleVoiceSocket(
           }
           const historySearchPresent = calls.some((call) => call?.name === "search_past_conversations");
           const cardCallShouldBeWithheld = calls.some((call) => call?.name === "display_response_card") &&
-            (Boolean(forcedRankedTriggerText) || searchCallsPresent || historySearchPresent || contextualReferenceCallsPresent);
-          if ((cardCallShouldBeWithheld || historySearchPresent || contextualReferenceCallsPresent) && !forwardedToolFrameEarly) {
+            (Boolean(forcedRankedTriggerText) || searchCallsPresent || brvinKnowledgeCallsPresent || historySearchPresent || contextualReferenceCallsPresent);
+          if ((cardCallShouldBeWithheld || historySearchPresent || contextualReferenceCallsPresent || brvinKnowledgeCallsPresent) && !forwardedToolFrameEarly) {
             const remainingCalls = calls.filter((call) =>
               !(cardCallShouldBeWithheld && call?.name === "display_response_card") &&
               call?.name !== "search_past_conversations" &&
-              call?.name !== "retrieve_assamese_conversation_reference"
+              call?.name !== "retrieve_assamese_conversation_reference" &&
+              call?.name !== "search_brvin_knowledge"
             );
             if (toolFrame.toolCall && Array.isArray(toolFrame.toolCall.functionCalls)) {
               toolFrame.toolCall.functionCalls = remainingCalls;
