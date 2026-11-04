@@ -49,7 +49,7 @@ PROMPTS = [
 ]
 
 
-def synthesize_pcm_16k(text: str) -> bytes:
+def synthesize_pcm_16k(text: str) -> tuple[bytes, int]:
     with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
         subprocess.run(
             ["espeak-ng", "-v", "en-us", "-s", "140", "-w", wav_file.name, text],
@@ -78,7 +78,7 @@ def synthesize_pcm_16k(text: str) -> bytes:
     return trim_encoder_tail(bytes(output))
 
 
-def trim_encoder_tail(pcm: bytes) -> bytes:
+def trim_encoder_tail(pcm: bytes) -> tuple[bytes, int]:
     """Remove only trailing near-silence from the synthetic voice fixture.
 
     espeak WAVs commonly contain their own quiet tail. Keeping that tail inside
@@ -102,10 +102,12 @@ def trim_encoder_tail(pcm: bytes) -> bytes:
         if peak >= 160 or rms >= 55:
             last_active_end = offset + len(frame)
     if last_active_end == 0:
-        return aligned
-    # Leave a small natural tail but remove an encoder's longer trailing silence.
+        return aligned, len(aligned)
+    # Keep 120 ms of natural audio tail, but expose the end of meaningful speech
+    # separately. The assistant can start responding during this quiet tail.
     keep_through = min(len(aligned), last_active_end + (16000 * 2 * 120 // 1000))
-    return aligned[: keep_through - (keep_through % 2)]
+    trimmed = aligned[: keep_through - (keep_through % 2)]
+    return trimmed, min(last_active_end, len(trimmed))
 
 
 def receive_json(ws):
@@ -189,15 +191,20 @@ def drain_until_quiet(events: queue.Queue, quiet_seconds: float = 0.65):
 
 
 def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) -> tuple[int, int]:
-    speech = synthesize_pcm_16k(prompt)
-    if not speech:
-        raise RuntimeError("empty synthetic speech")
+    speech, speech_end_offset = synthesize_pcm_16k(prompt)
+    if not speech or speech_end_offset <= 0 or speech_end_offset > len(speech):
+        raise RuntimeError("empty synthetic speech or invalid speech boundary")
     silence_bytes = 16000 * 2 * TRAILING_SILENCE_MILLISECONDS // 1000
     pcm = speech + bytes(silence_bytes)
     speech_end_at = None
 
     for offset in range(0, len(pcm), CHUNK_BYTES):
         chunk = pcm[offset:offset + CHUNK_BYTES]
+        # Timestamp the last meaningful speech sample, not the preserved 120 ms
+        # quiet tail. Set the timestamp before send so the reader thread cannot
+        # record a valid first-audio frame before this boundary due to a race.
+        if speech_end_at is None and offset < speech_end_offset <= offset + len(chunk):
+            speech_end_at = time.monotonic()
         ws.send(json.dumps({
             "realtime_input": {
                 "audio": {
@@ -206,8 +213,6 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
                 }
             }
         }))
-        if offset < len(speech) and offset + len(chunk) >= len(speech):
-            speech_end_at = time.monotonic()
         time.sleep(len(chunk) / (16000 * 2))
 
     if speech_end_at is None:
