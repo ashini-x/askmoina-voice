@@ -183,10 +183,10 @@ def main() -> int:
                     complete_and_idle = True
                     break
 
-        normalized = re.sub(r"\\s+", " ", " ".join(transcript)).lower()
+        normalized = re.sub(r"\s+", " ", " ".join(transcript)).lower()
         has_camera_marker = "camera brvin test" in normalized
         has_book_citation = "fatman" in normalized
-        has_page_citation = bool(re.search(r"(pdf\\s*)?page\\s*14\\b", normalized))
+        has_page_citation = bool(re.search(r"(pdf\s*)?page\s*14\b", normalized))
         if not complete_and_idle:
             raise RuntimeError("Camera BRVIN response did not reach IDLE (status=" + str(last_status) + ").")
         if not has_camera_marker or not has_book_citation or not has_page_citation or audio_total <= 0:
