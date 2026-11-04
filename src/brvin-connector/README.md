@@ -1,7 +1,7 @@
 # Vendored BRVIN connector
 
 Upstream repository: `ashini-x/parmar-ai`  
-Upstream M3 branch head pinned for this integration: `e092659f352442e27df53529bd4c31ba78026541`  
+Upstream M3 branch head pinned for this integration: `91b6a499bd782ae298b41e790157c23682f10881`  
 Upstream source path: `packages/brvin-connector/src/index.ts`
 
 This directory is a reviewed, pinned copy for AskMoina Voice. Do not edit independently without syncing a reviewed upstream connector revision.
