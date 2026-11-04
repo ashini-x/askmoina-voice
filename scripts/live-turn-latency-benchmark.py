@@ -131,6 +131,19 @@ def turn_complete(message: dict) -> bool:
     return isinstance(content, dict) and bool(content.get("turnComplete") or content.get("turn_complete"))
 
 
+def interaction_status(message: dict) -> str | None:
+    content = message.get("serverContent") or message.get("server_content") or {}
+    if not isinstance(content, dict):
+        return None
+    value = content.get("interactionStatus") or content.get("interaction_status")
+    return value.upper() if isinstance(value, str) else None
+
+
+def turn_is_idle(message: dict) -> bool:
+    """A completed generation may still be processing; wait for Live's IDLE status."""
+    return turn_complete(message) and interaction_status(message) == "IDLE"
+
+
 def generated_audio_bytes(message: dict) -> int:
     total = 0
     for key in ("serverContent", "server_content"):
@@ -233,6 +246,7 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     audio_bytes = 0
     completed = False
     messages_seen = 0
+    last_interaction_status = None
     while time.monotonic() < deadline:
         try:
             received_at, message = events.get(timeout=0.5)
@@ -251,14 +265,18 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
                 # VAD pause before the last meaningful input frame has been sent.
                 first_audio_at = received_at
         if turn_complete(message):
-            completed = True
-            break
+            last_interaction_status = interaction_status(message)
+            # Gemini Live can report turnComplete while background processing is
+            # still active. Do not send the next synthetic utterance until IDLE.
+            if turn_is_idle(message):
+                completed = True
+                break
 
     if not completed or audio_bytes <= 0 or first_audio_at is None:
         raise RuntimeError(
-            "synthetic turn " + str(turn_number) + " did not complete with generated audio " +
-            "(completed=" + str(completed) + ", audio_bytes=" + str(audio_bytes) +
-            ", messages=" + str(messages_seen) + ")"
+            "synthetic turn " + str(turn_number) + " did not reach IDLE with generated audio " +
+            "(completed=" + str(completed) + ", interaction_status=" + str(last_interaction_status) +
+            ", audio_bytes=" + str(audio_bytes) + ", messages=" + str(messages_seen) + ")"
         )
     latency_ms = speech_end_to_first_audio_ms(first_audio_at, speech_end_at)
     print("turn=" + str(turn_number).zfill(2) +
