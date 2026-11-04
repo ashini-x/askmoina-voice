@@ -1,0 +1,51 @@
+name: Live Voice Synthetic Validation
+
+on:
+  push:
+    branches:
+      - main
+      - fix/live-synthetic-interaction-idle
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/live-turn-latency-benchmark.py"
+      - "scripts/test_live_turn_latency_boundary.py"
+      - "scripts/live-memory-voice-smoke.py"
+      - "scripts/live-brvin-knowledge-smoke.py"
+      - "scripts/live-brvin-camera-smoke.py"
+      - ".github/workflows/live-voice-synthetic-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-voice-synthetics-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install synthetic runtime dependencies
+        run: python -m pip install --disable-pip-version-check websocket-client Pillow
+      - name: Compile all production synthetic scripts
+        run: |
+          python -m py_compile \
+            scripts/live-turn-latency-benchmark.py \
+            scripts/test_live_turn_latency_boundary.py \
+            scripts/live-memory-voice-smoke.py \
+            scripts/live-brvin-knowledge-smoke.py \
+            scripts/live-brvin-camera-smoke.py
+      - name: Test Gemini Live interaction completion boundaries
+        run: python scripts/test_live_turn_latency_boundary.py
+      - name: Verify synthetic dependencies import cleanly
+        run: python -c "import websocket; from PIL import Image, ImageDraw, ImageFont; print('Synthetic dependencies: PASS')"

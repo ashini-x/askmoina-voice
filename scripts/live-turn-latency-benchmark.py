@@ -21,31 +21,31 @@ import websocket
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 SETUP_TIMEOUT_SECONDS = 18
-TURN_TIMEOUT_SECONDS = 35
+TURN_TIMEOUT_SECONDS = 60
 TURN_COUNT = 20
 CHUNK_BYTES = 1280
-TRAILING_SILENCE_MILLISECONDS = 1500
+TRAILING_SILENCE_MILLISECONDS = 1_000
 PROMPTS = [
-    "What is two plus two? Please answer in one short sentence.",
-    "Tell me one fun fact about the moon.",
-    "Give me one simple study tip for a tired student.",
-    "What is one easy way to organize a desk?",
-    "Explain photosynthesis in very simple words.",
-    "Say something encouraging before an exam.",
-    "Tell me one interesting fact about ordinary household magnets.",
-    "Name one simple way to save phone battery.",
-    "Give me one tip for staying focused while reading.",
-    "What is one easy way to remember a new word?",
-    "Explain gravity in one short sentence.",
-    "Suggest one small thing to do when I need a break.",
-    "Why is drinking water important? Keep it brief.",
-    "Give me one beginner tip for learning English.",
-    "What is one way to make a morning routine easier?",
-    "Explain a rainbow in simple words.",
-    "Suggest one way to keep a study table tidy.",
-    "What is one useful habit for better sleep?",
-    "Tell me one interesting fact about plants.",
-    "Give me one short idea for planning tomorrow.",
+    "What is two plus two?",
+    "Name one moon fact.",
+    "Give one study tip.",
+    "How do I organize a desk?",
+    "Explain photosynthesis simply.",
+    "Say something encouraging.",
+    "What do magnets attract?",
+    "How can I save phone battery?",
+    "Give one reading tip.",
+    "How can I remember new words?",
+    "Explain gravity simply.",
+    "Suggest one short break.",
+    "Why should I drink water?",
+    "Give one English learning tip.",
+    "How can I start my morning?",
+    "How can I keep my desk tidy?",
+    "How do plants grow?",
+    "What causes a rainbow?",
+    "Name one healthy sleep habit.",
+    "Suggest one plan for tomorrow.",
 ]
 
 
@@ -129,6 +129,19 @@ def receive_json(ws):
 def turn_complete(message: dict) -> bool:
     content = message.get("serverContent") or message.get("server_content") or {}
     return isinstance(content, dict) and bool(content.get("turnComplete") or content.get("turn_complete"))
+
+
+def interaction_status(message: dict) -> str | None:
+    content = message.get("serverContent") or message.get("server_content") or {}
+    if not isinstance(content, dict):
+        return None
+    value = content.get("interactionStatus") or content.get("interaction_status")
+    return value.upper() if isinstance(value, str) else None
+
+
+def turn_is_idle(message: dict, turn_complete_seen: bool = False) -> bool:
+    """Wait for IDLE even when Live emits it in a later serverContent message."""
+    return (turn_complete(message) or turn_complete_seen) and interaction_status(message) == "IDLE"
 
 
 def generated_audio_bytes(message: dict) -> int:
@@ -233,6 +246,8 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     audio_bytes = 0
     completed = False
     messages_seen = 0
+    last_interaction_status = None
+    saw_turn_complete = False
     while time.monotonic() < deadline:
         try:
             received_at, message = events.get(timeout=0.5)
@@ -251,20 +266,25 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
                 # VAD pause before the last meaningful input frame has been sent.
                 first_audio_at = received_at
         if turn_complete(message):
+            saw_turn_complete = True
+        last_interaction_status = interaction_status(message) or last_interaction_status
+        # turnComplete and IDLE may arrive in separate serverContent messages.
+        # Do not inject the next utterance until the complete interaction is idle.
+        if turn_is_idle(message, turn_complete_seen=saw_turn_complete):
             completed = True
             break
 
     if not completed or audio_bytes <= 0 or first_audio_at is None:
         raise RuntimeError(
-            "synthetic turn " + str(turn_number) + " did not complete with generated audio " +
-            "(completed=" + str(completed) + ", audio_bytes=" + str(audio_bytes) +
-            ", messages=" + str(messages_seen) + ")"
+            "synthetic turn " + str(turn_number) + " did not reach IDLE with generated audio " +
+            "(completed=" + str(completed) + ", interaction_status=" + str(last_interaction_status) +
+            ", audio_bytes=" + str(audio_bytes) + ", messages=" + str(messages_seen) + ")"
         )
     latency_ms = speech_end_to_first_audio_ms(first_audio_at, speech_end_at)
     print("turn=" + str(turn_number).zfill(2) +
           " speech_end_to_first_audio_ms=" + str(latency_ms) +
           " audio_bytes=" + str(audio_bytes))
-    drain_until_quiet(events)
+    drain_until_quiet(events, quiet_seconds=1.0)
     return latency_ms, audio_bytes
 
 
@@ -303,10 +323,10 @@ def main() -> int:
             latency_ms, _ = send_synthetic_turn(ws, events, prompt, index)
             samples.append(latency_ms)
             if index < TURN_COUNT:
-                time.sleep(0.35)
+                time.sleep(1.0)
 
         print(json.dumps({
-            "benchmark": "m1-synthetic-turn-latency-v2",
+            "benchmark": "m1-synthetic-turn-latency-v3",
             "turns_completed": len(samples),
             "turns_requested": TURN_COUNT,
             "speech_end_to_first_audio_ms": {
@@ -317,7 +337,7 @@ def main() -> int:
                 "max": max(samples) if samples else None,
             },
             "early_response_turns": sum(1 for value in samples if value < 0),
-            "note": "Synthetic English PCM turns with provider VAD; negative latency means the assistant began speaking before the final meaningful PCM frame. This is not an Assamese naturalness score.",
+            "note": "Synthetic short, single-clause English PCM turns with normal automatic VAD. Negative latency means the assistant began speaking before the final meaningful PCM frame. This is not an Assamese naturalness score.",
         }, sort_keys=True))
         if len(samples) != TURN_COUNT:
             raise RuntimeError("incomplete benchmark sample set")
