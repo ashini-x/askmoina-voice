@@ -74,7 +74,7 @@
     "enabled": true
   },
   "vars": {
-    "APP_VERSION": "0.4.169",
+    "APP_VERSION": "0.4.170",
     "ENVIRONMENT": "production",
     "BRVIN_DEFAULT_PROJECT_ID": "fatman",
     "BRVIN_CONNECTOR_TIMEOUT_MS": "15000",
@@ -175,7 +175,7 @@
   },
   "previews": {
     "vars": {
-      "APP_VERSION": "0.4.168-preview",
+      "APP_VERSION": "0.4.170-preview",
       "ENVIRONMENT": "preview",
       "ADMIN_DASHBOARD_USER": "preview-admin",
       "GEMINI_MODEL": "gemini-3.8-live",
