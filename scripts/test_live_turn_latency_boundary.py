@@ -72,6 +72,16 @@ class SpeechBoundaryTests(unittest.TestCase):
         self.assertIsNone(BENCHMARK.interaction_status(message))
         self.assertFalse(BENCHMARK.turn_is_idle(message))
 
+    def test_idle_status_may_arrive_after_turn_complete_in_a_separate_message(self):
+        completed_message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        idle_message = {"serverContent": {"interactionStatus": "IDLE"}}
+        self.assertFalse(BENCHMARK.turn_is_idle(completed_message))
+        self.assertTrue(BENCHMARK.turn_is_idle(idle_message, turn_complete_seen=True))
+
+    def test_idle_status_before_turn_complete_does_not_finish_a_turn(self):
+        idle_message = {"serverContent": {"interactionStatus": "IDLE"}}
+        self.assertFalse(BENCHMARK.turn_is_idle(idle_message))
+
 
 if __name__ == "__main__":
     unittest.main()
