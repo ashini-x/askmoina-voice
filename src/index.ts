@@ -31,7 +31,7 @@ import { decideClientReattachment, decideProviderRotation, shouldAcceptBrowserRe
 import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedListCount, mergeGroundedRankedListAttempts } from "./sessions/grounded-list-card";
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 import { canAccessVoicePreview } from "./sessions/voice-preview-access";
-import { retrieveAskMoinaBrvinEvidence } from "./brvin-knowledge";
+import { isBrvinKnowledgeEnabled, retrieveAskMoinaBrvinEvidence } from "./brvin-knowledge";
 
 export { UserState } from "./sessions/user-state";
 export { VedaSessionState } from "./veda/session-state";
@@ -1428,12 +1428,7 @@ async function handleVoiceSocket(
 
   const sessionUserId = await getAuthenticatedUserId(request, env);
   const guestSessionRequested = requestUrl.searchParams.get("guest") === "1";
-  const brvinKnowledgeEnabled = Boolean(
-    sessionUserId &&
-    !guestSessionRequested &&
-    env.BRVIN_SERVICE &&
-    env.BRVIN_DEFAULT_PROJECT_ID?.trim()
-  );
+  const brvinKnowledgeEnabled = isBrvinKnowledgeEnabled(env, sessionUserId, guestSessionRequested);
   // A short-lived production audition flag lets authenticated users compare native
   // prebuilt voices in their own session. Administrative preview access remains supported.
   const adminAccess = voicePreviewRequested || !sessionUserId ? await isAdmin(request, env) : false;
