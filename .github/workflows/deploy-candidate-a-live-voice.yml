@@ -57,7 +57,7 @@ jobs:
           npx wrangler d1 migrations apply VEDA_DB --local
           npx wrangler d1 migrations apply VEDA_DB --local --config wrangler.veda-preview-migrations.jsonc
           npx wrangler deploy --dry-run --outdir=dist
-          python3 -m py_compile scripts/live-voice-sample-capture.py scripts/live-brvin-knowledge-smoke.py scripts/live-turn-latency-benchmark.py scripts/test_live_turn_latency_boundary.py
+          python3 -m py_compile scripts/live-voice-sample-capture.py scripts/live-brvin-knowledge-smoke.py scripts/live-brvin-camera-smoke.py scripts/live-turn-latency-benchmark.py scripts/test_live_turn_latency_boundary.py
           python3 scripts/test_live_turn_latency_boundary.py
 
 
@@ -479,7 +479,7 @@ jobs:
           npx playwright install --with-deps chromium
           python3 -m venv .venv-production-smoke
           . .venv-production-smoke/bin/activate
-          python -m pip install --quiet --disable-pip-version-check websocket-client
+          python -m pip install --quiet --disable-pip-version-check websocket-client Pillow
 
           # Register through the real passkey endpoint, using Chromium's
           # virtual authenticator. Never log the session token.
@@ -499,6 +499,7 @@ jobs:
           }
           trap cleanup EXIT
           python scripts/live-brvin-knowledge-smoke.py
+          python scripts/live-brvin-camera-smoke.py
           # Run every synthetic independently. A failure in a product synthetic suite must not
           # prevent the session recovery and long-running voice continuity checks from running.
           set +e
