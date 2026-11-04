@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "brvin-test-client",
+  "main": "workers/brvin-test-client/src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ENVIRONMENT": "test",
+    "BRVIN_CONNECTOR_TIMEOUT_MS": "15000"
+  },
+  "secrets": {
+    "required": [
+      "BRVIN_TEST_ACCESS_TOKEN"
+    ]
+  }
+}
