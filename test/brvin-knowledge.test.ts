@@ -207,11 +207,30 @@ describe("AskMoina BRVIN knowledge tool", () => {
     expect(quotaResult).toContain("monthly search allowance has been reached");
   });
 
-  it("fails closed when the approved project has been deactivated or its grant revoked", async () => {
+  it("fails closed when the approved project has been deactivated", async () => {
     const revoked = vi.fn(async () => ({
       ok: false as const,
       code: "PROJECT_INACTIVE" as const,
       message: "The project is inactive.",
+      retryable: false,
+    }));
+    const result = await retrieveAskMoinaBrvinEvidence(
+      makeEnv(makeBinding(revoked)),
+      "uid_test_account",
+      { query: "explain separation of powers" },
+    );
+
+    expect(result).toContain("not available to this AskMoina application");
+    expect(result).toContain("Do not automatically repeat this retrieval");
+    expect(revoked).toHaveBeenCalledTimes(1);
+  });
+
+
+  it("fails closed when the AskMoina-to-Fatman grant is revoked", async () => {
+    const revoked = vi.fn(async () => ({
+      ok: false as const,
+      code: "PROJECT_NOT_AUTHORIZED" as const,
+      message: "The application does not have an active grant to this project.",
       retryable: false,
     }));
     const result = await retrieveAskMoinaBrvinEvidence(
