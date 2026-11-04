@@ -47,6 +47,12 @@ class SpeechBoundaryTests(unittest.TestCase):
         self.assertTrue(BENCHMARK.chunk_reaches_speech_end(5120, 1280, 6400))
         self.assertFalse(BENCHMARK.chunk_reaches_speech_end(6400, 1280, 6400))
 
+    def test_early_assistant_audio_is_reported_as_negative_latency(self):
+        self.assertEqual(BENCHMARK.speech_end_to_first_audio_ms(9.8, 10.0), -200)
+
+    def test_post_speech_audio_is_reported_as_positive_latency(self):
+        self.assertEqual(BENCHMARK.speech_end_to_first_audio_ms(10.25, 10.0), 250)
+
 
 if __name__ == "__main__":
     unittest.main()

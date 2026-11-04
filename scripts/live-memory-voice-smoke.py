@@ -17,8 +17,8 @@ import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
-PROMPT = "Please tell me the name I asked you to call me."
-MEMORY = "My name is Raaz, so call me Raaz when you interact with me."
+PROMPT = "Please greet me using the preferred name in my personal context. Say the name aloud."
+MEMORY = "My preferred name is Mira. Please address me as Mira in conversation."
 MAX_WAIT_SECONDS = 35
 
 
@@ -171,9 +171,9 @@ def main() -> int:
             content = msg.get("serverContent") or msg.get("server_content") or {}
             if isinstance(content, dict) and (content.get("turnComplete") or content.get("turn_complete")):
                 turn_complete = True
-                if "raaz" in transcript.lower():
+                if "mira" in transcript.lower():
                     break
-        if "raaz" in transcript.lower():
+        if "mira" in transcript.lower():
             print("Synthetic live voice memory test: PASS (reply transcript used the selected name).")
             return 0
         if not turn_complete:
