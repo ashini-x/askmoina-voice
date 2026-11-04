@@ -14,7 +14,7 @@ import websocket
 
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
-PROMPT = "What name should I call you?"
+PROMPT = "What preferred name do you have for me?"
 MEMORY = "Preferred name: Mira. The user's preferred name is Mira. Address the user as Mira. When asked what name to use, answer Mira."
 MAX_WAIT_SECONDS = 45
 
