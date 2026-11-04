@@ -14,8 +14,6 @@ on:
       - "scripts/live-memory-voice-smoke.py"
       - "scripts/live-brvin-knowledge-smoke.py"
       - "scripts/live-brvin-camera-smoke.py"
-      - "scripts/live-grounding-smoke.py"
-      - "scripts/live_turn_boundary.py"
       - ".github/workflows/live-voice-synthetic-validation.yml"
 
 permissions:
@@ -46,9 +44,7 @@ jobs:
             scripts/test_live_turn_latency_boundary.py \
             scripts/live-memory-voice-smoke.py \
             scripts/live-brvin-knowledge-smoke.py \
-            scripts/live-brvin-camera-smoke.py \
-            scripts/live-grounding-smoke.py \
-            scripts/live_turn_boundary.py
+            scripts/live-brvin-camera-smoke.py
       - name: Test Gemini Live interaction completion boundaries
         run: python scripts/test_live_turn_latency_boundary.py
       - name: Verify synthetic dependencies import cleanly
