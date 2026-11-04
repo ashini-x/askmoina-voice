@@ -498,11 +498,13 @@ jobs:
               --header "Content-Type: application/json" --data '{}' || true
           }
           trap cleanup EXIT
-          python scripts/live-brvin-knowledge-smoke.py
-          python scripts/live-brvin-camera-smoke.py
-          # Run every synthetic independently. A failure in a product synthetic suite must not
-          # prevent the session recovery and long-running voice continuity checks from running.
+          # Capture every acceptance independently so one flaky path does not hide
+          # evidence from the other BRVIN, voice, recovery, or continuity checks.
           set +e
+          python scripts/live-brvin-knowledge-smoke.py
+          BRVIN_KNOWLEDGE_STATUS=$?
+          python scripts/live-brvin-camera-smoke.py
+          BRVIN_CAMERA_STATUS=$?
           python scripts/live-turn-latency-benchmark.py
           TURN_LATENCY_STATUS=$?
           python scripts/live-grounding-smoke.py
@@ -525,6 +527,8 @@ jobs:
           trap - EXIT
           echo "Synthetic session revoked: OK"
           for result in \
+            "BRVIN exact-page retrieval:$BRVIN_KNOWLEDGE_STATUS" \
+            "BRVIN camera Co-Pilot:$BRVIN_CAMERA_STATUS" \
             "turn-latency benchmark:$TURN_LATENCY_STATUS" \
             "grounded web search:$GROUNDING_STATUS" \
             "speech-first voice turn:$SPOKEN_TURN_STATUS" \
@@ -541,6 +545,8 @@ jobs:
               echo "::error::Synthetic $name failed (exit $status)."
             fi
           done
+          test "$BRVIN_KNOWLEDGE_STATUS" -eq 0
+          test "$BRVIN_CAMERA_STATUS" -eq 0
           test "$TURN_LATENCY_STATUS" -eq 0
           test "$GROUNDING_STATUS" -eq 0
           test "$SPOKEN_TURN_STATUS" -eq 0
