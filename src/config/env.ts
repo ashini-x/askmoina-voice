@@ -1,3 +1,5 @@
+import type { BrvinV2RpcBinding } from "../brvin-connector";
+
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
@@ -7,6 +9,11 @@ export interface Env {
   VEDA_SESSION_STATE: DurableObjectNamespace;
   LIVE_SESSION_RELAY: DurableObjectNamespace;
   BACKGROUND_QUEUE: Queue;
+  /** Private server-side BRVIN Service Binding; intentionally absent from Worker Previews. */
+  BRVIN_SERVICE?: BrvinV2RpcBinding;
+  /** Trusted application default. Never read from browser/request input. */
+  BRVIN_DEFAULT_PROJECT_ID?: string;
+  BRVIN_CONNECTOR_TIMEOUT_MS?: string;
 
   APP_VERSION: string;
   // Explicit opt-in; Veda remains unavailable until its private app and runtime exist.

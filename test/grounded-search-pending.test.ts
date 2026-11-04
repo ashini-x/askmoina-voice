@@ -10,9 +10,10 @@ describe("pending grounded-search state", () => {
       { name: "search_current_web", id: "search-1" },
       { name: "display_response_card", id: "card-1" },
       { name: "search_current_web", id: "search-2" },
+      { name: "search_brvin_knowledge", id: "brvin-1" },
     ];
 
-    expect(addPendingGroundedSearches(0, calls)).toBe(2);
+    expect(addPendingGroundedSearches(0, calls)).toBe(3);
   });
 
   it("ignores unrelated tools and search calls without valid IDs", () => {
@@ -20,6 +21,8 @@ describe("pending grounded-search state", () => {
       { name: "search_current_web", id: "" },
       { name: "search_current_web" },
       { name: "search_past_conversations", id: "history-1" },
+      { name: "search_brvin_knowledge", id: "" },
+      { name: "search_brvin_knowledge" },
     ])).toBe(1);
   });
 
@@ -27,8 +30,10 @@ describe("pending grounded-search state", () => {
     const twoPending = addPendingGroundedSearches(0, [
       { name: "search_current_web", id: "one" },
       { name: "search_current_web", id: "two" },
+      { name: "search_brvin_knowledge", id: "brvin" },
     ]);
-    expect(completePendingGroundedSearch(twoPending)).toBe(1);
+    expect(completePendingGroundedSearch(twoPending)).toBe(2);
+    expect(completePendingGroundedSearch(2)).toBe(1);
     expect(completePendingGroundedSearch(1)).toBe(0);
   });
 
