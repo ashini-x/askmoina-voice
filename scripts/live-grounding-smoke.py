@@ -13,6 +13,8 @@ import time
 
 import websocket
 
+from live_turn_boundary import interaction_status, response_turn_finished, turn_complete
+
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
@@ -104,6 +106,9 @@ def collect_grounded_answer(ws, source_markers, timeout_seconds, require_tool_ca
     transcript_frames = 0
     deadline = time.time() + timeout_seconds
     last_keepalive_at = time.monotonic()
+    saw_turn_complete = False
+    interaction_in_progress_seen = False
+    last_interaction_status = None
     valid = False
     while time.time() < deadline:
         try:
@@ -135,10 +140,24 @@ def collect_grounded_answer(ws, source_markers, timeout_seconds, require_tool_ca
             transcript_frames += 1
             transcript += " " + received_text
 
-        content = message.get("serverContent") or message.get("server_content") or {}
+        status = interaction_status(message)
+        if status is not None:
+            last_interaction_status = status
+        if status == "IN_PROGRESS":
+            interaction_in_progress_seen = True
+        elif status in ("IDLE", "REQUIRES_ACTION"):
+            interaction_in_progress_seen = False
+        if turn_complete(message):
+            saw_turn_complete = True
+
+        # turnComplete/IN_PROGRESS is an intermediate boundary while background
+        # search/reasoning continues, not proof that the final answer is ready.
         if not (
-            isinstance(content, dict)
-            and (content.get("turnComplete") or content.get("turn_complete"))
+            response_turn_finished(
+                message,
+                turn_complete_seen=saw_turn_complete,
+                interaction_in_progress_seen=interaction_in_progress_seen,
+            )
             and not message_has_tool_call
             and (tool_called or not require_tool_call)
         ):
@@ -162,6 +181,9 @@ def collect_grounded_answer(ws, source_markers, timeout_seconds, require_tool_ca
         "transcript_chars": len(lowered),
         "has_numeric_detail": bool(re.search(r"\d", lowered)),
         "names_subject": any(marker in lowered for marker in source_markers),
+        "turn_complete_seen": saw_turn_complete,
+        "interaction_status": last_interaction_status,
+        "interaction_in_progress_seen": interaction_in_progress_seen,
     }
 
 def main() -> int:
@@ -252,7 +274,9 @@ def main() -> int:
                     ", completed_turns=" + str(result.get("completed_turns", 0)) +
                     ", transcript_chars=" + str(result.get("transcript_chars", 0)) +
                     ", numeric_detail=" + str(result.get("has_numeric_detail", False)) +
-                    ", names_subject=" + str(result.get("names_subject", False)) + "."
+                    ", names_subject=" + str(result.get("names_subject", False)) +
+                    ", interaction_status=" + str(result.get("interaction_status")) +
+                    ", interaction_in_progress_seen=" + str(result.get("interaction_in_progress_seen")) + "."
                 )
             completed_searches += 1
             print("Synthetic grounded search " + str(search_index) + "/3: PASS")

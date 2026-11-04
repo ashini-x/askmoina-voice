@@ -27,7 +27,7 @@ jobs:
       - run: node --check scripts/synthetic-passkey-session.mjs
       - name: Validate synthetic speech script syntax
         run: |
-          python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py scripts/live-memory-voice-smoke.py scripts/live-brvin-knowledge-smoke.py scripts/live-brvin-camera-smoke.py scripts/test_live_turn_latency_boundary.py
+          python -m py_compile scripts/live-spoken-turn-smoke.py scripts/live-ranked-list-smoke.py scripts/live-turn-latency-benchmark.py scripts/live-memory-voice-smoke.py scripts/live-brvin-knowledge-smoke.py scripts/live-brvin-camera-smoke.py scripts/live-grounding-smoke.py scripts/live_turn_boundary.py scripts/test_live_turn_latency_boundary.py
           python scripts/test_live_turn_latency_boundary.py
       - name: Validate required production secrets
         run: |
