@@ -15,6 +15,19 @@ type BrvinToolArguments = {
   page_numbers?: number[];
 };
 
+export function isBrvinKnowledgeEnabled(
+  env: Pick<Env, "BRVIN_SERVICE" | "BRVIN_DEFAULT_PROJECT_ID">,
+  authenticatedUserId: string | null,
+  guestSessionRequested: boolean,
+): boolean {
+  return Boolean(
+    authenticatedUserId?.trim() &&
+    !guestSessionRequested &&
+    env.BRVIN_SERVICE &&
+    env.BRVIN_DEFAULT_PROJECT_ID?.trim()
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -87,13 +100,14 @@ export async function retrieveAskMoinaBrvinEvidence(
     return "The BRVIN request was invalid. Supply a short search question or up to three exact PDF page numbers. Do not claim the source was checked.";
   }
 
+  const binding = env.BRVIN_SERVICE;
   const projectId = env.BRVIN_DEFAULT_PROJECT_ID?.trim();
-  if (!env.BRVIN_SERVICE || !projectId) {
+  if (!binding || !projectId) {
     return "The approved BRVIN knowledge source is not connected in this environment. Do not guess or use a different project.";
   }
 
   const configuredTimeout = Number(env.BRVIN_CONNECTOR_TIMEOUT_MS);
-  const connector = createBrvinConnector(env.BRVIN_SERVICE, {
+  const connector = createBrvinConnector(binding, {
     timeoutMs: Number.isSafeInteger(configuredTimeout) && configuredTimeout > 0
       ? configuredTimeout
       : 15_000,
