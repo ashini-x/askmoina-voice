@@ -1,0 +1,42 @@
+name: BRVIN text test Worker validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/brvin-test/**"
+      - "brvin-test/**"
+      - "wrangler.brvin-test.jsonc"
+      - "test/brvin-text-test-worker.test.ts"
+      - ".github/workflows/brvin-text-test-worker-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/brvin-test/**"
+      - "brvin-test/**"
+      - "wrangler.brvin-test.jsonc"
+      - "test/brvin-text-test-worker.test.ts"
+      - ".github/workflows/brvin-text-test-worker-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Typecheck repository and isolated test Worker
+        run: npm run check
+      - name: Run isolated Worker contract tests
+        run: npx vitest run test/brvin-text-test-worker.test.ts
+      - name: Check browser JavaScript
+        run: node --check brvin-test/public/app.js
+      - name: Build the separate Worker without deployment
+        run: npx wrangler deploy --dry-run --config wrangler.brvin-test.jsonc --outdir=dist-brvin-test
