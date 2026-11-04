@@ -72,23 +72,49 @@ class SpeechBoundaryTests(unittest.TestCase):
         self.assertTrue(BENCHMARK.generation_complete({"server_content": {"generation_complete": True}}))
         self.assertFalse(BENCHMARK.generation_complete({"serverContent": {"turnComplete": True}}))
 
-    def test_generation_complete_finishes_generated_audio_without_playback_idle(self):
+    def test_generation_complete_alone_is_not_a_completed_turn(self):
         message = {"serverContent": {"generationComplete": True}}
-        self.assertTrue(BENCHMARK.response_generation_finished(message))
+        self.assertFalse(BENCHMARK.response_generation_finished(message))
 
-    def test_turn_complete_without_interaction_status_is_a_valid_terminal_signal(self):
+    def test_generation_complete_requires_the_later_turn_complete_boundary(self):
+        generation = {"serverContent": {"generationComplete": True}}
+        turn_end = {"serverContent": {"turnComplete": True, "interactionStatus": "IDLE"}}
+        self.assertFalse(BENCHMARK.response_generation_finished(generation))
+        self.assertTrue(BENCHMARK.response_generation_finished(turn_end))
+
+    def test_turn_complete_without_interaction_status_is_valid_when_no_processing_is_outstanding(self):
         message = {"serverContent": {"turnComplete": True}}
         self.assertTrue(BENCHMARK.response_generation_finished(message))
 
     def test_turn_complete_waits_when_provider_explicitly_reports_in_progress(self):
         message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
-        self.assertFalse(BENCHMARK.response_generation_finished(message))
+        self.assertFalse(BENCHMARK.response_generation_finished(
+            message, turn_complete_seen=True, interaction_in_progress_seen=True
+        ))
+
+    def test_generation_complete_does_not_finish_while_interaction_is_in_progress(self):
+        generating = {"serverContent": {"generationComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        self.assertFalse(BENCHMARK.response_generation_finished(generating))
 
     def test_turn_complete_seen_then_idle_in_a_later_frame_finishes_response(self):
         completed = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
         idle = {"serverContent": {"interactionStatus": "IDLE"}}
-        self.assertFalse(BENCHMARK.response_generation_finished(completed))
-        self.assertTrue(BENCHMARK.response_generation_finished(idle, turn_complete_seen=True))
+        self.assertFalse(BENCHMARK.response_generation_finished(
+            completed, turn_complete_seen=True, interaction_in_progress_seen=True
+        ))
+        self.assertTrue(BENCHMARK.response_generation_finished(
+            idle, turn_complete_seen=True, interaction_in_progress_seen=False
+        ))
+
+    def test_missing_status_after_in_progress_does_not_finish_turn(self):
+        completed = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        status_missing = {"serverContent": {}}
+        self.assertFalse(BENCHMARK.response_generation_finished(
+            completed, turn_complete_seen=True, interaction_in_progress_seen=True
+        ))
+        self.assertFalse(BENCHMARK.response_generation_finished(
+            status_missing, turn_complete_seen=True, interaction_in_progress_seen=True
+        ))
 
     def test_turn_complete_is_not_final_while_interaction_is_in_progress(self):
         message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
@@ -101,9 +127,9 @@ class SpeechBoundaryTests(unittest.TestCase):
 
     def test_idle_without_turn_complete_does_not_finish_a_turn(self):
         message = {"serverContent": {"interactionStatus": "IDLE"}}
-        self.assertFalse(BENCHMARK.turn_is_idle(message))
+        self.assertFalse(BENCHMARK.response_generation_finished(message))
 
-    def test_missing_interaction_status_is_not_treated_as_idle(self):
+    def test_missing_interaction_status_is_not_treated_as_explicit_idle(self):
         message = {"serverContent": {"turnComplete": True}}
         self.assertTrue(BENCHMARK.turn_complete(message))
         self.assertIsNone(BENCHMARK.interaction_status(message))
@@ -117,8 +143,7 @@ class SpeechBoundaryTests(unittest.TestCase):
 
     def test_idle_status_before_turn_complete_does_not_finish_a_turn(self):
         idle_message = {"serverContent": {"interactionStatus": "IDLE"}}
-        self.assertFalse(BENCHMARK.turn_is_idle(idle_message))
-
+        self.assertFalse(BENCHMARK.response_generation_finished(idle_message))
 
 if __name__ == "__main__":
     unittest.main()
