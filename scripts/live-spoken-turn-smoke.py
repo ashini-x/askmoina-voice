@@ -12,7 +12,9 @@ import websocket
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 PROMPT = (
-    "Give me three simple spoken steps for organizing pens on a desk, then explain the first step."
+    "Give me three simple steps for organizing pens on a desk. Create a structured three-step "
+    "information card with those same steps, then explain the first step aloud. Do not skip "
+    "the information card."
 )
 SETUP_WAIT_SECONDS = 18
 GREETING_WAIT_SECONDS = 22
