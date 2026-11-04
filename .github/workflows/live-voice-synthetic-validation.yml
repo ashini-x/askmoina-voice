@@ -36,6 +36,7 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/live-synthetic-interaction-idle'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
