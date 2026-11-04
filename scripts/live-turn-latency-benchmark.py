@@ -18,6 +18,8 @@ import wave
 
 import websocket
 
+from live_turn_boundary import interaction_status, response_turn_finished, turn_complete
+
 BASE_URL = os.environ.get("BASE_URL", "https://askmoina-voice.thenewtongs.workers.dev").rstrip("/")
 AUTH_COOKIE = os.environ.get("ASKMOINA_SYNTHETIC_COOKIE", "").strip()
 SETUP_TIMEOUT_SECONDS = 18
@@ -127,19 +129,6 @@ def receive_json(ws):
     return value if isinstance(value, dict) else None
 
 
-def turn_complete(message: dict) -> bool:
-    content = message.get("serverContent") or message.get("server_content") or {}
-    return isinstance(content, dict) and bool(content.get("turnComplete") or content.get("turn_complete"))
-
-
-def interaction_status(message: dict) -> str | None:
-    content = message.get("serverContent") or message.get("server_content") or {}
-    if not isinstance(content, dict):
-        return None
-    value = content.get("interactionStatus") or content.get("interaction_status")
-    return value.upper() if isinstance(value, str) else None
-
-
 def generation_complete(message: dict) -> bool:
     content = message.get("serverContent") or message.get("server_content") or {}
     return isinstance(content, dict) and bool(
@@ -150,19 +139,14 @@ def generation_complete(message: dict) -> bool:
 def response_generation_finished(
     message: dict,
     turn_complete_seen: bool = False,
-    generation_complete_seen: bool = False,
+    interaction_in_progress_seen: bool = False,
 ) -> bool:
-    """Accept a completed generated response without requiring a playback IDLE frame.
-
-    A provider generationComplete signal means model output generation is finished.
-    turnComplete is also terminal when the API omits interactionStatus; if the
-    provider explicitly reports IN_PROGRESS, wait for IDLE before starting another turn.
-    """
-    if generation_complete(message) or generation_complete_seen:
-        return True
-    if not (turn_complete(message) or turn_complete_seen):
-        return False
-    return interaction_status(message) in (None, "IDLE")
+    """Wait for the logical end of turn, not the earlier generationComplete event."""
+    return response_turn_finished(
+        message,
+        turn_complete_seen=turn_complete_seen,
+        interaction_in_progress_seen=interaction_in_progress_seen,
+    )
 
 
 def turn_is_idle(message: dict, turn_complete_seen: bool = False) -> bool:
@@ -289,6 +273,7 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
     last_interaction_status = None
     saw_turn_complete = False
     saw_generation_complete = False
+    interaction_in_progress_seen = False
     last_keepalive_at = time.monotonic()
     while time.monotonic() < deadline:
         try:
@@ -313,19 +298,28 @@ def send_synthetic_turn(ws, events: queue.Queue, prompt: str, turn_number: int) 
             saw_turn_complete = True
         if generation_complete(message):
             saw_generation_complete = True
-        last_interaction_status = interaction_status(message) or last_interaction_status
+        current_status = interaction_status(message)
+        if current_status is not None:
+            last_interaction_status = current_status
+        if current_status == "IN_PROGRESS":
+            interaction_in_progress_seen = True
+        elif current_status in ("IDLE", "REQUIRES_ACTION"):
+            interaction_in_progress_seen = False
         if response_generation_finished(
             message,
             turn_complete_seen=saw_turn_complete,
-            generation_complete_seen=saw_generation_complete,
+            interaction_in_progress_seen=interaction_in_progress_seen,
         ):
             completed = True
             break
 
     if not completed or audio_bytes <= 0 or first_audio_at is None:
         raise RuntimeError(
-            "synthetic turn " + str(turn_number) + " did not reach IDLE with generated audio " +
-            "(completed=" + str(completed) + ", interaction_status=" + str(last_interaction_status) +
+            "synthetic turn " + str(turn_number) + " did not reach the final Live turn boundary with generated audio " +
+            "(completed=" + str(completed) + ", turn_complete=" + str(saw_turn_complete) +
+            ", generation_complete=" + str(saw_generation_complete) +
+            ", interaction_status=" + str(last_interaction_status) +
+            ", interaction_in_progress_seen=" + str(interaction_in_progress_seen) +
             ", audio_bytes=" + str(audio_bytes) + ", messages=" + str(messages_seen) + ")"
         )
     latency_ms = speech_end_to_first_audio_ms(first_audio_at, speech_end_at)
