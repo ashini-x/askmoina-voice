@@ -53,6 +53,25 @@ class SpeechBoundaryTests(unittest.TestCase):
     def test_post_speech_audio_is_reported_as_positive_latency(self):
         self.assertEqual(BENCHMARK.speech_end_to_first_audio_ms(10.25, 10.0), 250)
 
+    def test_turn_complete_is_not_final_while_interaction_is_in_progress(self):
+        message = {"serverContent": {"turnComplete": True, "interactionStatus": "IN_PROGRESS"}}
+        self.assertTrue(BENCHMARK.turn_complete(message))
+        self.assertFalse(BENCHMARK.turn_is_idle(message))
+
+    def test_benchmark_waits_for_idle_after_turn_complete(self):
+        message = {"server_content": {"turn_complete": True, "interaction_status": "IDLE"}}
+        self.assertTrue(BENCHMARK.turn_is_idle(message))
+
+    def test_idle_without_turn_complete_does_not_finish_a_turn(self):
+        message = {"serverContent": {"interactionStatus": "IDLE"}}
+        self.assertFalse(BENCHMARK.turn_is_idle(message))
+
+    def test_missing_interaction_status_is_not_treated_as_idle(self):
+        message = {"serverContent": {"turnComplete": True}}
+        self.assertTrue(BENCHMARK.turn_complete(message))
+        self.assertIsNone(BENCHMARK.interaction_status(message))
+        self.assertFalse(BENCHMARK.turn_is_idle(message))
+
 
 if __name__ == "__main__":
     unittest.main()
