@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>BRVIN · Text Test Console</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BRVIN · Reference consumer</p>
+        <h1>Text Test Console</h1>
+        <p class="intro">A small, isolated client for testing authorised knowledge retrieval.</p>
+      </div>
+      <div id="connection" class="connection" role="status" aria-live="polite">Checking connection…</div>
+    </header>
+
+    <section class="workspace" aria-labelledby="query-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">01 · Request</p>
+          <h2 id="query-heading">Ask the knowledge library</h2>
+          <p class="helper">Only projects granted to this test application should appear here.</p>
+        </div>
+        <button id="refresh-projects" class="button secondary" type="button">Refresh projects</button>
+      </div>
+
+      <form id="query-form">
+        <label for="project">Authorised project</label>
+        <select id="project" name="projectId" required disabled>
+          <option value="">Loading authorised projects…</option>
+        </select>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="query">Text query</label>
+            <textarea id="query" name="query" rows="4" maxlength="2000" placeholder="Ask a question about the approved knowledge source…"></textarea>
+          </div>
+          <div class="field page-field">
+            <label for="page-number">Physical PDF page <span>(optional)</span></label>
+            <input id="page-number" name="pageNumber" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="e.g. 14">
+            <p class="helper">Use the physical PDF page number, not a printed page label.</p>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <p id="form-status" class="status" role="status" aria-live="polite">Choose a project and enter a query or page number.</p>
+          <button id="submit-query" class="button primary" type="submit" disabled>Retrieve evidence</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="results" aria-labelledby="results-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 · Evidence</p>
+          <h2 id="results-heading">Grounded passages</h2>
+          <p class="helper">This console displays BRVIN evidence and provenance. It does not generate a final AI answer.</p>
+        </div>
+        <span id="result-count" class="count">No request yet</span>
+      </div>
+      <div id="result-message" class="empty">Submit a request to inspect the passages BRVIN returns.</div>
+      <div id="passages" class="passages"></div>
+    </section>
+
+    <footer>
+      <span>Private retrieval is called only by the Worker backend.</span>
+      <span>BRVIN v2 · Text-only reference client</span>
+    </footer>
+  </main>
+</body>
+</html>
