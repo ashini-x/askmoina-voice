@@ -76,6 +76,8 @@
   "vars": {
     "APP_VERSION": "0.4.169",
     "ENVIRONMENT": "production",
+    "BRVIN_DEFAULT_PROJECT_ID": "fatman",
+    "BRVIN_CONNECTOR_TIMEOUT_MS": "15000",
     "ADMIN_DASHBOARD_USER": "admin",
     "GEMINI_MODEL": "gemini-3.8-live",
     "LIVE_VOICE_NAME": "Zephyr",
@@ -115,6 +117,16 @@
       }
     ]
   },
+  "services": [
+    {
+      "binding": "BRVIN_SERVICE",
+      "service": "brvin-service",
+      "entrypoint": "BrvinRetrievalApi",
+      "props": {
+        "applicationEnvironmentId": "00000000-0000-4000-8000-000000000202"
+      }
+    }
+  ],
   "exports": {
     "UserState": {
       "type": "durable-object",
