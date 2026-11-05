@@ -10,5 +10,15 @@
   "vars": {
     "ENVIRONMENT": "test",
     "BRVIN_CONNECTOR_TIMEOUT_MS": "15000"
-  }
+  },
+  "services": [
+    {
+      "binding": "BRVIN_SERVICE",
+      "service": "brvin-service",
+      "entrypoint": "BrvinRetrievalApi",
+      "props": {
+        "applicationEnvironmentId": "c107de4c-c380-4ccd-be70-0047dd18b095"
+      }
+    }
+  ]
 }
