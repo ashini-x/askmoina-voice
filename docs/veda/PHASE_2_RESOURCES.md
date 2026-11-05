@@ -49,3 +49,8 @@ This means **the current resources and bindings can be deployed and verified, bu
 ## Not implemented in Phase 2
 
 No Veda install portal, device pairing, microphone runtime, Live session, personal memory, whisper controller, or social-intelligence feature is enabled. These remain later phases. Phase 2 creates only the isolated persistence and session-state foundations.
+
+
+## Cloudflare resource cleanup — 5 November 2026
+
+The 5 November AskMoina preview cleanup removed all Veda branch-preview environments and their automatically isolated Durable Object namespaces. The production `VEDA_SESSION_STATE` binding and namespace were intentionally retained because the deployed `askmoina-voice` Worker still declares that production binding. The production `veda-prod` D1 database was not altered or deleted. This cleanup is about obsolete preview infrastructure, not the production Veda resource contract. See [the infrastructure cleanup record](../CLOUDFLARE_RESOURCE_CLEANUP_2026-11-05.md).

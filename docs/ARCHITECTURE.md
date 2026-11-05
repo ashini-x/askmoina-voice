@@ -9,6 +9,7 @@
 - Queues handle asynchronous tasks only; live audio frames never go through a Queue.
 - BRVIN v2 is consumed only by the AskMoina Worker through a private Service Binding and a pinned server-side connector. Gemini Live invokes the knowledge-search function; AskMoina authenticates the user, selects the configured BRVIN project, returns cited passages to Gemini, and keeps generation/voice/session state app-owned. The public Worker Preview deliberately omits the BRVIN binding. See `BRVIN_INTEGRATION.md` for the M4 contract and rollout steps.
 - Raw audio is not stored by default.
+- Cloudflare Worker Preview and Durable Object cleanup completed on 5 November 2026; see `CLOUDFLARE_RESOURCE_CLEANUP_2026-11-05.md` for the retained production namespaces, deleted preview environments, and Gyanshala retirement evidence.
 - Current implementation includes the OAuth token helper and live WebSocket proxy. The browser now has initial microphone capture, PCM audio streaming/playback, transcription display, and interruption queue clearing. This remains a prototype until verified on real devices. Reliable reconnection/session resumption, stronger user identity, human verification, and full abuse/cost controls remain outstanding.
 
 
