@@ -32,6 +32,6 @@ describe("isolated BRVIN test-client Worker configuration", () => {
     expect(config.secrets?.required ?? []).not.toContain("BRVIN_TEST_ACCESS_TOKEN");
     expect(workerSource).toContain("BRVIN_TEST_ACCESS_TOKEN");
     expect(workerSource).toContain("TEST_ACCESS_NOT_CONFIGURED");
-    expect(JSON.stringify(config)).not.toMatch(/Bearer\\s+[A-Za-z0-9_-]{20,}/u);
+    expect(JSON.stringify(config)).not.toMatch(/Bearer\s+[A-Za-z0-9_-]{20,}/u);
   });
 });
