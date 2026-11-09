@@ -92,7 +92,7 @@ async function readJsonBounded(request: Request, maxBytes: number): Promise<unkn
     offset += chunk.byteLength;
   }
   try {
-    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+    return JSON.parse(new TextDecoder("utf-8").decode(bytes)) as unknown;
   } catch {
     throw new Error("invalid_json");
   }
