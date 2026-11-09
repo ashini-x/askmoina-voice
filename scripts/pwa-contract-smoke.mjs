@@ -32,16 +32,6 @@ assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated 
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
 assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
 
-const wealthHtml = read("public/wealth.html");
-const wealthCss = read("public/wealth.css");
-const wealthDemo = read("public/wealth-demo.js");
-const wealthRouter = read("src/index.ts");
-assert.ok(wealthHtml.includes("PERSONAL DEMO") && wealthHtml.includes('id="holding-rows"') && wealthHtml.includes('data-nav="watchlist"'), "Wealth PWA must expose the personal portfolio, holdings, and watchlist views");
-assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#31d39a"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
-assert.ok(wealthDemo.includes('symbol:"RELIANCE"') && wealthDemo.includes('symbol:"HDFCBANK"') && wealthDemo.includes("renderChart") && wealthDemo.includes("renderAllocation"), "Wealth frontend must include static portfolio holdings, chart, and asset allocation");
-assert.ok(!wealthDemo.includes("fetch(") && !wealthDemo.includes("/api/wealth") && !wealthDemo.includes("XMLHttpRequest"), "Wealth preview must be frontend-only and make no market-data or backend API calls");
-assert.ok(wealthRouter.includes('if (await isAdmin(request, env)) html = withWealthEntryShortcut(html);') && wealthRouter.includes('if (!await isAdmin(request, env)) return new Response("Not found", { status: 404 });') && !wealthRouter.includes("handleWealthRequest"), "Wealth must be owner/admin-only and have no backend data API");
-
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
@@ -211,8 +201,7 @@ const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=0.4.133"'), "global font stylesheet must be cached for the offline shell");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.woff2?v=0.4.132"'), "global font binary must be cached for offline typography");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v22"), "service worker cache must be refreshed for the dark splash icon");
-assert.ok(serviceWorker.includes("\"/wealth.css\"") && serviceWorker.includes("\"/wealth-demo.js\"") && !serviceWorker.includes("\"/wealth.js\""), "Wealth static assets must be precached for installed PWA use");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v23"), "service worker cache must be refreshed for the dark splash icon");
 assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.131"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.131"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
 
 assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.131"'), "service worker must precache the current viewport-aware hotspot runtime");

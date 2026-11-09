@@ -55,10 +55,9 @@ const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"askmoi
 
 function renderSiteMenu(authenticated: boolean): string {
   const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About askMoina\"><a href=\"/?view=about\">About askMoina <span aria-hidden=\"true\">›</span></a><a href=\"/?view=developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/?view=help\">Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/?view=privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
-  const wealthSection = "";
   const pricingSection = "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-pricing\"><a href=\"/?view=pricing\"><strong>Investor Relations</strong> <span aria-hidden=\"true\">›</span></a></section>";
   const signOutSection = authenticated ? "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-account\"><button type=\"button\" class=\"entry-menu-logout\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg><span>Sign out</span></button></section>" : "";
-  const sections = [publicPages, wealthSection, pricingSection, signOutSection].filter(Boolean).join("");
+  const sections = [publicPages, pricingSection, signOutSection].filter(Boolean).join("");
   return ENTRY_SITE_MENU.replace("<!-- ASKMOINA_MENU_CONTENT -->", sections);
 }
 
@@ -375,7 +374,6 @@ const PWA_STANDALONE_APP_PATHS = new Set([
   "/index.html",
   "/copilot",
   "/copilot.html",
-  "/wealth",
   "/login",
   "/login.html",
 ]);
@@ -3310,13 +3308,6 @@ export class LiveSessionRelay {
   }
 }
 
-function withWealthEntryShortcut(html: string): string {
-  if (html.includes('class="wealth-entry-shortcut"') || !html.includes('class="topbar-meta"')) return html;
-  const newline = String.fromCharCode(10);
-  const headerEnd = "    </div>" + newline + "  </header>";
-  if (!html.includes(headerEnd)) return html;
-  return html.replace(headerEnd, '      <a class="wealth-entry-shortcut" href="/wealth">Wealth <span aria-hidden="true">↗</span></a>' + newline + headerEnd);
-}
 function withOwnerPreviewHtml(html: string): string {
   // This copy is deliberately applied only after admin authorization.
   // The ordinary public homepage always retains its explicit illustrative labels.
@@ -3506,7 +3497,6 @@ export default {
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");
       let html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
       if (ownerPreview) html = withOwnerPreviewHtml(html);
-      if (await isAdmin(request, env)) html = withWealthEntryShortcut(html);
 
       const responseHeaders = new Headers({
         "Content-Type": "text/html; charset=utf-8",
@@ -3814,27 +3804,6 @@ export default {
           : "guest:" + sessionId;
       const durableId = env.LIVE_SESSION_RELAY.idFromName(liveSessionObjectName(owner, sessionId));
       return env.LIVE_SESSION_RELAY.get(durableId).fetch(request);
-    }
-    if ((url.pathname === "/wealth" || url.pathname === "/wealth/") &&
-        (request.method === "GET" || request.method === "HEAD")) {
-      if (!await isAdmin(request, env)) return new Response("Not found", { status: 404 });
-      const wealthAssetUrl = new URL(request.url);
-      wealthAssetUrl.pathname = "/wealth.html";
-      const wealthAsset = await env.ASSETS.fetch(new Request(wealthAssetUrl.toString(), { method: "GET", headers: request.headers }));
-      if (!wealthAsset.ok) return new Response("AskMoina Wealth could not be loaded.", { status: 503 });
-      const wealthHtml = withPwaStandaloneGate(await wealthAsset.text());
-      const headers = new Headers(wealthAsset.headers);
-      headers.set("Content-Type", "text/html; charset=utf-8");
-      headers.set("Cache-Control", "no-store");
-      headers.set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self';");
-      headers.set("X-Content-Type-Options", "nosniff");
-      headers.set("X-Frame-Options", "DENY");
-      headers.set("Referrer-Policy", "no-referrer");
-      headers.set("Permissions-Policy", "microphone=(), camera=(), geolocation=(), payment=()");
-      headers.set("Cross-Origin-Resource-Policy", "same-origin");
-      headers.delete("Content-Length");
-      headers.delete("ETag");
-      return new Response(request.method === "HEAD" ? null : wealthHtml, { status: 200, headers });
     }
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
 
