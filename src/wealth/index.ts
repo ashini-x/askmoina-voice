@@ -32,6 +32,23 @@ const DEMO_FUNDS: DemoFund[] = [
   { schemeCode: 125497, monthlyAmountPaise: 200_000, startDate: "2023-03-01", sipDay: 10 },
 ];
 type PricePoint = { date: string; close: number };
+function pickFirstCloseAtOrAfter(points: PricePoint[], requestedDate: string, maxDays = 7): PricePoint | null {
+  const lastAllowed = isoDaysAfter(requestedDate, maxDays);
+  return points.find((point) => point.date >= requestedDate && point.date <= lastAllowed) || null;
+}
+function findExactMarketPoint<T extends { date: string }>(points: T[], valuationDate: string): T | null {
+  return points.find((point) => point.date === valuationDate) || null;
+}
+function latestSharedDate(series: Array<Array<{ date: string }>>, today: string): string | null {
+  if (!series.length || series.some((points) => !points.length)) return null;
+  const shared = new Set(series[0].filter((point) => validIsoDate(point.date) && point.date <= today).map((point) => point.date));
+  for (const points of series.slice(1)) {
+    const dates = new Set(points.filter((point) => validIsoDate(point.date) && point.date <= today).map((point) => point.date));
+    for (const date of shared) if (!dates.has(date)) shared.delete(date);
+    if (!shared.size) return null;
+  }
+  return Array.from(shared).filter((date) => isFreshNavDate(date, today)).sort().pop() || null;
+}
 type YahooChartResponse = { chart?: { error?: { code?: string; description?: string } | null; result?: Array<{ timestamp?: unknown[]; indicators?: { quote?: Array<{ close?: unknown[] }> } }> | null } };
 function normalizeYahooHistory(payload: YahooChartResponse, fromDate: string, toDate: string): PricePoint[] {
   const result=payload?.chart?.result?.[0], timestamps=result?.timestamp, closes=result?.indicators?.quote?.[0]?.close;
@@ -914,7 +931,7 @@ async function handleStockHistory(url: URL): Promise<Response> {
   const symbol=(url.searchParams.get("symbol")||"").toUpperCase(),position=DEMO_STOCKS.find(s=>s.symbol===symbol);
   const fromDate=url.searchParams.get("fromDate")||"",toDate=url.searchParams.get("toDate")||"";
   if(!position||!validIsoDate(fromDate)||!validIsoDate(toDate)||fromDate>=toDate||fromDate<"2022-01-01"||toDate>todayInIndia())return badRequest("invalid_stock_history_request");
-  const span=(new Date(toDate+"T00:00:00Z").getTime()-new Date(fromDate+"T00:00:00Z").getTime)/86400000;if(span>1830)return badRequest("stock_history_range_exceeds_five_years");
+  const span=(new Date(toDate+"T00:00:00Z").getTime()-new Date(fromDate+"T00:00:00Z").getTime())/86400000;if(span>1830)return badRequest("stock_history_range_exceeds_five_years");
   try{const candles=await fetchYahooStockHistory({...position,purchaseDate:fromDate},toDate);return response({ok:true,source:"Yahoo Finance chart endpoint (unofficial)",symbol:symbol+".NS",fromDate,toDate,adjustedForSplits:true,dividendsIncluded:false,candles,disclaimer:"Free, unofficial Yahoo Finance daily price history. Split-adjusted close values are used; cash dividends are excluded. The feed is not guaranteed and is not for trading or commercial redistribution."});}
   catch(error){console.error("[wealth] Yahoo stock history failed",error instanceof Error?error.message:"unknown");return response({ok:false,error:"stock_provider_unavailable",message:"Free stock history could not be verified. No sample price is substituted."},502);}
 }
