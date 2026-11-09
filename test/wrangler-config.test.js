@@ -53,9 +53,10 @@ describe("production Worker configuration", () => {
     expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
   });
 
-  it("keeps the Wealth Dhan data adapter disabled in production and preview by default", () => {
-    expect(config.vars.WEALTH_DHAN_ENABLED).toBe("false");
-    expect(config.previews?.vars?.WEALTH_DHAN_ENABLED).toBe("false");
+  it("does not require a paid Dhan market-data integration for Wealth", () => {
+    expect(config.vars.WEALTH_DHAN_ENABLED).toBeUndefined();
+    expect(config.previews?.vars?.WEALTH_DHAN_ENABLED).toBeUndefined();
+    expect(config.secrets?.required || []).not.toContain("DHAN_ACCESS_TOKEN");
   });
 
   it("routes the authenticated Wealth PWA page and assets through the Worker", () => {
