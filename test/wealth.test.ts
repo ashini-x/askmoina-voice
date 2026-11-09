@@ -2,6 +2,27 @@ import { describe, expect, it } from "vitest";
 import { wealthMath } from "../src/wealth";
 
 describe("AskMoina Wealth historical simulation math", () => {
+  it("uses the Asia/Kolkata calendar date rather than the UTC date", () => {
+    expect(wealthMath.todayInIndia(new Date("2026-11-09T18:29:59.000Z"))).toBe("2026-11-09");
+    expect(wealthMath.todayInIndia(new Date("2026-11-09T18:30:00.000Z"))).toBe("2026-11-10");
+  });
+
+  it("reads bounded JSON payloads and rejects oversized request streams", async () => {
+    const valid = new Request("https://askmoina.test/api/wealth/simulations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plans: [] }),
+    });
+    await expect(wealthMath.readJsonBounded(valid, 100)).resolves.toEqual({ plans: [] });
+
+    const oversized = new Request("https://askmoina.test/api/wealth/simulations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plans: ["a long payload"] }),
+    });
+    await expect(wealthMath.readJsonBounded(oversized, 5)).rejects.toThrow("request_too_large");
+  });
+
   it("parses MFAPI NAV dates strictly", () => {
     expect(wealthMath.parseNavDate("05-01-2023")).toBe("2023-01-05");
     expect(wealthMath.parseNavDate("31-02-2023")).toBeNull();
