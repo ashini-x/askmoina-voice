@@ -64,7 +64,7 @@ button{cursor:pointer}
 .button-primary{border:1px solid #51dbaa;background:linear-gradient(180deg,#45dca8,#22b681);color:#052017;font-weight:650;border-radius:12px;min-height:45px;padding:0 16px;font-size:12px;box-shadow:0 7px 20px #1ebd8420}
 .button-primary:disabled{opacity:.38;cursor:not-allowed;filter:saturate(.4)}
 .button-full{width:100%}
-.form-hint{font-size:10px;color:#8290a1;line-height:1.55;margin:10px 1px 0;min-height:16px}
+.form-hint{font-size:10px;color:#8290a1;line-height:1.55;margin:10px 1px 0;min-height:16px}.form-hint.is-error{color:#ff8b94}
 .history-heading{margin-top:25px}
 .empty-card{background:#0f161f;border:1px dashed #344252;border-radius:18px;padding:22px 17px;text-align:center}
 .empty-glyph{margin:0 auto 12px;width:39px;height:39px;border-radius:13px;display:grid;place-items:center;color:var(--green);background:#122920;font-size:22px}
