@@ -13,7 +13,7 @@ type SchemeSearchItem = { schemeCode?: number; schemeName?: string };
 
 const MFAPI_BASE = "https://api.mfapi.in";
 const MAX_PLANS = 6;
-const MAX_INSTALLMENTS = 120;
+const MAX_INSTALLMENTS = 100;
 const NAV_LOOKAHEAD_DAYS = 7;
 const NAV_SOURCE = "MFAPI.in";
 const NAV_ATTRIBUTION = "Third-party aggregator of AMFI-published mutual-fund NAV data; verify against AMFI before any non-simulated use.";
@@ -59,6 +59,12 @@ function todayInIndia(now = new Date()): string {
   return new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 }
 
+function indiaDateFromEpochSeconds(timestamp: number): string | null {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+  const date = new Date(timestamp * 1000 + 330 * 60_000);
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : null;
+}
+
 async function readJsonBounded(request: Request, maxBytes: number): Promise<unknown> {
   const reader = request.body?.getReader();
   if (!reader) throw new Error("invalid_json");
@@ -71,7 +77,7 @@ async function readJsonBounded(request: Request, maxBytes: number): Promise<unkn
       if (!value) continue;
       total += value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel("request_too_large");
+        await reader.cancel("request_too_large").catch(() => undefined);
         throw new Error("request_too_large");
       }
       chunks.push(value);
@@ -452,14 +458,21 @@ async function buildPerformanceSeries(
   if (!plans.length || !valuationDate) return [];
   const histories = new Map<number, NavPoint[]>();
   try {
-    for (const plan of plans) {
+    const historyResults = await Promise.all(plans.map(async (plan) => {
       const purchases = purchaseRows.filter((purchase) => purchase.plan_id === plan.plan_id);
       const startDate = purchases.map((purchase) => purchase.nav_date).sort()[0];
-      if (!startDate) return [];
+      if (!startDate) return { schemeCode: Number(plan.scheme_code), points: null };
       const raw = await mfapi("/mf/" + plan.scheme_code + "?startDate=" + startDate + "&endDate=" + isoDaysAfter(valuationDate, 1)) as NavResponse;
       const normalized = normalizeNavHistory(raw, Number(plan.scheme_code));
-      if (!isGrowthOption(normalized.meta)) return [];
-      histories.set(Number(plan.scheme_code), normalized.points.filter((point) => point.date <= valuationDate));
+      if (!isGrowthOption(normalized.meta)) return { schemeCode: Number(plan.scheme_code), points: null };
+      return {
+        schemeCode: Number(plan.scheme_code),
+        points: normalized.points.filter((point) => point.date <= valuationDate),
+      };
+    }));
+    for (const result of historyResults) {
+      if (!result.points) return [];
+      histories.set(result.schemeCode, result.points);
     }
   } catch (error) {
     console.warn("[wealth] historical performance series unavailable", error instanceof Error ? error.message : "unknown");
@@ -562,8 +575,8 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       console.error("[wealth] latest NAV lookup failed", code, error instanceof Error ? error.message : "unknown");
     }
   }
-  // Use one common portfolio valuation date. Schemes whose latest NAV is newer
-  // are repriced to their last available NAV on or before that shared date.
+  // Use one exact common portfolio valuation date. Later-updated schemes must
+  // actually expose a NAV on that date; carrying a prior NAV forward is not allowed.
   const commonValuationDate = latestDates.length === uniqueCodes.length
     ? [...latestDates].sort()[0]
     : "";
@@ -730,8 +743,8 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
       const price = Number(close);
       const timestamp = Number(data.timestamp?.[index]);
       if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return [];
-      const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
-      if (date < fromDate || date >= toDate) return [];
+      const date = indiaDateFromEpochSeconds(timestamp);
+      if (!date || date < fromDate || date >= toDate) return [];
       return [{ date, close: price }];
     });
     return response({
@@ -802,6 +815,7 @@ export const wealthMath = {
   isGrowthOption,
   isFreshNavDate,
   todayInIndia,
+  indiaDateFromEpochSeconds,
   readJsonBounded,
   xirr,
 };
