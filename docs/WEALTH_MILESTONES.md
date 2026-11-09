@@ -32,7 +32,7 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 
 - Primary public reference: [AMFI NAV Download and NAV History](https://www.amfiindia.com/net-asset-value/nav-download). AMFI publishes NAV reports and historical NAV downloads; its UI notes that each historical download can cover a maximum of 90 days.
 - Initial read-only API adapter: [MFapi.in documentation](https://www.mfapi.in/docs/), using scheme search, scheme NAV history and latest NAV endpoints. MFapi.in is a third-party aggregator, not AMFI. Treat its observations as provider-sourced data that must remain attributable and subject to reconciliation against AMFI before a non-simulated use case.
-- Cloudflare's edge cache reduces repeat provider calls: scheme search for six hours, latest NAV for 15 minutes, and historical NAV ranges for 24 hours. Cache failure never fabricates or substitutes data.
+- Cloudflare's edge cache reduces repeat provider calls: scheme search for six hours, latest NAV for 15 minutes, historical NAV ranges ending before today for 24 hours, and current-window ranges for 15 minutes so pending SIPs can refresh as NAV data is published. Cache failure never fabricates or substitutes data.
 - A latest NAV older than seven calendar days, or dated in the future, is withheld from current valuation. A consolidated value requires an exact NAV observation for every selected scheme on the same shared valuation date; no older NAV is carried forward to make an aggregate appear complete. Where that exact-date match cannot be formed, aggregate return fields stay unavailable.
 - Data routes: `GET /api/wealth/funds/search?q=`, `GET /api/wealth/funds/:schemeCode/nav?fromDate=&toDate=`.
 - Search surfaces Growth options only. Direct and Regular plans remain separate schemes and must not be mixed. IDCW / dividend / bonus-labelled options are excluded from the first SIP simulator.
@@ -43,7 +43,7 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 - Planned provider: [DhanHQ Historical Data API](https://dhanhq.co/docs/v2/historical-data/). Its documented daily endpoint returns OHLCV and epoch timestamps for a supplied exchange instrument/security ID. The [Dhan instrument list](https://dhanhq.co/docs/v2/instruments/) is the identity source to integrate.
 - The read-only Worker adapter requires `WEALTH_DHAN_ENABLED=true` and a server-only `DHAN_ACCESS_TOKEN` secret. The official daily-history request authenticates with the `access-token` header; no client-ID header is sent. The feature flag is explicitly `false` in both production and preview config. Never put the token in `wrangler.jsonc`, the browser, test fixtures, or committed files.
 - Dhan documents a 24-hour validity for individually generated access tokens and notes Data API charges/limits can apply. This feature slice has no automatic token renewal. A personal individual token must not be used as a shared data proxy for other AskMoina users unless Dhan has confirmed the applicable usage/partner entitlement in writing. Leave the feature flag off until entitlement, cost, allowed user scope and renewal operations are settled. The daily API's `toDate` is non-inclusive.
-- Current adapter output is explicitly raw daily close data with `adjustedForCorporateActions: false` and `canCalculateTotalReturn: false`. It is not permitted to feed the portfolio return summary.
+- Current adapter output is explicitly raw daily close data with `adjustedForCorporateActions: false` and `canCalculateTotalReturn: false`. Dhan epoch timestamps are mapped to Asia/Kolkata exchange dates and the non-inclusive `toDate` boundary is enforced. It is not permitted to feed the portfolio return summary.
 - No NSE/BSE security ID is inferred from a symbol. A verified symbol/exchange/security-ID master is required before users can create stock paper lots.
 
 ## 4. SIP calculation contract
@@ -52,9 +52,9 @@ A plan contains one exact scheme code and exact scheme name returned by the NAV 
 
 For each monthly scheduled date:
 
-1. Generate the calendar SIP date using the selected day. A maximum of 120 instalments is accepted per plan.
-2. Select the **first actual NAV observation on or after** the scheduled date, provided it is no more than seven calendar days later.
-3. If there is no qualifying NAV and the seven-day forward window is still open, label the instalment pending. Only after the full seven-day window closes without a qualifying NAV is it recorded as missed. Do not move the purchase backwards, interpolate NAV, use a future-dated NAV, or silently fill the gap.
+1. Generate the calendar SIP date using the selected day. A maximum of 100 instalments (more than eight years of monthly contributions) is accepted per plan so six selected schemes stay within the current D1 script binding budget. See [D1 limits](https://developers.cloudflare.com/d1/platform/limits/).
+2. Select the **first actual NAV observation on or after** the scheduled date, provided it is no more than seven calendar days later and is not future-dated.
+3. If there is no qualifying NAV and the seven-day forward window is still open, label the instalment pending. Only after the full seven-day forward window closes without a qualifying NAV is it recorded as missed. Detail reads retry still-open pending windows and persist a newly published qualifying NAV lot idempotently. Do not move the purchase backwards, interpolate NAV, or silently fill the gap.
 4. Compute paper units as monthly amount in rupees divided by the matched NAV. The stored number is unrounded calculation precision; UI formatting is display-only.
 5. Persist the scheduled date, matched NAV date, invested paise, NAV and units. A simulation is persisted only after all selected plans have valid history and all database statements succeed in one D1 batch.
 
@@ -106,12 +106,14 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 - [x] Authenticated scheme search and date-window NAV API.
 - [x] Growth-option validation and provider scheme-code verification.
-- [x] SIP schedule, seven-day forward NAV matching, explicit missed dates and unit calculation.
+- [x] SIP schedule, seven-day forward NAV matching, explicit pending/missed states, pending-window retry, and unit calculation.
 - [x] Persist user-owned SIP plans and per-instalment evidence.
 - [x] Absolute-return and XIRR calculation with exact common-date NAV matching; no carry-forward pricing.
 - [x] Edge-cache public NAV responses and withhold stale/future latest NAVs.
+- [x] Rebuild pending lots when a qualifying NAV is published later, with idempotent D1 inserts.
+- [x] Historical mutual-fund SIP value vs contributions chart from exact shared daily NAV dates (no interpolation; at most 180 chart points).
 - [x] Dark mobile PWA builder and simulation detail screen.
-- [x] Unit tests for date parsing, schedule generation, NAV matching, Growth-option/scheme-code validation, XIRR, India date boundary and bounded request-body handling.
+- [x] Unit tests for date parsing, schedule generation, NAV matching, Growth-option/scheme-code validation, XIRR, India date boundary, Dhan epoch-to-IST conversion and bounded request-body handling.
 - [ ] Run repository typecheck and complete test suite on the feature branch.
 - [ ] Exercise live MFapi.in search, one NAV history request and one latest NAV request; reconcile selected observations against AMFI.
 - [ ] Verify persisted records, duplicate protection, owner isolation and partial-failure behaviour against a non-production D1 database.
@@ -126,6 +128,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - [x] Server-only credential contract; no browser token exposure.
 - [x] Explicit opt-in flag is false in production and preview by default; only the official access-token header is sent; individual-token and Data API entitlement caveats are documented.
 - [x] Raw price series explicitly marked unadjusted and barred from total-return calculations.
+- [x] Dhan daily-candle timestamps converted to Asia/Kolkata exchange dates.
 - [ ] Add verified Dhan instrument-master ingestion and symbol/exchange/security-ID mapping.
 - [ ] Configure Dhan secrets in a preview-only Worker environment.
 - [ ] Test 2022-to-current date ranges against known exchange trading sessions and compare sample candles to a second trusted source.
@@ -144,10 +147,11 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 **Acceptance:** adjusted share quantity and cost basis reconcile to trusted corporate-action records. Until then, only raw candles may be inspected; no long-term stock holding percentage may be shown.
 
 ### W4 — Consolidated portfolio and richer mobile charts
-**Not started.**
+**Partial — the mutual-fund SIP chart is implemented; combined stock + fund reporting remains blocked by W2/W3.**
 
 - [ ] Combine accepted stock and mutual-fund paper ledgers under one as-of policy.
-- [ ] Build portfolio performance history from stored evidence (not a hand-drawn or fabricated curve).
+- [x] Build the mutual-fund SIP paper-value and contribution history from exact shared NAV dates, with no interpolated points.
+- [ ] Build the consolidated stock + mutual-fund performance history from fully accepted stored evidence (not a hand-drawn or fabricated curve).
 - [ ] Period filters: 1M, 6M, 1Y, 3Y and ALL, each with an explicit date range.
 - [ ] Holdings, allocation, watchlist and transaction chronology.
 - [ ] Clearly distinguish price return, absolute return, XIRR and (where supported) total return.
