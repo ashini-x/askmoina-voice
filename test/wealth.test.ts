@@ -132,17 +132,21 @@ describe("AskMoina Wealth sample demo safeguards", () => {
     });
   });
 
-  it("validates exact NSE cash-equity symbol/security-ID mappings", () => {
+  it("resolves NSE cash-equity security IDs from the current instrument master", () => {
     const rows = [
       ["RELIANCE", "2885"], ["HDFCBANK", "1333"], ["TCS", "11536"], ["INFY", "1594"],
     ].map(([symbol, id]) => ({
       SEM_EXM_EXCH_ID: "NSE", SEM_SEGMENT: "E", SEM_SMST_SECURITY_ID: id,
       SEM_INSTRUMENT_NAME: "EQUITY", SEM_TRADING_SYMBOL: symbol,
     }));
-    expect(wealthMath.validateDemoSecurityIds(rows)).toBe(true);
-    expect(wealthMath.validateDemoSecurityIds(rows.map((row) =>
-      row.SEM_TRADING_SYMBOL === "INFY" ? { ...row, SEM_SMST_SECURITY_ID: "9999" } : row
-    ))).toBe(false);
+    expect(wealthMath.resolveDemoSecurityIds(rows)).toEqual({
+      RELIANCE: "2885", HDFCBANK: "1333", TCS: "11536", INFY: "1594",
+    });
+    expect(() => wealthMath.resolveDemoSecurityIds(rows.filter((row) => row.SEM_TRADING_SYMBOL !== "INFY")))
+      .toThrow("dhan_instrument_master_mapping_ambiguous");
+    expect(() => wealthMath.resolveDemoSecurityIds([
+      ...rows, { ...rows[0], SEM_SMST_SECURITY_ID: "9999" },
+    ])).toThrow("dhan_instrument_master_mapping_ambiguous");
   });
 
   it("normalizes Dhan daily closes into IST dates and respects the exclusive end date", () => {

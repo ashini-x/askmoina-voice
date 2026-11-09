@@ -22,10 +22,10 @@ const NAV_ATTRIBUTION = "Third-party aggregator of AMFI-published mutual-fund NA
 type DemoStock = { symbol: string; name: string; securityId: string; quantity: number; purchaseDate: string };
 type DemoFund = { schemeCode: number; monthlyAmountPaise: number; startDate: string; sipDay: number };
 const DEMO_STOCKS: DemoStock[] = [
-  { symbol: "RELIANCE", name: "Reliance Industries", securityId: "2885", quantity: 4, purchaseDate: "2022-01-03" },
-  { symbol: "HDFCBANK", name: "HDFC Bank", securityId: "1333", quantity: 8, purchaseDate: "2022-02-07" },
-  { symbol: "TCS", name: "Tata Consultancy Services", securityId: "11536", quantity: 2, purchaseDate: "2022-03-07" },
-  { symbol: "INFY", name: "Infosys", securityId: "1594", quantity: 6, purchaseDate: "2022-04-11" },
+  { symbol: "RELIANCE", name: "Reliance Industries", quantity: 4, purchaseDate: "2022-01-03" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", quantity: 8, purchaseDate: "2022-02-07" },
+  { symbol: "TCS", name: "Tata Consultancy Services", quantity: 2, purchaseDate: "2022-03-07" },
+  { symbol: "INFY", name: "Infosys", quantity: 6, purchaseDate: "2022-04-11" },
 ];
 const DEMO_FUNDS: DemoFund[] = [
   { schemeCode: 122639, monthlyAmountPaise: 300_000, startDate: "2023-01-01", sipDay: 5 },
@@ -72,35 +72,46 @@ function parseCsvTable(csv: string): Array<Record<string, string>> {
     return item;
   });
 }
-function validateDemoSecurityIds(rows: Array<Record<string, string>>): boolean {
-  return DEMO_STOCKS.every((stock) => rows.some((row) =>
-    row.SEM_EXM_EXCH_ID === "NSE" && row.SEM_SEGMENT === "E" &&
-    row.SEM_INSTRUMENT_NAME === "EQUITY" &&
-    row.SEM_TRADING_SYMBOL === stock.symbol &&
-    row.SEM_SMST_SECURITY_ID === stock.securityId
-  ));
+function resolveDemoSecurityIds(rows: Array<Record<string, string>>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const stock of DEMO_STOCKS) {
+    const matches = rows.filter((row) =>
+      row.SEM_EXM_EXCH_ID === "NSE" &&
+      row.SEM_SEGMENT === "E" &&
+      row.SEM_INSTRUMENT_NAME === "EQUITY" &&
+      row.SEM_TRADING_SYMBOL === stock.symbol
+    );
+    if (matches.length !== 1) throw new Error("dhan_instrument_master_mapping_ambiguous");
+    const securityId = matches[0].SEM_SMST_SECURITY_ID;
+    if (!/^\d{1,12}$/.test(securityId)) throw new Error("dhan_instrument_master_security_id_invalid");
+    result[stock.symbol] = securityId;
+  }
+  return result;
 }
-async function fetchDhanInstrumentMaster(): Promise<void> {
+async function fetchDhanInstrumentMaster(): Promise<Record<string, string>> {
   const url = "https://images.dhan.co/api-data/api-scrip-master.csv";
   const key = new Request(url, { method: "GET" });
   try {
-    // Cache only a master that has already passed all four exact symbol/ID checks.
-    if (await caches.default.match(key)) return;
+    const cached = await caches.default.match(key);
+    if (cached) {
+      const ids = await cached.json() as Record<string, string>;
+      if (DEMO_STOCKS.every((stock) => /^\d{1,12}$/.test(ids[stock.symbol] || ""))) return ids;
+    }
   } catch {
-    // Cache miss: fetch the official instrument master below.
+    // Cache miss or malformed cache: fetch the official instrument master below.
   }
   const upstream = await fetch(url, {
     headers: { Accept: "text/csv" },
     signal: AbortSignal.timeout(20_000),
   });
   if (!upstream.ok) throw new Error("dhan_instrument_master_http_" + upstream.status);
-  const rows = parseCsvTable(await upstream.text());
-  if (!validateDemoSecurityIds(rows)) throw new Error("dhan_instrument_master_mapping_changed");
+  const ids = resolveDemoSecurityIds(parseCsvTable(await upstream.text()));
   try {
-    await caches.default.put(key, new Response("validated", {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=21600" },
+    await caches.default.put(key, new Response(JSON.stringify(ids), {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" },
     }));
   } catch { /* Instrument cache is an optimization only. */ }
+  return ids;
 }
 function normalizeDhanHistory(payload: DhanHistoryResponse, fromDate: string, toDate: string): PricePoint[] {
   if (!Array.isArray(payload.close) || !Array.isArray(payload.timestamp) ||
@@ -120,13 +131,13 @@ function normalizeDhanHistory(payload: DhanHistoryResponse, fromDate: string, to
   if (normalized.length < 2) throw new Error("dhan_stock_history_empty");
   return normalized;
 }
-async function fetchDhanStockHistory(position: DemoStock, today: string, accessToken: string): Promise<PricePoint[]> {
+async function fetchDhanStockHistory(position: DemoStock, today: string, accessToken: string, securityId: string): Promise<PricePoint[]> {
   const fromDate = position.purchaseDate, toDate = isoDaysAfter(today, 1);
   const upstream = await fetch("https://api.dhan.co/v2/charts/historical", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json", "access-token": accessToken },
     body: JSON.stringify({
-      securityId: position.securityId, exchangeSegment: "NSE_EQ", instrument: "EQUITY",
+      securityId, exchangeSegment: "NSE_EQ", instrument: "EQUITY",
       expiryCode: 0, oi: false, fromDate, toDate,
     }),
     signal: AbortSignal.timeout(15_000),
@@ -201,8 +212,9 @@ async function handleDemoPortfolio(env: Env): Promise<Response> {
     stockDataMessage = "Add a valid Dhan Data API access token as the server-side DHAN_ACCESS_TOKEN secret. No stock prices are fabricated.";
   } else if (stockEnabled && accessToken) {
     try {
-      await fetchDhanInstrumentMaster();
-      stockHistories = await Promise.all(DEMO_STOCKS.map((position) => fetchDhanStockHistory(position, today, accessToken)));
+      const instrumentIds = await fetchDhanInstrumentMaster();
+      stockHistories = await Promise.all(DEMO_STOCKS.map((position) =>
+        fetchDhanStockHistory(position, today, accessToken, instrumentIds[position.symbol])));
       stockDataStatus = "ready";
       stockDataMessage = "DhanHQ daily candles · bonus/split-adjusted historical prices. Cash dividends are excluded.";
     } catch (error) {
@@ -1137,6 +1149,6 @@ export const wealthMath = {
   pickFirstCloseAtOrAfter,
   findExactMarketPoint,
   parseCsvTable,
-  validateDemoSecurityIds,
+  resolveDemoSecurityIds,
   normalizeDhanHistory,
 };

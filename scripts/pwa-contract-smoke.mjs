@@ -215,7 +215,8 @@ const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=0.4.133"'), "global font stylesheet must be cached for the offline shell");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.woff2?v=0.4.132"'), "global font binary must be cached for offline typography");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v19"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v21"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("\"/wealth.css\"") && serviceWorker.includes("\"/wealth.js\"") && serviceWorker.includes("\"/wealth-demo.js\""), "Wealth static assets must be precached for installed PWA use");
 assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.131"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.131"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
 
 assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.131"'), "service worker must precache the current viewport-aware hotspot runtime");
