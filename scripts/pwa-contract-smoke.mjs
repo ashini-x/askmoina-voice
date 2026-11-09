@@ -41,6 +41,9 @@ assert.ok(wealthHtml.includes("Historical paper simulation") && wealthHtml.inclu
 assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#36d399"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
 assert.ok(wealthJs.includes("/api/wealth/funds/search") && wealthJs.includes("/api/wealth/simulations"), "Wealth UI must use authenticated same-origin Worker APIs");
 assert.ok(wealthWorker.includes("growth_option_required") && wealthWorker.includes("missedInstallmentDates") && wealthWorker.includes("canCalculateTotalReturn: false"), "Wealth Worker must enforce Growth NAVs, disclose missed SIP dates, and block unadjusted stock returns");
+assert.ok(wealthWorker.includes("const MAX_INSTALLMENTS = 100") && wealthWorker.includes("INSERT OR IGNORE INTO wealth_sip_purchases") && wealthWorker.includes("refreshPendingPurchases"), "Wealth Worker must cap SIP rows for the D1 budget and safely retry pending NAV allotments");
+assert.ok(wealthWorker.includes("performanceSeries") && wealthWorker.includes("indiaDateFromEpochSeconds"), "Wealth Worker must expose NAV-backed performance and map daily candles to the Indian exchange date");
+
 assert.ok(wealthRouter.includes('import { handleWealthRequest } from "./wealth";') && wealthRouter.includes('url.pathname === "/wealth"') && wealthRouter.includes("entry-menu-wealth"), "Wealth routes and authenticated navigation must be wired into the existing Worker");
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
