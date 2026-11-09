@@ -88,6 +88,21 @@ button{cursor:pointer}
 .detail-header{display:flex;justify-content:space-between;align-items:center}
 .icon-button{width:34px;height:34px;border-radius:50%;border:1px solid #344252;color:#d3dbe5;background:#17212c;font-size:21px}
 .detail-summary{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:15px 0;padding:14px;background:#0b1219;border:1px solid #273340;border-radius:13px}
+.performance-chart-card{margin:0 0 13px;padding:13px 12px 11px;border:1px solid #293645;border-radius:14px;background:linear-gradient(145deg,#0d151e,#101822)}
+.performance-chart-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.performance-chart-heading h3{margin:4px 0 0;font-size:14px;font-weight:550;letter-spacing:-.02em}
+.chart-period{color:#a5b6c7;border:1px solid #334252;border-radius:999px;padding:5px 8px;font-size:9px;letter-spacing:.1em}
+.chart-legend{display:flex;gap:16px;margin:12px 0 1px;color:#95a3b3;font-size:9px}
+.chart-legend span{display:flex;align-items:center;gap:6px}
+.chart-legend i{display:inline-block;width:14px;height:3px;border-radius:4px}
+.legend-value{background:#36d399}.legend-invested{background:#8795a6}
+.performance-chart{display:block;width:100%;height:150px;overflow:visible}
+.chart-grid-line{stroke:#263340;stroke-width:1;stroke-dasharray:3 5}
+.chart-value-line,.chart-invested-line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.4}
+.chart-value-line{stroke:#36d399}.chart-invested-line{stroke:#8392a5;stroke-width:1.7}
+.chart-axis-labels{display:flex;justify-content:space-between;color:#78889a;font-size:9px;margin-top:-1px}
+.performance-chart-note{margin:9px 0 0;color:#748396;font-size:9px;line-height:1.5}
+
 .detail-summary div{display:grid;gap:5px}
 .detail-summary strong{font-size:15px;font-variant-numeric:tabular-nums}
 .detail-funds{display:grid;gap:8px}
