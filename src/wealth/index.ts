@@ -449,6 +449,62 @@ type PurchaseRow = {
   units: number;
 };
 
+async function refreshPendingPurchases(
+  env: Env,
+  plans: PlanRow[],
+  existingPurchases: Array<PurchaseRow & { plan_id: string }>,
+  today: string,
+): Promise<void> {
+  const inserts: D1PreparedStatement[] = [];
+  for (const plan of plans) {
+    const existingDates = new Set(
+      existingPurchases
+        .filter((purchase) => purchase.plan_id === plan.plan_id)
+        .map((purchase) => purchase.scheduled_date),
+    );
+    const pendingDates = buildSipSchedule(plan.start_date, plan.end_date, Number(plan.sip_day))
+      .filter((date) => !existingDates.has(date) && date <= today && today <= isoDaysAfter(date, NAV_LOOKAHEAD_DAYS));
+    if (!pendingDates.length) continue;
+
+    try {
+      const fromDate = [...pendingDates].sort()[0];
+      const payload = await mfapi(
+        "/mf/" + plan.scheme_code + "?startDate=" + fromDate + "&endDate=" + today,
+      ) as NavResponse;
+      const normalized = normalizeNavHistory(payload, Number(plan.scheme_code));
+      if (!isGrowthOption(normalized.meta)) continue;
+      for (const scheduledDate of pendingDates) {
+        const point = pickNextNav(normalized.points, scheduledDate, today);
+        if (!point) continue;
+        const units = Number(plan.monthly_amount_paise) / 100 / point.nav;
+        if (!Number.isFinite(units) || units <= 0) continue;
+        // The unique(plan_id, scheduled_date) constraint plus INSERT OR IGNORE
+        // makes concurrent detail refreshes idempotent.
+        inserts.push(env.DB.prepare(
+          "INSERT OR IGNORE INTO wealth_sip_purchases (purchase_id, plan_id, scheduled_date, nav_date, invested_paise, nav, units) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ).bind(
+          crypto.randomUUID(),
+          plan.plan_id,
+          scheduledDate,
+          point.date,
+          Number(plan.monthly_amount_paise),
+          point.nav,
+          units,
+        ));
+      }
+    } catch (error) {
+      console.warn("[wealth] pending SIP NAV refresh deferred", Number(plan.scheme_code), error instanceof Error ? error.message : "unknown");
+    }
+  }
+  if (!inserts.length) return;
+  try {
+    await env.DB.batch(inserts);
+  } catch (error) {
+    // Leave the existing records intact; a later detail read may safely retry.
+    console.warn("[wealth] pending SIP persistence deferred", error instanceof Error ? error.message : "unknown");
+  }
+}
+
 async function buildPerformanceSeries(
   env: Env,
   plans: PlanRow[],
@@ -549,13 +605,19 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
     "FROM wealth_sip_plans p LEFT JOIN wealth_sip_purchases x ON x.plan_id=p.plan_id " +
     "WHERE p.simulation_id=? GROUP BY p.plan_id ORDER BY p.created_at, p.scheme_name",
   ).bind(simulationId).all<PlanRow>();
-  const purchaseRows = await env.DB.prepare(
+  const planRows = plans.results || [];
+  let purchaseRows = await env.DB.prepare(
+    "SELECT p.plan_id, x.scheduled_date, x.nav_date, x.invested_paise, x.nav, x.units " +
+    "FROM wealth_sip_plans p JOIN wealth_sip_purchases x ON x.plan_id=p.plan_id " +
+    "WHERE p.simulation_id=? ORDER BY x.scheduled_date ASC",
+  ).bind(simulationId).all<PurchaseRow & { plan_id: string }>();
+  await refreshPendingPurchases(env, planRows, purchaseRows.results || [], todayInIndia());
+  purchaseRows = await env.DB.prepare(
     "SELECT p.plan_id, x.scheduled_date, x.nav_date, x.invested_paise, x.nav, x.units " +
     "FROM wealth_sip_plans p JOIN wealth_sip_purchases x ON x.plan_id=p.plan_id " +
     "WHERE p.simulation_id=? ORDER BY x.scheduled_date ASC",
   ).bind(simulationId).all<PurchaseRow & { plan_id: string }>();
 
-  const planRows = plans.results || [];
   const uniqueCodes = Array.from(new Set(planRows.map((plan) => Number(plan.scheme_code))));
   const latestByCode = new Map<number, { date: string; nav: number }>();
   const latestDates: string[] = [];
