@@ -631,14 +631,14 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const hasAllNav = detailedPlans.length > 0 && detailedPlans.every((plan) => plan.currentValuePaise !== null);
   const currentValuePaise = hasAllNav ? detailedPlans.reduce((sum, plan) => sum + Number(plan.currentValuePaise), 0) : null;
   const profitLossPaise = currentValuePaise === null ? null : currentValuePaise - investedPaise;
-  const combinedFlows: Array<{ date: string; amount: number }> = [];
+  const latestValuationDate = commonValuationDate;
   const xirrCutoff = latestValuationDate || todayInIndia();
+  const combinedFlows: Array<{ date: string; amount: number }> = [];
   for (const purchase of purchaseRows.results || []) {
     if (purchase.nav_date <= xirrCutoff) {
       combinedFlows.push({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 });
     }
   }
-  const latestValuationDate = commonValuationDate;
   if (currentValuePaise !== null && latestValuationDate) combinedFlows.push({ date: latestValuationDate, amount: currentValuePaise / 100 });
   const combinedXirr = currentValuePaise !== null ? xirr(combinedFlows) : null;
   const performanceSeries = hasAllNav
