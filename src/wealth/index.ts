@@ -140,7 +140,12 @@ async function mfapi(path: string): Promise<unknown> {
 
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("Origin");
-  return !origin || origin === new URL(request.url).origin;
+  return Boolean(origin) && origin === new URL(request.url).origin;
+}
+
+function isGrowthOption(meta: SchemeMeta): boolean {
+  const name = (meta.scheme_name || "").toLowerCase();
+  return name.includes("growth") && !/(idcw|dividend|bonus)/i.test(name);
 }
 
 function parseSchemeCode(value: string): number | null {
@@ -162,7 +167,8 @@ async function handleFundSearch(url: URL): Promise<Response> {
     const schemes = (data as SchemeSearchItem[]).slice(0, 30).flatMap((item) => {
       const code = Number(item.schemeCode);
       const name = typeof item.schemeName === "string" ? item.schemeName.trim() : "";
-      if (!Number.isSafeInteger(code) || code <= 0 || !name || name.length > 240) return [];
+      if (!Number.isSafeInteger(code) || code <= 0 || !name || name.length > 240 ||
+          !name.toLowerCase().includes("growth") || /(idcw|dividend|bonus)/i.test(name)) return [];
       return [{ schemeCode: code, schemeName: name }];
     });
     return response({ ok: true, source: NAV_SOURCE, attribution: NAV_ATTRIBUTION, schemes });
@@ -257,6 +263,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
     for (const input of plans) {
       const payload = await mfapi("/mf/" + input.schemeCode + "?startDate=" + input.startDate + "&endDate=" + isoDaysAfter(input.endDate, NAV_LOOKAHEAD_DAYS)) as NavResponse;
       const normalized = normalizeNavHistory(payload, input.schemeCode);
+      if (!isGrowthOption(normalized.meta)) throw new Error("growth_option_required");
       const schedule = buildSipSchedule(input.startDate, input.endDate, input.sipDay);
       const purchases: Array<{ scheduledDate: string; navDate: string; nav: number; units: number }> = [];
       const missedDates: string[] = [];
@@ -280,7 +287,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown";
     console.error("[wealth] simulation NAV preparation failed", message);
-    return response({ ok: false, error: "historical_nav_unavailable", reason: message }, 502);
+    return response({ ok: false, error: message === "growth_option_required" ? "growth_option_required" : "historical_nav_unavailable", reason: message }, message === "growth_option_required" ? 422 : 502);
   }
 
   const simulationId = crypto.randomUUID();
@@ -384,13 +391,38 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const planRows = plans.results || [];
   const uniqueCodes = Array.from(new Set(planRows.map((plan) => Number(plan.scheme_code))));
   const latestByCode = new Map<number, { date: string; nav: number }>();
+  const latestDates: string[] = [];
   for (const code of uniqueCodes) {
     try {
       const raw = await mfapi("/mf/" + code + "/latest") as NavResponse;
       const normalized = normalizeNavHistory(raw, code);
-      latestByCode.set(code, normalized.points[normalized.points.length - 1]);
+      const latest = normalized.points[normalized.points.length - 1];
+      latestByCode.set(code, latest);
+      latestDates.push(latest.date);
     } catch (error) {
       console.error("[wealth] latest NAV lookup failed", code, error instanceof Error ? error.message : "unknown");
+    }
+  }
+  // Use one common portfolio valuation date. Schemes whose latest NAV is newer
+  // are repriced to their last available NAV on or before that shared date.
+  const commonValuationDate = latestDates.length === uniqueCodes.length
+    ? [...latestDates].sort()[0]
+    : "";
+  if (commonValuationDate) {
+    for (const code of uniqueCodes) {
+      const current = latestByCode.get(code);
+      if (!current || current.date <= commonValuationDate) continue;
+      try {
+        const fromDate = isoDaysAfter(commonValuationDate, -14);
+        const raw = await mfapi("/mf/" + code + "?startDate=" + fromDate + "&endDate=" + commonValuationDate) as NavResponse;
+        const normalized = normalizeNavHistory(raw, code);
+        const point = normalized.points.filter((item) => item.date <= commonValuationDate).at(-1);
+        if (point) latestByCode.set(code, point);
+        else latestByCode.delete(code);
+      } catch (error) {
+        console.error("[wealth] common-date NAV lookup failed", code, error instanceof Error ? error.message : "unknown");
+        latestByCode.delete(code);
+      }
     }
   }
 
@@ -401,9 +433,12 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
     const investedPaise = purchases.reduce((sum, purchase) => sum + Number(purchase.invested_paise), 0);
     const currentValue = latest ? units * latest.nav : null;
     const profit = currentValue === null ? null : currentValue - investedPaise / 100;
+    const scheduledDates = buildSipSchedule(plan.start_date, plan.end_date, Number(plan.sip_day));
+    const purchasedDates = new Set(purchases.map((purchase) => purchase.scheduled_date));
+    const missedDates = scheduledDates.filter((date) => !purchasedDates.has(date));
     const xirrFlows = purchases.map((purchase) => ({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 }));
-    if (currentValue !== null && latest) xirrFlows.push({ date: latest.date, amount: currentValue });
-    const rate = currentValue !== null && latest ? xirr(xirrFlows) : null;
+    if (currentValue !== null && latest && commonValuationDate) xirrFlows.push({ date: commonValuationDate, amount: currentValue });
+    const rate = currentValue !== null && latest && commonValuationDate ? xirr(xirrFlows) : null;
     return {
       planId: plan.plan_id,
       schemeCode: Number(plan.scheme_code),
@@ -413,10 +448,11 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       startDate: plan.start_date,
       endDate: plan.end_date,
       purchaseCount: Number(plan.purchase_count),
-      missedInstallments: Math.max(0, buildSipSchedule(plan.start_date, plan.end_date, Number(plan.sip_day)).length - Number(plan.purchase_count)),
+      missedInstallments: missedDates.length,
+      missedInstallmentDates: missedDates,
       investedPaise,
       units,
-      latestNav: latest ? { nav: latest.nav, date: latest.date } : null,
+      latestNav: latest ? { nav: latest.nav, date: latest.date, portfolioValuationDate: commonValuationDate } : null,
       currentValuePaise: currentValue === null ? null : Math.round(currentValue * 100),
       profitLossPaise: profit === null ? null : Math.round(profit * 100),
       absoluteReturn: profit === null || investedPaise <= 0 ? null : profit / (investedPaise / 100),
@@ -430,7 +466,7 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const profitLossPaise = currentValuePaise === null ? null : currentValuePaise - investedPaise;
   const combinedFlows: Array<{ date: string; amount: number }> = [];
   for (const purchase of purchaseRows.results || []) combinedFlows.push({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 });
-  const latestValuationDate = detailedPlans.map((plan) => plan.latestNav?.date || "").filter(Boolean).sort().at(-1) || "";
+  const latestValuationDate = commonValuationDate;
   if (currentValuePaise !== null && latestValuationDate) combinedFlows.push({ date: latestValuationDate, amount: currentValuePaise / 100 });
   const combinedXirr = currentValuePaise !== null ? xirr(combinedFlows) : null;
 
