@@ -347,7 +347,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
         if (!Number.isFinite(units) || units <= 0) throw new Error("units_calculation_invalid");
         purchases.push({ scheduledDate, navDate: point.date, nav: point.nav, units });
       }
-      if (!purchases.length) throw new Error("no_nav_observations_for_sip_window");
+      if (!purchases.length && !pendingDates.length) throw new Error("no_nav_observations_for_sip_window");
       preparedPlans.push({
         planId: crypto.randomUUID(),
         input,
@@ -484,9 +484,7 @@ async function buildPerformanceSeries(
     return {
       schemeCode: Number(plan.scheme_code),
       byNavDate: [...purchases].sort((a, b) => a.nav_date.localeCompare(b.nav_date)),
-      byScheduledDate: [...purchases].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)),
       navIndex: 0,
-      scheduledIndex: 0,
       units: 0,
       investedPaise: 0,
     };
@@ -502,11 +500,8 @@ async function buildPerformanceSeries(
       if (nav === undefined) { complete = false; break; }
       while (state.navIndex < state.byNavDate.length && state.byNavDate[state.navIndex].nav_date <= date) {
         state.units += Number(state.byNavDate[state.navIndex].units);
+        state.investedPaise += Number(state.byNavDate[state.navIndex].invested_paise);
         state.navIndex += 1;
-      }
-      while (state.scheduledIndex < state.byScheduledDate.length && state.byScheduledDate[state.scheduledIndex].scheduled_date <= date) {
-        state.investedPaise += Number(state.byScheduledDate[state.scheduledIndex].invested_paise);
-        state.scheduledIndex += 1;
       }
       totalValue += state.units * nav;
       totalInvestedPaise += state.investedPaise;
@@ -637,7 +632,12 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const currentValuePaise = hasAllNav ? detailedPlans.reduce((sum, plan) => sum + Number(plan.currentValuePaise), 0) : null;
   const profitLossPaise = currentValuePaise === null ? null : currentValuePaise - investedPaise;
   const combinedFlows: Array<{ date: string; amount: number }> = [];
-  for (const purchase of purchaseRows.results || []) combinedFlows.push({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 });
+  const xirrCutoff = latestValuationDate || todayInIndia();
+  for (const purchase of purchaseRows.results || []) {
+    if (purchase.nav_date <= xirrCutoff) {
+      combinedFlows.push({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 });
+    }
+  }
   const latestValuationDate = commonValuationDate;
   if (currentValuePaise !== null && latestValuationDate) combinedFlows.push({ date: latestValuationDate, amount: currentValuePaise / 100 });
   const combinedXirr = currentValuePaise !== null ? xirr(combinedFlows) : null;
