@@ -4,6 +4,8 @@
   const state = { schemes: [], simulations: [], activeSimulation: null, searchTimer: 0, searchAbort: null, status: null };
   const money = (paise) => paise == null ? "—" : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(paise) / 100);
   const percent = (value) => value == null || !Number.isFinite(Number(value)) ? "—" : (Number(value) * 100).toFixed(2) + "%";
+  const navMoney = (nav) => nav == null || !Number.isFinite(Number(nav)) ? "—" : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 4 }).format(Number(nav));
+  const indiaToday = () => new Date(Date.now() + 330 * 60 * 1000).toISOString().slice(0, 10);
   const dateLabel = (value) => {
     if (!value) return "—";
     const date = new Date(value + "T00:00:00Z");
@@ -133,7 +135,9 @@
     returnNode.textContent = simulation.absoluteReturn == null ? "Latest NAV unavailable — valuation incomplete" : (simulation.profitLossPaise >= 0 ? "+" : "") + money(simulation.profitLossPaise) + " (" + percent(simulation.absoluteReturn) + ")";
     returnNode.classList.toggle("positive", simulation.profitLossPaise > 0);
     returnNode.classList.toggle("negative", simulation.profitLossPaise < 0);
-    $("#portfolio-note").textContent = simulation.valuationComplete ? "Calculated from actual provider NAV points stored for each SIP lot. Paper simulation only." : "Some latest NAVs could not be retrieved. Incomplete valuations are not replaced with estimates.";
+    $("#portfolio-note").textContent = simulation.valuationComplete
+      ? "Showing this saved simulation only. Values use real dated NAV observations; separate simulations are not added together."
+      : "Some latest NAVs could not be retrieved. Incomplete valuations are not replaced with estimates.";
   };
   const loadSimulation = async (id) => {
     try {
@@ -157,11 +161,21 @@
         value.className = "detail-number";
         value.textContent = money(plan.currentValuePaise);
         const meta = document.createElement("small");
-        meta.textContent = plan.purchaseCount + " NAV-matched instalments · " + plan.units.toFixed(4) + " units";
+        const missedCount = Number(plan.missedInstallments || 0);
+        const missedDates = Array.isArray(plan.missedInstallmentDates) ? plan.missedInstallmentDates : [];
+        meta.textContent = money(plan.monthlyAmountPaise) + "/month · " + plan.purchaseCount + " NAV-matched instalments · " +
+          (missedCount ? missedCount + " missed" : "no missed dates") + " · " + Number(plan.units).toFixed(4) + " units";
+        const nav = document.createElement("small");
+        nav.className = "detail-nav";
+        nav.textContent = plan.latestNav
+          ? "Latest NAV " + navMoney(plan.latestNav.nav) + " · observed " + dateLabel(plan.latestNav.date) +
+            " · portfolio as of " + dateLabel(plan.latestNav.portfolioValuationDate)
+          : "Latest NAV unavailable — current value withheld";
         const performance = document.createElement("span");
         performance.className = "detail-sub";
-        performance.textContent = "Abs. " + percent(plan.absoluteReturn) + " · XIRR " + percent(plan.xirr);
-        card.append(name, value, meta, performance);
+        performance.textContent = "Abs. " + percent(plan.absoluteReturn) + " · XIRR " + percent(plan.xirr) +
+          (missedDates.length ? " · missed " + missedDates.slice(0, 3).map(dateLabel).join(", ") + (missedDates.length > 3 ? "…" : "") : "");
+        card.append(name, value, meta, nav, performance);
         host.append(card);
       });
       $("#detail-disclaimer").textContent = result.disclaimer;
@@ -209,7 +223,7 @@
     }
   };
   const initialize = async () => {
-    $("#sip-end").value = new Date().toISOString().slice(0, 10);
+    $("#sip-end").value = indiaToday();
     $$(".tab-button").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
     $$("[data-go-tab]").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.goTab)));
     $("#fund-search").addEventListener("input", (event) => {
@@ -225,7 +239,9 @@
     $("#close-detail").addEventListener("click", () => { $("#simulation-detail").hidden = true; });
     try {
       state.status = await api("/api/wealth/status");
-      $("#stock-feed-status").textContent = state.status.providers.stockHistoryReady ? "Credentials configured" : "Not configured";
+      $("#stock-feed-status").textContent = !state.status.providers.stockHistoryEnabled
+        ? "Disabled pending entitlement review"
+        : state.status.providers.stockHistoryReady ? "Token configured" : "Access token missing";
       await refreshSimulations();
     } catch (error) {
       setStatus("Wealth service could not be reached: " + error.message, true);
