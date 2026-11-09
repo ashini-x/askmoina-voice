@@ -32,6 +32,17 @@ assert.ok(workerSource.includes("/askmoina-global-font.css"), "Worker-generated 
 assert.ok(workerSource.includes('"\/askmoina-global-font.css": "text/css; charset=utf-8"'), "global typography CSS must have a public static content type");
 assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-font"), "brand system must document the canonical global font");
 
+const wealthHtml = read("public/wealth.html");
+const wealthCss = read("public/wealth.css");
+const wealthJs = read("public/wealth.js");
+const wealthWorker = read("src/wealth/index.ts");
+const wealthRouter = read("src/index.ts");
+assert.ok(wealthHtml.includes("Historical paper simulation") && wealthHtml.includes('id="fund-search"') && wealthHtml.includes('data-tab="stocks"'), "Wealth PWA must identify the paper-only experience and expose fund and stock sections");
+assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#36d399"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
+assert.ok(wealthJs.includes("/api/wealth/funds/search") && wealthJs.includes("/api/wealth/simulations"), "Wealth UI must use authenticated same-origin Worker APIs");
+assert.ok(wealthWorker.includes("growth_option_required") && wealthWorker.includes("missedInstallmentDates") && wealthWorker.includes("canCalculateTotalReturn: false"), "Wealth Worker must enforce Growth NAVs, disclose missed SIP dates, and block unadjusted stock returns");
+assert.ok(wealthRouter.includes('import { handleWealthRequest } from "./wealth";') && wealthRouter.includes('url.pathname === "/wealth"') && wealthRouter.includes('href=\\\"/wealth\\\"'), "Wealth routes and authenticated navigation must be wired into the existing Worker");
+
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
 assert.equal(manifest.display, "standalone", "manifest must request standalone display mode");
