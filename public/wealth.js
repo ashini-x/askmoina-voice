@@ -18,7 +18,7 @@
   const setStatus = (text, isError = false) => {
     const node = $("#builder-status");
     node.textContent = text;
-    node.style.color = isError ? "#ff8b94" : "";
+    node.classList.toggle("is-error", isError);
   };
   const showTab = (name) => {
     $$(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.tab === name));
