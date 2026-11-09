@@ -179,12 +179,18 @@
     $("#portfolio-xirr").textContent = percent(simulation.xirr);
     $("#portfolio-asof").textContent = simulation.latestValuationDate ? "NAV " + dateLabel(simulation.latestValuationDate) : "NAV pending";
     const returnNode = $("#portfolio-return");
-    returnNode.textContent = simulation.absoluteReturn == null ? "Latest NAV unavailable — valuation incomplete" : (simulation.profitLossPaise >= 0 ? "+" : "") + money(simulation.profitLossPaise) + " (" + percent(simulation.absoluteReturn) + ")";
+    returnNode.textContent = !simulation.valuationComplete
+      ? "Latest NAV unavailable — valuation incomplete"
+      : simulation.investedPaise <= 0
+        ? "No SIP allotments have been priced yet"
+        : (simulation.profitLossPaise >= 0 ? "+" : "") + money(simulation.profitLossPaise) + " (" + percent(simulation.absoluteReturn) + ")";
     returnNode.classList.toggle("positive", simulation.profitLossPaise > 0);
     returnNode.classList.toggle("negative", simulation.profitLossPaise < 0);
-    $("#portfolio-note").textContent = simulation.valuationComplete
-      ? "Showing this saved simulation only. Values use real dated NAV observations; separate simulations are not added together."
-      : "Some latest NAVs could not be retrieved. Incomplete valuations are not replaced with estimates.";
+    $("#portfolio-note").textContent = !simulation.valuationComplete
+      ? "Some latest NAVs could not be retrieved. Incomplete valuations are not replaced with estimates."
+      : simulation.investedPaise <= 0
+        ? "No NAV-matched SIP allotments have completed as of the selected valuation date. Pending schedules remain separate."
+        : "Showing this saved simulation only. Values use real dated NAV observations; separate simulations are not added together.";
   };
   const loadSimulation = async (id) => {
     try {
@@ -210,9 +216,12 @@
         value.textContent = money(plan.currentValuePaise);
         const meta = document.createElement("small");
         const missedCount = Number(plan.missedInstallments || 0);
+        const pendingCount = Number(plan.pendingInstallments || 0);
         const missedDates = Array.isArray(plan.missedInstallmentDates) ? plan.missedInstallmentDates : [];
-        meta.textContent = money(plan.monthlyAmountPaise) + "/month · " + plan.purchaseCount + " NAV-matched instalments · " +
-          (missedCount ? missedCount + " missed" : "no missed dates") + " · " + Number(plan.units).toFixed(4) + " units";
+        const pendingDates = Array.isArray(plan.pendingInstallmentDates) ? plan.pendingInstallmentDates : [];
+        meta.textContent = money(plan.monthlyAmountPaise) + "/month · " + Number(plan.appliedPurchaseCount || 0) +
+          "/" + Number(plan.purchaseCount || 0) + " priced by as-of date · " + pendingCount + " pending · " +
+          missedCount + " missed · " + Number(plan.units).toFixed(4) + " units";
         const nav = document.createElement("small");
         nav.className = "detail-nav";
         nav.textContent = plan.latestNav
@@ -222,6 +231,7 @@
         const performance = document.createElement("span");
         performance.className = "detail-sub";
         performance.textContent = "Abs. " + percent(plan.absoluteReturn) + " · XIRR " + percent(plan.xirr) +
+          (pendingDates.length ? " · pending " + pendingDates.slice(0, 2).map(dateLabel).join(", ") + (pendingDates.length > 2 ? "…" : "") : "") +
           (missedDates.length ? " · missed " + missedDates.slice(0, 3).map(dateLabel).join(", ") + (missedDates.length > 3 ? "…" : "") : "");
         card.append(name, value, meta, nav, performance);
         host.append(card);
