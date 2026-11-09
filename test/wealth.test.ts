@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { wealthMath } from "../src/wealth";
 
 describe("AskMoina Wealth historical simulation math", () => {
+  it("maps Dhan epoch timestamps to the Indian exchange calendar date", () => {
+    // The official Dhan daily-candle example timestamp is 2012-01-10 18:30 UTC,
+    // which is 2012-01-11 00:00 in India.
+    expect(wealthMath.indiaDateFromEpochSeconds(1326220200)).toBe("2012-01-11");
+    expect(wealthMath.indiaDateFromEpochSeconds(Number.NaN)).toBeNull();
+  });
+
   it("uses the Asia/Kolkata calendar date rather than the UTC date", () => {
     expect(wealthMath.todayInIndia(new Date("2026-11-09T18:29:59.000Z"))).toBe("2026-11-09");
     expect(wealthMath.todayInIndia(new Date("2026-11-09T18:30:00.000Z"))).toBe("2026-11-10");
