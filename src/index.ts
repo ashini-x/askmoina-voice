@@ -3311,6 +3311,13 @@ export class LiveSessionRelay {
   }
 }
 
+function withWealthEntryShortcut(html: string): string {
+  if (html.includes('class="wealth-entry-shortcut"') || !html.includes('class="topbar-meta"')) return html;
+  const headerEnd = "    </div>\\n  </header>";
+  if (!html.includes(headerEnd)) return html;
+  return html.replace(headerEnd, '      <a class="wealth-entry-shortcut" href="/wealth">Wealth <span aria-hidden="true">↗</span></a>\\n' + headerEnd);
+}
+
 function withOwnerPreviewHtml(html: string): string {
   // This copy is deliberately applied only after admin authorization.
   // The ordinary public homepage always retains its explicit illustrative labels.
@@ -3500,6 +3507,7 @@ export default {
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");
       let html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
       if (ownerPreview) html = withOwnerPreviewHtml(html);
+      if (await getAuthenticatedUserId(request, env)) html = withWealthEntryShortcut(html);
 
       const responseHeaders = new Headers({
         "Content-Type": "text/html; charset=utf-8",
