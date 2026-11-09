@@ -114,7 +114,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - [x] Historical mutual-fund SIP value vs contributions chart from exact shared daily NAV dates (no interpolation; at most 180 chart points).
 - [x] Dark mobile PWA builder and simulation detail screen.
 - [x] Unit tests for date parsing, schedule generation, NAV matching, Growth-option/scheme-code validation, XIRR, India date boundary, Dhan epoch-to-IST conversion and bounded request-body handling.
-- [x] Run repository typecheck and complete test suite on the feature branch (Release validation run 42657352292 passed).
+- [x] Run repository typecheck and complete test suite on the feature branch (Release validation run 42664869555 passed on implementation commit 392b5f23883c2056dd0953ee0e05b16cfc6b1959).
 - [ ] Exercise live MFapi.in search, one NAV history request and one latest NAV request; reconcile selected observations against AMFI.
 - [ ] Verify persisted records, duplicate protection, owner isolation and partial-failure behaviour against a non-production D1 database.
 - [ ] Capture mobile device acceptance evidence (Android Chrome installed PWA, small viewport, safe-area, offline shell).
@@ -173,7 +173,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 ### W6 — Private acceptance and rollout
 **CI and Worker dry-run gates passed; private device/data acceptance remains pending.**
 
-- [x] Run all CI checks and Worker dry-run (Release validation run 42657352292 passed, including local SQLite migration application and Worker bundle contracts).
+- [x] Run all CI checks and Worker dry-run (Release validation run 42664869555 passed on implementation commit 392b5f23883c2056dd0953ee0e05b16cfc6b1959, including local SQLite migrations and Worker bundle contracts).
 - [ ] Use isolated preview D1 and preview-only secrets; never point feature tests at production D1.
 - [ ] Complete mobile PWA acceptance and screen-reader/basic keyboard checks.
 - [ ] Verify clear paper-only language throughout the feature.
