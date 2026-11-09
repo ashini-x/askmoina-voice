@@ -16,14 +16,14 @@
   };
   const node = (tag, className, value) => { const item=document.createElement(tag); if(className)item.className=className; if(value!==undefined)item.textContent=value; return item; };
   const addMetric = (host,label,value) => { const item=node("div","demo-metric"); item.append(node("span","",label),node("strong","",value)); host.append(item); };
-  const stockStatusLabel = (status) => ({ready:"Dhan feed ready",disabled:"Not enabled",not_configured:"Token required",unavailable:"Feed unavailable"}[status] || "Checking");
+  const stockStatusLabel = (status) => ({ready:"Yahoo daily feed",disabled:"Free feed",not_configured:"Free feed",unavailable:"Feed unavailable"}[status] || "Checking");
   const showError = (message) => ["#demo-overview","#demo-stocks","#demo-funds"].forEach((selector) => {
     const host=$(selector); if(host){host.replaceChildren();host.append(node("p","demo-error",message));}
   });
   const renderStocks = (data) => {
     const host=$("#demo-stocks"); if(!host)return; host.replaceChildren();
     const heading=node("div","demo-card-heading");
-    heading.append(node("div","demo-card-title","Static sample stock lots"),node("span","demo-badge",data.stockDataStatus==="ready"?"DHANHQ DAILY":"DEMO INPUTS"));
+    heading.append(node("div","demo-card-title","Static sample stock lots"),node("span","demo-badge",data.stockDataStatus==="ready"?"YAHOO DAILY":"DEMO INPUTS"));
     host.append(heading);
     if(data.stocks.length){
       data.stocks.forEach((stock)=>{
@@ -44,7 +44,7 @@
       });
       host.append(node("p","demo-error",data.stockDataMessage));
     }
-    host.append(node("p","demo-source-copy","DhanHQ historical daily candles. Dhan states daily history is adjusted for bonuses and splits. Cash dividends are excluded; values are a price-return estimate."));
+    host.append(node("p","demo-source-copy","Yahoo Finance daily history (unofficial). Close values are split-adjusted; cash dividends are excluded. The free source may be delayed or unavailable."));
   };
   const renderFunds = (data) => {
     const host=$("#demo-funds"); if(!host)return; host.replaceChildren();
@@ -74,7 +74,7 @@
       const ret=$("#portfolio-return");
       ret.textContent=data.valuationComplete
         ? (data.profitLossPaise>=0?"+":"")+money(data.profitLossPaise)+" ("+percent(data.absoluteReturn)+") · stock cash dividends excluded"
-        : "Partial preview: real fund NAVs are loaded. Stock values remain blank until Dhan Data API is configured.";
+        : "Partial preview: real fund NAVs are loaded. Stock values remain blank if the free Yahoo Finance source is unavailable.";
       ret.classList.toggle("positive",data.valuationComplete&&data.profitLossPaise>0);
       ret.classList.toggle("negative",data.valuationComplete&&data.profitLossPaise<0);
     }
@@ -86,10 +86,10 @@
       const heading=node("div","demo-card-heading");
       heading.append(node("div","demo-card-title","Your sample holdings"),node("span","demo-badge","STATIC DEMO")); overview.append(heading);
       const metrics=node("div","demo-metrics");
-      addMetric(metrics,"Stocks",data.valuationComplete?money(data.stocks.reduce((s,x)=>s+x.marketValuePaise,0)):"Awaiting Dhan");
+      addMetric(metrics,"Stocks",data.valuationComplete?money(data.stocks.reduce((s,x)=>s+x.marketValuePaise,0)):"Awaiting free stock feed");
       addMetric(metrics,"Mutual funds",money(data.fundsCurrentValuePaise));
       addMetric(metrics,"Stock feed",stockStatusLabel(data.stockDataStatus));
-      overview.append(metrics,node("p","demo-source-copy","Fund NAVs: MFapi.in · Stock candles: DhanHQ · Common date: "+dateLabel(data.asOfDate)));
+      overview.append(metrics,node("p","demo-source-copy","Fund NAVs: MFapi.in · Stock candles: Yahoo Finance (unofficial) · Common date: "+dateLabel(data.asOfDate)));
       const links=node("div","demo-links");
       const stocksLink=node("button","demo-jump","View sample stocks →"); stocksLink.type="button";
       stocksLink.addEventListener("click",()=>document.querySelector('[data-tab="stocks"]')?.click());

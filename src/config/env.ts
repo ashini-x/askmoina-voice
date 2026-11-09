@@ -48,7 +48,5 @@ export interface Env {
   LIVE_INPUT_USD_PER_MILLION_TOKENS?: string;
   LIVE_OUTPUT_USD_PER_MILLION_TOKENS?: string;
   // Server-only DhanHQ token. The Dhan historical-data endpoint authenticates with access-token.
-  DHAN_ACCESS_TOKEN?: string;
   // Explicit opt-in after Dhan data entitlements and single-/multi-user terms are verified.
-  WEALTH_DHAN_ENABLED?: string;
 }

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { wealthMath } from "../src/wealth";
 
 describe("AskMoina Wealth historical simulation math", () => {
-  it("maps Dhan epoch timestamps to the Indian exchange calendar date", () => {
-    // The official Dhan daily-candle example timestamp is 2012-01-10 18:30 UTC,
+  it("maps Yahoo epoch timestamps to the Indian exchange calendar date", () => {
+    // The official Yahoo daily-candle example timestamp is 2012-01-10 18:30 UTC,
     // which is 2012-01-11 00:00 in India.
     expect(wealthMath.indiaDateFromEpochSeconds(1326220200)).toBe("2012-01-11");
     expect(wealthMath.indiaDateFromEpochSeconds(Number.NaN)).toBeNull();
@@ -136,44 +136,22 @@ describe("AskMoina Wealth sample demo safeguards", () => {
     ], "2026-11-09")).toBeNull();
   });
 
-  it("parses the Dhan instrument master CSV, including quoted commas", () => {
-    const rows = wealthMath.parseCsvTable([
-      "SEM_EXM_EXCH_ID,SEM_SEGMENT,SEM_SMST_SECURITY_ID,SEM_INSTRUMENT_NAME,SEM_TRADING_SYMBOL,SEM_CUSTOM_SYMBOL",
-      'NSE,E,2885,EQUITY,RELIANCE,"Reliance Industries, Limited"',
-    ].join("\n"));
-    expect(rows[0]).toMatchObject({
-      SEM_EXM_EXCH_ID: "NSE", SEM_SEGMENT: "E", SEM_SMST_SECURITY_ID: "2885",
-      SEM_INSTRUMENT_NAME: "EQUITY", SEM_TRADING_SYMBOL: "RELIANCE",
-      SEM_CUSTOM_SYMBOL: "Reliance Industries, Limited",
-    });
-  });
-
-  it("resolves NSE cash-equity security IDs from the current instrument master", () => {
-    const rows = [
-      ["RELIANCE", "2885"], ["HDFCBANK", "1333"], ["TCS", "11536"], ["INFY", "1594"],
-    ].map(([symbol, id]) => ({
-      SEM_EXM_EXCH_ID: "NSE", SEM_SEGMENT: "E", SEM_SMST_SECURITY_ID: id,
-      SEM_INSTRUMENT_NAME: "EQUITY", SEM_TRADING_SYMBOL: symbol,
-    }));
-    expect(wealthMath.resolveDemoSecurityIds(rows)).toEqual({
-      RELIANCE: "2885", HDFCBANK: "1333", TCS: "11536", INFY: "1594",
-    });
-    expect(() => wealthMath.resolveDemoSecurityIds(rows.filter((row) => row.SEM_TRADING_SYMBOL !== "INFY")))
-      .toThrow("dhan_instrument_master_mapping_ambiguous");
-    expect(() => wealthMath.resolveDemoSecurityIds([
-      ...rows, { ...rows[0], SEM_SMST_SECURITY_ID: "9999" },
-    ])).toThrow("dhan_instrument_master_mapping_ambiguous");
-  });
-
-  it("normalizes Dhan daily closes into IST dates and respects the exclusive end date", () => {
-    const points = wealthMath.normalizeDhanHistory({
-      timestamp: [1326220200, 1326306600, 1326393000], close: [100, 101, null],
+  it("normalizes Yahoo chart closes to India dates and respects the exclusive end date", () => {
+    const points = wealthMath.normalizeYahooHistory({
+      chart: { result: [{
+        timestamp: [1326220200, 1326306600, 1326393000],
+        indicators: { quote: [{ close: [100, 101, null] }] },
+      }] },
     }, "2012-01-11", "2012-01-13");
     expect(points).toEqual([
       { date: "2012-01-11", close: 100 },
       { date: "2012-01-12", close: 101 },
     ]);
-    expect(() => wealthMath.normalizeDhanHistory({ timestamp: [], close: [] }, "2012-01-11", "2012-01-13"))
-      .toThrow("dhan_stock_history_empty");
+    expect(() => wealthMath.normalizeYahooHistory({
+      chart: { result: [{ timestamp: [], indicators: { quote: [{ close: [] }] } }] },
+    }, "2012-01-11", "2012-01-13")).toThrow("yahoo_stock_history_empty");
+    expect(() => wealthMath.normalizeYahooHistory({
+      chart: { error: { code: "Not Found", description: "No symbol" }, result: null },
+    }, "2012-01-11", "2012-01-13")).toThrow("yahoo_stock_history_response_invalid");
   });
 });

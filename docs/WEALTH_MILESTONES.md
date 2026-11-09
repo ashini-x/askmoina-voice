@@ -24,7 +24,7 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 - Mutual-fund scheme search is provider-backed; the user selects the exact plan and scheme code.
 - SIP builder captures monthly amount per scheme, SIP day, start date and end date.
 - Simulation detail exposes invested capital, accumulated units, latest NAV and its date, absolute return, XIRR, and missed SIP dates.
-- The Stocks panel displays fixed sample share-equivalent units and dates. It fetches Dhan daily candles only when the owner enables the optional Data API integration; prices are otherwise blank.
+- The Stocks panel displays fixed sample share-equivalent units and dates. It fetches free Yahoo Finance daily candles (unofficial); if the source is unavailable, stock prices are withheld.
 
 ## 3. Data providers and provenance
 
@@ -40,11 +40,11 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 
 ### Equity daily history
 
-- Provider: [DhanHQ Historical Data API](https://dhanhq.co/docs/v2/historical-data/). Its documented daily endpoint returns OHLCV and epoch timestamps for a supplied exchange instrument/security ID. The demo validates the four sample NSE cash-equity symbols against Dhan's official instrument-master CSV before requesting prices.
-- The read-only Worker adapter requires `WEALTH_DHAN_ENABLED=true` and a server-only `DHAN_ACCESS_TOKEN` secret. The official daily-history request authenticates with the `access-token` header; no client-ID header is sent. The feature flag is explicitly `false` in both production and preview config. Never put the token in `wrangler.jsonc`, the browser, test fixtures, or committed files.
-- Dhan documents a 24-hour validity for individually generated access tokens and notes Data API charges/limits can apply. This feature slice has no automatic token renewal. A personal individual token must not be used as a shared data proxy for other AskMoina users unless Dhan has confirmed the applicable usage/partner entitlement in writing. Leave the feature flag off until entitlement, cost, allowed user scope and renewal operations are settled. The daily API's `toDate` is non-inclusive.
-- Dhan support confirms daily historical data is adjusted for corporate actions such as bonuses and splits. The demo may calculate price return from this adjusted series but excludes cash dividends and does not claim total return. Dhan epoch timestamps are mapped to Asia/Kolkata exchange dates and the non-inclusive toDate boundary is enforced.
-- No security ID is guessed: the demo resolves NSE/EQUITY IDs from Dhan's official master at runtime and fails closed on missing or ambiguous symbol matches.
+- Provider: Yahoo Finance's unofficial chart endpoint (`query1.finance.yahoo.com/v8/finance/chart/{symbol}`). No API key or paid subscription is required. Yahoo does not publish this as a supported finance API; availability and data-use terms are not guaranteed.
+- The read-only Worker adapter requests only four fixed demo NSE ticker series (`RELIANCE.NS`, `HDFCBANK.NS`, `TCS.NS`, `INFY.NS`). It does not use Dhan credentials, expose keys, or place orders.
+- Yahoo's chart endpoint is undocumented/unofficial and may change, rate-limit or stop responding. Keep requests limited to this small personal demo and do not treat its values as licensed exchange data or redistribute them commercially.
+- Yahoo daily close data is used as a split-adjusted price series; cash dividends are excluded, so results are price return, not total return. Timestamps are mapped to Asia/Kolkata exchange dates and the exclusive toDate boundary is enforced.
+- Sample NSE symbols use their `.NS` ticker suffix; if Yahoo returns missing or malformed data, the Worker fails closed rather than inventing prices.
 
 ## 4. SIP calculation contract
 
@@ -76,7 +76,7 @@ All Wealth API routes are user-authenticated through the existing AskMoina accou
 | `/api/wealth/simulations` | GET | List the current user's simulations |
 | `/api/wealth/simulations` | POST | Create historical paper SIP simulation |
 | `/api/wealth/simulations/:id` | GET | User-owned simulation and current valuation |
-| `/api/wealth/stocks/history` | GET | Read-only raw DhanHQ daily candles when credentials exist |
+Read-only Yahoo Finance chart daily candles (unofficial; free best-effort)
 
 Ownership is enforced on simulation lookup using both simulation ID and authenticated user ID. D1 foreign keys cascade simulation deletion semantics if that feature is later introduced. No delete endpoint is exposed in this slice.
 
@@ -113,7 +113,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - [x] Rebuild pending lots when a qualifying NAV is published later, with idempotent D1 inserts.
 - [x] Historical mutual-fund SIP value vs contributions chart from exact shared daily NAV dates (no interpolation; at most 180 chart points).
 - [x] Dark mobile PWA builder and simulation detail screen.
-- [x] Unit tests for date parsing, schedule generation, NAV matching, Growth-option/scheme-code validation, XIRR, India date boundary, Dhan epoch-to-IST conversion and bounded request-body handling.
+- [x] Unit tests for date parsing, schedule generation, NAV matching, Growth-option/scheme-code validation, XIRR, India date boundary, Yahoo chart timestamp-to-IST conversion and bounded request-body handling.
 - [x] Run repository typecheck and complete test suite on the feature branch (Release validation run 42664869555 passed on implementation commit 392b5f23883c2056dd0953ee0e05b16cfc6b1959).
 - [ ] Exercise live MFapi.in search, one NAV history request and one latest NAV request; reconcile selected observations against AMFI.
 - [ ] Verify persisted records, duplicate protection, owner isolation and partial-failure behaviour against a non-production D1 database.
@@ -122,35 +122,35 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 **Acceptance:** no simulated result is marked accepted until the same scheme/date/amount inputs reproduce the same stored purchase lots, source NAV dates, invested total, current NAV valuation, absolute return and XIRR in a second read.
 
 ### W2 — Equity instrument master and daily history
-**Read-only demo price path implemented; live prices require the owner's Dhan Data API subscription/token.**
+**Free best-effort daily price path implemented; Yahoo Finance is unofficial and may be unavailable.**
 
-- [x] Read-only DhanHQ daily-history adapter using the documented v2 historical charts endpoint.
+- [x] Read-only Yahoo Finance chart adapter for the four fixed NSE demo symbols; no token required.
 - [x] Server-only credential contract; no browser token exposure.
 - [x] Explicit opt-in flag is false in production and preview by default; only the official access-token header is sent.
-- [x] Fetch the official Dhan NSE equity instrument-master CSV and resolve exact NSE/EQUITY symbol-to-security-ID mappings at runtime; ambiguous or missing mappings fail closed.
-- [x] Dhan daily-candle timestamps converted to Asia/Kolkata exchange dates and non-inclusive toDate enforced.
-- [x] Daily history marked as bonus/split adjusted based on Dhan support confirmation; cash dividends remain excluded, so the shown figure is price return rather than total return.
-- [x] Demo holdings and purchase dates are static inputs; market price data is fetched from Dhan only when enabled and configured.
-- [ ] Configure Dhan credentials in an isolated preview Worker after owner enables the separate Data API subscription.
+- [x] Resolve `.NS` ticker identities from the fixed demo symbol list; reject provider errors and empty or malformed chart responses.
+- [x] Daily candle timestamps converted to Asia/Kolkata dates; exclusive period2/toDate enforced.
+- [x] Split-adjusted close series used for price return; cash dividends are excluded.
+- [x] Demo holdings and purchase dates are static inputs; market data is requested from the free Yahoo Finance chart endpoint.
+- [ ] Verify Yahoo chart endpoint works in isolated preview and review Yahoo data-use terms before any broader access.
 - [ ] Test 2022-to-current date ranges against known exchange sessions and compare sample candles to a second trusted source.
 - [ ] Confirm permitted personal token usage and expiry/refresh operations before any multi-user rollout.
 
 **Acceptance:** every stock candle maps to an exact official instrument-master identity, carries its provider date, and is never displayed as live intraday pricing. Missing/stale stock data leaves stock values blank and prevents a combined total.
 
 ### W3 — Corporate-action-adjusted stock ledger
-**Partially addressed by Dhan's adjusted daily-price series; full total-return ledger remains not started.**
+**Partially addressed by a split-adjusted price series; total-return ledger remains not started.**
 
 - [ ] Model stock paper lots with exchange, security ID, symbol, purchase date, quantity, price and source.
-- [x] Use Dhan's provider-adjusted daily history for bonus/split adjustment in this personal demo.
+- [x] Use provider split-adjusted close history for the personal price-return demo.
 - [ ] Ingest and verify mergers, demergers, symbol changes, delistings and cash dividend events for a complete stock ledger.
 - [ ] Handle cash dividends separately from price return and document reinvestment assumptions (default: dividends excluded from price-return; total-return view only where complete verified data exists).
 - [ ] Apply corporate actions to quantity and cost basis without double-counting.
 - [ ] Add regression fixtures around representative corporate-action events.
 
-**Acceptance:** Dhan-adjusted price history is acceptable only for price-return estimates. Total return, dividend reinvestment and complex corporate actions remain unsupported until separately reconciled against authoritative records.
+**Acceptance:** provider price history is acceptable only for indicative price-return estimates. Total return, dividend reinvestment and complex corporate actions remain unsupported.
 
 ### W4 — Consolidated portfolio and richer mobile charts
-**Partial — the mutual-fund SIP chart and a same-date static demo portfolio are implemented; real stock valuation remains gated on Dhan configuration.**
+**Partial — the mutual-fund SIP chart and same-date sample portfolio are implemented; stock valuation uses an unofficial free data endpoint and is best-effort.**
 
 - [x] Combine sample stock and mutual-fund valuations only when every asset has a provider observation on the exact same shared as-of date; otherwise withhold the combined total.
 - [x] Build the mutual-fund SIP paper-value and contribution history from exact shared NAV dates, with no interpolated points.
@@ -183,15 +183,15 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 - Production rollout requires the repository release workflow and the ordered D1 migrations 0013 and 0014. No payment gateway or brokerage trade/mandate integration is included.
 - Mutual-fund history depends on MFapi.in, a third-party aggregator. AMFI is the official NAV reference and source reconciliation remains an acceptance gate.
-- Stock history requires the explicit `WEALTH_DHAN_ENABLED` flag, a Dhan Data API subscription and a server-only `DHAN_ACCESS_TOKEN`. The flag is `false` by default; individual tokens expire after 24 hours. Dhan says daily history is adjusted for bonuses and splits, but cash dividends are excluded.
-- The sample stock price/return panel remains disabled until the owner enables Dhan Data API and configures a server-only token. Dhan daily history is bonus/split-adjusted; cash dividends are excluded, so this is price return rather than total return.
+- Stock history uses the free Yahoo Finance chart endpoint without an API token. It is unofficial, may be delayed or fail, and split-adjusted close data excludes cash dividends.
+- The sample stock panel attempts free Yahoo Finance daily data. If data cannot be verified, it shows no price or return instead of a fabricated value.
 - No brokerage account connection, order placement, SIP mandate, payment, tax report or actual ownership verification exists.
 - A historical SIP result is a reproducible hypothetical under the documented schedule convention, not a prediction or investment recommendation.
 
 ## 9. Implementation file map
 
 - `src/wealth/index.ts` — isolated Wealth API and calculation logic.
-- `src/config/env.ts` — optional server-only Dhan credential types.
+- `src/config/env.ts` — no market-data credentials are required for the free demo feed.
 - `migrations/0013_askmoina_live_support.sql` — preceding additive support/presence schema in the ordered migration chain.
 - `migrations/0014_wealth_simulations.sql` — user-scoped SIP simulation tables.
 - `public/wealth.html`, `public/wealth.css`, `public/wealth.js`, `public/wealth-demo.js` — dark, mobile-first PWA surface and live-provider demo loader.
@@ -206,9 +206,9 @@ The default Wealth overview loads a fixed, clearly labelled sample portfolio so 
 
 - Sample share-equivalent quantities and purchase dates, and sample SIP amounts/dates, are hard-coded demonstration inputs. They are not the account owner's holdings, transactions, bank records or mandates. They are never written to D1.
 - Mutual-fund NAV history is fetched from MFapi.in, a third-party aggregator of AMFI-published daily NAVs. Reconcile with AMFI before any use beyond personal demonstration.
-- Stock history uses DhanHQ's documented daily /charts/historical endpoint after the four sample symbols are validated against Dhan's official NSE equity instrument-master CSV. Dhan says daily historical candles are adjusted for bonuses and splits. The demo reports price returns only; cash dividends are excluded.
-- Dhan Data API is an optional external subscription (currently ₹499 + applicable GST per month according to Dhan support). AskMoina does not subscribe, collect payment, or expose a payment gateway. The server-side DHAN_ACCESS_TOKEN secret and WEALTH_DHAN_ENABLED=true flag must be configured by the owner. Tokens are time-limited; expired/missing tokens cause stock values to be withheld.
-- When Dhan data is not enabled or unavailable, the app still displays real NAV-based sample SIP values, while stock sample inputs remain visible with no prices or returns. Combined portfolio totals/XIRR are blank until every holding has a valid price on the same common valuation date.
+- Stock history uses Yahoo Finance's unofficial daily chart endpoint for the four fixed NSE symbols. Split-adjusted close values are used; cash dividends are excluded.
+- No paid Dhan Data API, paid market-data subscription, payment gateway or broker integration is required. Yahoo Finance is an unofficial best-effort source; review its terms and do not redistribute its data.
+- When free Yahoo stock data is unavailable, the app still shows real NAV-based sample SIP values, while stock sample inputs remain visible with no prices or returns. Combined totals/XIRR are withheld until every holding has a valid price on the same common valuation date.
 - The default page never falls back to hard-coded market prices, NAVs or returns.
 - There is no payment gateway, deposit/withdrawal flow, brokerage order path, trading API, or actual SIP mandate.
 

@@ -32,135 +32,25 @@ const DEMO_FUNDS: DemoFund[] = [
   { schemeCode: 125497, monthlyAmountPaise: 200_000, startDate: "2023-03-01", sipDay: 10 },
 ];
 type PricePoint = { date: string; close: number };
-type DhanHistoryResponse = { close?: unknown[]; timestamp?: unknown[] };
-
-function pickFirstCloseAtOrAfter(points: PricePoint[], requestedDate: string, maxDays = 7): PricePoint | null {
-  const lastAllowed = isoDaysAfter(requestedDate, maxDays);
-  return points.find((point) => point.date >= requestedDate && point.date <= lastAllowed) || null;
+type YahooChartResponse = { chart?: { error?: { code?: string; description?: string } | null; result?: Array<{ timestamp?: unknown[]; indicators?: { quote?: Array<{ close?: unknown[] }> } }> | null } };
+function normalizeYahooHistory(payload: YahooChartResponse, fromDate: string, toDate: string): PricePoint[] {
+  const result=payload?.chart?.result?.[0], timestamps=result?.timestamp, closes=result?.indicators?.quote?.[0]?.close;
+  if(!Array.isArray(timestamps)||!Array.isArray(closes)||timestamps.length!==closes.length||timestamps.length>2000||payload.chart?.error) throw new Error("yahoo_stock_history_response_invalid");
+  const points=timestamps.flatMap((raw,i)=>{const ts=Number(raw),close=Number(closes[i]);if(!Number.isFinite(ts)||!Number.isFinite(close)||close<=0)return[];const date=indiaDateFromEpochSeconds(ts);return !date||date<fromDate||date>=toDate?[]:[{date,close}];}).sort((a,b)=>a.date.localeCompare(b.date));
+  const map=new Map<string,PricePoint>();points.forEach(p=>map.set(p.date,p));const resultPoints=Array.from(map.values());if(resultPoints.length<2)throw new Error("yahoo_stock_history_empty");return resultPoints;
 }
-function findExactMarketPoint<T extends { date: string }>(points: T[], valuationDate: string): T | null {
-  return points.find((point) => point.date === valuationDate) || null;
-}
-function latestSharedDate(series: Array<Array<{ date: string }>>, today: string): string | null {
-  if (!series.length || series.some((points) => !points.length)) return null;
-  const first = new Set(series[0]
-    .filter((point) => validIsoDate(point.date) && point.date <= today)
-    .map((point) => point.date));
-  for (const points of series.slice(1)) {
-    const dates = new Set(points
-      .filter((point) => validIsoDate(point.date) && point.date <= today)
-      .map((point) => point.date));
-    for (const date of first) if (!dates.has(date)) first.delete(date);
-    if (!first.size) return null;
-  }
-  return Array.from(first)
-    .filter((date) => isFreshNavDate(date, today))
-    .sort()
-    .pop() || null;
-}
-function parseCsvTable(csv: string): Array<Record<string, string>> {
-  const rows: string[][] = [];
-  let row: string[] = [], cell = "", quoted = false;
-  for (let index = 0; index < csv.length; index += 1) {
-    const char = csv[index];
-    if (quoted) {
-      if (char === '"' && csv[index + 1] === '"') { cell += '"'; index += 1; }
-      else if (char === '"') quoted = false;
-      else cell += char;
-    } else if (char === '"') quoted = true;
-    else if (char === ",") { row.push(cell); cell = ""; }
-    else if (char === "\n") {
-      row.push(cell.replace(/\r$/, ""));
-      if (row.some((value) => value.trim())) rows.push(row);
-      row = []; cell = "";
-    } else cell += char;
-  }
-  if (cell.length || row.length) {
-    row.push(cell.replace(/\r$/, ""));
-    if (row.some((value) => value.trim())) rows.push(row);
-  }
-  if (rows.length < 2) throw new Error("dhan_instrument_master_empty");
-  const headers = rows[0].map((header) => header.trim());
-  const required = ["SEM_EXM_EXCH_ID", "SEM_SEGMENT", "SEM_SMST_SECURITY_ID", "SEM_INSTRUMENT_NAME", "SEM_TRADING_SYMBOL"];
-  if (required.some((header) => !headers.includes(header))) throw new Error("dhan_instrument_master_schema_invalid");
-  return rows.slice(1).map((values) => {
-    const item: Record<string, string> = {};
-    headers.forEach((header, index) => { item[header] = (values[index] || "").trim(); });
-    return item;
-  });
-}
-function resolveDemoSecurityIds(rows: Array<Record<string, string>>): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const stock of DEMO_STOCKS) {
-    const matches = rows.filter((row) =>
-      row.SEM_EXM_EXCH_ID === "NSE" &&
-      row.SEM_SEGMENT === "E" &&
-      row.SEM_INSTRUMENT_NAME === "EQUITY" &&
-      row.SEM_TRADING_SYMBOL === stock.symbol
-    );
-    if (matches.length !== 1) throw new Error("dhan_instrument_master_mapping_ambiguous");
-    const securityId = matches[0].SEM_SMST_SECURITY_ID;
-    if (!/^\d{1,12}$/.test(securityId)) throw new Error("dhan_instrument_master_security_id_invalid");
-    result[stock.symbol] = securityId;
-  }
-  return result;
-}
-async function fetchDhanInstrumentMaster(): Promise<Record<string, string>> {
-  const url = "https://images.dhan.co/api-data/api-scrip-master.csv";
-  const key = new Request(url, { method: "GET" });
-  try {
-    const cached = await caches.default.match(key);
-    if (cached) {
-      const ids = await cached.json() as Record<string, string>;
-      if (DEMO_STOCKS.every((stock) => /^\d{1,12}$/.test(ids[stock.symbol] || ""))) return ids;
-    }
-  } catch {
-    // Cache miss or malformed cache: fetch the official instrument master below.
-  }
-  const upstream = await fetch(url, {
-    headers: { Accept: "text/csv" },
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!upstream.ok) throw new Error("dhan_instrument_master_http_" + upstream.status);
-  const ids = resolveDemoSecurityIds(parseCsvTable(await upstream.text()));
-  try {
-    await caches.default.put(key, new Response(JSON.stringify(ids), {
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" },
-    }));
-  } catch { /* Instrument cache is an optimization only. */ }
-  return ids;
-}
-function normalizeDhanHistory(payload: DhanHistoryResponse, fromDate: string, toDate: string): PricePoint[] {
-  if (!Array.isArray(payload.close) || !Array.isArray(payload.timestamp) ||
-      payload.close.length !== payload.timestamp.length || payload.close.length > 2_000) {
-    throw new Error("dhan_stock_history_response_invalid");
-  }
-  const points = payload.close.flatMap((close, index) => {
-    const price = Number(close), timestamp = Number(payload.timestamp?.[index]);
-    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return [];
-    const date = indiaDateFromEpochSeconds(timestamp);
-    if (!date || date < fromDate || date >= toDate) return [];
-    return [{ date, close: price }];
-  }).sort((a, b) => a.date.localeCompare(b.date));
-  const deduplicated = new Map<string, PricePoint>();
-  points.forEach((point) => deduplicated.set(point.date, point));
-  const normalized = Array.from(deduplicated.values());
-  if (normalized.length < 2) throw new Error("dhan_stock_history_empty");
-  return normalized;
-}
-async function fetchDhanStockHistory(position: DemoStock, today: string, accessToken: string, securityId: string): Promise<PricePoint[]> {
-  const fromDate = position.purchaseDate, toDate = isoDaysAfter(today, 1);
-  const upstream = await fetch("https://api.dhan.co/v2/charts/historical", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", "access-token": accessToken },
-    body: JSON.stringify({
-      securityId, exchangeSegment: "NSE_EQ", instrument: "EQUITY",
-      expiryCode: 0, oi: false, fromDate, toDate,
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!upstream.ok) throw new Error("dhan_stock_history_http_" + upstream.status);
-  return normalizeDhanHistory(await upstream.json() as DhanHistoryResponse, fromDate, toDate);
+async function fetchYahooStockHistory(position: DemoStock, today: string): Promise<PricePoint[]> {
+  const fromDate=position.purchaseDate,toDate=isoDaysAfter(today,1);
+  const p1=Math.floor(new Date(fromDate+"T00:00:00Z").getTime()/1000),p2=Math.floor(new Date(toDate+"T00:00:00Z").getTime()/1000);
+  const url=new URL("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(position.symbol+".NS"));
+  url.searchParams.set("period1",String(p1));url.searchParams.set("period2",String(p2));url.searchParams.set("interval","1d");url.searchParams.set("events","history");
+  const key=new Request(url.toString(),{method:"GET"});
+  try{const cached=await caches.default.match(key);if(cached)return normalizeYahooHistory(await cached.json() as YahooChartResponse,fromDate,toDate);}catch{/* fresh fetch */}
+  const upstream=await fetch(key,{headers:{Accept:"application/json","User-Agent":"AskMoina-Wealth/1.0 personal demo"},signal:AbortSignal.timeout(15000)});
+  if(!upstream.ok)throw new Error("yahoo_stock_history_http_"+upstream.status);
+  const payload=await upstream.json() as YahooChartResponse,points=normalizeYahooHistory(payload,fromDate,toDate);
+  try{await caches.default.put(key,new Response(JSON.stringify(payload),{headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"public, max-age=3600"}}));}catch{/* cache optional */}
+  return points;
 }
 async function fetchDemoFundHistory(plan: DemoFund, today: string): Promise<{ meta: SchemeMeta; points: NavPoint[] }> {
   const payload = await mfapi("/mf/" + plan.schemeCode + "?startDate=" + plan.startDate + "&endDate=" + today) as NavResponse;
@@ -173,7 +63,7 @@ function valueDemoStock(position: DemoStock, points: PricePoint[], asOfDate: str
   const latest = findExactMarketPoint(usablePoints, asOfDate);
   const purchase = pickFirstCloseAtOrAfter(usablePoints, position.purchaseDate);
   if (!latest || !purchase || !isFreshNavDate(latest.date, todayInIndia())) throw new Error("demo_stock_price_unavailable");
-  // Dhan says its daily history is bonus/split adjusted. Demo quantities are
+  // Yahoo Finance daily close history is split-adjusted. Demo quantities are
   // share-equivalent units on that adjusted basis; cash dividends are excluded.
   const invested = position.quantity * purchase.close, marketValue = position.quantity * latest.close;
   const investedPaise = Math.round(invested * 100), marketValuePaise = Math.round(marketValue * 100);
@@ -185,7 +75,7 @@ function valueDemoStock(position: DemoStock, points: PricePoint[], asOfDate: str
     profitLossPaise: marketValuePaise - investedPaise,
     absoluteReturn: investedPaise > 0 ? (marketValuePaise - investedPaise) / investedPaise : null,
     xirr: xirr([{ date: purchase.date, amount: -invested }, { date: latest.date, amount: marketValue }]),
-    priceSeries: usablePoints.slice(-120), source: "DhanHQ historical daily candles",
+    priceSeries: usablePoints.slice(-120), source: "Yahoo Finance chart endpoint (unofficial)",
   };
 }
 function valueDemoFund(plan: DemoFund, history: { meta: SchemeMeta; points: NavPoint[] }, asOfDate: string) {
@@ -220,26 +110,18 @@ function valueDemoFund(plan: DemoFund, history: { meta: SchemeMeta; points: NavP
 }
 async function handleDemoPortfolio(env: Env): Promise<Response> {
   const today = todayInIndia();
-  let stockDataStatus: "ready" | "disabled" | "not_configured" | "unavailable" = "disabled";
-  let stockDataMessage = "Dhan Data API is not enabled. Sample quantities and dates are visible, but no stock prices or returns are shown.";
+  let stockDataStatus: "ready" | "unavailable" = "unavailable";
+  let stockDataMessage = "Free Yahoo Finance daily data is being checked. No stock prices are fabricated.";
   let stockHistories: PricePoint[][] = [];
-  const accessToken = env.DHAN_ACCESS_TOKEN?.trim(), stockEnabled = env.WEALTH_DHAN_ENABLED === "true";
-  if (stockEnabled && !accessToken) {
-    stockDataStatus = "not_configured";
-    stockDataMessage = "Add a valid Dhan Data API access token as the server-side DHAN_ACCESS_TOKEN secret. No stock prices are fabricated.";
-  } else if (stockEnabled && accessToken) {
-    try {
-      const instrumentIds = await fetchDhanInstrumentMaster();
-      stockHistories = await Promise.all(DEMO_STOCKS.map((position) =>
-        fetchDhanStockHistory(position, today, accessToken, instrumentIds[position.symbol])));
-      stockDataStatus = "ready";
-      stockDataMessage = "DhanHQ daily candles · bonus/split-adjusted historical prices. Cash dividends are excluded.";
-    } catch (error) {
-      stockDataStatus = "unavailable";
-      stockDataMessage = "Dhan historical prices could not be verified. Check the Data API subscription and token expiry; stock values are withheld.";
-      console.error("[wealth] Dhan demo history unavailable", error instanceof Error ? error.message : "unknown");
-      stockHistories = [];
-    }
+  try {
+    stockHistories = await Promise.all(DEMO_STOCKS.map((position) => fetchYahooStockHistory(position, today)));
+    stockDataStatus = "ready";
+    stockDataMessage = "Yahoo Finance daily history · free and unofficial · split-adjusted close; dividends excluded.";
+  } catch (error) {
+    stockDataStatus = "unavailable";
+    stockDataMessage = "Free Yahoo Finance daily history could not be verified. Stock values are withheld; no prices are invented.";
+    console.error("[wealth] Yahoo demo history unavailable", error instanceof Error ? error.message : "unknown");
+    stockHistories = [];
   }
   try {
     const fundHistories = await Promise.all(DEMO_FUNDS.map((plan) => fetchDemoFundHistory(plan, today)));
@@ -280,11 +162,11 @@ async function handleDemoPortfolio(env: Env): Promise<Response> {
       sampleStockLots: DEMO_STOCKS.map(({ symbol, name, quantity, purchaseDate }) => ({ symbol, name, quantity, purchaseDate })),
       stockDataStatus, stockDataMessage,
       providers: {
-        stocks: "DhanHQ historical daily candles · bonus/split-adjusted · cash dividends excluded",
+        stocks: "Yahoo Finance chart endpoint · unofficial daily split-adjusted close · cash dividends excluded",
         mutualFunds: NAV_SOURCE + " · third-party aggregator of AMFI-published daily NAVs",
       },
       sampleDataNotice: "Sample share-equivalent quantities, purchase dates and SIP contributions are fixed demonstration inputs. They are not the signed-in user's actual holdings, purchases, bank records or SIP mandates. Stock prices and fund NAVs are fetched from external providers. No payments, orders or SIP mandates are created.",
-      disclaimer: "Personal demonstration only. Dhan says daily historical candles are adjusted for bonuses and splits; cash dividends are excluded from stock returns. Mutual-fund NAVs are supplied by MFapi.in and should be reconciled against AMFI. Sample holdings and SIPs are hypothetical, not proof of ownership, investment advice, execution prices, tax statements, actual transactions or mandates.",
+      disclaimer: "Personal demonstration only. Yahoo Finance daily close history is unofficial and split-adjusted; cash dividends are excluded from stock returns. Mutual-fund NAVs are supplied by MFapi.in and should be reconciled against AMFI. Sample holdings and SIPs are hypothetical, not proof of ownership, investment advice, execution prices, tax statements, actual transactions or mandates.",
     });
   } catch (error) {
     console.error("[wealth] demo NAV data unavailable", error instanceof Error ? error.message : "unknown");
@@ -499,10 +381,6 @@ function parseSchemeCode(value: string): number | null {
   if (!/^\d{1,9}$/.test(value)) return null;
   const code = Number(value);
   return Number.isSafeInteger(code) && code > 0 ? code : null;
-}
-
-function validDhanDate(value: string): boolean {
-  return validIsoDate(value);
 }
 
 async function handleFundSearch(url: URL): Promise<Response> {
@@ -1032,81 +910,13 @@ async function listSimulations(env: Env, userId: string): Promise<Response> {
   return response({ ok: true, simulations: rows.results || [] });
 }
 
-async function handleStockHistory(url: URL, env: Env): Promise<Response> {
-  const accessToken = env.DHAN_ACCESS_TOKEN?.trim();
-  if (env.WEALTH_DHAN_ENABLED !== "true") {
-    return response({
-      ok: false,
-      error: "stock_provider_disabled",
-      message: "The Dhan data adapter is disabled until data entitlements and the permitted user scope are verified.",
-    }, 503);
-  }
-  if (!accessToken) {
-    return response({
-      ok: false,
-      error: "stock_provider_not_configured",
-      message: "Dhan historical-data credentials are not configured on this Worker. Raw stock history must also pass instrument-master and corporate-action adjustment gates before it can be used for long-term return calculations.",
-    }, 503);
-  }
-  const securityId = url.searchParams.get("securityId") || "";
-  const exchangeSegment = url.searchParams.get("exchangeSegment") || "";
-  const fromDate = url.searchParams.get("fromDate") || "";
-  const toDate = url.searchParams.get("toDate") || "";
-  if (!/^\d{1,12}$/.test(securityId) || !["NSE_EQ", "BSE_EQ"].includes(exchangeSegment) ||
-      !validDhanDate(fromDate) || !validDhanDate(toDate) || fromDate >= toDate || fromDate < "2022-01-01" || toDate > todayInIndia()) {
-    return badRequest("invalid_stock_history_request");
-  }
-  const spanDays = (new Date(toDate + "T00:00:00Z").getTime() - new Date(fromDate + "T00:00:00Z").getTime()) / 86_400_000;
-  if (spanDays > 1_830) return badRequest("stock_history_range_exceeds_five_years");
-  try {
-    const upstream = await fetch("https://api.dhan.co/v2/charts/historical", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "access-token": accessToken,
-      },
-      body: JSON.stringify({
-        securityId,
-        exchangeSegment,
-        instrument: "EQUITY",
-        expiryCode: 0,
-        oi: false,
-        fromDate,
-        toDate,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!upstream.ok) return response({ ok: false, error: "stock_provider_unavailable", providerStatus: upstream.status }, 502);
-    const data = await upstream.json() as { close?: unknown[]; timestamp?: unknown[] };
-    if (!Array.isArray(data.close) || !Array.isArray(data.timestamp) || data.close.length !== data.timestamp.length || data.close.length > 2_000) {
-      return response({ ok: false, error: "stock_provider_response_invalid" }, 502);
-    }
-    const candles = data.close.flatMap((close, index) => {
-      const price = Number(close);
-      const timestamp = Number(data.timestamp?.[index]);
-      if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return [];
-      const date = indiaDateFromEpochSeconds(timestamp);
-      if (!date || date < fromDate || date >= toDate) return [];
-      return [{ date, close: price }];
-    });
-    return response({
-      ok: true,
-      source: "DhanHQ historical daily OHLC",
-      securityId,
-      exchangeSegment,
-      instrument: "EQUITY",
-      fromDate,
-      toDate,
-      adjustedForCorporateActions: true,
-      canCalculateTotalReturn: false,
-      candles,
-      disclaimer: "Dhan states daily historical candles are adjusted for bonuses and splits. Cash dividends are not included, so this is a price-return data series rather than a complete total-return series.",
-    });
-  } catch (error) {
-    console.error("[wealth] Dhan history failed", error instanceof Error ? error.message : "unknown");
-    return response({ ok: false, error: "stock_provider_unavailable" }, 502);
-  }
+async function handleStockHistory(url: URL): Promise<Response> {
+  const symbol=(url.searchParams.get("symbol")||"").toUpperCase(),position=DEMO_STOCKS.find(s=>s.symbol===symbol);
+  const fromDate=url.searchParams.get("fromDate")||"",toDate=url.searchParams.get("toDate")||"";
+  if(!position||!validIsoDate(fromDate)||!validIsoDate(toDate)||fromDate>=toDate||fromDate<"2022-01-01"||toDate>todayInIndia())return badRequest("invalid_stock_history_request");
+  const span=(new Date(toDate+"T00:00:00Z").getTime()-new Date(fromDate+"T00:00:00Z").getTime)/86400000;if(span>1830)return badRequest("stock_history_range_exceeds_five_years");
+  try{const candles=await fetchYahooStockHistory({...position,purchaseDate:fromDate},toDate);return response({ok:true,source:"Yahoo Finance chart endpoint (unofficial)",symbol:symbol+".NS",fromDate,toDate,adjustedForSplits:true,dividendsIncluded:false,candles,disclaimer:"Free, unofficial Yahoo Finance daily price history. Split-adjusted close values are used; cash dividends are excluded. The feed is not guaranteed and is not for trading or commercial redistribution."});}
+  catch(error){console.error("[wealth] Yahoo stock history failed",error instanceof Error?error.message:"unknown");return response({ok:false,error:"stock_provider_unavailable",message:"Free stock history could not be verified. No sample price is substituted."},502);}
 }
 
 export async function handleWealthRequest(request: Request, env: Env, userId: string | null): Promise<Response | null> {
@@ -1125,9 +935,9 @@ export async function handleWealthRequest(request: Request, env: Env, userId: st
       providers: {
         mutualFundNav: NAV_SOURCE,
         mutualFundNavReady: true,
-        stockHistory: "DhanHQ",
-        stockHistoryReady: env.WEALTH_DHAN_ENABLED === "true" && Boolean(env.DHAN_ACCESS_TOKEN?.trim()),
-        stockHistoryEnabled: env.WEALTH_DHAN_ENABLED === "true",
+        stockHistory: "Yahoo Finance (unofficial)",
+        stockHistoryReady: true,
+        stockHistoryEnabled: true,
         stockPerformanceReady: false,
       },
       disclaimer: "This feature creates hypothetical historical paper portfolios. It does not connect to a brokerage, place trades, create SIP mandates, or prove actual ownership.",
@@ -1166,7 +976,5 @@ export const wealthMath = {
   pickFirstCloseAtOrAfter,
   findExactMarketPoint,
   latestSharedDate,
-  parseCsvTable,
-  resolveDemoSecurityIds,
-  normalizeDhanHistory,
+  normalizeYahooHistory,
 };
