@@ -43,6 +43,19 @@ describe("AskMoina Wealth historical simulation math", () => {
     }, 123)).toThrow("nav_provider_response_invalid");
   });
 
+  it("accepts Growth options but excludes IDCW and dividend options", () => {
+    expect(wealthMath.isGrowthOption({ scheme_name: "Nippon India Small Cap Fund - Direct Plan - Growth" })).toBe(true);
+    expect(wealthMath.isGrowthOption({ scheme_name: "Nippon India Small Cap Fund - Regular Plan - Growth" })).toBe(true);
+    expect(wealthMath.isGrowthOption({ scheme_name: "Example Fund - Direct Plan - IDCW" })).toBe(false);
+    expect(wealthMath.isGrowthOption({ scheme_name: "Example Dividend Option" })).toBe(false);
+  });
+
+  it("rejects stale and future NAV dates for current portfolio valuations", () => {
+    expect(wealthMath.isFreshNavDate("2026-11-06", "2026-11-09")).toBe(true);
+    expect(wealthMath.isFreshNavDate("2026-10-30", "2026-11-09")).toBe(false);
+    expect(wealthMath.isFreshNavDate("2026-11-10", "2026-11-09")).toBe(false);
+  });
+
   it("calculates an XIRR-like annualized return from dated cash flows", () => {
     const rate = wealthMath.xirr([
       { date: "2023-01-01", amount: -100 },
