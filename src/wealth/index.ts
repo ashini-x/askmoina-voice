@@ -533,6 +533,13 @@ async function listSimulations(env: Env, userId: string): Promise<Response> {
 async function handleStockHistory(url: URL, env: Env): Promise<Response> {
   const clientId = env.DHAN_CLIENT_ID?.trim();
   const accessToken = env.DHAN_ACCESS_TOKEN?.trim();
+  if (env.WEALTH_DHAN_ENABLED !== "true") {
+    return response({
+      ok: false,
+      error: "stock_provider_disabled",
+      message: "The Dhan data adapter is disabled until data entitlements and the permitted user scope are verified.",
+    }, 503);
+  }
   if (!clientId || !accessToken) {
     return response({
       ok: false,
@@ -617,7 +624,8 @@ export async function handleWealthRequest(request: Request, env: Env, userId: st
         mutualFundNav: NAV_SOURCE,
         mutualFundNavReady: true,
         stockHistory: "DhanHQ",
-        stockHistoryReady: Boolean(env.DHAN_CLIENT_ID?.trim() && env.DHAN_ACCESS_TOKEN?.trim()),
+        stockHistoryReady: env.WEALTH_DHAN_ENABLED === "true" && Boolean(env.DHAN_CLIENT_ID?.trim() && env.DHAN_ACCESS_TOKEN?.trim()),
+        stockHistoryEnabled: env.WEALTH_DHAN_ENABLED === "true",
         stockPerformanceReady: false,
       },
       disclaimer: "This feature creates hypothetical historical paper portfolios. It does not connect to a brokerage, place trades, create SIP mandates, or prove actual ownership.",
