@@ -484,10 +484,10 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       const current = latestByCode.get(code);
       if (!current || current.date <= commonValuationDate) continue;
       try {
-        const fromDate = isoDaysAfter(commonValuationDate, -14);
-        const raw = await mfapi("/mf/" + code + "?startDate=" + fromDate + "&endDate=" + commonValuationDate) as NavResponse;
+        const endDate = isoDaysAfter(commonValuationDate, 1);
+        const raw = await mfapi("/mf/" + code + "?startDate=" + commonValuationDate + "&endDate=" + endDate) as NavResponse;
         const normalized = normalizeNavHistory(raw, code);
-        const point = normalized.points.filter((item) => item.date <= commonValuationDate).at(-1);
+        const point = normalized.points.find((item) => item.date === commonValuationDate);
         if (point) latestByCode.set(code, point);
         else latestByCode.delete(code);
       } catch (error) {
