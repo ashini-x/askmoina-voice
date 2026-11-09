@@ -1,4 +1,4 @@
-const CACHE_NAME = "askmoina-pwa-shell-v21";
+const CACHE_NAME = "askmoina-pwa-shell-v22";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",
@@ -25,7 +25,6 @@ const SHELL_URLS = [
   "/pwa-gate.js",
   "/pwa-runtime.js?v=0.4.131",
   "/wealth.css",
-  "/wealth.js",
   "/wealth-demo.js"
 ];
 

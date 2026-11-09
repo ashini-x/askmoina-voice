@@ -34,17 +34,13 @@ assert.ok(read("docs/ASKMOINA-BRAND-SYSTEM-V1.md").includes("askmoina-global-fon
 
 const wealthHtml = read("public/wealth.html");
 const wealthCss = read("public/wealth.css");
-const wealthJs = read("public/wealth.js");
-const wealthWorker = read("src/wealth/index.ts");
+const wealthDemo = read("public/wealth-demo.js");
 const wealthRouter = read("src/index.ts");
-assert.ok(wealthHtml.includes("Historical paper simulation") && wealthHtml.includes('id="fund-search"') && wealthHtml.includes('data-tab="stocks"'), "Wealth PWA must identify the paper-only experience and expose fund and stock sections");
-assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#36d399"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
-assert.ok(wealthJs.includes("/api/wealth/funds/search") && wealthJs.includes("/api/wealth/simulations"), "Wealth UI must use authenticated same-origin Worker APIs");
-assert.ok(wealthWorker.includes("growth_option_required") && wealthWorker.includes("missedInstallmentDates") && wealthWorker.includes("canCalculateTotalReturn: false"), "Wealth Worker must enforce Growth NAVs, disclose missed SIP dates, and block unadjusted stock returns");
-assert.ok(wealthWorker.includes("const MAX_INSTALLMENTS = 100") && wealthWorker.includes("INSERT OR IGNORE INTO wealth_sip_purchases") && wealthWorker.includes("refreshPendingPurchases"), "Wealth Worker must cap SIP rows for the D1 budget and safely retry pending NAV allotments");
-assert.ok(wealthWorker.includes("performanceSeries") && wealthWorker.includes("indiaDateFromEpochSeconds"), "Wealth Worker must expose NAV-backed performance and map daily candles to the Indian exchange date");
-
-assert.ok(wealthRouter.includes('import { handleWealthRequest } from "./wealth";') && wealthRouter.includes('url.pathname === "/wealth"') && wealthRouter.includes("entry-menu-wealth"), "Wealth routes and authenticated navigation must be wired into the existing Worker");
+assert.ok(wealthHtml.includes("PERSONAL DEMO") && wealthHtml.includes('id="holding-rows"') && wealthHtml.includes('data-nav="watchlist"'), "Wealth PWA must expose the personal portfolio, holdings, and watchlist views");
+assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#31d39a"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
+assert.ok(wealthDemo.includes('symbol:"RELIANCE"') && wealthDemo.includes('symbol:"HDFCBANK"') && wealthDemo.includes("renderChart") && wealthDemo.includes("renderAllocation"), "Wealth frontend must include static portfolio holdings, chart, and asset allocation");
+assert.ok(!wealthDemo.includes("fetch(") && !wealthDemo.includes("/api/wealth") && !wealthDemo.includes("XMLHttpRequest"), "Wealth preview must be frontend-only and make no market-data or backend API calls");
+assert.ok(wealthRouter.includes('if (await isAdmin(request, env)) html = withWealthEntryShortcut(html);') && wealthRouter.includes('if (!await isAdmin(request, env)) return new Response("Not found", { status: 404 });') && !wealthRouter.includes("handleWealthRequest"), "Wealth must be owner/admin-only and have no backend data API");
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
@@ -215,8 +211,8 @@ const serviceWorker = read("public/service-worker.js");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.css?v=0.4.133"'), "global font stylesheet must be cached for the offline shell");
 assert.ok(serviceWorker.includes('"/askmoina-global-font.woff2?v=0.4.132"'), "global font binary must be cached for offline typography");
 assert.ok(serviceWorker.includes('"/install"'), "service worker must precache the canonical install route");
-assert.ok(serviceWorker.includes("askmoina-pwa-shell-v21"), "service worker cache must be refreshed for the dark splash icon");
-assert.ok(serviceWorker.includes("\"/wealth.css\"") && serviceWorker.includes("\"/wealth.js\"") && serviceWorker.includes("\"/wealth-demo.js\""), "Wealth static assets must be precached for installed PWA use");
+assert.ok(serviceWorker.includes("askmoina-pwa-shell-v22"), "service worker cache must be refreshed for the dark splash icon");
+assert.ok(serviceWorker.includes("\"/wealth.css\"") && serviceWorker.includes("\"/wealth-demo.js\"") && !serviceWorker.includes("\"/wealth.js\""), "Wealth static assets must be precached for installed PWA use");
 assert.ok(!serviceWorker.includes('"/askmoina-install-reference.webp?v=0.4.131"') && !serviceWorker.includes('"/askmoina-install-reference-mobile.webp?v=0.4.131"'), "alternative artwork variants must not be downloaded as part of the service-worker shell");
 
 assert.ok(serviceWorker.includes('"/pwa-runtime.js?v=0.4.131"'), "service worker must precache the current viewport-aware hotspot runtime");

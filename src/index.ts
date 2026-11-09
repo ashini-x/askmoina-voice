@@ -32,7 +32,6 @@ import { buildGroundedListCard, extractGroundedRankedRows, getRequestedRankedLis
 import { DISPLAY_RESPONSE_CARD_FUNCTION } from "./sessions/response-card";
 import { canAccessVoicePreview } from "./sessions/voice-preview-access";
 import { isBrvinKnowledgeEnabled, retrieveAskMoinaBrvinEvidence } from "./brvin-knowledge";
-import { handleWealthRequest } from "./wealth";
 
 export { UserState } from "./sessions/user-state";
 export { VedaSessionState } from "./veda/session-state";
@@ -56,7 +55,7 @@ const ENTRY_SITE_MENU = "<header class=\"entry-site-header\" aria-label=\"askmoi
 
 function renderSiteMenu(authenticated: boolean): string {
   const publicPages = "<section class=\"entry-menu-section entry-menu-public\" aria-label=\"About askMoina\"><a href=\"/?view=about\">About askMoina <span aria-hidden=\"true\">›</span></a><a href=\"/?view=developer\">Developer <span aria-hidden=\"true\">›</span></a><a href=\"/?view=help\">Feedback <span aria-hidden=\"true\">›</span></a><a href=\"/?view=privacy\">Privacy &amp; Security <span aria-hidden=\"true\">›</span></a></section>";
-  const wealthSection = authenticated ? "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-wealth\"><a href=\"/wealth\"><strong>Wealth</strong> <span aria-hidden=\"true\">›</span></a></section>" : "";
+  const wealthSection = "";
   const pricingSection = "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-pricing\"><a href=\"/?view=pricing\"><strong>Investor Relations</strong> <span aria-hidden=\"true\">›</span></a></section>";
   const signOutSection = authenticated ? "<div class=\"entry-site-menu-divider\" role=\"separator\"></div><section class=\"entry-menu-section entry-menu-account\"><button type=\"button\" class=\"entry-menu-logout\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 17l5-5-5-5M15 12H3\"/><path d=\"M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6\"/></svg><span>Sign out</span></button></section>" : "";
   const sections = [publicPages, wealthSection, pricingSection, signOutSection].filter(Boolean).join("");
@@ -3507,7 +3506,7 @@ export default {
       const appVersion = encodeURIComponent(env.APP_VERSION || "0.4.153");
       let html = (await assetResponse.text()).replaceAll("__APP_VERSION__", appVersion);
       if (ownerPreview) html = withOwnerPreviewHtml(html);
-      if (await getAuthenticatedUserId(request, env)) html = withWealthEntryShortcut(html);
+      if (await isAdmin(request, env)) html = withWealthEntryShortcut(html);
 
       const responseHeaders = new Headers({
         "Content-Type": "text/html; charset=utf-8",
@@ -3631,10 +3630,6 @@ export default {
         if (request.method === "GET" || request.method === "HEAD") return Response.redirect(new URL("/login", request.url).toString(), 302);
         return json({ error: "authentication_required", message: "Sign up or log in to use askmoina. There is no guest access." }, 401);
       }
-    }
-    if (url.pathname === "/api/wealth" || url.pathname.startsWith("/api/wealth/")) {
-      const wealthResponse = await handleWealthRequest(request, env, await getAuthenticatedUserId(request, env));
-      if (wealthResponse) return wealthResponse;
     }
     const memoryResponse = await handleUserMemoryRequest(request, env);
     if (memoryResponse) return memoryResponse;
@@ -3822,6 +3817,7 @@ export default {
     }
     if ((url.pathname === "/wealth" || url.pathname === "/wealth/") &&
         (request.method === "GET" || request.method === "HEAD")) {
+      if (!await isAdmin(request, env)) return new Response("Not found", { status: 404 });
       const wealthAssetUrl = new URL(request.url);
       wealthAssetUrl.pathname = "/wealth.html";
       const wealthAsset = await env.ASSETS.fetch(new Request(wealthAssetUrl.toString(), { method: "GET", headers: request.headers }));

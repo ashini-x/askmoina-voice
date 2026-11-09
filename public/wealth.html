@@ -1,121 +1,17 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#080B10">
-  <meta name="color-scheme" content="dark">
-  <meta name="description" content="AskMoina Wealth — transparent historical paper-investment simulations.">
-  <link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin fetchpriority="high">
-  <title>Wealth · askmoina</title>
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/wealth.css">
-  <link rel="stylesheet" href="/askmoina-global-font.css">
-  <script defer src="/wealth.js"></script>
-  <script defer src="/wealth-demo.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080b10"><meta name="color-scheme" content="dark">
+<meta name="description" content="AskMoina Wealth — personal portfolio dashboard demo.">
+<link rel="preload" href="/askmoina-global-font.woff2?v=0.4.132" as="font" type="font/woff2" crossorigin fetchpriority="high">
+<title>Wealth · askmoina</title><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/wealth.css"><link rel="stylesheet" href="/askmoina-global-font.css"><script defer src="/wealth-demo.js"></script>
 </head>
-<body class="wealth-body">
-  <main class="wealth-app">
-    <header class="topbar">
-      <a class="back-link" href="/" aria-label="Back to askmoina">‹</a>
-      <div class="brand-lockup"><span class="eyebrow">ASKMOINA</span><strong>wealth</strong></div>
-      <div class="topbar-actions"><span class="mode-pill"><i></i> PAPER</span><a class="install-link" href="/install">Install app</a></div>
-    </header>
-
-    <section class="overview-card" aria-labelledby="portfolio-title">
-      <div class="section-kicker">YOUR INVESTMENT JOURNEY</div>
-      <div class="portfolio-title-row">
-        <h1 id="portfolio-title">Sample portfolio</h1>
-        <span class="asof-label" id="portfolio-asof">—</span>
-      </div>
-      <div class="portfolio-value" id="portfolio-value">₹—</div>
-      <div class="portfolio-return" id="portfolio-return">Build a historical portfolio using real market data.</div>
-      <div class="overview-rule"></div>
-      <div class="overview-metrics">
-        <div><span>Invested</span><strong id="portfolio-invested">₹—</strong></div>
-        <div><span>Profit / loss</span><strong id="portfolio-profit">₹—</strong></div>
-        <div><span>Annualised XIRR</span><strong id="portfolio-xirr">—</strong></div>
-      </div>
-      <p class="overview-footnote" id="portfolio-note">Demo quantities and purchase dates are fixed sample inputs. Market prices and NAVs are fetched from providers; no real account holdings are connected.</p>
-    </section>
-
-    <nav class="primary-tabs" aria-label="Wealth sections">
-      <button class="tab-button is-active" type="button" data-tab="overview">Overview</button>
-      <button class="tab-button" type="button" data-tab="funds">Mutual funds</button>
-      <button class="tab-button" type="button" data-tab="stocks">Stocks</button>
-    </nav>
-
-    <section class="tab-panel is-visible" id="panel-overview" data-panel="overview">
-      <div class="section-heading"><div><span class="section-kicker">LONG-TERM VIEW</span><h2>Investment activity</h2></div></div>
-      <section class="demo-card" id="demo-overview" aria-label="Sample portfolio overview"><p class="demo-loading">Loading verified market prices and NAVs…</p></section>
-      <div class="empty-card" id="overview-empty">
-        <div class="empty-glyph">↗</div>
-        <h3>Your timeline starts here</h3>
-        <p>Explore the fixed sample portfolio above, or create your own saved historical SIP simulation.</p>
-        <button class="button-primary" type="button" data-go-tab="funds">Build a SIP simulation</button>
-      </div>
-      <div class="simulation-list" id="simulation-list" aria-live="polite"></div>
-    </section>
-
-    <section class="tab-panel" id="panel-funds" data-panel="funds">
-      <div class="section-heading"><div><span class="section-kicker">REAL HISTORICAL NAV</span><h2>Mutual fund SIPs</h2></div><span class="source-tag">MFAPI.in</span></div>
-      <div class="info-strip"><strong>Historical paper simulation</strong><p>Search a real scheme, set a monthly amount and replay SIPs from 2023 using dated NAV observations. This does not represent actual units held or an actual SIP mandate.</p></div>
-
-      <section class="demo-card demo-fund-card" id="demo-funds" aria-label="Sample mutual fund SIP holdings"><p class="demo-loading">Loading actual NAV history…</p></section>
-
-      <div class="builder-card">
-        <label class="field-label" for="fund-search">Find a mutual fund</label>
-        <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="fund-search" type="search" autocomplete="off" placeholder="Try Nippon India Small Cap, UTI Nifty 50…" maxlength="80"><span class="search-spinner" id="search-spinner" hidden></span></div>
-        <div class="search-results" id="fund-results" role="listbox" aria-label="Mutual fund search results" hidden></div>
-        <div class="selected-funds" id="selected-funds"></div>
-
-        <div class="form-grid">
-          <div class="field"><label class="field-label" for="sip-day">SIP date</label><select id="sip-day"><option value="1">1st of month</option><option value="5" selected>5th of month</option><option value="10">10th of month</option><option value="15">15th of month</option><option value="20">20th of month</option><option value="25">25th of month</option></select></div>
-          <div class="field"><label class="field-label" for="sip-start">Start date</label><input id="sip-start" type="date" value="2023-01-01"></div>
-          <div class="field"><label class="field-label" for="sip-end">End date</label><input id="sip-end" type="date"></div>
-        </div>
-        <button class="button-primary button-full" id="create-simulation" type="button" disabled>Create historical SIP simulation</button>
-        <p class="form-hint" id="builder-status" role="status" aria-live="polite">Add one or more Direct/Regular Growth schemes to begin. Plan type is taken from the provider's scheme name.</p>
-      </div>
-      <div class="section-heading history-heading"><div><span class="section-kicker">YOUR SAVED SCENARIOS</span><h2>Past simulations</h2></div></div>
-      <div class="simulation-list" id="fund-simulation-list"></div>
-    </section>
-
-    <section class="tab-panel" id="panel-stocks" data-panel="stocks">
-      <div class="section-heading"><div><span class="section-kicker">EQUITY HISTORY</span><h2>Stocks</h2></div></div>
-      <div class="info-strip"><strong>Real DhanHQ market history · static sample positions</strong><p>The sample quantities and purchase dates are fixed demo inputs. Stock prices come from DhanHQ daily historical candles, which Dhan says are adjusted for bonuses and splits. This is a price-return view; cash dividends are excluded. No actual holdings or orders are connected.</p></div>
-      <section class="demo-card" id="demo-stocks" aria-label="Sample stock holdings"><p class="demo-loading">Loading actual stock prices…</p></section>
-      <div class="stock-status-card">
-        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Checking Dhan Data API…</strong></div>
-        <div class="status-row"><span>Bonus / split adjustment</span><strong>Adjusted by Dhan daily-history feed</strong></div>
-        <div class="status-row"><span>Cash dividends</span><strong class="status-pending">Excluded from price return</strong></div>
-      </div>
-      <div class="empty-card compact"><h3>Sample data, not your account</h3><p>Share-equivalent quantities and purchase dates are static demo inputs. Stock prices are shown only when the Dhan Data API is configured. Dhan currently lists its Data API at ₹499 + GST per month; any subscription is handled directly by Dhan, never inside AskMoina. No payment gateway is included.</p></div>
-    </section>
-
-    <section class="detail-sheet" id="simulation-detail" hidden aria-live="polite">
-      <div class="detail-header"><div><span class="section-kicker">SIMULATION DETAILS</span><h2 id="detail-title">—</h2></div><button type="button" id="close-detail" class="icon-button" aria-label="Close details">×</button></div>
-      <div class="detail-summary">
-        <div><span>Current value</span><strong id="detail-value">—</strong></div>
-        <div><span>Invested</span><strong id="detail-invested">—</strong></div>
-        <div><span>Absolute return</span><strong id="detail-absolute">—</strong></div>
-        <div><span>XIRR</span><strong id="detail-xirr">—</strong></div>
-      </div>
-      <section class="performance-chart-card" aria-labelledby="performance-chart-title">
-        <div class="performance-chart-heading">
-          <div><span class="section-kicker">HISTORICAL PERFORMANCE</span><h3 id="performance-chart-title">Simulation value</h3></div>
-          <span class="chart-period">ALL</span>
-        </div>
-        <div class="chart-legend"><span><i class="legend-value"></i> Paper value</span><span><i class="legend-invested"></i> Contributions</span></div>
-        <svg id="performance-chart" class="performance-chart" viewBox="0 0 360 150" role="img" aria-label="Historical paper simulation value compared with contributions"></svg>
-        <div class="chart-axis-labels"><span id="performance-chart-start">—</span><span id="performance-chart-end">—</span></div>
-        <p class="performance-chart-note" id="performance-chart-note">Chart is calculated from actual NAV observations shared by every selected scheme.</p>
-      </section>
-      <div class="detail-funds" id="detail-funds"></div>
-      <p class="detail-disclaimer" id="detail-disclaimer"></p>
-    </section>
-
-    <footer class="app-footer"><span>askmoina / wealth</span><span>Live market data · Static demo lots · No trades or payments</span></footer>
-  </main>
-</body>
-</html>
+<body class="wealth-body"><main class="wealth-app">
+<header class="topbar"><a class="back-link" href="/" aria-label="Back to askmoina">‹</a><div class="brand-lockup"><span class="eyebrow">ASKMOINA</span><strong>wealth</strong></div><span class="demo-pill"><i></i> PERSONAL DEMO</span><button class="avatar-button" type="button" aria-label="Demo profile">R</button></header>
+<section class="portfolio-hero" aria-labelledby="portfolio-title"><div class="hero-topline"><div><span class="section-kicker">TOTAL PORTFOLIO VALUE</span><div class="portfolio-title-row"><h1 id="portfolio-title">My portfolio</h1><span class="asof-label">As of 09 Nov 2026</span></div></div><button id="toggle-balance" class="eye-button" type="button" aria-label="Hide portfolio balance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button></div><div class="portfolio-value" id="portfolio-value">₹5,03,020.00</div><div class="total-return positive" id="total-return"><span>↗</span> ₹63,520.00 <strong>(+14.45%)</strong> <small>overall returns</small></div><div class="hero-divider"></div><div class="hero-stats"><div><span>Invested</span><strong id="invested-value">₹4,39,500.00</strong></div><div><span>Today's P&amp;L</span><strong class="positive" id="day-pnl">+₹3,482.60 <small>(+0.69%)</small></strong></div></div><div class="hero-note">Illustrative figures · not connected to a broker</div></section>
+<section class="chart-card" aria-labelledby="chart-title"><div class="chart-heading"><div><span class="section-kicker">PORTFOLIO PERFORMANCE</span><h2 id="chart-title">Your investments</h2></div><span class="chart-badge">DEMO</span></div><div class="chart-current"><strong id="chart-value">₹5,03,020</strong><span class="positive" id="chart-change">+14.45%</span></div><svg id="portfolio-chart" class="portfolio-chart" viewBox="0 0 360 150" role="img" aria-label="Illustrative portfolio value history chart"></svg><div class="chart-range" role="group" aria-label="Chart time range"><button type="button" data-range="1D">1D</button><button type="button" data-range="1W">1W</button><button type="button" data-range="1M">1M</button><button type="button" data-range="3M">3M</button><button type="button" data-range="1Y" class="is-active">1Y</button><button type="button" data-range="ALL">ALL</button></div><div class="chart-foot"><span id="chart-start">Nov '25</span><span id="chart-end">Nov '26</span></div></section>
+<nav class="main-nav" aria-label="Portfolio sections"><button class="nav-item is-active" type="button" data-nav="portfolio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5V20H14v-6h-4v6H3.5z"/></svg><span>Portfolio</span></button><button class="nav-item" type="button" data-nav="watchlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg><span>Watchlist</span></button><button class="nav-item" type="button" data-nav="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="8" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="10" cy="19" r="1.5"/></svg><span>Activity</span></button></nav>
+<section class="page-view is-visible" id="view-portfolio" data-view="portfolio"><div class="section-header"><div><span class="section-kicker">YOUR INVESTMENTS</span><h2>Holdings <span id="holding-count">8</span></h2></div><button class="text-action" type="button" id="show-all-holdings">View all ›</button></div><div class="holdings-toolbar"><div class="holding-filters" role="group" aria-label="Filter holdings"><button type="button" class="filter-chip is-active" data-filter="all">All</button><button type="button" class="filter-chip" data-filter="stocks">Stocks</button><button type="button" class="filter-chip" data-filter="funds">Mutual funds</button></div><label class="holding-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"/><path d="m16 16 4.5 4.5"/></svg><input id="holding-search" type="search" placeholder="Search" aria-label="Search holdings"></label></div><div class="holdings-list" id="holding-rows"></div><section class="allocation-card"><div class="section-header compact-header"><div><span class="section-kicker">ASSET MIX</span><h2>Allocation</h2></div><span class="allocation-total">₹5,03,020</span></div><div class="allocation-bar"><span class="allocation-equity" id="allocation-equity-bar"></span><span class="allocation-funds" id="allocation-funds-bar"></span></div><div class="allocation-legend"><div><i class="legend-dot equity-dot"></i><span>Stocks <small id="equity-percent">57.8%</small></span><strong id="equity-value">₹2,90,800</strong></div><div><i class="legend-dot funds-dot"></i><span>Mutual funds <small id="funds-percent">42.2%</small></span><strong id="funds-value">₹2,12,220</strong></div></div></section><div class="demo-disclaimer"><span>ⓘ</span><p>This is a frontend-only sample portfolio. All names, quantities, prices, dates and returns are illustrative demo data. Nothing is linked to a broker or financial account.</p></div></section>
+<section class="page-view" id="view-watchlist" data-view="watchlist"><div class="section-header"><div><span class="section-kicker">KEEP AN EYE ON</span><h2>Watchlist</h2></div><span class="demo-mini-tag">SAMPLE</span></div><div class="watchlist-card"><div class="watchlist-head"><span>Instrument</span><span>Last price</span><span>Change</span></div><div id="watchlist-rows"></div></div><div class="demo-disclaimer"><span>ⓘ</span><p>Watchlist quotes are static examples for the interface preview, not live market prices.</p></div></section>
+<section class="page-view" id="view-activity" data-view="activity"><div class="section-header"><div><span class="section-kicker">PORTFOLIO TIMELINE</span><h2>Activity</h2></div><span class="demo-mini-tag">SAMPLE</span></div><div class="activity-card"><div class="activity-date">NOVEMBER 2026</div><div id="activity-rows"></div></div><div class="demo-disclaimer"><span>ⓘ</span><p>These are sample portfolio events shown to make the activity screen feel complete. No orders or transactions were placed.</p></div></section>
+<footer class="app-footer"><span>askmoina / wealth</span><span>Private interface preview · Demo data only</span></footer></main></body></html>

@@ -59,9 +59,9 @@ describe("production Worker configuration", () => {
     expect(config.secrets?.required || []).not.toContain("DHAN_ACCESS_TOKEN");
   });
 
-  it("routes the authenticated Wealth PWA page and assets through the Worker", () => {
+  it("routes the owner-only Wealth PWA page and static assets through the Worker", () => {
     expect(config.assets?.run_worker_first).toEqual(
-      expect.arrayContaining(["/wealth", "/wealth/", "/wealth.html", "/wealth.css", "/wealth.js", "/api/*"]),
+      expect.arrayContaining(["/wealth", "/wealth/", "/wealth.html", "/wealth.css", "/wealth-demo.js", "/api/*"]),
     );
   });
 
