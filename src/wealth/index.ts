@@ -41,6 +41,23 @@ function pickFirstCloseAtOrAfter(points: PricePoint[], requestedDate: string, ma
 function findExactMarketPoint<T extends { date: string }>(points: T[], valuationDate: string): T | null {
   return points.find((point) => point.date === valuationDate) || null;
 }
+function latestSharedDate(series: Array<Array<{ date: string }>>, today: string): string | null {
+  if (!series.length || series.some((points) => !points.length)) return null;
+  const first = new Set(series[0]
+    .filter((point) => validIsoDate(point.date) && point.date <= today)
+    .map((point) => point.date));
+  for (const points of series.slice(1)) {
+    const dates = new Set(points
+      .filter((point) => validIsoDate(point.date) && point.date <= today)
+      .map((point) => point.date));
+    for (const date of first) if (!dates.has(date)) first.delete(date);
+    if (!first.size) return null;
+  }
+  return Array.from(first)
+    .filter((date) => isFreshNavDate(date, today))
+    .sort()
+    .pop() || null;
+}
 function parseCsvTable(csv: string): Array<Record<string, string>> {
   const rows: string[][] = [];
   let row: string[] = [], cell = "", quoted = false;
@@ -228,12 +245,12 @@ async function handleDemoPortfolio(env: Env): Promise<Response> {
     const fundHistories = await Promise.all(DEMO_FUNDS.map((plan) => fetchDemoFundHistory(plan, today)));
     const stockLatestDates = stockDataStatus === "ready"
       ? stockHistories.map((history) => history[history.length - 1]?.date) : [];
-    const latestDates = [
-      ...fundHistories.map((history) => history.points[history.points.length - 1]?.date),
-      ...stockLatestDates,
+    const marketSeries = [
+      ...fundHistories.map((history) => history.points),
+      ...(stockDataStatus === "ready" ? stockHistories : []),
     ];
-    if (latestDates.some((date) => !date || !validIsoDate(date) || !isFreshNavDate(date, today))) throw new Error("demo_market_data_stale");
-    const asOfDate = [...latestDates].sort()[0] as string;
+    const asOfDate = latestSharedDate(marketSeries, today);
+    if (!asOfDate) throw new Error("demo_common_valuation_date_unavailable");
     const funds = DEMO_FUNDS.map((plan, index) => valueDemoFund(plan, fundHistories[index], asOfDate));
     const stocks = stockDataStatus === "ready"
       ? DEMO_STOCKS.map((position, index) => valueDemoStock(position, stockHistories[index], asOfDate))
@@ -1148,6 +1165,7 @@ export const wealthMath = {
   xirr,
   pickFirstCloseAtOrAfter,
   findExactMarketPoint,
+  latestSharedDate,
   parseCsvTable,
   resolveDemoSecurityIds,
   normalizeDhanHistory,

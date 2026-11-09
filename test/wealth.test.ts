@@ -111,6 +111,22 @@ describe("AskMoina Wealth sample demo safeguards", () => {
     ], "2022-01-04")).toEqual({ date: "2022-01-05", close: 103 });
     expect(wealthMath.pickFirstCloseAtOrAfter([{ date: "2022-01-12", close: 108 }], "2022-01-04")).toBeNull();
   });
+  it("selects the latest date genuinely shared by every real provider series", () => {
+    expect(wealthMath.latestSharedDate([
+      [{ date: "2026-11-06" }, { date: "2026-11-09" }],
+      [{ date: "2026-11-06" }, { date: "2026-11-10" }],
+      [{ date: "2026-11-06" }, { date: "2026-11-09" }],
+    ], "2026-11-10")).toBe("2026-11-06");
+    expect(wealthMath.latestSharedDate([
+      [{ date: "2026-11-06" }],
+      [{ date: "2026-11-09" }],
+    ], "2026-11-10")).toBeNull();
+    expect(wealthMath.latestSharedDate([
+      [{ date: "2026-10-30" }],
+      [{ date: "2026-10-30" }],
+    ], "2026-11-10")).toBeNull();
+  });
+
   it("does not carry a stale price or NAV forward to a common valuation date", () => {
     expect(wealthMath.findExactMarketPoint([
       { date: "2026-11-06", close: 100 }, { date: "2026-11-09", close: 102 },
