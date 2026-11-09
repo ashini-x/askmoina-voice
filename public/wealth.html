@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/wealth.css">
   <link rel="stylesheet" href="/askmoina-global-font.css">
   <script defer src="/wealth.js"></script>
+  <script defer src="/wealth-demo.js"></script>
 </head>
 <body class="wealth-body">
   <main class="wealth-app">
@@ -24,7 +25,7 @@
     <section class="overview-card" aria-labelledby="portfolio-title">
       <div class="section-kicker">YOUR INVESTMENT JOURNEY</div>
       <div class="portfolio-title-row">
-        <h1 id="portfolio-title">Selected simulation</h1>
+        <h1 id="portfolio-title">Sample portfolio</h1>
         <span class="asof-label" id="portfolio-asof">—</span>
       </div>
       <div class="portfolio-value" id="portfolio-value">₹—</div>
@@ -35,7 +36,7 @@
         <div><span>Profit / loss</span><strong id="portfolio-profit">₹—</strong></div>
         <div><span>Annualised XIRR</span><strong id="portfolio-xirr">—</strong></div>
       </div>
-      <p class="overview-footnote" id="portfolio-note">No sample balances are shown. Values appear only after a provider-backed simulation has been created. Multiple simulations are shown separately, not added together.</p>
+      <p class="overview-footnote" id="portfolio-note">Demo quantities and purchase dates are fixed sample inputs. Market prices and NAVs are fetched from providers; no real account holdings are connected.</p>
     </section>
 
     <nav class="primary-tabs" aria-label="Wealth sections">
@@ -46,6 +47,7 @@
 
     <section class="tab-panel is-visible" id="panel-overview" data-panel="overview">
       <div class="section-heading"><div><span class="section-kicker">LONG-TERM VIEW</span><h2>Investment activity</h2></div></div>
+      <section class="demo-card" id="demo-overview" aria-label="Sample portfolio overview"><p class="demo-loading">Loading verified market prices and NAVs…</p></section>
       <div class="empty-card" id="overview-empty">
         <div class="empty-glyph">↗</div>
         <h3>Your timeline starts here</h3>
@@ -58,6 +60,8 @@
     <section class="tab-panel" id="panel-funds" data-panel="funds">
       <div class="section-heading"><div><span class="section-kicker">REAL HISTORICAL NAV</span><h2>Mutual fund SIPs</h2></div><span class="source-tag">MFAPI.in</span></div>
       <div class="info-strip"><strong>Historical paper simulation</strong><p>Search a real scheme, set a monthly amount and replay SIPs from 2023 using dated NAV observations. This does not represent actual units held or an actual SIP mandate.</p></div>
+
+      <section class="demo-card demo-fund-card" id="demo-funds" aria-label="Sample mutual fund SIP holdings"><p class="demo-loading">Loading actual NAV history…</p></section>
 
       <div class="builder-card">
         <label class="field-label" for="fund-search">Find a mutual fund</label>
@@ -79,11 +83,12 @@
 
     <section class="tab-panel" id="panel-stocks" data-panel="stocks">
       <div class="section-heading"><div><span class="section-kicker">EQUITY HISTORY</span><h2>Stocks</h2></div></div>
-      <div class="info-strip"><strong>Historical data connector</strong><p>AskMoina Wealth has a read-only DhanHQ daily-candle adapter. It stays disabled until server-side credentials are configured. Raw closing prices will not be presented as adjusted returns.</p></div>
+      <div class="info-strip"><strong>Real market data · fixed sample positions</strong><p>The sample lots and purchase dates are static so you can explore the app. Stock prices are fetched as Yahoo Finance daily closes; provider-reported split events and cash dividends are applied where supplied. No real holdings are connected.</p></div>
+      <section class="demo-card" id="demo-stocks" aria-label="Sample stock holdings"><p class="demo-loading">Loading actual stock prices…</p></section>
       <div class="stock-status-card">
-        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Checking…</strong></div>
-        <div class="status-row"><span>Corporate-action adjustment</span><strong class="status-pending">Not yet accepted</strong></div>
-        <div class="status-row"><span>Long-term return calculation</span><strong class="status-pending">Locked until adjusted data</strong></div>
+        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Yahoo Finance daily close</strong></div>
+        <div class="status-row"><span>Corporate actions</span><strong class="status-pending">Provider events when supplied</strong></div>
+        <div class="status-row"><span>Price freshness</span><strong>Latest available daily close · not live tick data</strong></div>
       </div>
       <div class="empty-card compact"><h3>Accuracy before appearance</h3><p>Stock holdings from 2022 will be enabled only after NSE/BSE instrument mapping and split, bonus, merger, demerger, and dividend treatment are independently verified. No assumed stock quantities or returns are preloaded.</p></div>
     </section>
@@ -110,7 +115,7 @@
       <p class="detail-disclaimer" id="detail-disclaimer"></p>
     </section>
 
-    <footer class="app-footer"><span>askmoina / wealth</span><span>Historical paper investing · No trades</span></footer>
+    <footer class="app-footer"><span>askmoina / wealth</span><span>Live market data · Static demo lots · No trades or payments</span></footer>
   </main>
 </body>
 </html>

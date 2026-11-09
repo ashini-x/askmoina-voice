@@ -116,3 +116,26 @@ button{cursor:pointer}
 [hidden]{display:none!important}
 @media(min-width:560px){.wealth-app{padding-left:25px;padding-right:25px}.overview-card{padding:24px}.portfolio-value{font-size:42px}}
 @media(max-width:370px){.wealth-app{padding-left:12px;padding-right:12px}.overview-card{padding:16px}.portfolio-value{font-size:31px}.form-grid{grid-template-columns:1fr 1fr}.field:first-child{grid-column:1/-1}.selected-fund input{width:74px}}
+
+.demo-card{border:1px solid #263340;border-radius:20px;background:linear-gradient(145deg,#121b26,#0d131b);padding:16px;margin:0 0 18px;box-shadow:0 12px 34px #0002}
+.demo-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.demo-card-title{font-size:14px;font-weight:650;letter-spacing:-.02em;color:#f3f6fa}
+.demo-badge{font-size:8px;letter-spacing:.12em;font-weight:700;border:1px solid #44513f;background:#1b281f;color:#a7dfb9;border-radius:999px;padding:6px 8px;white-space:nowrap}
+.demo-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.demo-metric{min-width:0;border:1px solid #263441;background:#101923;border-radius:13px;padding:10px 9px;display:grid;gap:6px}
+.demo-metric span{font-size:9px;color:#8b98a8}
+.demo-metric strong{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-source-copy{font-size:10px;line-height:1.55;color:#8391a1;margin:12px 0 0}
+.demo-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.demo-jump{border:1px solid #33404e;background:#17212c;color:#dbe4ee;border-radius:999px;padding:9px 12px;font-size:10px}
+.demo-holding-row{padding:12px 0;border-top:1px solid #263340;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.demo-holding-row:first-of-type{border-top:0}
+.demo-holding-main,.demo-holding-value{display:grid;gap:5px}
+.demo-holding-main strong{font-size:12px;line-height:1.4;font-weight:620}
+.demo-holding-main small,.demo-holding-value small{font-size:9px;color:#8b98a8}
+.demo-holding-value{text-align:right;flex:0 0 auto}
+.demo-holding-value strong{font-size:13px;font-variant-numeric:tabular-nums}
+.demo-holding-detail{grid-column:1/-1;display:flex;gap:8px 14px;flex-wrap:wrap;font-size:9px;color:#8997a7;padding-top:6px}
+.demo-return{font-weight:650}.demo-return.is-positive{color:var(--green)}.demo-return.is-negative{color:var(--red)}
+.demo-loading{font-size:11px;color:#8b98a8;margin:2px 0}.demo-error{font-size:11px;line-height:1.5;color:#ffb2b8}
+@media(max-width:380px){.demo-metrics{grid-template-columns:1fr 1fr}.demo-metric:last-child{grid-column:1/-1}}

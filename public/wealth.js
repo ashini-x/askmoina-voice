@@ -173,6 +173,7 @@
   };
 
   const renderMetrics = (simulation) => {
+    document.body.dataset.wealthSelection = "saved";
     $("#portfolio-value").textContent = money(simulation.currentValuePaise);
     $("#portfolio-invested").textContent = money(simulation.investedPaise);
     $("#portfolio-profit").textContent = money(simulation.profitLossPaise);
@@ -297,9 +298,7 @@
     $("#close-detail").addEventListener("click", () => { $("#simulation-detail").hidden = true; });
     try {
       state.status = await api("/api/wealth/status");
-      $("#stock-feed-status").textContent = !state.status.providers.stockHistoryEnabled
-        ? "Disabled pending entitlement review"
-        : state.status.providers.stockHistoryReady ? "Token configured" : "Access token missing";
+      $("#stock-feed-status").textContent = "Yahoo Finance daily closes (indicative)";
       await refreshSimulations();
     } catch (error) {
       setStatus("Wealth service could not be reached: " + error.message, true);

@@ -102,3 +102,19 @@ describe("AskMoina Wealth historical simulation math", () => {
     expect(wealthMath.xirr([{ date: "2023-01-01", amount: -100 }])).toBeNull();
   });
 });
+
+describe("AskMoina Wealth sample demo safeguards", () => {
+  it("selects a real market close on or shortly after a static sample purchase date", () => {
+    expect(wealthMath.pickFirstCloseAtOrAfter([
+      { date: "2022-01-03", close: 100 }, { date: "2022-01-05", close: 103 },
+      { date: "2022-01-12", close: 108 },
+    ], "2022-01-04")).toEqual({ date: "2022-01-05", close: 103 });
+    expect(wealthMath.pickFirstCloseAtOrAfter([{ date: "2022-01-12", close: 108 }], "2022-01-04")).toBeNull();
+  });
+  it("adjusts units only for provider-reported splits after purchase", () => {
+    const splits = [{ date: "2023-01-01", ratio: 2 }, { date: "2024-01-01", ratio: 1.5 }];
+    expect(wealthMath.splitAdjustedUnits(4, splits, "2022-01-01", "2023-12-31")).toBe(8);
+    expect(wealthMath.splitAdjustedUnits(4, splits, "2022-01-01", "2024-01-01")).toBe(12);
+    expect(wealthMath.splitAdjustedUnits(4, splits, "2023-01-01", "2024-01-01")).toBe(6);
+  });
+});

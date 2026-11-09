@@ -193,3 +193,18 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - `public/wealth.html`, `public/wealth.css`, `public/wealth.js` — dark, mobile-first PWA surface.
 - `test/wealth.test.ts` — calculation and input-contract tests.
 - `wrangler.jsonc` — route assets through the existing authenticated Worker.
+
+
+## Demo portfolio data contract (2026-11-09)
+
+The default Wealth overview now loads a fixed, clearly labelled sample portfolio so the owner can explore the screens without entering personal holdings. Only the demo inputs are static:
+
+- Sample stock quantities and purchase dates are hard-coded in the Worker; they are not the account owner's holdings.
+- Sample monthly SIP amounts, start dates and SIP days are fixed demonstration inputs; they do not create bank instructions, mandates or actual units.
+- Stock prices and historical candles are fetched from the Yahoo Finance chart endpoint as latest available daily closes. The feed is unofficial and indicative, not an exchange-authorized real-time quote. Split events and dividend cashflows are applied only when the provider returns them.
+- Mutual-fund NAV history is fetched from MFapi.in, an aggregator of AMFI-published NAV observations. Reconcile with AMFI before any use beyond personal demonstration.
+- The demo API aligns assets to one common valuation date and withholds the whole snapshot when a provider is stale or a required price/NAV cannot be verified. It never falls back to hard-coded prices or returns.
+- Static sample inputs are not persisted to D1 and are never labelled as actual user records. Saved paper SIP simulations remain separate and user-owned.
+- There is no payment gateway, deposit/withdrawal flow, brokerage order path, trading API, or live SIP mandate.
+
+This mode is for a private product walkthrough. Before commercial distribution or investment use, replace/confirm stock data with a provider whose redistribution rights, delays, rate limits and corporate-action coverage are contractually appropriate, and complete device/privacy acceptance.
