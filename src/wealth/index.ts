@@ -130,12 +130,31 @@ function xirr(flows: Array<{ date: string; amount: number }>): number | null {
 
 async function mfapi(path: string): Promise<unknown> {
   const url = MFAPI_BASE + path;
+  const cacheKey = new Request(url, { method: "GET" });
+  try {
+    const cached = await caches.default.match(cacheKey);
+    if (cached) return await cached.json();
+  } catch {
+    // Cache is an optimization only; the provider remains the source of truth.
+  }
   const upstream = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "AskMoina-Wealth/1.0" },
     signal: AbortSignal.timeout(12_000),
   });
   if (!upstream.ok) throw new Error("nav_provider_http_" + upstream.status);
-  return await upstream.json();
+  const payload = await upstream.json() as unknown;
+  const maxAge = path.includes("/latest") ? 900 : path.includes("/search") ? 21_600 : 86_400;
+  try {
+    await caches.default.put(cacheKey, new Response(JSON.stringify(payload), {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=" + maxAge,
+      },
+    }));
+  } catch {
+    // Never fail a NAV read because the edge cache is unavailable.
+  }
+  return payload;
 }
 
 function sameOrigin(request: Request): boolean {
@@ -146,6 +165,12 @@ function sameOrigin(request: Request): boolean {
 function isGrowthOption(meta: SchemeMeta): boolean {
   const name = (meta.scheme_name || "").toLowerCase();
   return name.includes("growth") && !/(idcw|dividend|bonus)/i.test(name);
+}
+
+function isFreshNavDate(navDate: string, today: string, maxAgeDays = 7): boolean {
+  if (!validIsoDate(navDate) || !validIsoDate(today) || navDate > today) return false;
+  const ageDays = (new Date(today + "T00:00:00.000Z").getTime() - new Date(navDate + "T00:00:00.000Z").getTime()) / 86_400_000;
+  return ageDays >= 0 && ageDays <= maxAgeDays;
 }
 
 function parseSchemeCode(value: string): number | null {
@@ -397,6 +422,11 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       const raw = await mfapi("/mf/" + code + "/latest") as NavResponse;
       const normalized = normalizeNavHistory(raw, code);
       const latest = normalized.points[normalized.points.length - 1];
+      const today = new Date().toISOString().slice(0, 10);
+      if (!isFreshNavDate(latest.date, today)) {
+        console.warn("[wealth] latest NAV is stale; valuation withheld", code, latest.date);
+        continue;
+      }
       latestByCode.set(code, latest);
       latestDates.push(latest.date);
     } catch (error) {
@@ -527,7 +557,7 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
         "Content-Type": "application/json",
         Accept: "application/json",
         "access-token": accessToken,
-        "client-id": clientId,
+        "dhanClientId": clientId,
       },
       body: JSON.stringify({
         securityId,
@@ -549,7 +579,9 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
       const price = Number(close);
       const timestamp = Number(data.timestamp?.[index]);
       if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return [];
-      return [{ date: new Date(timestamp * 1000).toISOString().slice(0, 10), close: price }];
+      const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+      if (date < fromDate || date >= toDate) return [];
+      return [{ date, close: price }];
     });
     return response({
       ok: true,
@@ -615,5 +647,7 @@ export const wealthMath = {
   buildSipSchedule,
   normalizeNavHistory,
   pickNextNav,
+  isGrowthOption,
+  isFreshNavDate,
   xirr,
 };
