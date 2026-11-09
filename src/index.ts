@@ -3313,11 +3313,11 @@ export class LiveSessionRelay {
 
 function withWealthEntryShortcut(html: string): string {
   if (html.includes('class="wealth-entry-shortcut"') || !html.includes('class="topbar-meta"')) return html;
-  const headerEnd = "    </div>\\n  </header>";
+  const newline = String.fromCharCode(10);
+  const headerEnd = "    </div>" + newline + "  </header>";
   if (!html.includes(headerEnd)) return html;
-  return html.replace(headerEnd, '      <a class="wealth-entry-shortcut" href="/wealth">Wealth <span aria-hidden="true">↗</span></a>\\n' + headerEnd);
+  return html.replace(headerEnd, '      <a class="wealth-entry-shortcut" href="/wealth">Wealth <span aria-hidden="true">↗</span></a>' + newline + headerEnd);
 }
-
 function withOwnerPreviewHtml(html: string): string {
   // This copy is deliberately applied only after admin authorization.
   // The ordinary public homepage always retains its explicit illustrative labels.
