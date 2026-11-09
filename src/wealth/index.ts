@@ -54,6 +54,44 @@ function isoDaysAfter(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function todayInIndia(now = new Date()): string {
+  // India uses UTC+05:30 year-round; avoid a server's UTC date boundary.
+  return new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+}
+
+async function readJsonBounded(request: Request, maxBytes: number): Promise<unknown> {
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error("invalid_json");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel("request_too_large");
+        throw new Error("request_too_large");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+  } catch {
+    throw new Error("invalid_json");
+  }
+}
+
 function buildSipSchedule(startDate: string, endDate: string, sipDay: number): string[] {
   const result: string[] = [];
   const start = new Date(startDate + "T00:00:00.000Z");
@@ -240,17 +278,24 @@ type CreatePlan = {
 
 async function createSimulation(request: Request, env: Env, userId: string): Promise<Response> {
   if (!sameOrigin(request)) return badRequest("origin_mismatch", 403);
-  const length = Number(request.headers.get("Content-Length") || 0);
+  const lengthHeader = request.headers.get("Content-Length");
+  const length = lengthHeader && /^\d+$/.test(lengthHeader) ? Number(lengthHeader) : 0;
   if (length > 24_000) return badRequest("request_too_large", 413);
   let body: unknown;
-  try { body = await request.json(); } catch { return badRequest("invalid_json"); }
+  try {
+    body = await readJsonBounded(request, 24_000);
+  } catch (error) {
+    return error instanceof Error && error.message === "request_too_large"
+      ? badRequest("request_too_large", 413)
+      : badRequest("invalid_json");
+  }
   if (!body || typeof body !== "object" || Array.isArray(body)) return badRequest("invalid_payload");
   const payload = body as { title?: unknown; plans?: unknown };
   const title = typeof payload.title === "string" ? payload.title.trim().slice(0, 80) : "My SIP simulation";
   if (!Array.isArray(payload.plans) || payload.plans.length < 1 || payload.plans.length > MAX_PLANS) return badRequest("plans_must_contain_1_to_6_items");
   const plans: CreatePlan[] = [];
   const codes = new Set<number>();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInIndia();
   for (const raw of payload.plans) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return badRequest("invalid_plan");
     const plan = raw as Record<string, unknown>;
@@ -418,7 +463,7 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       const raw = await mfapi("/mf/" + code + "/latest") as NavResponse;
       const normalized = normalizeNavHistory(raw, code);
       const latest = normalized.points[normalized.points.length - 1];
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayInIndia();
       if (!isFreshNavDate(latest.date, today)) {
         console.warn("[wealth] latest NAV is stale; valuation withheld", code, latest.date);
         continue;
@@ -527,7 +572,6 @@ async function listSimulations(env: Env, userId: string): Promise<Response> {
 }
 
 async function handleStockHistory(url: URL, env: Env): Promise<Response> {
-  const clientId = env.DHAN_CLIENT_ID?.trim();
   const accessToken = env.DHAN_ACCESS_TOKEN?.trim();
   if (env.WEALTH_DHAN_ENABLED !== "true") {
     return response({
@@ -536,7 +580,7 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
       message: "The Dhan data adapter is disabled until data entitlements and the permitted user scope are verified.",
     }, 503);
   }
-  if (!clientId || !accessToken) {
+  if (!accessToken) {
     return response({
       ok: false,
       error: "stock_provider_not_configured",
@@ -548,7 +592,7 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
   const fromDate = url.searchParams.get("fromDate") || "";
   const toDate = url.searchParams.get("toDate") || "";
   if (!/^\d{1,12}$/.test(securityId) || !["NSE_EQ", "BSE_EQ"].includes(exchangeSegment) ||
-      !validDhanDate(fromDate) || !validDhanDate(toDate) || fromDate > toDate || fromDate < "2022-01-01" || toDate > new Date().toISOString().slice(0, 10)) {
+      !validDhanDate(fromDate) || !validDhanDate(toDate) || fromDate >= toDate || fromDate < "2022-01-01" || toDate > todayInIndia()) {
     return badRequest("invalid_stock_history_request");
   }
   const spanDays = (new Date(toDate + "T00:00:00Z").getTime() - new Date(fromDate + "T00:00:00Z").getTime()) / 86_400_000;
@@ -560,7 +604,6 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
         "Content-Type": "application/json",
         Accept: "application/json",
         "access-token": accessToken,
-        "dhanClientId": clientId,
       },
       body: JSON.stringify({
         securityId,
@@ -620,7 +663,7 @@ export async function handleWealthRequest(request: Request, env: Env, userId: st
         mutualFundNav: NAV_SOURCE,
         mutualFundNavReady: true,
         stockHistory: "DhanHQ",
-        stockHistoryReady: env.WEALTH_DHAN_ENABLED === "true" && Boolean(env.DHAN_CLIENT_ID?.trim() && env.DHAN_ACCESS_TOKEN?.trim()),
+        stockHistoryReady: env.WEALTH_DHAN_ENABLED === "true" && Boolean(env.DHAN_ACCESS_TOKEN?.trim()),
         stockHistoryEnabled: env.WEALTH_DHAN_ENABLED === "true",
         stockPerformanceReady: false,
       },
@@ -653,5 +696,6 @@ export const wealthMath = {
   pickNextNav,
   isGrowthOption,
   isFreshNavDate,
+  todayInIndia,
   xirr,
 };
