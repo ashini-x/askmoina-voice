@@ -434,6 +434,90 @@ type PurchaseRow = {
   units: number;
 };
 
+async function buildPerformanceSeries(
+  env: Env,
+  plans: PlanRow[],
+  purchaseRows: Array<PurchaseRow & { plan_id: string }>,
+  valuationDate: string,
+): Promise<Array<{ date: string; valuePaise: number; investedPaise: number }>> {
+  if (!plans.length || !valuationDate) return [];
+  const histories = new Map<number, NavPoint[]>();
+  try {
+    for (const plan of plans) {
+      const purchases = purchaseRows.filter((purchase) => purchase.plan_id === plan.plan_id);
+      const startDate = purchases.map((purchase) => purchase.nav_date).sort()[0];
+      if (!startDate) return [];
+      const raw = await mfapi("/mf/" + plan.scheme_code + "?startDate=" + startDate + "&endDate=" + isoDaysAfter(valuationDate, 1)) as NavResponse;
+      const normalized = normalizeNavHistory(raw, Number(plan.scheme_code));
+      if (!isGrowthOption(normalized.meta)) return [];
+      histories.set(Number(plan.scheme_code), normalized.points.filter((point) => point.date <= valuationDate));
+    }
+  } catch (error) {
+    console.warn("[wealth] historical performance series unavailable", error instanceof Error ? error.message : "unknown");
+    return [];
+  }
+
+  const firstHistory = histories.get(Number(plans[0].scheme_code)) || [];
+  const commonDates = firstHistory
+    .map((point) => point.date)
+    .filter((date) => plans.every((plan) => (histories.get(Number(plan.scheme_code)) || []).some((point) => point.date === date)));
+  if (commonDates.length < 2) return [];
+
+  const navMaps = new Map<number, Map<string, number>>();
+  for (const plan of plans) {
+    navMaps.set(Number(plan.scheme_code), new Map(
+      (histories.get(Number(plan.scheme_code)) || []).map((point) => [point.date, point.nav]),
+    ));
+  }
+
+  const stateByPlan = plans.map((plan) => {
+    const purchases = purchaseRows.filter((purchase) => purchase.plan_id === plan.plan_id);
+    return {
+      schemeCode: Number(plan.scheme_code),
+      byNavDate: [...purchases].sort((a, b) => a.nav_date.localeCompare(b.nav_date)),
+      byScheduledDate: [...purchases].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)),
+      navIndex: 0,
+      scheduledIndex: 0,
+      units: 0,
+      investedPaise: 0,
+    };
+  });
+
+  const series: Array<{ date: string; valuePaise: number; investedPaise: number }> = [];
+  for (const date of commonDates) {
+    let totalValue = 0;
+    let totalInvestedPaise = 0;
+    let complete = true;
+    for (const state of stateByPlan) {
+      const nav = navMaps.get(state.schemeCode)?.get(date);
+      if (nav === undefined) { complete = false; break; }
+      while (state.navIndex < state.byNavDate.length && state.byNavDate[state.navIndex].nav_date <= date) {
+        state.units += Number(state.byNavDate[state.navIndex].units);
+        state.navIndex += 1;
+      }
+      while (state.scheduledIndex < state.byScheduledDate.length && state.byScheduledDate[state.scheduledIndex].scheduled_date <= date) {
+        state.investedPaise += Number(state.byScheduledDate[state.scheduledIndex].invested_paise);
+        state.scheduledIndex += 1;
+      }
+      totalValue += state.units * nav;
+      totalInvestedPaise += state.investedPaise;
+    }
+    if (complete) {
+      series.push({
+        date,
+        valuePaise: Math.round(totalValue * 100),
+        investedPaise: totalInvestedPaise,
+      });
+    }
+  }
+
+  if (series.length <= 180) return series;
+  const stride = Math.ceil((series.length - 1) / 179);
+  const sampled = series.filter((_, index) => index === 0 || index % stride === 0);
+  if (sampled[sampled.length - 1]?.date !== series[series.length - 1].date) sampled.push(series[series.length - 1]);
+  return sampled;
+}
+
 async function getSimulationDetail(env: Env, userId: string, simulationId: string): Promise<Response> {
   if (!/^[0-9a-f-]{36}$/i.test(simulationId)) return badRequest("invalid_simulation_id");
   const simulation = await env.DB.prepare(
@@ -540,6 +624,9 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const latestValuationDate = commonValuationDate;
   if (currentValuePaise !== null && latestValuationDate) combinedFlows.push({ date: latestValuationDate, amount: currentValuePaise / 100 });
   const combinedXirr = currentValuePaise !== null ? xirr(combinedFlows) : null;
+  const performanceSeries = hasAllNav
+    ? await buildPerformanceSeries(env, planRows, (purchaseRows.results || []) as Array<PurchaseRow & { plan_id: string }>, latestValuationDate)
+    : [];
 
   return response({
     ok: true,
@@ -554,6 +641,7 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       absoluteReturn: currentValuePaise === null || investedPaise <= 0 ? null : (currentValuePaise - investedPaise) / investedPaise,
       xirr: combinedXirr,
       valuationComplete: hasAllNav,
+      performanceSeries,
       plans: detailedPlans,
     },
     source: NAV_SOURCE,
