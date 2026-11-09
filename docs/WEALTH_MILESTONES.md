@@ -32,6 +32,8 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 
 - Primary public reference: [AMFI NAV Download and NAV History](https://www.amfiindia.com/net-asset-value/nav-download). AMFI publishes NAV reports and historical NAV downloads; its UI notes that each historical download can cover a maximum of 90 days.
 - Initial read-only API adapter: [MFapi.in documentation](https://www.mfapi.in/docs/), using scheme search, scheme NAV history and latest NAV endpoints. MFapi.in is a third-party aggregator, not AMFI. Treat its observations as provider-sourced data that must remain attributable and subject to reconciliation against AMFI before a non-simulated use case.
+- Cloudflare's edge cache reduces repeat provider calls: scheme search for six hours, latest NAV for 15 minutes, and historical NAV ranges for 24 hours. Cache failure never fabricates or substitutes data.
+- A latest NAV older than seven calendar days, or dated in the future, is withheld from current valuation. Where a complete common-date valuation cannot be formed, aggregate return fields stay unavailable.
 - Data routes: `GET /api/wealth/funds/search?q=`, `GET /api/wealth/funds/:schemeCode/nav?fromDate=&toDate=`.
 - Search surfaces Growth options only. Direct and Regular plans remain separate schemes and must not be mixed. IDCW / dividend / bonus-labelled options are excluded from the first SIP simulator.
 - Every NAV observation is validated for positive finite NAV, parseable date and exact scheme-code match. Upstream failure produces an error; it is never replaced with a guessed value.
@@ -39,7 +41,8 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 ### Equity daily history
 
 - Planned provider: [DhanHQ Historical Data API](https://dhanhq.co/docs/v2/historical-data/). Its documented daily endpoint returns OHLCV and epoch timestamps for a supplied exchange instrument/security ID. The [Dhan instrument list](https://dhanhq.co/docs/v2/instruments/) is the identity source to integrate.
-- The read-only Worker adapter is disabled until `DHAN_CLIENT_ID` and `DHAN_ACCESS_TOKEN` Worker secrets are configured. Never put these values in `wrangler.jsonc`, the browser, test fixtures, or committed files.
+- The read-only Worker adapter requires all three: `WEALTH_DHAN_ENABLED=true`, `DHAN_CLIENT_ID` and `DHAN_ACCESS_TOKEN` Worker secrets. The flag is explicitly `false` in both production and preview config. Never put credential values in `wrangler.jsonc`, the browser, test fixtures, or committed files.
+- Dhan documents a 24-hour validity for individually generated access tokens and says Data APIs can have additional charges. This feature slice has no automatic token renewal. A personal individual token must not be used as a shared data proxy for other AskMoina users unless Dhan has confirmed the applicable usage/partner entitlement in writing. Leave the feature flag off until entitlement, cost, allowed user scope and renewal operations are settled.
 - Current adapter output is explicitly raw daily close data with `adjustedForCorporateActions: false` and `canCalculateTotalReturn: false`. It is not permitted to feed the portfolio return summary.
 - No NSE/BSE security ID is inferred from a symbol. A verified symbol/exchange/security-ID master is required before users can create stock paper lots.
 
@@ -106,6 +109,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - [x] SIP schedule, seven-day forward NAV matching, explicit missed dates and unit calculation.
 - [x] Persist user-owned SIP plans and per-instalment evidence.
 - [x] Absolute-return and XIRR calculation with common-date valuation policy.
+- [x] Edge-cache public NAV responses and withhold stale/future latest NAVs.
 - [x] Dark mobile PWA builder and simulation detail screen.
 - [x] Unit tests for date parsing, schedule generation, NAV matching, scheme-code validation and XIRR.
 - [ ] Run repository typecheck and complete test suite on the feature branch.
@@ -120,6 +124,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 - [x] Read-only DhanHQ daily-history adapter.
 - [x] Server-only credential contract; no browser token exposure.
+- [x] Explicit opt-in flag is false in production and preview by default; individual-token and Data API entitlement caveats are documented.
 - [x] Raw price series explicitly marked unadjusted and barred from total-return calculations.
 - [ ] Add verified Dhan instrument-master ingestion and symbol/exchange/security-ID mapping.
 - [ ] Configure Dhan secrets in a preview-only Worker environment.
@@ -171,7 +176,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 - No Worker deployment or remote D1 migration is performed by this feature-branch change.
 - Mutual-fund history depends on MFapi.in, a third-party aggregator. AMFI is the official NAV reference and source reconciliation remains an acceptance gate.
-- Stock history requires Dhan client/access-token secrets that are not committed or assumed to exist. Raw OHLC is not corporate-action adjusted.
+- Stock history requires the explicit `WEALTH_DHAN_ENABLED` flag and Dhan client/access-token secrets. These are not committed or assumed to exist; individual access tokens expire after 24 hours and Data APIs may incur charges. Raw OHLC is not corporate-action adjusted.
 - The stock holdings and stock return ledger are not yet enabled.
 - No brokerage account connection, order placement, SIP mandate, payment, tax report or actual ownership verification exists.
 - A historical SIP result is a reproducible hypothetical under the documented schedule convention, not a prediction or investment recommendation.
