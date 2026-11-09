@@ -54,13 +54,13 @@ For each monthly scheduled date:
 
 1. Generate the calendar SIP date using the selected day. A maximum of 120 instalments is accepted per plan.
 2. Select the **first actual NAV observation on or after** the scheduled date, provided it is no more than seven calendar days later.
-3. If there is no qualifying NAV, record that scheduled date as a missed instalment. Do not move the purchase backwards, interpolate NAV, or silently fill the gap.
+3. If there is no qualifying NAV and the seven-day forward window is still open, label the instalment pending. Only after the full seven-day window closes without a qualifying NAV is it recorded as missed. Do not move the purchase backwards, interpolate NAV, use a future-dated NAV, or silently fill the gap.
 4. Compute paper units as monthly amount in rupees divided by the matched NAV. The stored number is unrounded calculation precision; UI formatting is display-only.
 5. Persist the scheduled date, matched NAV date, invested paise, NAV and units. A simulation is persisted only after all selected plans have valid history and all database statements succeed in one D1 batch.
 
-Absolute return is `(current value - invested amount) / invested amount`. XIRR is calculated separately from dated negative SIP cash flows and one positive terminal valuation cash flow; it is not an annualized version of absolute return.
+Absolute return is `(current value - invested amount) / invested amount`. XIRR is calculated separately from dated negative SIP cash flows for lots priced by the shared valuation date and one positive terminal valuation cash flow; it is not an annualized version of absolute return.
 
-For a combined valuation, the Worker chooses the oldest of the latest NAV dates returned for all schemes as a candidate shared as-of date. Any scheme with a newer latest NAV is queried for an observation on that exact candidate date. If even one scheme has no NAV observation on that exact date, the aggregate current value and aggregate returns remain unavailable rather than carrying an older NAV forward or mixing unaligned snapshots.
+For a combined valuation, the Worker chooses the oldest of the latest NAV dates returned for all schemes as a candidate shared as-of date. Any scheme with a newer latest NAV is queried for an observation on that exact candidate date. If even one scheme has no NAV observation on that exact date, the aggregate current value and aggregate returns remain unavailable rather than carrying an older NAV forward or mixing unaligned snapshots. Only SIP lots with a pricing NAV date on or before the shared valuation date contribute units and invested capital to that snapshot.
 
 A scheduled SIP date is used as the cash-flow date for XIRR because it represents the assumed investment outflow; the selected NAV date is separately preserved as the pricing date. This is a deterministic historical proxy, not an actual registrar allotment rule or transaction confirmation.
 
