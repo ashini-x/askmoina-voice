@@ -43,6 +43,11 @@ describe("AskMoina Wealth historical simulation math", () => {
     ];
     expect(wealthMath.pickNextNav(points, "2023-01-05")).toEqual({ date: "2023-01-06", nav: 11 });
     expect(wealthMath.pickNextNav(points, "2023-01-07")).toBeNull();
+    expect(wealthMath.pickNextNav(
+      [{ date: "2026-11-10", nav: 12 }],
+      "2026-11-09",
+      "2026-11-09",
+    )).toBeNull();
   });
 
   it("validates returned scheme identity and NAV values", () => {
