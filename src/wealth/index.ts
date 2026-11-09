@@ -184,7 +184,14 @@ async function mfapi(path: string): Promise<unknown> {
   });
   if (!upstream.ok) throw new Error("nav_provider_http_" + upstream.status);
   const payload = await upstream.json() as unknown;
-  const maxAge = path.includes("/latest") ? 900 : path.includes("/search") ? 21_600 : 86_400;
+  const endDateParam = new URL(url).searchParams.get("endDate");
+  const maxAge = path.includes("/latest")
+    ? 900
+    : path.includes("/search")
+      ? 21_600
+      : endDateParam && endDateParam >= todayInIndia()
+        ? 900
+        : 86_400;
   try {
     await caches.default.put(cacheKey, new Response(JSON.stringify(payload), {
       headers: {
