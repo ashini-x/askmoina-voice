@@ -33,6 +33,11 @@
       "/copilot.html",
       "/copilot.js",
       "/copilot.css",
+      "/wealth",
+      "/wealth/",
+      "/wealth.html",
+      "/wealth.css",
+      "/wealth-demo.js",
       "/transcript-merge.js",
       "/login",
       "/login.html",
@@ -186,7 +191,7 @@
       "GCP_PROJECT_ID": "askmoina-preview",
       "ANALYTICS_RAW_RETENTION_DAYS": "30",
       "VEDA_ENABLED": "false",
-      "VEDA_PORTAL_ENABLED": "true"
+        "VEDA_PORTAL_ENABLED": "true"
     },
     "durable_objects": {
       "bindings": [

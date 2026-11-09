@@ -53,6 +53,18 @@ describe("production Worker configuration", () => {
     expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
   });
 
+  it("does not require a paid Dhan market-data integration for Wealth", () => {
+    expect(config.vars.WEALTH_DHAN_ENABLED).toBeUndefined();
+    expect(config.previews?.vars?.WEALTH_DHAN_ENABLED).toBeUndefined();
+    expect(config.secrets?.required || []).not.toContain("DHAN_ACCESS_TOKEN");
+  });
+
+  it("routes the owner-only Wealth PWA page and static assets through the Worker", () => {
+    expect(config.assets?.run_worker_first).toEqual(
+      expect.arrayContaining(["/wealth", "/wealth/", "/wealth.html", "/wealth.css", "/wealth-demo.js", "/api/*"]),
+    );
+  });
+
   it("routes reserved Veda paths through the Worker rather than allowing static-asset bypasses", () => {
     expect(config.assets?.run_worker_first).toEqual(
       expect.arrayContaining(["/veda", "/veda/*", "/api/*"]),

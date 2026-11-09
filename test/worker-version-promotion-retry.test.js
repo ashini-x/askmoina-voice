@@ -11,7 +11,7 @@ describe("Cloudflare Worker version promotion", () => {
     expect(workflow).toContain('const manifestIconPath = (icon) => (icon.src || "").split("?")[0]');
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-192.svg"');
     expect(workflow).toContain('manifestIconPath(icon) === "/pwa-icon-512.svg"');
-    expect(workflow).toContain("askmoina-pwa-shell-v19");
+    expect(workflow).toContain("askmoina-pwa-shell-v22");
     expect(workflow).toContain("manifest.background_color !== \"#090A0D\" || manifest.theme_color !== \"#090A0D\"");
     expect(workflow).toContain("Public guest open-ended Live voice screen: OK");
     expect(workflow).toContain("Audio-only frontend assets: OK");

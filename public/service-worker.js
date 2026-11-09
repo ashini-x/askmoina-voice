@@ -1,4 +1,4 @@
-const CACHE_NAME = "askmoina-pwa-shell-v19";
+const CACHE_NAME = "askmoina-pwa-shell-v22";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",
@@ -23,7 +23,9 @@ const SHELL_URLS = [
   "/askmoina-global-font.woff2?v=0.4.132",
   "/pwa-gate.css",
   "/pwa-gate.js",
-  "/pwa-runtime.js?v=0.4.131"
+  "/pwa-runtime.js?v=0.4.131",
+  "/wealth.css",
+  "/wealth-demo.js"
 ];
 
 self.addEventListener("install", (event) => {

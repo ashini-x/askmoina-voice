@@ -104,3 +104,7 @@ Every milestone should have explicit pass/fail criteria, regression tests, and a
 See → Understand → Select → Plan a visual guide → Render → Track → Guide → Verify → Recover.
 
 The order matters: a beautiful 3D arrow is not a breakthrough if it points at the wrong part, drifts when the camera moves, or claims success without evidence.
+
+## Additive initiative — AskMoina Wealth
+
+A separate mobile-first, owner-only frontend portfolio interface is being developed inside the AskMoina Voice PWA. It provides sample stock and mutual-fund holdings, portfolio value and P&L, an illustrative performance chart, allocation, watchlist, and activity view. All visible amounts, prices, holdings, and events are static illustrative data. It makes no market-data, broker, or Wealth API calls and has no Wealth D1 tables, trades, payments, or SIP mandates. The feature specification and acceptance gates are maintained in [AskMoina Wealth milestones](WEALTH_MILESTONES.md). This initiative does not renumber the live-voice / visual-Co-Pilot roadmap above.
