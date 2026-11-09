@@ -697,5 +697,6 @@ export const wealthMath = {
   isGrowthOption,
   isFreshNavDate,
   todayInIndia,
+  readJsonBounded,
   xirr,
 };
