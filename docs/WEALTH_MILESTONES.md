@@ -1,6 +1,6 @@
 # AskMoina Wealth — feature specification and milestones
 
-**Status:** Feature-branch implementation in progress  
+**Status:** Personal demo release candidate; production rollout pending validation  
 **Branch:** `feat/askmoina-wealth`  
 **Product surface:** AskMoina Voice authenticated mobile PWA  
 **Feature name:** AskMoina Wealth (navigation label: **Wealth**)  
@@ -10,9 +10,9 @@
 
 Wealth is an investment-tracking and historical paper-simulation feature inside AskMoina Voice. It is mobile-first, dark by default, and shares the existing AskMoina account session, Cloudflare Worker, D1 database and PWA installation shell.
 
-The first use case is to replay a hypothetical Indian mutual-fund SIP history from January 2023 using observed NAV records. A later stock ledger will replay hypothetical stock purchases from January 2022 only after instrument identity and corporate actions can be reconciled.
+The default overview presents a fixed sample portfolio so the owner can explore the app immediately. Sample quantities, purchase dates and SIP contributions are static demo inputs only. All displayed fund NAVs and configured stock prices are fetched from providers; no hard-coded market values, NAVs or returns are used.
 
-**Non-negotiable truthfulness rule:** a simulated historical return must never be presented as actual ownership, broker-confirmed holdings, an executed SIP, actual allotment, or a guaranteed future result. All balances originate from provider data and saved paper transactions. No sample money, synthetic percentage gains, guessed market prices, or invented stock quantities are permitted.
+**Non-negotiable truthfulness rule:** sample quantities and cash contributions are clearly labelled hypothetical demo inputs; they are not actual user holdings, purchases, bank records or SIP mandates. Every market price and NAV shown is provider-sourced and date-stamped. If an exact price/NAV is unavailable, the corresponding value is withheld. The app never presents sample data as actual ownership, broker-confirmed holdings, executed SIPs, actual allotments or guaranteed future results.
 
 ## 2. Product reference and experience
 
@@ -20,11 +20,11 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 
 - Mobile-first, dark graphite / midnight surfaces with restrained emerald positive-return colour.
 - Main sections: Overview, Mutual Funds, Stocks.
-- Consolidated summary is blank until a provider-backed simulation exists.
+- The sample overview shows a full portfolio total only when every asset has a provider-backed value on the exact same valuation date; otherwise only verified fund subtotals are shown.
 - Mutual-fund scheme search is provider-backed; the user selects the exact plan and scheme code.
 - SIP builder captures monthly amount per scheme, SIP day, start date and end date.
 - Simulation detail exposes invested capital, accumulated units, latest NAV and its date, absolute return, XIRR, and missed SIP dates.
-- The current Stocks panel deliberately displays provider readiness and the outstanding corporate-action gate. It does not invent stock values while that gate is open.
+- The Stocks panel displays fixed sample share-equivalent units and dates. It fetches Dhan daily candles only when the owner enables the optional Data API integration; prices are otherwise blank.
 
 ## 3. Data providers and provenance
 
@@ -40,7 +40,7 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 
 ### Equity daily history
 
-- Planned provider: [DhanHQ Historical Data API](https://dhanhq.co/docs/v2/historical-data/). Its documented daily endpoint returns OHLCV and epoch timestamps for a supplied exchange instrument/security ID. The [Dhan instrument list](https://dhanhq.co/docs/v2/instruments/) is the identity source to integrate.
+- Provider: [DhanHQ Historical Data API](https://dhanhq.co/docs/v2/historical-data/). Its documented daily endpoint returns OHLCV and epoch timestamps for a supplied exchange instrument/security ID. The demo validates the four sample NSE cash-equity symbols against Dhan's official instrument-master CSV before requesting prices.
 - The read-only Worker adapter requires `WEALTH_DHAN_ENABLED=true` and a server-only `DHAN_ACCESS_TOKEN` secret. The official daily-history request authenticates with the `access-token` header; no client-ID header is sent. The feature flag is explicitly `false` in both production and preview config. Never put the token in `wrangler.jsonc`, the browser, test fixtures, or committed files.
 - Dhan documents a 24-hour validity for individually generated access tokens and notes Data API charges/limits can apply. This feature slice has no automatic token renewal. A personal individual token must not be used as a shared data proxy for other AskMoina users unless Dhan has confirmed the applicable usage/partner entitlement in writing. Leave the feature flag off until entitlement, cost, allowed user scope and renewal operations are settled. The daily API's `toDate` is non-inclusive.
 - Current adapter output is explicitly raw daily close data with `adjustedForCorporateActions: false` and `canCalculateTotalReturn: false`. Dhan epoch timestamps are mapped to Asia/Kolkata exchange dates and the non-inclusive `toDate` boundary is enforced. It is not permitted to feed the portfolio return summary.
@@ -178,10 +178,10 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 ## 8. Known limitations in this feature-branch slice
 
-- No Worker deployment or remote D1 migration is performed by this feature-branch change.
+- Production rollout requires the repository release workflow and the ordered D1 migrations 0013 and 0014. No payment gateway or brokerage trade/mandate integration is included.
 - Mutual-fund history depends on MFapi.in, a third-party aggregator. AMFI is the official NAV reference and source reconciliation remains an acceptance gate.
-- Stock history requires the explicit `WEALTH_DHAN_ENABLED` flag and a Dhan access token. Neither is enabled/configured by this branch; individual access tokens expire after 24 hours and Data APIs may incur charges. Raw OHLC is not corporate-action adjusted.
-- The stock holdings and stock return ledger are not yet enabled.
+- Stock history requires the explicit `WEALTH_DHAN_ENABLED` flag, a Dhan Data API subscription and a server-only `DHAN_ACCESS_TOKEN`. The flag is `false` by default; individual tokens expire after 24 hours. Dhan says daily history is adjusted for bonuses and splits, but cash dividends are excluded.
+- The sample stock price/return panel is implemented but remains disabled until the owner enables Dhan Data API and configures a server-only token. Dhan's daily price series is bonus/split-adjusted; cash dividends are excluded, so this is price return rather than total return.
 - No brokerage account connection, order placement, SIP mandate, payment, tax report or actual ownership verification exists.
 - A historical SIP result is a reproducible hypothetical under the documented schedule convention, not a prediction or investment recommendation.
 
@@ -189,6 +189,7 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 
 - `src/wealth/index.ts` — isolated Wealth API and calculation logic.
 - `src/config/env.ts` — optional server-only Dhan credential types.
+- `migrations/0013_askmoina_live_support.sql` — preceding additive support/presence schema in the ordered migration chain.
 - `migrations/0014_wealth_simulations.sql` — user-scoped SIP simulation tables.
 - `public/wealth.html`, `public/wealth.css`, `public/wealth.js` — dark, mobile-first PWA surface.
 - `test/wealth.test.ts` — calculation and input-contract tests.

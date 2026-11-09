@@ -111,6 +111,15 @@ describe("AskMoina Wealth sample demo safeguards", () => {
     ], "2022-01-04")).toEqual({ date: "2022-01-05", close: 103 });
     expect(wealthMath.pickFirstCloseAtOrAfter([{ date: "2022-01-12", close: 108 }], "2022-01-04")).toBeNull();
   });
+  it("does not carry a stale price or NAV forward to a common valuation date", () => {
+    expect(wealthMath.findExactMarketPoint([
+      { date: "2026-11-06", close: 100 }, { date: "2026-11-09", close: 102 },
+    ], "2026-11-09")).toEqual({ date: "2026-11-09", close: 102 });
+    expect(wealthMath.findExactMarketPoint([
+      { date: "2026-11-06", close: 100 },
+    ], "2026-11-09")).toBeNull();
+  });
+
   it("parses the Dhan instrument master CSV, including quoted commas", () => {
     const rows = wealthMath.parseCsvTable([
       "SEM_EXM_EXCH_ID,SEM_SEGMENT,SEM_SMST_SECURITY_ID,SEM_INSTRUMENT_NAME,SEM_TRADING_SYMBOL,SEM_CUSTOM_SYMBOL",

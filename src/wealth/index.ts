@@ -38,6 +38,9 @@ function pickFirstCloseAtOrAfter(points: PricePoint[], requestedDate: string, ma
   const lastAllowed = isoDaysAfter(requestedDate, maxDays);
   return points.find((point) => point.date >= requestedDate && point.date <= lastAllowed) || null;
 }
+function findExactMarketPoint<T extends { date: string }>(points: T[], valuationDate: string): T | null {
+  return points.find((point) => point.date === valuationDate) || null;
+}
 function parseCsvTable(csv: string): Array<Record<string, string>> {
   const rows: string[][] = [];
   let row: string[] = [], cell = "", quoted = false;
@@ -139,7 +142,7 @@ async function fetchDemoFundHistory(plan: DemoFund, today: string): Promise<{ me
 }
 function valueDemoStock(position: DemoStock, points: PricePoint[], asOfDate: string) {
   const usablePoints = points.filter((point) => point.date <= asOfDate);
-  const latest = usablePoints[usablePoints.length - 1];
+  const latest = findExactMarketPoint(usablePoints, asOfDate);
   const purchase = pickFirstCloseAtOrAfter(usablePoints, position.purchaseDate);
   if (!latest || !purchase || !isFreshNavDate(latest.date, todayInIndia())) throw new Error("demo_stock_price_unavailable");
   // Dhan says its daily history is bonus/split adjusted. Demo quantities are
@@ -158,7 +161,8 @@ function valueDemoStock(position: DemoStock, points: PricePoint[], asOfDate: str
   };
 }
 function valueDemoFund(plan: DemoFund, history: { meta: SchemeMeta; points: NavPoint[] }, asOfDate: string) {
-  const points = history.points.filter((point) => point.date <= asOfDate), latest = points[points.length - 1];
+  const points = history.points.filter((point) => point.date <= asOfDate);
+  const latest = findExactMarketPoint(points, asOfDate);
   if (!latest || !isFreshNavDate(latest.date, todayInIndia())) throw new Error("demo_fund_nav_unavailable");
   const schedule = buildSipSchedule(plan.startDate, asOfDate, plan.sipDay);
   let investedPaise = 0, units = 0, missedCount = 0, pendingCount = 0, pricedInstallmentCount = 0;
@@ -1131,6 +1135,7 @@ export const wealthMath = {
   readJsonBounded,
   xirr,
   pickFirstCloseAtOrAfter,
+  findExactMarketPoint,
   parseCsvTable,
   validateDemoSecurityIds,
   normalizeDhanHistory,
