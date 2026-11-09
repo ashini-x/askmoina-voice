@@ -47,4 +47,6 @@ export interface Env {
   // Optional model-specific prices in USD per million provider-reported tokens. Never guessed.
   LIVE_INPUT_USD_PER_MILLION_TOKENS?: string;
   LIVE_OUTPUT_USD_PER_MILLION_TOKENS?: string;\n  // Optional, server-only credentials for the read-only DhanHQ history adapter.\n  DHAN_CLIENT_ID?: string;\n  DHAN_ACCESS_TOKEN?: string;
+  // Explicit opt-in after Dhan data entitlements and single-/multi-user terms are verified.
+  WEALTH_DHAN_ENABLED?: string;
 }
