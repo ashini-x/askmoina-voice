@@ -127,9 +127,10 @@ function normalizeNavHistory(payload: NavResponse, schemeCode: number): { meta: 
   return { meta: payload.meta, points: normalized };
 }
 
-function pickNextNav(points: NavPoint[], scheduledDate: string): NavPoint | null {
+function pickNextNav(points: NavPoint[], scheduledDate: string, today = todayInIndia()): NavPoint | null {
   const lastAllowed = isoDaysAfter(scheduledDate, NAV_LOOKAHEAD_DAYS);
-  return points.find((point) => point.date >= scheduledDate && point.date <= lastAllowed) || null;
+  const effectiveEnd = today < lastAllowed ? today : lastAllowed;
+  return points.find((point) => point.date >= scheduledDate && point.date <= effectiveEnd) || null;
 }
 
 function xirr(flows: Array<{ date: string; amount: number }>): number | null {
@@ -323,6 +324,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
     meta: SchemeMeta;
     purchases: Array<{ scheduledDate: string; navDate: string; nav: number; units: number }>;
     missedDates: string[];
+    pendingDates: string[];
   }> = [];
 
   try {
@@ -333,9 +335,14 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
       const schedule = buildSipSchedule(input.startDate, input.endDate, input.sipDay);
       const purchases: Array<{ scheduledDate: string; navDate: string; nav: number; units: number }> = [];
       const missedDates: string[] = [];
+      const pendingDates: string[] = [];
       for (const scheduledDate of schedule) {
-        const point = pickNextNav(normalized.points, scheduledDate);
-        if (!point) { missedDates.push(scheduledDate); continue; }
+        const point = pickNextNav(normalized.points, scheduledDate, today);
+        if (!point) {
+          if (today <= isoDaysAfter(scheduledDate, NAV_LOOKAHEAD_DAYS)) pendingDates.push(scheduledDate);
+          else missedDates.push(scheduledDate);
+          continue;
+        }
         const units = input.monthlyAmountPaise / 100 / point.nav;
         if (!Number.isFinite(units) || units <= 0) throw new Error("units_calculation_invalid");
         purchases.push({ scheduledDate, navDate: point.date, nav: point.nav, units });
@@ -348,6 +355,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
         meta: normalized.meta,
         purchases,
         missedDates,
+        pendingDates,
       });
     }
   } catch (error) {
@@ -382,6 +390,7 @@ async function createSimulation(request: Request, env: Env, userId: string): Pro
       endDate: plan.input.endDate,
       purchaseCount: plan.purchases.length,
       missedInstallmentDates: plan.missedDates,
+      pendingInstallmentDates: plan.pendingDates,
       units: plan.purchases.reduce((sum, purchase) => sum + purchase.units, 0),
       investedPaise: plan.purchases.length * plan.input.monthlyAmountPaise,
     });
@@ -584,14 +593,19 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
   const detailedPlans = planRows.map((plan) => {
     const purchases = (purchaseRows.results || []).filter((purchase) => purchase.plan_id === plan.plan_id);
     const latest = latestByCode.get(Number(plan.scheme_code)) || null;
-    const units = purchases.reduce((sum, purchase) => sum + Number(purchase.units), 0);
-    const investedPaise = purchases.reduce((sum, purchase) => sum + Number(purchase.invested_paise), 0);
+    const valuationCutoff = commonValuationDate || todayInIndia();
+    const appliedPurchases = purchases.filter((purchase) => purchase.nav_date <= valuationCutoff);
+    const units = appliedPurchases.reduce((sum, purchase) => sum + Number(purchase.units), 0);
+    const investedPaise = appliedPurchases.reduce((sum, purchase) => sum + Number(purchase.invested_paise), 0);
     const currentValue = latest ? units * latest.nav : null;
     const profit = currentValue === null ? null : currentValue - investedPaise / 100;
     const scheduledDates = buildSipSchedule(plan.start_date, plan.end_date, Number(plan.sip_day));
-    const purchasedDates = new Set(purchases.map((purchase) => purchase.scheduled_date));
-    const missedDates = scheduledDates.filter((date) => !purchasedDates.has(date));
-    const xirrFlows = purchases.map((purchase) => ({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 }));
+    const matchedDates = new Set(purchases.map((purchase) => purchase.scheduled_date));
+    const unmatchedDates = scheduledDates.filter((date) => !matchedDates.has(date));
+    const today = todayInIndia();
+    const pendingDates = unmatchedDates.filter((date) => today <= isoDaysAfter(date, NAV_LOOKAHEAD_DAYS));
+    const missedDates = unmatchedDates.filter((date) => today > isoDaysAfter(date, NAV_LOOKAHEAD_DAYS));
+    const xirrFlows = appliedPurchases.map((purchase) => ({ date: purchase.scheduled_date, amount: -Number(purchase.invested_paise) / 100 }));
     if (currentValue !== null && latest && commonValuationDate) xirrFlows.push({ date: commonValuationDate, amount: currentValue });
     const rate = currentValue !== null && latest && commonValuationDate ? xirr(xirrFlows) : null;
     return {
@@ -603,8 +617,11 @@ async function getSimulationDetail(env: Env, userId: string, simulationId: strin
       startDate: plan.start_date,
       endDate: plan.end_date,
       purchaseCount: Number(plan.purchase_count),
+      appliedPurchaseCount: appliedPurchases.length,
       missedInstallments: missedDates.length,
       missedInstallmentDates: missedDates,
+      pendingInstallments: pendingDates.length,
+      pendingInstallmentDates: pendingDates,
       investedPaise,
       units,
       latestNav: latest ? { nav: latest.nav, date: latest.date, portfolioValuationDate: commonValuationDate } : null,
