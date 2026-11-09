@@ -195,16 +195,17 @@ Amounts are stored in paise to avoid floating-point currency arithmetic. NAV and
 - `wrangler.jsonc` — route assets through the existing authenticated Worker.
 
 
+
 ## Demo portfolio data contract (2026-11-09)
 
-The default Wealth overview now loads a fixed, clearly labelled sample portfolio so the owner can explore the screens without entering personal holdings. Only the demo inputs are static:
+The default Wealth overview loads a fixed, clearly labelled sample portfolio so the owner can explore the screens without entering personal holdings. Only the demo inputs are static:
 
-- Sample stock quantities and purchase dates are hard-coded in the Worker; they are not the account owner's holdings.
-- Sample monthly SIP amounts, start dates and SIP days are fixed demonstration inputs; they do not create bank instructions, mandates or actual units.
-- Stock prices and historical candles are fetched from the Yahoo Finance chart endpoint as latest available daily closes. The feed is unofficial and indicative, not an exchange-authorized real-time quote. Split events and dividend cashflows are applied only when the provider returns them.
-- Mutual-fund NAV history is fetched from MFapi.in, an aggregator of AMFI-published NAV observations. Reconcile with AMFI before any use beyond personal demonstration.
-- The demo API aligns assets to one common valuation date and withholds the whole snapshot when a provider is stale or a required price/NAV cannot be verified. It never falls back to hard-coded prices or returns.
-- Static sample inputs are not persisted to D1 and are never labelled as actual user records. Saved paper SIP simulations remain separate and user-owned.
-- There is no payment gateway, deposit/withdrawal flow, brokerage order path, trading API, or live SIP mandate.
+- Sample share-equivalent quantities and purchase dates, and sample SIP amounts/dates, are hard-coded demonstration inputs. They are not the account owner's holdings, transactions, bank records or mandates. They are never written to D1.
+- Mutual-fund NAV history is fetched from MFapi.in, a third-party aggregator of AMFI-published daily NAVs. Reconcile with AMFI before any use beyond personal demonstration.
+- Stock history uses DhanHQ's documented daily /charts/historical endpoint after the four sample symbols are validated against Dhan's official NSE equity instrument-master CSV. Dhan says daily historical candles are adjusted for bonuses and splits. The demo reports price returns only; cash dividends are excluded.
+- Dhan Data API is an optional external subscription (currently ₹499 + applicable GST per month according to Dhan support). AskMoina does not subscribe, collect payment, or expose a payment gateway. The server-side DHAN_ACCESS_TOKEN secret and WEALTH_DHAN_ENABLED=true flag must be configured by the owner. Tokens are time-limited; expired/missing tokens cause stock values to be withheld.
+- When Dhan data is not enabled or unavailable, the app still displays real NAV-based sample SIP values, while stock sample inputs remain visible with no prices or returns. Combined portfolio totals/XIRR are blank until every holding has a valid price on the same common valuation date.
+- The default page never falls back to hard-coded market prices, NAVs or returns.
+- There is no payment gateway, deposit/withdrawal flow, brokerage order path, trading API, or actual SIP mandate.
 
-This mode is for a private product walkthrough. Before commercial distribution or investment use, replace/confirm stock data with a provider whose redistribution rights, delays, rate limits and corporate-action coverage are contractually appropriate, and complete device/privacy acceptance.
+This mode is a personal product walkthrough. Confirm provider data-use conditions, plan entitlements, token renewal, AMFI NAV reconciliation, and device/privacy acceptance before any distribution or investment use.

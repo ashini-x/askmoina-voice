@@ -18,89 +18,118 @@ const NAV_LOOKAHEAD_DAYS = 7;
 const NAV_SOURCE = "MFAPI.in";
 const NAV_ATTRIBUTION = "Third-party aggregator of AMFI-published mutual-fund NAV data; verify against AMFI before any non-simulated use.";
 
-type DemoStock = { symbol: string; name: string; quantity: number; purchaseDate: string };
+
+type DemoStock = { symbol: string; name: string; securityId: string; quantity: number; purchaseDate: string };
 type DemoFund = { schemeCode: number; monthlyAmountPaise: number; startDate: string; sipDay: number };
 const DEMO_STOCKS: DemoStock[] = [
-  { symbol: "RELIANCE.NS", name: "Reliance Industries", quantity: 4, purchaseDate: "2022-01-03" },
-  { symbol: "HDFCBANK.NS", name: "HDFC Bank", quantity: 8, purchaseDate: "2022-02-07" },
-  { symbol: "TCS.NS", name: "Tata Consultancy Services", quantity: 2, purchaseDate: "2022-03-07" },
-  { symbol: "INFY.NS", name: "Infosys", quantity: 6, purchaseDate: "2022-04-11" },
+  { symbol: "RELIANCE", name: "Reliance Industries", securityId: "2885", quantity: 4, purchaseDate: "2022-01-03" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", securityId: "1333", quantity: 8, purchaseDate: "2022-02-07" },
+  { symbol: "TCS", name: "Tata Consultancy Services", securityId: "11536", quantity: 2, purchaseDate: "2022-03-07" },
+  { symbol: "INFY", name: "Infosys", securityId: "1594", quantity: 6, purchaseDate: "2022-04-11" },
 ];
 const DEMO_FUNDS: DemoFund[] = [
   { schemeCode: 122639, monthlyAmountPaise: 300_000, startDate: "2023-01-01", sipDay: 5 },
   { schemeCode: 125497, monthlyAmountPaise: 200_000, startDate: "2023-03-01", sipDay: 10 },
 ];
 type PricePoint = { date: string; close: number };
-type CorporateSplit = { date: string; ratio: number };
-type DividendEvent = { date: string; amount: number };
-type YahooHistory = { meta: { currency?: string; regularMarketTime?: number }; points: PricePoint[]; splits: CorporateSplit[]; dividends: DividendEvent[] };
+type DhanHistoryResponse = { close?: unknown[]; timestamp?: unknown[] };
 
 function pickFirstCloseAtOrAfter(points: PricePoint[], requestedDate: string, maxDays = 7): PricePoint | null {
   const lastAllowed = isoDaysAfter(requestedDate, maxDays);
   return points.find((point) => point.date >= requestedDate && point.date <= lastAllowed) || null;
 }
-function splitAdjustedUnits(quantity: number, splits: CorporateSplit[], afterDate: string, throughDate: string): number {
-  return splits.filter((split) => split.date > afterDate && split.date <= throughDate)
-    .reduce((units, split) => units * split.ratio, quantity);
+function parseCsvTable(csv: string): Array<Record<string, string>> {
+  const rows: string[][] = [];
+  let row: string[] = [], cell = "", quoted = false;
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    if (quoted) {
+      if (char === '"' && csv[index + 1] === '"') { cell += '"'; index += 1; }
+      else if (char === '"') quoted = false;
+      else cell += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") { row.push(cell); cell = ""; }
+    else if (char === "\n") {
+      row.push(cell.replace(/\r$/, ""));
+      if (row.some((value) => value.trim())) rows.push(row);
+      row = []; cell = "";
+    } else cell += char;
+  }
+  if (cell.length || row.length) {
+    row.push(cell.replace(/\r$/, ""));
+    if (row.some((value) => value.trim())) rows.push(row);
+  }
+  if (rows.length < 2) throw new Error("dhan_instrument_master_empty");
+  const headers = rows[0].map((header) => header.trim());
+  const required = ["SEM_EXM_EXCH_ID", "SEM_SEGMENT", "SEM_SMST_SECURITY_ID", "SEM_INSTRUMENT_NAME", "SEM_TRADING_SYMBOL"];
+  if (required.some((header) => !headers.includes(header))) throw new Error("dhan_instrument_master_schema_invalid");
+  return rows.slice(1).map((values) => {
+    const item: Record<string, string> = {};
+    headers.forEach((header, index) => { item[header] = (values[index] || "").trim(); });
+    return item;
+  });
 }
-async function yahooHistory(position: DemoStock): Promise<YahooHistory> {
-  const period1 = Math.floor(new Date(position.purchaseDate + "T00:00:00.000Z").getTime() / 1000) - 86_400;
-  const period2 = Math.floor(Date.now() / 1000) + 86_400;
-  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(position.symbol) +
-    "?period1=" + period1 + "&period2=" + period2 + "&interval=1d&events=div%2Csplit";
+function validateDemoSecurityIds(rows: Array<Record<string, string>>): boolean {
+  return DEMO_STOCKS.every((stock) => rows.some((row) =>
+    row.SEM_EXM_EXCH_ID === "NSE" && row.SEM_SEGMENT === "E" &&
+    row.SEM_INSTRUMENT_NAME === "EQUITY" &&
+    row.SEM_TRADING_SYMBOL === stock.symbol &&
+    row.SEM_SMST_SECURITY_ID === stock.securityId
+  ));
+}
+async function fetchDhanInstrumentMaster(): Promise<void> {
+  const url = "https://images.dhan.co/api-data/api-scrip-master.csv";
   const key = new Request(url, { method: "GET" });
   try {
-    const cached = await caches.default.match(key);
-    if (cached) return await cached.json() as YahooHistory;
-  } catch { /* Cache is an optimization only. */ }
+    // Cache only a master that has already passed all four exact symbol/ID checks.
+    if (await caches.default.match(key)) return;
+  } catch {
+    // Cache miss: fetch the official instrument master below.
+  }
   const upstream = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 AskMoina-Wealth/1.0" },
+    headers: { Accept: "text/csv" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!upstream.ok) throw new Error("dhan_instrument_master_http_" + upstream.status);
+  const rows = parseCsvTable(await upstream.text());
+  if (!validateDemoSecurityIds(rows)) throw new Error("dhan_instrument_master_mapping_changed");
+  try {
+    await caches.default.put(key, new Response("validated", {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=21600" },
+    }));
+  } catch { /* Instrument cache is an optimization only. */ }
+}
+function normalizeDhanHistory(payload: DhanHistoryResponse, fromDate: string, toDate: string): PricePoint[] {
+  if (!Array.isArray(payload.close) || !Array.isArray(payload.timestamp) ||
+      payload.close.length !== payload.timestamp.length || payload.close.length > 2_000) {
+    throw new Error("dhan_stock_history_response_invalid");
+  }
+  const points = payload.close.flatMap((close, index) => {
+    const price = Number(close), timestamp = Number(payload.timestamp?.[index]);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return [];
+    const date = indiaDateFromEpochSeconds(timestamp);
+    if (!date || date < fromDate || date >= toDate) return [];
+    return [{ date, close: price }];
+  }).sort((a, b) => a.date.localeCompare(b.date));
+  const deduplicated = new Map<string, PricePoint>();
+  points.forEach((point) => deduplicated.set(point.date, point));
+  const normalized = Array.from(deduplicated.values());
+  if (normalized.length < 2) throw new Error("dhan_stock_history_empty");
+  return normalized;
+}
+async function fetchDhanStockHistory(position: DemoStock, today: string, accessToken: string): Promise<PricePoint[]> {
+  const fromDate = position.purchaseDate, toDate = isoDaysAfter(today, 1);
+  const upstream = await fetch("https://api.dhan.co/v2/charts/historical", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json", "access-token": accessToken },
+    body: JSON.stringify({
+      securityId: position.securityId, exchangeSegment: "NSE_EQ", instrument: "EQUITY",
+      expiryCode: 0, oi: false, fromDate, toDate,
+    }),
     signal: AbortSignal.timeout(15_000),
   });
-  if (!upstream.ok) throw new Error("stock_provider_http_" + upstream.status);
-  const payload = await upstream.json() as {
-    chart?: {
-      error?: unknown;
-      result?: Array<{
-        meta?: { currency?: string; regularMarketTime?: number };
-        timestamp?: number[];
-        indicators?: { quote?: Array<{ close?: Array<number | null> }> };
-        events?: {
-          splits?: Record<string, { numerator?: number; denominator?: number; date?: number }>;
-          dividends?: Record<string, { amount?: number; date?: number }>;
-        };
-      }> | null;
-    };
-  };
-  const result = payload.chart?.result?.[0], timestamps = result?.timestamp, closes = result?.indicators?.quote?.[0]?.close;
-  if (payload.chart?.error || !result?.meta || result.meta.currency !== "INR" ||
-      !Array.isArray(timestamps) || !Array.isArray(closes) || timestamps.length !== closes.length) {
-    throw new Error("stock_provider_response_invalid");
-  }
-  const points = timestamps.flatMap((timestamp, index) => {
-    const date = indiaDateFromEpochSeconds(Number(timestamp)), close = Number(closes[index]);
-    return date && Number.isFinite(close) && close > 0 ? [{ date, close }] : [];
-  }).sort((a, b) => a.date.localeCompare(b.date));
-  const deduped = new Map<string, PricePoint>();
-  points.forEach((point) => deduped.set(point.date, point));
-  const cleanPoints = Array.from(deduped.values());
-  if (cleanPoints.length < 2) throw new Error("stock_history_empty");
-  const splits = Object.entries(result.events?.splits || {}).flatMap(([key, event]) => {
-    const date = indiaDateFromEpochSeconds(Number(event.date || key));
-    const ratio = Number(event.numerator) / Number(event.denominator);
-    return date && Number.isFinite(ratio) && ratio > 0 ? [{ date, ratio }] : [];
-  }).sort((a, b) => a.date.localeCompare(b.date));
-  const dividends = Object.entries(result.events?.dividends || {}).flatMap(([key, event]) => {
-    const date = indiaDateFromEpochSeconds(Number(event.date || key)), amount = Number(event.amount);
-    return date && Number.isFinite(amount) && amount > 0 ? [{ date, amount }] : [];
-  }).sort((a, b) => a.date.localeCompare(b.date));
-  const normalized: YahooHistory = { meta: result.meta, points: cleanPoints, splits, dividends };
-  try {
-    await caches.default.put(key, new Response(JSON.stringify(normalized), {
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=900" },
-    }));
-  } catch { /* Cache storage is not required for correctness. */ }
-  return normalized;
+  if (!upstream.ok) throw new Error("dhan_stock_history_http_" + upstream.status);
+  return normalizeDhanHistory(await upstream.json() as DhanHistoryResponse, fromDate, toDate);
 }
 async function fetchDemoFundHistory(plan: DemoFund, today: string): Promise<{ meta: SchemeMeta; points: NavPoint[] }> {
   const payload = await mfapi("/mf/" + plan.schemeCode + "?startDate=" + plan.startDate + "&endDate=" + today) as NavResponse;
@@ -108,33 +137,24 @@ async function fetchDemoFundHistory(plan: DemoFund, today: string): Promise<{ me
   if (!isGrowthOption(normalized.meta)) throw new Error("demo_growth_option_invalid");
   return normalized;
 }
-function valueDemoStock(position: DemoStock, history: YahooHistory, asOfDate: string) {
-  const points = history.points.filter((point) => point.date <= asOfDate);
-  const latest = points[points.length - 1], purchase = pickFirstCloseAtOrAfter(points, position.purchaseDate);
+function valueDemoStock(position: DemoStock, points: PricePoint[], asOfDate: string) {
+  const usablePoints = points.filter((point) => point.date <= asOfDate);
+  const latest = usablePoints[usablePoints.length - 1];
+  const purchase = pickFirstCloseAtOrAfter(usablePoints, position.purchaseDate);
   if (!latest || !purchase || !isFreshNavDate(latest.date, todayInIndia())) throw new Error("demo_stock_price_unavailable");
-  const splits = history.splits.filter((split) => split.date <= asOfDate);
-  const units = splitAdjustedUnits(position.quantity, splits, purchase.date, asOfDate);
-  const invested = units * purchase.close, marketValue = units * latest.close;
-  const dividendEvents = history.dividends.filter((event) => event.date > purchase.date && event.date <= asOfDate);
-  const dividendCash = dividendEvents.reduce((sum, event) =>
-    sum + splitAdjustedUnits(position.quantity, splits, purchase.date, event.date) * event.amount, 0);
-  const flows = [
-    { date: purchase.date, amount: -invested },
-    ...dividendEvents.map((event) => ({
-      date: event.date, amount: splitAdjustedUnits(position.quantity, splits, purchase.date, event.date) * event.amount,
-    })),
-    { date: asOfDate, amount: marketValue },
-  ];
+  // Dhan says its daily history is bonus/split adjusted. Demo quantities are
+  // share-equivalent units on that adjusted basis; cash dividends are excluded.
+  const invested = position.quantity * purchase.close, marketValue = position.quantity * latest.close;
   const investedPaise = Math.round(invested * 100), marketValuePaise = Math.round(marketValue * 100);
-  const dividendsPaise = Math.round(dividendCash * 100), currentValuePaise = marketValuePaise + dividendsPaise;
   return {
-    symbol: position.symbol, ticker: position.symbol.replace(/\.NS$/, ""), name: position.name,
-    originalQuantity: position.quantity, quantity: units, purchaseDate: purchase.date,
-    purchasePrice: purchase.close, latestPrice: latest.close, latestPriceDate: latest.date,
-    investedPaise, marketValuePaise, dividendsPaise, currentValuePaise,
-    profitLossPaise: currentValuePaise - investedPaise,
-    absoluteReturn: investedPaise > 0 ? (currentValuePaise - investedPaise) / investedPaise : null,
-    xirr: xirr(flows), priceSeries: points.slice(-120), source: "Yahoo Finance chart · daily close",
+    symbol: position.symbol, name: position.name, quantity: position.quantity,
+    purchaseDate: purchase.date, purchasePrice: purchase.close,
+    latestPrice: latest.close, latestPriceDate: latest.date,
+    investedPaise, marketValuePaise, currentValuePaise: marketValuePaise,
+    profitLossPaise: marketValuePaise - investedPaise,
+    absoluteReturn: investedPaise > 0 ? (marketValuePaise - investedPaise) / investedPaise : null,
+    xirr: xirr([{ date: purchase.date, amount: -invested }, { date: latest.date, amount: marketValue }]),
+    priceSeries: usablePoints.slice(-120), source: "DhanHQ historical daily candles",
   };
 }
 function valueDemoFund(plan: DemoFund, history: { meta: SchemeMeta; points: NavPoint[] }, asOfDate: string) {
@@ -166,35 +186,52 @@ function valueDemoFund(plan: DemoFund, history: { meta: SchemeMeta; points: NavP
     absoluteReturn: investedPaise > 0 ? profitLossPaise / investedPaise : null, xirr: xirr(flows), source: NAV_SOURCE,
   };
 }
-async function handleDemoPortfolio(): Promise<Response> {
+async function handleDemoPortfolio(env: Env): Promise<Response> {
   const today = todayInIndia();
+  let stockDataStatus: "ready" | "disabled" | "not_configured" | "unavailable" = "disabled";
+  let stockDataMessage = "Dhan Data API is not enabled. Sample quantities and dates are visible, but no stock prices or returns are shown.";
+  let stockHistories: PricePoint[][] = [];
+  const accessToken = env.DHAN_ACCESS_TOKEN?.trim(), stockEnabled = env.WEALTH_DHAN_ENABLED === "true";
+  if (stockEnabled && !accessToken) {
+    stockDataStatus = "not_configured";
+    stockDataMessage = "Add a valid Dhan Data API access token as the server-side DHAN_ACCESS_TOKEN secret. No stock prices are fabricated.";
+  } else if (stockEnabled && accessToken) {
+    try {
+      await fetchDhanInstrumentMaster();
+      stockHistories = await Promise.all(DEMO_STOCKS.map((position) => fetchDhanStockHistory(position, today, accessToken)));
+      stockDataStatus = "ready";
+      stockDataMessage = "DhanHQ daily candles · bonus/split-adjusted historical prices. Cash dividends are excluded.";
+    } catch (error) {
+      stockDataStatus = "unavailable";
+      stockDataMessage = "Dhan historical prices could not be verified. Check the Data API subscription and token expiry; stock values are withheld.";
+      console.error("[wealth] Dhan demo history unavailable", error instanceof Error ? error.message : "unknown");
+      stockHistories = [];
+    }
+  }
   try {
-    const [stockHistories, fundHistories] = await Promise.all([
-      Promise.all(DEMO_STOCKS.map((position) => yahooHistory(position))),
-      Promise.all(DEMO_FUNDS.map((plan) => fetchDemoFundHistory(plan, today))),
-    ]);
+    const fundHistories = await Promise.all(DEMO_FUNDS.map((plan) => fetchDemoFundHistory(plan, today)));
+    const stockLatestDates = stockDataStatus === "ready"
+      ? stockHistories.map((history) => history[history.length - 1]?.date) : [];
     const latestDates = [
-      ...stockHistories.map((history) => history.points[history.points.length - 1]?.date),
       ...fundHistories.map((history) => history.points[history.points.length - 1]?.date),
+      ...stockLatestDates,
     ];
     if (latestDates.some((date) => !date || !validIsoDate(date) || !isFreshNavDate(date, today))) throw new Error("demo_market_data_stale");
     const asOfDate = [...latestDates].sort()[0] as string;
-    const stocks = DEMO_STOCKS.map((position, index) => valueDemoStock(position, stockHistories[index], asOfDate));
     const funds = DEMO_FUNDS.map((plan, index) => valueDemoFund(plan, fundHistories[index], asOfDate));
-    const investedPaise = stocks.reduce((sum, item) => sum + item.investedPaise, 0) + funds.reduce((sum, item) => sum + item.investedPaise, 0);
-    const currentValuePaise = stocks.reduce((sum, item) => sum + item.currentValuePaise, 0) + funds.reduce((sum, item) => sum + item.currentValuePaise, 0);
-    const profitLossPaise = currentValuePaise - investedPaise;
-    const stockFlows = stocks.flatMap((item, index) => {
-      const position = DEMO_STOCKS[index], history = stockHistories[index];
-      const dividends = history.dividends.filter((event) => event.date > item.purchaseDate && event.date <= asOfDate);
-      return [
-        { date: item.purchaseDate, amount: -item.investedPaise / 100 },
-        ...dividends.map((event) => ({
-          date: event.date, amount: splitAdjustedUnits(position.quantity, history.splits, item.purchaseDate, event.date) * event.amount,
-        })),
-        { date: asOfDate, amount: item.marketValuePaise / 100 },
-      ];
-    });
+    const stocks = stockDataStatus === "ready"
+      ? DEMO_STOCKS.map((position, index) => valueDemoStock(position, stockHistories[index], asOfDate))
+      : [];
+    const valuationComplete = stocks.length === DEMO_STOCKS.length;
+    const fundsInvestedPaise = funds.reduce((sum, item) => sum + item.investedPaise, 0);
+    const fundsCurrentValuePaise = funds.reduce((sum, item) => sum + item.currentValuePaise, 0);
+    const investedPaise = valuationComplete ? fundsInvestedPaise + stocks.reduce((sum, item) => sum + item.investedPaise, 0) : null;
+    const currentValuePaise = valuationComplete ? fundsCurrentValuePaise + stocks.reduce((sum, item) => sum + item.currentValuePaise, 0) : null;
+    const profitLossPaise = currentValuePaise === null || investedPaise === null ? null : currentValuePaise - investedPaise;
+    const stockFlows = stocks.flatMap((item) => [
+      { date: item.purchaseDate, amount: -item.investedPaise / 100 },
+      { date: asOfDate, amount: item.marketValuePaise / 100 },
+    ]);
     const fundFlows = funds.flatMap((fund, index) => {
       const plan = DEMO_FUNDS[index], points = fundHistories[index].points.filter((point) => point.date <= asOfDate);
       const paid = buildSipSchedule(plan.startDate, asOfDate, plan.sipDay).flatMap((date) =>
@@ -203,22 +240,24 @@ async function handleDemoPortfolio(): Promise<Response> {
     });
     return response({
       ok: true, mode: "static_demo_with_live_market_data", title: "Sample portfolio", asOfDate,
-      investedPaise, currentValuePaise, profitLossPaise,
-      absoluteReturn: investedPaise > 0 ? profitLossPaise / investedPaise : null,
-      xirr: xirr([...stockFlows, ...fundFlows]), stocks, funds,
+      valuationComplete, investedPaise, currentValuePaise, profitLossPaise,
+      absoluteReturn: investedPaise && profitLossPaise !== null ? profitLossPaise / investedPaise : null,
+      xirr: valuationComplete ? xirr([...stockFlows, ...fundFlows]) : null,
+      fundsInvestedPaise, fundsCurrentValuePaise, funds, stocks,
+      sampleStockLots: DEMO_STOCKS.map(({ symbol, name, quantity, purchaseDate }) => ({ symbol, name, quantity, purchaseDate })),
+      stockDataStatus, stockDataMessage,
       providers: {
-        stocks: "Yahoo Finance chart · latest available daily close; unofficial indicative data",
+        stocks: "DhanHQ historical daily candles · bonus/split-adjusted · cash dividends excluded",
         mutualFunds: NAV_SOURCE + " · third-party aggregator of AMFI-published daily NAVs",
       },
-      sampleDataNotice: "Sample quantities, purchase dates and SIP contributions are fixed demonstration inputs. They are not the signed-in user's actual holdings, purchases, bank records or SIP mandates. Stock closes and mutual-fund NAVs are fetched from external providers. No payments, orders or SIP mandates are created.",
-      disclaimer: "Personal demonstration only. Stock prices are latest available daily closes from an unofficial Yahoo Finance chart feed and may be delayed or unavailable. Mutual-fund NAV observations are supplied by MFapi.in and should be reconciled against AMFI. Values are educational estimates, not investment advice, execution prices, tax statements or proof of ownership.",
+      sampleDataNotice: "Sample share-equivalent quantities, purchase dates and SIP contributions are fixed demonstration inputs. They are not the signed-in user's actual holdings, purchases, bank records or SIP mandates. Stock prices and fund NAVs are fetched from external providers. No payments, orders or SIP mandates are created.",
+      disclaimer: "Personal demonstration only. Dhan says daily historical candles are adjusted for bonuses and splits; cash dividends are excluded from stock returns. Mutual-fund NAVs are supplied by MFapi.in and should be reconciled against AMFI. Sample holdings and SIPs are hypothetical, not proof of ownership, investment advice, execution prices, tax statements, actual transactions or mandates.",
     });
   } catch (error) {
-    console.error("[wealth] demo portfolio unavailable", error instanceof Error ? error.message : "unknown");
-    return response({ ok: false, error: "demo_market_data_unavailable", message: "A live price or NAV source could not be verified. The demo portfolio is withheld rather than showing guessed values." }, 502);
+    console.error("[wealth] demo NAV data unavailable", error instanceof Error ? error.message : "unknown");
+    return response({ ok: false, error: "demo_market_data_unavailable", message: "A live mutual-fund NAV could not be verified. The demo snapshot is withheld rather than showing guessed values." }, 502);
   }
 }
-
 
 function response(data: unknown, status = 200): Response {
   return Response.json(data, {
@@ -1026,10 +1065,10 @@ async function handleStockHistory(url: URL, env: Env): Promise<Response> {
       instrument: "EQUITY",
       fromDate,
       toDate,
-      adjustedForCorporateActions: false,
+      adjustedForCorporateActions: true,
       canCalculateTotalReturn: false,
       candles,
-      disclaimer: "Raw close prices only. Do not use for portfolio-return claims until a verified instrument master and complete corporate-action adjustments are applied.",
+      disclaimer: "Dhan states daily historical candles are adjusted for bonuses and splits. Cash dividends are not included, so this is a price-return data series rather than a complete total-return series.",
     });
   } catch (error) {
     console.error("[wealth] Dhan history failed", error instanceof Error ? error.message : "unknown");
@@ -1043,7 +1082,7 @@ export async function handleWealthRequest(request: Request, env: Env, userId: st
   if (!userId) return badRequest("authentication_required", 401);
   if (request.method === "OPTIONS") return badRequest("method_not_allowed", 405);
 
-  if (url.pathname === "/api/wealth/demo" && request.method === "GET") return handleDemoPortfolio();
+  if (url.pathname === "/api/wealth/demo" && request.method === "GET") return handleDemoPortfolio(env);
 
   if (url.pathname === "/api/wealth/status" && request.method === "GET") {
     return response({
@@ -1092,5 +1131,7 @@ export const wealthMath = {
   readJsonBounded,
   xirr,
   pickFirstCloseAtOrAfter,
-  splitAdjustedUnits,
+  parseCsvTable,
+  validateDemoSecurityIds,
+  normalizeDhanHistory,
 };

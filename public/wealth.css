@@ -139,3 +139,7 @@ button{cursor:pointer}
 .demo-return{font-weight:650}.demo-return.is-positive{color:var(--green)}.demo-return.is-negative{color:var(--red)}
 .demo-loading{font-size:11px;color:#8b98a8;margin:2px 0}.demo-error{font-size:11px;line-height:1.5;color:#ffb2b8}
 @media(max-width:380px){.demo-metrics{grid-template-columns:1fr 1fr}.demo-metric:last-child{grid-column:1/-1}}
+
+.install-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid #334454;border-radius:999px;padding:7px 10px;color:#d7e3ef;font-size:10px;white-space:nowrap;background:#111923}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+@media(max-width:350px){.topbar-actions{gap:5px}.install-link{padding:6px 7px;font-size:9px}}

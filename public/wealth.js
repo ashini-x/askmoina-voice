@@ -298,7 +298,7 @@
     $("#close-detail").addEventListener("click", () => { $("#simulation-detail").hidden = true; });
     try {
       state.status = await api("/api/wealth/status");
-      $("#stock-feed-status").textContent = "Yahoo Finance daily closes (indicative)";
+      $("#stock-feed-status").textContent = state.status.providers.stockHistoryReady ? "DhanHQ connected" : "Dhan Data API not configured";
       await refreshSimulations();
     } catch (error) {
       setStatus("Wealth service could not be reached: " + error.message, true);

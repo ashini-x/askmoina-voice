@@ -111,10 +111,40 @@ describe("AskMoina Wealth sample demo safeguards", () => {
     ], "2022-01-04")).toEqual({ date: "2022-01-05", close: 103 });
     expect(wealthMath.pickFirstCloseAtOrAfter([{ date: "2022-01-12", close: 108 }], "2022-01-04")).toBeNull();
   });
-  it("adjusts units only for provider-reported splits after purchase", () => {
-    const splits = [{ date: "2023-01-01", ratio: 2 }, { date: "2024-01-01", ratio: 1.5 }];
-    expect(wealthMath.splitAdjustedUnits(4, splits, "2022-01-01", "2023-12-31")).toBe(8);
-    expect(wealthMath.splitAdjustedUnits(4, splits, "2022-01-01", "2024-01-01")).toBe(12);
-    expect(wealthMath.splitAdjustedUnits(4, splits, "2023-01-01", "2024-01-01")).toBe(6);
+  it("parses the Dhan instrument master CSV, including quoted commas", () => {
+    const rows = wealthMath.parseCsvTable([
+      "SEM_EXM_EXCH_ID,SEM_SEGMENT,SEM_SMST_SECURITY_ID,SEM_INSTRUMENT_NAME,SEM_TRADING_SYMBOL,SEM_CUSTOM_SYMBOL",
+      'NSE,E,2885,EQUITY,RELIANCE,"Reliance Industries, Limited"',
+    ].join("\n"));
+    expect(rows[0]).toMatchObject({
+      SEM_EXM_EXCH_ID: "NSE", SEM_SEGMENT: "E", SEM_SMST_SECURITY_ID: "2885",
+      SEM_INSTRUMENT_NAME: "EQUITY", SEM_TRADING_SYMBOL: "RELIANCE",
+      SEM_CUSTOM_SYMBOL: "Reliance Industries, Limited",
+    });
+  });
+
+  it("validates exact NSE cash-equity symbol/security-ID mappings", () => {
+    const rows = [
+      ["RELIANCE", "2885"], ["HDFCBANK", "1333"], ["TCS", "11536"], ["INFY", "1594"],
+    ].map(([symbol, id]) => ({
+      SEM_EXM_EXCH_ID: "NSE", SEM_SEGMENT: "E", SEM_SMST_SECURITY_ID: id,
+      SEM_INSTRUMENT_NAME: "EQUITY", SEM_TRADING_SYMBOL: symbol,
+    }));
+    expect(wealthMath.validateDemoSecurityIds(rows)).toBe(true);
+    expect(wealthMath.validateDemoSecurityIds(rows.map((row) =>
+      row.SEM_TRADING_SYMBOL === "INFY" ? { ...row, SEM_SMST_SECURITY_ID: "9999" } : row
+    ))).toBe(false);
+  });
+
+  it("normalizes Dhan daily closes into IST dates and respects the exclusive end date", () => {
+    const points = wealthMath.normalizeDhanHistory({
+      timestamp: [1326220200, 1326306600, 1326393000], close: [100, 101, null],
+    }, "2012-01-11", "2012-01-13");
+    expect(points).toEqual([
+      { date: "2012-01-11", close: 100 },
+      { date: "2012-01-12", close: 101 },
+    ]);
+    expect(() => wealthMath.normalizeDhanHistory({ timestamp: [], close: [] }, "2012-01-11", "2012-01-13"))
+      .toThrow("dhan_stock_history_empty");
   });
 });

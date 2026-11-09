@@ -1,4 +1,4 @@
-const CACHE_NAME = "askmoina-pwa-shell-v20";
+const CACHE_NAME = "askmoina-pwa-shell-v21";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",

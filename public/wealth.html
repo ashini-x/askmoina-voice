@@ -19,7 +19,7 @@
     <header class="topbar">
       <a class="back-link" href="/" aria-label="Back to askmoina">‹</a>
       <div class="brand-lockup"><span class="eyebrow">ASKMOINA</span><strong>wealth</strong></div>
-      <span class="mode-pill"><i></i> PAPER</span>
+      <div class="topbar-actions"><span class="mode-pill"><i></i> PAPER</span><a class="install-link" href="/install">Install app</a></div>
     </header>
 
     <section class="overview-card" aria-labelledby="portfolio-title">
@@ -51,7 +51,7 @@
       <div class="empty-card" id="overview-empty">
         <div class="empty-glyph">↗</div>
         <h3>Your timeline starts here</h3>
-        <p>Create a historical SIP simulation or add stock positions when verified price and corporate-action data are ready.</p>
+        <p>Explore the fixed sample portfolio above, or create your own saved historical SIP simulation.</p>
         <button class="button-primary" type="button" data-go-tab="funds">Build a SIP simulation</button>
       </div>
       <div class="simulation-list" id="simulation-list" aria-live="polite"></div>
@@ -83,14 +83,14 @@
 
     <section class="tab-panel" id="panel-stocks" data-panel="stocks">
       <div class="section-heading"><div><span class="section-kicker">EQUITY HISTORY</span><h2>Stocks</h2></div></div>
-      <div class="info-strip"><strong>Real market data · fixed sample positions</strong><p>The sample lots and purchase dates are static so you can explore the app. Stock prices are fetched as Yahoo Finance daily closes; provider-reported split events and cash dividends are applied where supplied. No real holdings are connected.</p></div>
+      <div class="info-strip"><strong>Real DhanHQ market history · static sample positions</strong><p>The sample quantities and purchase dates are fixed demo inputs. Stock prices come from DhanHQ daily historical candles, which Dhan says are adjusted for bonuses and splits. This is a price-return view; cash dividends are excluded. No actual holdings or orders are connected.</p></div>
       <section class="demo-card" id="demo-stocks" aria-label="Sample stock holdings"><p class="demo-loading">Loading actual stock prices…</p></section>
       <div class="stock-status-card">
-        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Yahoo Finance daily close</strong></div>
-        <div class="status-row"><span>Corporate actions</span><strong class="status-pending">Provider events when supplied</strong></div>
-        <div class="status-row"><span>Price freshness</span><strong>Latest available daily close · not live tick data</strong></div>
+        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Checking Dhan Data API…</strong></div>
+        <div class="status-row"><span>Bonus / split adjustment</span><strong>Adjusted by Dhan daily-history feed</strong></div>
+        <div class="status-row"><span>Cash dividends</span><strong class="status-pending">Excluded from price return</strong></div>
       </div>
-      <div class="empty-card compact"><h3>Accuracy before appearance</h3><p>Stock holdings from 2022 will be enabled only after NSE/BSE instrument mapping and split, bonus, merger, demerger, and dividend treatment are independently verified. No assumed stock quantities or returns are preloaded.</p></div>
+      <div class="empty-card compact"><h3>Sample data, not your account</h3><p>Share-equivalent quantities and purchase dates are static demo inputs. Stock prices are shown only when the Dhan Data API is configured. Dhan currently lists its Data API at ₹499 + GST per month; any subscription is handled directly by Dhan, never inside AskMoina. No payment gateway is included.</p></div>
     </section>
 
     <section class="detail-sheet" id="simulation-detail" hidden aria-live="polite">
