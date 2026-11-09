@@ -956,7 +956,7 @@ export async function handleWealthRequest(request: Request, env: Env, userId: st
   const detailMatch = url.pathname.match(/^\/api\/wealth\/simulations\/([0-9a-f-]{36})$/i);
   if (detailMatch && request.method === "GET") return getSimulationDetail(env, userId, detailMatch[1]);
 
-  if (url.pathname === "/api/wealth/stocks/history" && request.method === "GET") return handleStockHistory(url, env);
+  if (url.pathname === "/api/wealth/stocks/history" && request.method === "GET") return handleStockHistory(url);
   if (url.pathname.startsWith("/api/wealth/")) return badRequest("not_found", 404);
   return null;
 }

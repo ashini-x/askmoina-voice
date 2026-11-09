@@ -41,7 +41,7 @@ INDmoney is the reference for the *combined wealth surface*: holdings across equ
 ### Equity daily history
 
 - Provider: Yahoo Finance's unofficial chart endpoint (`query1.finance.yahoo.com/v8/finance/chart/{symbol}`). No API key or paid subscription is required. Yahoo does not publish this as a supported finance API; availability and data-use terms are not guaranteed.
-- The read-only Worker adapter requests only four fixed demo NSE ticker series (`RELIANCE.NS`, `HDFCBANK.NS`, `TCS.NS`, `INFY.NS`). It does not use Dhan credentials, expose keys, or place orders.
+- The read-only Worker adapter requests only four fixed demo NSE ticker series (`RELIANCE.NS`, `HDFCBANK.NS`, `TCS.NS`, `INFY.NS`). It does not use broker credentials, expose keys, or place orders.
 - Yahoo's chart endpoint is undocumented/unofficial and may change, rate-limit or stop responding. Keep requests limited to this small personal demo and do not treat its values as licensed exchange data or redistribute them commercially.
 - Yahoo daily close data is used as a split-adjusted price series; cash dividends are excluded, so results are price return, not total return. Timestamps are mapped to Asia/Kolkata exchange dates and the exclusive toDate boundary is enforced.
 - Sample NSE symbols use their `.NS` ticker suffix; if Yahoo returns missing or malformed data, the Worker fails closed rather than inventing prices.
@@ -207,7 +207,7 @@ The default Wealth overview loads a fixed, clearly labelled sample portfolio so 
 - Sample share-equivalent quantities and purchase dates, and sample SIP amounts/dates, are hard-coded demonstration inputs. They are not the account owner's holdings, transactions, bank records or mandates. They are never written to D1.
 - Mutual-fund NAV history is fetched from MFapi.in, a third-party aggregator of AMFI-published daily NAVs. Reconcile with AMFI before any use beyond personal demonstration.
 - Stock history uses Yahoo Finance's unofficial daily chart endpoint for the four fixed NSE symbols. Split-adjusted close values are used; cash dividends are excluded.
-- No paid Dhan Data API, paid market-data subscription, payment gateway or broker integration is required. Yahoo Finance is an unofficial best-effort source; review its terms and do not redistribute its data.
+- No paid market-data subscription, payment gateway or broker integration is required. Yahoo Finance is an unofficial best-effort source; review its terms and do not redistribute its data.
 - When free Yahoo stock data is unavailable, the app still shows real NAV-based sample SIP values, while stock sample inputs remain visible with no prices or returns. Combined totals/XIRR are withheld until every holding has a valid price on the same common valuation date.
 - The default page never falls back to hard-coded market prices, NAVs or returns.
 - There is no payment gateway, deposit/withdrawal flow, brokerage order path, trading API, or actual SIP mandate.
