@@ -104,3 +104,7 @@ Every milestone should have explicit pass/fail criteria, regression tests, and a
 See → Understand → Select → Plan a visual guide → Render → Track → Guide → Verify → Recover.
 
 The order matters: a beautiful 3D arrow is not a breakthrough if it points at the wrong part, drifts when the camera moves, or claims success without evidence.
+
+## Additive initiative — AskMoina Wealth
+
+A separate mobile-first investment-tracking and historical paper-simulation feature is being developed inside the AskMoina Voice PWA. It uses INDmoney as a reference for the consolidated stocks + mutual-funds experience, without product affiliation or brand reuse. The feature contract, data sources, formulas, security boundaries, milestone states, and acceptance gates are maintained in [AskMoina Wealth milestones](WEALTH_MILESTONES.md). The first committed vertical slice covers provider-backed mutual-fund Growth-option SIP replay; the stock price adapter remains read-only and cannot calculate stock returns until instrument identity and corporate actions are verified. This initiative does not renumber the live-voice / visual-Co-Pilot roadmap above.
