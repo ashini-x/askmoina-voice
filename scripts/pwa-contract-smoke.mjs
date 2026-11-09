@@ -41,7 +41,7 @@ assert.ok(wealthHtml.includes("Historical paper simulation") && wealthHtml.inclu
 assert.ok(wealthCss.includes("--bg:#080b10") && wealthCss.includes("--green:#36d399"), "Wealth PWA must preserve its dark graphite / emerald design tokens");
 assert.ok(wealthJs.includes("/api/wealth/funds/search") && wealthJs.includes("/api/wealth/simulations"), "Wealth UI must use authenticated same-origin Worker APIs");
 assert.ok(wealthWorker.includes("growth_option_required") && wealthWorker.includes("missedInstallmentDates") && wealthWorker.includes("canCalculateTotalReturn: false"), "Wealth Worker must enforce Growth NAVs, disclose missed SIP dates, and block unadjusted stock returns");
-assert.ok(wealthRouter.includes('import { handleWealthRequest } from "./wealth";') && wealthRouter.includes('url.pathname === "/wealth"') && wealthRouter.includes('href=\\\"/wealth\\\"'), "Wealth routes and authenticated navigation must be wired into the existing Worker");
+assert.ok(wealthRouter.includes('import { handleWealthRequest } from "./wealth";') && wealthRouter.includes('url.pathname === "/wealth"') && wealthRouter.includes("entry-menu-wealth"), "Wealth routes and authenticated navigation must be wired into the existing Worker");
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const manifestIconPath = (icon) => (icon.src || "").split("?")[0];
