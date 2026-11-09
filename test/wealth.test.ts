@@ -46,7 +46,7 @@ describe("AskMoina Wealth historical simulation math", () => {
     const points = [
       { date: "2023-01-04", nav: 10 },
       { date: "2023-01-06", nav: 11 },
-      { date: "2023-01-14", nav: 12 },
+      { date: "2023-01-15", nav: 12 },
     ];
     expect(wealthMath.pickNextNav(points, "2023-01-05")).toEqual({ date: "2023-01-06", nav: 11 });
     expect(wealthMath.pickNextNav(points, "2023-01-07")).toBeNull();
