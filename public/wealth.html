@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080B10">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="AskMoina Wealth — transparent historical paper-investment simulations.">
+  <title>Wealth · askmoina</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/askmoina-global-font.css">
+  <link rel="stylesheet" href="/wealth.css">
+  <script defer src="/wealth.js"></script>
+</head>
+<body class="wealth-body">
+  <main class="wealth-app">
+    <header class="topbar">
+      <a class="back-link" href="/" aria-label="Back to askmoina">‹</a>
+      <div class="brand-lockup"><span class="eyebrow">ASKMOINA</span><strong>wealth</strong></div>
+      <span class="mode-pill"><i></i> PAPER</span>
+    </header>
+
+    <section class="overview-card" aria-labelledby="portfolio-title">
+      <div class="section-kicker">YOUR INVESTMENT JOURNEY</div>
+      <div class="portfolio-title-row">
+        <h1 id="portfolio-title">Total portfolio</h1>
+        <span class="asof-label" id="portfolio-asof">—</span>
+      </div>
+      <div class="portfolio-value" id="portfolio-value">₹—</div>
+      <div class="portfolio-return" id="portfolio-return">Build a historical portfolio using real market data.</div>
+      <div class="overview-rule"></div>
+      <div class="overview-metrics">
+        <div><span>Invested</span><strong id="portfolio-invested">₹—</strong></div>
+        <div><span>Profit / loss</span><strong id="portfolio-profit">₹—</strong></div>
+        <div><span>Annualised XIRR</span><strong id="portfolio-xirr">—</strong></div>
+      </div>
+      <p class="overview-footnote" id="portfolio-note">No sample balances are shown. Values appear only after a provider-backed simulation has been created.</p>
+    </section>
+
+    <nav class="primary-tabs" aria-label="Wealth sections">
+      <button class="tab-button is-active" type="button" data-tab="overview">Overview</button>
+      <button class="tab-button" type="button" data-tab="funds">Mutual funds</button>
+      <button class="tab-button" type="button" data-tab="stocks">Stocks</button>
+    </nav>
+
+    <section class="tab-panel is-visible" id="panel-overview" data-panel="overview">
+      <div class="section-heading"><div><span class="section-kicker">LONG-TERM VIEW</span><h2>Investment activity</h2></div></div>
+      <div class="empty-card" id="overview-empty">
+        <div class="empty-glyph">↗</div>
+        <h3>Your timeline starts here</h3>
+        <p>Create a historical SIP simulation or add stock positions when verified price and corporate-action data are ready.</p>
+        <button class="button-primary" type="button" data-go-tab="funds">Build a SIP simulation</button>
+      </div>
+      <div class="simulation-list" id="simulation-list" aria-live="polite"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-funds" data-panel="funds">
+      <div class="section-heading"><div><span class="section-kicker">REAL HISTORICAL NAV</span><h2>Mutual fund SIPs</h2></div><span class="source-tag">MFAPI.in</span></div>
+      <div class="info-strip"><strong>Historical paper simulation</strong><p>Search a real scheme, set a monthly amount and replay SIPs from 2023 using dated NAV observations. This does not represent actual units held or an actual SIP mandate.</p></div>
+
+      <div class="builder-card">
+        <label class="field-label" for="fund-search">Find a mutual fund</label>
+        <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="fund-search" type="search" autocomplete="off" placeholder="Try Nippon India Small Cap, UTI Nifty 50…" maxlength="80"><span class="search-spinner" id="search-spinner" hidden></span></div>
+        <div class="search-results" id="fund-results" role="listbox" aria-label="Mutual fund search results" hidden></div>
+        <div class="selected-funds" id="selected-funds"></div>
+
+        <div class="form-grid">
+          <div class="field"><label class="field-label" for="sip-day">SIP date</label><select id="sip-day"><option value="1">1st of month</option><option value="5" selected>5th of month</option><option value="10">10th of month</option><option value="15">15th of month</option><option value="20">20th of month</option><option value="25">25th of month</option></select></div>
+          <div class="field"><label class="field-label" for="sip-start">Start date</label><input id="sip-start" type="date" value="2023-01-01"></div>
+          <div class="field"><label class="field-label" for="sip-end">End date</label><input id="sip-end" type="date"></div>
+        </div>
+        <button class="button-primary button-full" id="create-simulation" type="button" disabled>Create historical SIP simulation</button>
+        <p class="form-hint" id="builder-status" role="status" aria-live="polite">Add one or more Direct/Regular Growth schemes to begin. Plan type is taken from the provider's scheme name.</p>
+      </div>
+      <div class="section-heading history-heading"><div><span class="section-kicker">YOUR SAVED SCENARIOS</span><h2>Past simulations</h2></div></div>
+      <div class="simulation-list" id="fund-simulation-list"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-stocks" data-panel="stocks">
+      <div class="section-heading"><div><span class="section-kicker">EQUITY HISTORY</span><h2>Stocks</h2></div></div>
+      <div class="info-strip"><strong>Historical data connector</strong><p>AskMoina Wealth has a read-only DhanHQ daily-candle adapter. It stays disabled until server-side credentials are configured. Raw closing prices will not be presented as adjusted returns.</p></div>
+      <div class="stock-status-card">
+        <div class="status-row"><span>Historical feed</span><strong id="stock-feed-status">Checking…</strong></div>
+        <div class="status-row"><span>Corporate-action adjustment</span><strong class="status-pending">Not yet accepted</strong></div>
+        <div class="status-row"><span>Long-term return calculation</span><strong class="status-pending">Locked until adjusted data</strong></div>
+      </div>
+      <div class="empty-card compact"><h3>Accuracy before appearance</h3><p>Stock holdings from 2022 will be enabled only after NSE/BSE instrument mapping and split, bonus, merger, demerger, and dividend treatment are independently verified. No assumed stock quantities or returns are preloaded.</p></div>
+    </section>
+
+    <section class="detail-sheet" id="simulation-detail" hidden aria-live="polite">
+      <div class="detail-header"><div><span class="section-kicker">SIMULATION DETAILS</span><h2 id="detail-title">—</h2></div><button type="button" id="close-detail" class="icon-button" aria-label="Close details">×</button></div>
+      <div class="detail-summary">
+        <div><span>Current value</span><strong id="detail-value">—</strong></div>
+        <div><span>Invested</span><strong id="detail-invested">—</strong></div>
+        <div><span>Absolute return</span><strong id="detail-absolute">—</strong></div>
+        <div><span>XIRR</span><strong id="detail-xirr">—</strong></div>
+      </div>
+      <div class="detail-funds" id="detail-funds"></div>
+      <p class="detail-disclaimer" id="detail-disclaimer"></p>
+    </section>
+
+    <footer class="app-footer"><span>askmoina / wealth</span><span>Historical paper investing · No trades</span></footer>
+  </main>
+</body>
+</html>
