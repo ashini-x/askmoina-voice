@@ -125,6 +125,53 @@
     $("#overview-empty").hidden = state.simulations.length > 0;
     if (state.simulations.length && !state.activeSimulation) await loadSimulation(state.simulations[0].simulation_id);
   };
+  const renderPerformanceChart = (points) => {
+    const svg = $("#performance-chart");
+    svg.replaceChildren();
+    const note = $("#performance-chart-note");
+    $("#performance-chart-start").textContent = "—";
+    $("#performance-chart-end").textContent = "—";
+    if (!Array.isArray(points) || points.length < 2) {
+      note.textContent = "A complete shared daily NAV series is not available for this simulation yet. No estimated chart points are shown.";
+      return;
+    }
+    const values = points.map((point) => Number(point.valuePaise));
+    const invested = points.map((point) => Number(point.investedPaise));
+    if ([...values, ...invested].some((value) => !Number.isFinite(value) || value < 0)) {
+      note.textContent = "The provider history did not pass chart validation. No chart is shown.";
+      return;
+    }
+    const max = Math.max(1, ...values, ...invested);
+    const width = 360, height = 150, left = 8, right = 8, top = 10, bottom = 10;
+    const xAt = (index) => left + (index / Math.max(1, points.length - 1)) * (width - left - right);
+    const yAt = (value) => height - bottom - (value / max) * (height - top - bottom);
+    const addLine = (className, x1, y1, x2, y2) => {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("class", className);
+      line.setAttribute("x1", String(x1)); line.setAttribute("y1", String(y1));
+      line.setAttribute("x2", String(x2)); line.setAttribute("y2", String(y2));
+      svg.append(line);
+    };
+    [0.25, 0.5, 0.75].forEach((fraction) => addLine("chart-grid-line", left, yAt(max * fraction), width - right, yAt(max * fraction)));
+    const makePolyline = (className, series) => {
+      const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      const coordinates = series.map((value, index) => xAt(index) + "," + yAt(value)).join(" ");
+      polyline.setAttribute("class", className);
+      polyline.setAttribute("points", coordinates);
+      svg.append(polyline);
+    };
+    makePolyline("chart-invested-line", invested);
+    makePolyline("chart-value-line", values);
+    const last = points[points.length - 1];
+    const valueText = money(last.valuePaise);
+    svg.setAttribute("aria-label", "From " + dateLabel(points[0].date) + " to " + dateLabel(last.date) +
+      ". Paper value " + valueText + ", contributions " + money(last.investedPaise) + ".");
+    $("#performance-chart-start").textContent = dateLabel(points[0].date);
+    $("#performance-chart-end").textContent = dateLabel(last.date);
+    note.textContent = "Actual daily NAV dates shared by all selected schemes; " + points.length +
+      " plotted observations. Missing dates are not interpolated.";
+  };
+
   const renderMetrics = (simulation) => {
     $("#portfolio-value").textContent = money(simulation.currentValuePaise);
     $("#portfolio-invested").textContent = money(simulation.investedPaise);
@@ -145,6 +192,7 @@
       const simulation = result.simulation;
       state.activeSimulation = simulation;
       renderMetrics(simulation);
+      renderPerformanceChart(simulation.performanceSeries);
       $("#detail-title").textContent = simulation.title;
       $("#detail-value").textContent = money(simulation.currentValuePaise);
       $("#detail-invested").textContent = money(simulation.investedPaise);
