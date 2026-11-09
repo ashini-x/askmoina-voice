@@ -54,10 +54,6 @@ function isoDaysAfter(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function monthKey(iso: string): string {
-  return iso.slice(0, 7);
-}
-
 function buildSipSchedule(startDate: string, endDate: string, sipDay: number): string[] {
   const result: string[] = [];
   const start = new Date(startDate + "T00:00:00.000Z");
