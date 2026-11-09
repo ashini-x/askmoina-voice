@@ -53,6 +53,17 @@ describe("production Worker configuration", () => {
     expect(config.previews?.vars?.VEDA_ENABLED).toBe("false");
   });
 
+  it("keeps the Wealth Dhan data adapter disabled in production and preview by default", () => {
+    expect(config.vars.WEALTH_DHAN_ENABLED).toBe("false");
+    expect(config.previews?.vars?.WEALTH_DHAN_ENABLED).toBe("false");
+  });
+
+  it("routes the authenticated Wealth PWA page and assets through the Worker", () => {
+    expect(config.assets?.run_worker_first).toEqual(
+      expect.arrayContaining(["/wealth", "/wealth/", "/wealth.html", "/wealth.css", "/wealth.js", "/api/*"]),
+    );
+  });
+
   it("routes reserved Veda paths through the Worker rather than allowing static-asset bypasses", () => {
     expect(config.assets?.run_worker_first).toEqual(
       expect.arrayContaining(["/veda", "/veda/*", "/api/*"]),
