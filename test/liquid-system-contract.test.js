@@ -46,13 +46,13 @@ describe("AskMoina Liquid Glass design system", () => {
     expect(deploymentWorkflow).toContain('manifest.background_color !== "#090A0D"');
     expect(deploymentWorkflow).toContain('manifest.theme_color !== "#090A0D"');
     expect(deploymentWorkflow).toContain("/askmoina-liquid-system.css");
-    expect(deploymentWorkflow).toContain("askmoina-pwa-shell-v22");
+    expect(deploymentWorkflow).toContain("askmoina-pwa-shell-v23");
   });
 
   it("keeps the PWA theme current for installed and offline launches", () => {
     const serviceWorker = readFileSync(new URL("../public/service-worker.js", import.meta.url), "utf8");
     const manifest = readFileSync(new URL("../public/manifest.webmanifest", import.meta.url), "utf8");
-    expect(serviceWorker).toContain('const CACHE_NAME = "askmoina-pwa-shell-v22"');
+    expect(serviceWorker).toContain('const CACHE_NAME = "askmoina-pwa-shell-v23"');
     expect(serviceWorker).toContain("/askmoina-liquid-system.css?v=20261019-1");
     expect(manifest).toContain('"background_color": "#090A0D"');
     expect(manifest).toContain('"theme_color": "#090A0D"');

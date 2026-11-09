@@ -1,4 +1,4 @@
-const CACHE_NAME = "askmoina-pwa-shell-v22";
+const CACHE_NAME = "askmoina-pwa-shell-v23";
 const SHELL_URLS = [
   "/install",
   "/install.css?v=0.4.131",
@@ -24,8 +24,6 @@ const SHELL_URLS = [
   "/pwa-gate.css",
   "/pwa-gate.js",
   "/pwa-runtime.js?v=0.4.131",
-  "/wealth.css",
-  "/wealth-demo.js"
 ];
 
 self.addEventListener("install", (event) => {
