@@ -19,7 +19,7 @@ const NAV_SOURCE = "MFAPI.in";
 const NAV_ATTRIBUTION = "Third-party aggregator of AMFI-published mutual-fund NAV data; verify against AMFI before any non-simulated use.";
 
 
-type DemoStock = { symbol: string; name: string; securityId: string; quantity: number; purchaseDate: string };
+type DemoStock = { symbol: string; name: string; quantity: number; purchaseDate: string };
 type DemoFund = { schemeCode: number; monthlyAmountPaise: number; startDate: string; sipDay: number };
 const DEMO_STOCKS: DemoStock[] = [
   { symbol: "RELIANCE", name: "Reliance Industries", quantity: 4, purchaseDate: "2022-01-03" },
